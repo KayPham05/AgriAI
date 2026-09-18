@@ -2,7 +2,7 @@
 #Model
 .venv/
 venv/
-/Model/.md
+/Model/*.md
 # Python cache
 __pycache__/
 *.py[cod]
