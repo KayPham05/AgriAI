@@ -28,7 +28,7 @@ __pycache__/
 *.safetensors
 *.onnx
 
-# Kết quả huấn luyện, biểu đồ và log
+# Kết quả huấn luyện
 /outputs/
 /runs/
 /logs/
