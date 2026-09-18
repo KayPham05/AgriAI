@@ -1,1 +1,48 @@
-*.txt
+#============================================
+#Model
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Notebook cache
+.ipynb_checkpoints/
+
+# Dataset — đặt / để chỉ áp dụng tại gốc repository
+/Image/
+/data/
+/dataset/
+/datasets/
+
+# Trọng số model và checkpoint
+/checkpoints/
+/weights/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+
+# Kết quả huấn luyện, biểu đồ và log
+/outputs/
+/runs/
+/logs/
+/wandb/
+*.log
+events.out.tfevents.*
+
+# File tạm
+/tmp/
+/.cache/
+
+# Thông tin bí mật
+.env
+.env.*
+!.env.example
+
+
