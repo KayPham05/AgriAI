@@ -112,7 +112,7 @@ def main():
         train_loader, val_loader, test_loader, num_classes, idx_to_info = create_dataloaders()
     except Exception as e:
         print(f"\n[!] Lỗi chuẩn bị dữ liệu: {e}")
-        print("[!] Hãy chắc chắn bạn đã đặt ảnh theo cấu trúc: Model/Image/<Ten_Cay>/<Ten_Benh>/*.jpg")
+        print("[!] Hãy chắc chắn bạn đã đặt ảnh theo cấu trúc: ai/Image/<Ten_Cay>/<Ten_Benh>/*.jpg")
         sys.exit(1)
 
     print(f"[*] Số lượng lớp phân loại phát hiện được: {num_classes}")

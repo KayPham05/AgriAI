@@ -58,7 +58,7 @@ def scan_dataset(data_dir: Path = config.DATA_DIR) -> Tuple[List[dict], Dict[str
     if not plant_dirs:
         raise ValueError(
             f"Thư mục '{data_dir}' chưa có các thư mục loại cây. "
-            "Vui lòng tạo thư mục con đại diện cho từng loại cây trong Model/Image."
+            "Vui lòng tạo thư mục con đại diện cho từng loại cây trong ai/Image."
         )
 
     raw_samples = []

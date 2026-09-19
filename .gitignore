@@ -1,9 +1,8 @@
-#============================================
-#Model
+# Virtual environments
 .venv/
 venv/
-/Model/*.md
-# Python cache
+
+# Python caches and tooling
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -13,36 +12,44 @@ __pycache__/
 # Notebook cache
 .ipynb_checkpoints/
 
-# Dataset — đặt / để chỉ áp dụng tại gốc repository
-/Image/
-/data/
-/dataset/
-/datasets/
+# Personal plans
+/docs/plans/*
+!/docs/plans/.gitkeep
 
-# Trọng số model và checkpoint
-/checkpoints/
-/weights/
+# Local dataset and generated mappings
+/ai/Image/
+/ai/class_to_idx.json
+/ai/class_mapping.json
+
+# Model checkpoints and exports
+/ai/checkpoints/
 *.pt
 *.pth
 *.ckpt
 *.safetensors
 *.onnx
 
-# Kết quả huấn luyện
-/outputs/
-/runs/
-/logs/
-/wandb/
+# Training outputs and logs
+/ai/outputs/
+runs/
+logs/
+wandb/
 *.log
 events.out.tfevents.*
 
-# File tạm
+# Temporary files
 /tmp/
 /.cache/
 
-# Thông tin bí mật
+# Secrets
 .env
 .env.*
 !.env.example
+
+# Editor and operating system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
 
 
