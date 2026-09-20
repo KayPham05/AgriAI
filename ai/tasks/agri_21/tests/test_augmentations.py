@@ -51,6 +51,30 @@ class AugmentationTests(unittest.TestCase):
             )
         )
 
+    def test_inference_preserves_aspect_ratio_and_uses_dataset_padding(self) -> None:
+        pipeline = get_inference_transforms(image_size=224)
+        letterbox = pipeline.transforms[0]
+
+        self.assertIsInstance(letterbox, ResizeWithPadding)
+        for source_size, expected_resized_size, expected_padding in (
+            ((400, 100), (224, 56), (0, 84, 0, 84)),
+            ((100, 400), (56, 224), (84, 0, 84, 0)),
+            ((224, 224), (224, 224), (0, 0, 0, 0)),
+        ):
+            with self.subTest(source_size=source_size):
+                source = Image.new("RGB", source_size, (255, 0, 0))
+                output = letterbox(source)
+                expected_output, resized_size, padding = resize_with_padding(source)
+
+                self.assertEqual(output.size, (224, 224))
+                self.assertEqual(resized_size, expected_resized_size)
+                self.assertEqual(padding, expected_padding)
+                self.assertEqual(output.tobytes(), expected_output.tobytes())
+                if any(expected_padding):
+                    self.assertEqual(output.getpixel((0, 0)), PADDING_COLOR)
+                else:
+                    self.assertEqual(output.getpixel((0, 0)), (255, 0, 0))
+
 
 if __name__ == "__main__":
     unittest.main()

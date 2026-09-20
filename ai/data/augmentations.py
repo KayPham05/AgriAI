@@ -45,6 +45,13 @@ def get_val_transforms(image_size=config.IMAGE_SIZE):
 
 def get_inference_transforms(image_size=config.IMAGE_SIZE):
     """
-    Tiền xử lý cho ảnh đơn lẻ khi dự đoán (Inference).
+    Giữ tỷ lệ và đệm ảnh inference giống preprocessing của dataset v1.2.
     """
-    return get_val_transforms(image_size=image_size)
+    return transforms.Compose([
+        ResizeWithPadding(target_size=image_size, fill=PADDING_COLOR),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=IMAGENET_MEAN,
+            std=IMAGENET_STD
+        )
+    ])
