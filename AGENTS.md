@@ -10,12 +10,15 @@ These instructions apply to the entire repository.
 ## Directory structure
 
 ```text
-ai/                 Training, evaluation, inference, and AI utilities
-experiments/        Versioned experiment records under EXP-XXX
-docs/               Project documentation and task logs
-.agents/rules/      Repository-specific rules
-.agents/skills/     Reusable agent skills
-.agents/workflows/  Reusable workflows
+ai/data/                        Runtime data loading and preprocessing (dùng chung)
+ai/tasks/agri_21/scripts/       Script tạo và audit dataset v1.0–v1.2 (AGRI-21)
+ai/tasks/agri_21/tests/         Unit tests riêng cho các script AGRI-21
+ai/                             Training, evaluation, inference, và AI utilities
+experiments/                    Versioned experiment records under EXP-XXX
+docs/                           Project documentation and task logs
+.agents/rules/                  Repository-specific rules
+.agents/skills/                 Reusable agent skills
+.agents/workflows/              Reusable workflows
 ```
 
 - Keep datasets, checkpoints, generated outputs, caches, and secrets out of Git.
