@@ -17,7 +17,11 @@ def get_train_transforms(image_size=config.IMAGE_SIZE):
         transforms.Resize((image_size, image_size)),
         transforms.RandomHorizontalFlip(p=0.5),
         transforms.RandomVerticalFlip(p=0.5),
-        transforms.RandomRotation(degrees=30),
+        transforms.RandomRotation(
+            degrees=30,
+            interpolation=InterpolationMode.BILINEAR,
+            fill=PADDING_COLOR,
+        ),
         transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
         transforms.ToTensor(),
         transforms.Normalize(
