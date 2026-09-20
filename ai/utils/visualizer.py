@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 
-from configs import config
+from ai.configs import config
 
 def plot_training_history(history: Dict[str, List[float]], save_path: Path = config.OUTPUT_DIR / "training_history.png"):
     """
