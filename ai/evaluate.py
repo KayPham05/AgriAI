@@ -4,11 +4,11 @@ from pathlib import Path
 import torch
 from tqdm import tqdm
 
-from configs import config
-from data.dataset import create_dataloaders
-from networks.convnext import build_model
-from utils.metrics import compute_metrics, get_detailed_report, get_confusion_matrix
-from utils.visualizer import plot_confusion_matrix
+from ai.configs import config
+from ai.data.dataset import create_dataloaders
+from ai.networks.convnext import build_model
+from ai.utils.metrics import compute_metrics, get_detailed_report, get_confusion_matrix
+from ai.utils.visualizer import plot_confusion_matrix
 
 def evaluate():
     print("=" * 65)
@@ -17,7 +17,7 @@ def evaluate():
 
     if not config.BEST_MODEL_PATH.exists():
         print(f"[!] Không tìm thấy file checkpoint tốt nhất tại: {config.BEST_MODEL_PATH.resolve()}")
-        print("[!] Vui lòng chạy huấn luyện bằng lệnh 'python train.py' trước.")
+        print("[!] Vui lòng chạy huấn luyện bằng lệnh 'python -m ai.train' trước.")
         sys.exit(1)
 
     print(f"[*] Đang tải checkpoint: {config.BEST_MODEL_PATH.name}...")

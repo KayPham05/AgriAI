@@ -1,4 +1,5 @@
 @echo off
+cd /d "%~dp0\.."
 echo ==========================================================
 echo   CAI DAT MOI TRUONG PYTORCH CUDA CHO CONVNEXT-TINY
 echo   AgriVisionAI - NVIDIA GTX 1650 (Windows 64-bit)
@@ -18,10 +19,10 @@ python -m pip install --upgrade pip
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
 
 echo [3/3] Cai dat cac thu vien bo sung tu requirements.txt...
-pip install -r requirements.txt
+pip install -r ai\requirements.txt
 
 echo ==========================================================
 echo [V] HOAN TAT CAI DAT! Kiem tra card GPU...
-python test_gpu.py
+python -m ai.test_gpu
 echo ==========================================================
 pause

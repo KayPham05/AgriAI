@@ -1,5 +1,12 @@
 from torchvision import transforms
-from configs import config
+from torchvision.transforms import InterpolationMode
+
+from ai.configs import config
+from ai.data.image_preprocessing import PADDING_COLOR, ResizeWithPadding
+
+IMAGENET_MEAN = [0.485, 0.456, 0.406]
+IMAGENET_STD = [0.229, 0.224, 0.225]
+
 
 def get_train_transforms(image_size=config.IMAGE_SIZE):
     """
@@ -10,12 +17,16 @@ def get_train_transforms(image_size=config.IMAGE_SIZE):
         transforms.Resize((image_size, image_size)),
         transforms.RandomHorizontalFlip(p=0.5),
         transforms.RandomVerticalFlip(p=0.5),
-        transforms.RandomRotation(degrees=30),
+        transforms.RandomRotation(
+            degrees=30,
+            interpolation=InterpolationMode.BILINEAR,
+            fill=PADDING_COLOR,
+        ),
         transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
         transforms.ToTensor(),
         transforms.Normalize(
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225]
+            mean=IMAGENET_MEAN,
+            std=IMAGENET_STD
         )
     ])
 
@@ -27,13 +38,20 @@ def get_val_transforms(image_size=config.IMAGE_SIZE):
         transforms.Resize((image_size, image_size)),
         transforms.ToTensor(),
         transforms.Normalize(
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225]
+            mean=IMAGENET_MEAN,
+            std=IMAGENET_STD
         )
     ])
 
 def get_inference_transforms(image_size=config.IMAGE_SIZE):
     """
-    Tiền xử lý cho ảnh đơn lẻ khi dự đoán (Inference).
+    Giữ tỷ lệ và đệm ảnh inference giống preprocessing của dataset v1.2.
     """
-    return get_val_transforms(image_size=image_size)
+    return transforms.Compose([
+        ResizeWithPadding(target_size=image_size, fill=PADDING_COLOR),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=IMAGENET_MEAN,
+            std=IMAGENET_STD
+        )
+    ])
