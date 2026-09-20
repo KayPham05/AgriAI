@@ -86,10 +86,9 @@ Hai nguồn Cà phê và Cam dưới đây được kiểm tra lại ngày 2026-
 | Ớt | DS-012 - [Plant Disease Classification Merged Dataset](https://www.kaggle.com/datasets/alinedobrovsky/plant-disease-classification-merged-dataset) | Năm lớp cục bộ khớp mô tả trong Google Sheets. Tập hiện tại chỉ có 100 ảnh mỗi lớp; cần xác minh đây là toàn bộ dữ liệu hay một tập con đã chọn. |
 | Sầu riêng | DS-003 - [Durian Leaf Disease Dataset](https://www.kaggle.com/datasets/cthng123/durian-leaf-disease-dataset) | Năm lớp và tổng 4.437 ảnh khớp chính xác nguồn. Ảnh đã được chuẩn hóa về 224 x 224. |
 
-Các dòng DS-007 đến DS-011 trong Google Sheets mô tả dữ liệu lúa và xoài. Các nguồn này đã được chuẩn bị sẵn script mở rộng (`extend_dataset_with_new_plants.py`) để bổ sung vào dataset `v1.3`.
+Các dòng DS-007 đến DS-011 trong Google Sheets mô tả dữ liệu lúa và xoài, nhưng không có thư mục tương ứng trong snapshot cục bộ đang rà soát. Không tính các nguồn này vào 129.867 ảnh phía trên.
 
 Thông tin giấy phép trong Google Sheets cần được xem là dữ liệu danh mục. Trước khi công bố, chia sẻ lại hoặc phát hành model/dataset, nhóm phải kiểm tra giấy phép trên trang nguồn và lưu bằng chứng phiên bản cụ thể. Đặc biệt, các nguồn chưa có trong Google Sheets cần được bổ sung vào danh mục chính thức.
-
 
 ## 4. Rà soát và chuẩn hóa tên thư mục
 
