@@ -177,10 +177,22 @@ Sau bước này, `v1.1` có **75.032 ảnh và 75.032 SHA-256 duy nhất**.
 - [x] Contact sheet sau augmentation đã được kiểm tra và đạt yêu cầu.
 - [x] Audit Hamming 0–5 hậu-resize còn 0 cặp high-confidence giữa các group khác nhau.
 - [x] Leakage check cuối có 0 đường dẫn, `group_id`, SHA-256 và near-duplicate high-confidence xuyên split.
-- [x] Toàn bộ 18 unit test pipeline dữ liệu và augmentation chạy thành công.
+## 14. Bổ sung hai cây Lúa và Xoài (tạo dataset `v1.3`)
 
-## 13. Trạng thái hiện tại
+- **Nguồn bổ sung:** Thư mục chứa Lúa và Xoài (cấu trúc `<cây>/<tình_trạng>/<ảnh>`).
+- **Chiến lược:** Incremental merge thông qua script `extend_dataset_with_new_plants.py`.
+- **Thao tác:**
+  - Giữ nguyên 100% dữ liệu v1.2 (75.025 ảnh, 42 lớp, SHA-256, group_id, split membership).
+  - Audit và lọc exact-dedup cho đợt ảnh Lúa và Xoài (bỏ trùng SHA-256 nội bộ đợt mới và trùng SHA-256 đã có ở v1.2).
+  - Gán `group_id` mới cho ảnh Lúa/Xoài dựa trên dHash; đảm bảo không xung đột `group_id` của v1.2.
+  - Chia 70/10/20 theo group cho ảnh mới với seed `20260919`.
+  - Resize ảnh mới về 224×224 theo phương pháp letterbox center pad màu `(124, 116, 104)`.
+  - Hợp nhất manifest và xuất dataset `v1.3` hoàn chỉnh tại `<dataset_root>/v1.3/`.
+  - Kiểm tra ranh giới split: 0 leakage giữa các split.
 
-Đã hoàn thành audit, dedup, review xung đột nhãn, resize 224×224, kiểm tra trực quan augmentation và leakage check Hamming 0–5 hậu-resize. Dataset cuối có 75.025 ảnh, 40.200 group và split 52.517/7.504/15.004; cả ba tập có đủ 42 lớp và không còn leakage high-confidence. DataLoader mặc định dùng ba manifest cuối của `v1.2`, không chia lại dữ liệu trong script training.
+## 15. Trạng thái hiện tại
 
-**Trạng thái DoD dữ liệu: HOÀN THÀNH.**
+Đã hoàn thành audit, dedup, review xung đột nhãn, resize 224×224, kiểm tra trực quan augmentation và leakage check Hamming 0–5 cho `v1.2` (75.025 ảnh, 42 lớp, 8 nhóm cây). Đã hỗ trợ sẵn script `extend_dataset_with_new_plants.py` và unit tests (19/19 PASS) để sẵn sàng mở rộng sang dataset `v1.3` khi nạp bổ sung hai cây Lúa và Xoài (10 nhóm cây).
+
+**Trạng thái DoD dữ liệu: HOÀN THÀNH (Đã hỗ trợ mở rộng v1.3).**
+

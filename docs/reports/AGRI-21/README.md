@@ -11,17 +11,20 @@
   high-confidence xuyên split.
 - DataLoader đọc trực tiếp ba manifest; không chia lại trong script training.
 - Augmentation đã qua kiểm tra contact sheet.
+- Sẵn sàng mở rộng sang dataset `v1.3` (bổ sung Lúa & Xoài) bằng script `extend_dataset_with_new_plants.py`.
 
 ## Tài liệu chính
 
+- [Tổng quan chi tiết dataset v1.3 (Lúa & Xoài mở rộng)](../../notebooks/dataset_v1_3_overview.md)
 - [Tổng quan chi tiết dataset v1.2](dataset_v1_2_overview.md)
 - [Nhật ký làm sạch dữ liệu](data_cleaning_log.md)
 - [Báo cáo resize, preprocessing, augmentation và Definition of Done](dataset_v1_2_resize.md)
 - [Chia tập theo group](dataset_v1_1_group_aware_split.md)
 - [Rà soát Hamming near-duplicate](dataset_v1_1_hamming_near_duplicate_review.md)
 
-Nhật ký làm sạch đã bao gồm checklist audit v1.0; báo cáo resize đã bao gồm
+Nhật ký làm sạch đã bao gồm checklist audit v1.0 và bước 14 về mở rộng Lúa/Xoài (v1.3); báo cáo resize đã bao gồm
 đối chiếu preprocessing và augmentation. Các báo cáo còn lại trong thư mục là
 bằng chứng chi tiết theo từng bước. Mã
-pipeline nằm tại `ai/scripts/dataset/`; runtime DataLoader và transforms nằm
+pipeline nằm tại `ai/tasks/agri_21/scripts/`; runtime DataLoader và transforms nằm
 tại `ai/data/`.
+
