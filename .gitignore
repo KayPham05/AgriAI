@@ -21,8 +21,6 @@ __pycache__/
 /datasets tunning/
 /data/raw/
 /ai/Image/
-v1.*/
-
 /ai/class_to_idx.json
 /ai/class_mapping.json
 
