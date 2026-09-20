@@ -7,13 +7,13 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 
-from configs import config
-from data.dataset import create_dataloaders
-from networks.convnext import build_model
-from utils.metrics import compute_metrics
-from utils.visualizer import plot_training_history
+from ai.configs import config
+from ai.data.dataset import create_dataloaders
+from ai.networks.convnext import build_model
+from ai.utils.metrics import compute_metrics
+from ai.utils.visualizer import plot_training_history
 
-def set_seed(seed: int = config.RANDOM_SEED):
+def set_seed(seed: int = config.TRAINING_SEED):
     """Cố định seed để đảm bảo tính tái lập kết quả."""
     random.seed(seed)
     np.random.seed(seed)
@@ -105,14 +105,15 @@ def main():
     print(f"[*] Batch size hiệu dụng: {config.BATCH_SIZE * config.GRADIENT_ACCUMULATION_STEPS} (Batch={config.BATCH_SIZE}, Accum={config.GRADIENT_ACCUMULATION_STEPS})")
     print("=" * 65)
 
-    set_seed(config.RANDOM_SEED)
+    set_seed(config.TRAINING_SEED)
 
-    # 1. Quét dữ liệu và nạp DataLoader
+    # 1. Nạp DataLoader từ ba manifest cố định
     try:
+        # Thành viên mỗi tập lấy nguyên trạng từ train.csv, val.csv và test.csv.
         train_loader, val_loader, test_loader, num_classes, idx_to_info = create_dataloaders()
     except Exception as e:
         print(f"\n[!] Lỗi chuẩn bị dữ liệu: {e}")
-        print("[!] Hãy chắc chắn bạn đã đặt ảnh theo cấu trúc: ai/Image/<Ten_Cay>/<Ten_Benh>/*.jpg")
+        print("[!] Hãy kiểm tra AGRIVISION_DATASET_DIR, thư mục images và ba manifest CSV.")
         sys.exit(1)
 
     print(f"[*] Số lượng lớp phân loại phát hiện được: {num_classes}")
@@ -230,7 +231,7 @@ def main():
     # Vẽ biểu đồ kết quả
     plot_training_history(history)
 
-    print("\n[*] Bạn có thể chạy lệnh: 'python evaluate.py' để đánh giá chi tiết trên tập Test!")
+    print("\n[*] Bạn có thể chạy 'python -m ai.evaluate' để đánh giá chi tiết trên tập Test!")
     print("=" * 65)
 
 

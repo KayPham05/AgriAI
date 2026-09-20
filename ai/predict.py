@@ -2,15 +2,15 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import Dict, Union
 
 import torch
 import torch.nn.functional as F
 from PIL import Image
 
-from configs import config
-from data.augmentations import get_inference_transforms
-from networks.convnext import build_model
+from ai.configs import config
+from ai.data.augmentations import get_inference_transforms
+from ai.networks.convnext import build_model
 
 class LeafDiseasePredictor:
     """
@@ -49,7 +49,8 @@ class LeafDiseasePredictor:
         if not image_path.exists():
             raise FileNotFoundError(f"Không tìm thấy file ảnh: {image_path.resolve()}")
 
-        image = Image.open(image_path).convert("RGB")
+        with Image.open(image_path) as source:
+            image = source.convert("RGB")
         tensor = self.transform(image).unsqueeze(0).to(config.DEVICE)
 
         with torch.amp.autocast("cuda", enabled=config.USE_AMP):

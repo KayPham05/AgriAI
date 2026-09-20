@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torchvision.models import convnext_tiny, ConvNeXt_Tiny_Weights
-from configs import config
+from ai.configs import config
 
 class ConvNeXtLeafClassifier(nn.Module):
     """
