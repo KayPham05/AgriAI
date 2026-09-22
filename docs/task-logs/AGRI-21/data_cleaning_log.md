@@ -1,9 +1,9 @@
 # Notebook 01 — Nhật ký làm sạch dữ liệu
 
 - **Dataset:** AgriVision AI
-- **Phiên bản hiện tại:** `v1.2`
-- **Ngày cập nhật:** 2026-09-20
-- **Phạm vi:** audit, dedup, xử lý xung đột nhãn, gán `group_id`, audit Hamming, chia tập, tích hợp DataLoader và resize 224×224.
+- **Phiên bản hiện tại:** `v1.3`
+- **Ngày cập nhật:** 2026-09-22
+- **Phạm vi:** audit, dedup, xử lý xung đột nhãn, gán `group_id`, audit Hamming, chia tập, resize 224×224, augmentation QA và tích hợp DataLoader/inference.
 
 ## 1. Kiểm tra dữ liệu nguồn
 
@@ -105,18 +105,38 @@ Sau bước này, `v1.1` có **75.032 ảnh và 75.032 SHA-256 duy nhất**.
 - Audit Hamming 0–5 hậu-resize phát hiện 244 cặp group high-confidence; tất cả cùng nhãn. Đã gộp 367 group thành 144 component và chia lại theo group.
 - Kết quả cuối: 40.200 group, 0 đường dẫn/`group_id`/SHA-256/near-duplicate high-confidence xuyên split; số ảnh split vẫn là 52.517/7.504/15.004.
 
-## 11. Artifact chính
+## 11. Mở rộng và hoàn tất dataset `v1.3`
+
+- Kế thừa nguyên vẹn 75.025 ảnh, nhãn, group và split từ v1.2; bổ sung 7.048 ảnh Lúa/Xoài đã qua cùng pipeline resize 224×224.
+- Dataset cuối có 82.073 ảnh, 10 loại cây, 58 lớp và 46.989 group.
+- Giải quyết một va chạm dHash tạo cross-label group bằng cách tách thành bốn singleton SHA-256; không xóa hoặc đổi nhãn ảnh.
+- Full audit Hamming 0–5 phát hiện 17 cặp near-duplicate cùng nhãn; gộp 34 group thành 17 component và đổi split tối thiểu cho 8 ảnh, không di chuyển file vật lý.
+- Split cuối là 57.449/8.209/16.415, giữ nguyên toàn bộ group và đủ 58 lớp ở cả train/validation/test.
+- Hậu kiểm trả về 0 path, group, SHA-256 và near-duplicate high-confidence xuyên split.
+- Toàn bộ 82.073 ảnh được băm lại SHA-256, mở kiểm tra JPEG và xác nhận đúng 224×224; không có file thừa, thiếu hoặc hỏng.
+- Train augmentation giữ rotation bilinear và fill đúng màu padding `(124, 116, 104)`; validation/test không có augmentation ngẫu nhiên.
+- Mapping lớp được sinh từ manifest 58 lớp và lưu trong checkpoint; inference/evaluation từ chối checkpoint thiếu mapping thay vì dùng nhầm JSON 42 lớp cũ.
+- Các số liệu audit hậu-resize của v1.2 được chuyển vào namespace provenance riêng trong metadata v1.3.
+
+## 12. Artifact chính
 
 | Artifact | Vị trí |
 |---|---|
+| Dataset chính thức dùng cho training | `<dataset_root>/v1.3/images` |
+| Manifest v1.3 hiện tại | `<dataset_root>/v1.3/manifests/dataset_manifest.csv` |
+| Metadata v1.3 hiện tại | `<dataset_root>/v1.3/metadata/dataset_version.json` |
+| Audit leakage v1.3 | `<dataset_root>/v1.3/reports/post_resize_leakage_summary.json` |
+| Audit Hamming 0–5 v1.3 | `<dataset_root>/v1.3/reports/post_resize_hamming_0_to_5_summary.json` |
+| Log đổi split v1.3 | `<dataset_root>/v1.3/reports/v1_3_split_move_log.csv` |
+| Backup trước đồng bộ release | `<dataset_root>/v1.3/reports/step_v1_3_backup_before_release_sync` |
 | Manifest audit nguồn v1.0 | `<dataset_root>/v1.0/manifests/dataset_manifest.csv` |
 | Phân bố lớp v1.0 | `<dataset_root>/v1.0/reports/class_distribution.csv` |
 | Danh sách ảnh lỗi v1.0 | `<dataset_root>/v1.0/reports/corrupt_images.csv` |
 | Báo cáo trùng lặp v1.0 | `<dataset_root>/v1.0/reports/duplicate_report.csv` |
 | Ảnh đối chứng trùng lặp Cà phê | `<dataset_root>/v1.0/reports/coffee_duplicate_evidence` |
-| Dataset resize dùng cho training | `<dataset_root>/v1.2/images` |
-| Manifest hiện tại | `<dataset_root>/v1.2/manifests/dataset_manifest.csv` |
-| Metadata phiên bản hiện tại | `<dataset_root>/v1.2/metadata/dataset_version.json` |
+| Dataset nền v1.2 | `<dataset_root>/v1.2/images` |
+| Manifest bản nền v1.2 | `<dataset_root>/v1.2/manifests/dataset_manifest.csv` |
+| Metadata bản nền v1.2 | `<dataset_root>/v1.2/metadata/dataset_version.json` |
 | Mapping resize | `<dataset_root>/v1.2/reports/resize_mapping.csv` |
 | Dataset nguồn đã làm sạch | `<dataset_root>/v1.1/images` |
 | Metadata dataset nguồn | `<dataset_root>/v1.1/metadata/dataset_version.json` |
@@ -136,19 +156,19 @@ Sau bước này, `v1.1` có **75.032 ảnh và 75.032 SHA-256 duy nhất**.
 | Backup trước gán nhóm | `<dataset_root>/v1.1/reports/step2_backup_before_grouping` |
 | Backup trước cách ly | `<dataset_root>/v1.1/reports/step3_backup_before_near_duplicate_quarantine` |
 | Backup trước review Hamming | `<dataset_root>/v1.1/reports/step4_backup_before_hamming_review` |
-| Train manifest hiện tại | `<dataset_root>/v1.2/manifests/train.csv` |
-| Validation manifest hiện tại | `<dataset_root>/v1.2/manifests/val.csv` |
-| Test manifest hiện tại | `<dataset_root>/v1.2/manifests/test.csv` |
-| Mapping nhóm sang split hiện tại | `<dataset_root>/v1.2/reports/group_split_assignments.csv` |
-| Phân bố lớp theo split hiện tại | `<dataset_root>/v1.2/reports/split_class_distribution.csv` |
-| Tổng hợp split hiện tại | `<dataset_root>/v1.2/reports/split_summary.csv` |
-| Kiểm tra leakage cuối | `<dataset_root>/v1.2/reports/post_resize_leakage_summary.json` |
-| Audit Hamming 0–5 cuối | `<dataset_root>/v1.2/reports/post_resize_hamming_0_to_5_summary.json` |
+| Train manifest v1.2 | `<dataset_root>/v1.2/manifests/train.csv` |
+| Validation manifest v1.2 | `<dataset_root>/v1.2/manifests/val.csv` |
+| Test manifest v1.2 | `<dataset_root>/v1.2/manifests/test.csv` |
+| Mapping nhóm sang split v1.2 | `<dataset_root>/v1.2/reports/group_split_assignments.csv` |
+| Phân bố lớp theo split v1.2 | `<dataset_root>/v1.2/reports/split_class_distribution.csv` |
+| Tổng hợp split v1.2 | `<dataset_root>/v1.2/reports/split_summary.csv` |
+| Kiểm tra leakage cuối v1.2 | `<dataset_root>/v1.2/reports/post_resize_leakage_summary.json` |
+| Audit Hamming 0–5 cuối v1.2 | `<dataset_root>/v1.2/reports/post_resize_hamming_0_to_5_summary.json` |
 | Mapping regroup hậu-resize | `<dataset_root>/v1.2/reports/post_resize_group_merge_mapping.csv` |
 | Backup trước regroup/resplit | `<dataset_root>/v1.2/reports/step6_backup_before_post_resize_regroup` |
 | Backup trước split | `<dataset_root>/v1.1/reports/step5_backup_before_split` |
 
-## 12. Kiểm tra đã chạy
+## 13. Kiểm tra đã chạy
 
 - [x] Manifest audit v1.0 có 129.867 dòng, 42 lớp và không có ảnh lỗi.
 - [x] Kiểm tra độc lập ảnh trùng bằng SHA-256 và ảnh đối chứng Cà phê.
@@ -178,9 +198,17 @@ Sau bước này, `v1.1` có **75.032 ảnh và 75.032 SHA-256 duy nhất**.
 - [x] Audit Hamming 0–5 hậu-resize còn 0 cặp high-confidence giữa các group khác nhau.
 - [x] Leakage check cuối có 0 đường dẫn, `group_id`, SHA-256 và near-duplicate high-confidence xuyên split.
 - [x] Toàn bộ 18 unit test pipeline dữ liệu và augmentation chạy thành công.
+- [x] v1.3 có 82.073 file/manifest row, 58 lớp, 10 cây và 46.989 group.
+- [x] 75.025 dòng kế thừa v1.2 không thay đổi field.
+- [x] Ba split v1.3 khớp manifest chính, đủ 58 lớp và không có group/SHA-256 xuyên split.
+- [x] Full Hamming 0–5 v1.3 còn 0 cặp high-confidence giữa group hoặc xuyên split.
+- [x] Loader thật đọc 57.449/8.209/16.415 record và mapping 58 lớp có Lúa/Xoài.
+- [x] Mapping checkpoint và rollback resolver có unit test chuyên biệt.
+- [x] Toàn bộ 28 unit test pipeline v1.3, augmentation, mapping và evaluation support chạy thành công.
+- [x] Virtualenv có đủ dependency khai báo; import train/evaluate/predict và forward pass ConvNeXt-Tiny 58 lớp trên CPU thành công.
 
-## 13. Trạng thái hiện tại
+## 14. Trạng thái hiện tại
 
-Đã hoàn thành audit, dedup, review xung đột nhãn, resize 224×224, kiểm tra trực quan augmentation và leakage check Hamming 0–5 hậu-resize. Dataset cuối có 75.025 ảnh, 40.200 group và split 52.517/7.504/15.004; cả ba tập có đủ 42 lớp và không còn leakage high-confidence. DataLoader mặc định dùng ba manifest cuối của `v1.2`, không chia lại dữ liệu trong script training.
+Dataset v1.3 đã đi qua cùng các gate của v1.2: audit, dedup/group review, resize 224×224 giữ tỷ lệ, group-aware split, augmentation QA và leakage check Hamming 0–5 hậu-resize. Dataset cuối có 82.073 ảnh, 46.989 group và split 57.449/8.209/16.415; cả ba tập có đủ 58 lớp và không còn leakage high-confidence. DataLoader mặc định dùng ba manifest cố định của `v1.3`, không chia lại dữ liệu trong script training.
 
 **Trạng thái DoD dữ liệu: HOÀN THÀNH.**
