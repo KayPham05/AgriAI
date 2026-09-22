@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="870" viewBox="0 0 1200 870">
+        <rect width="100%" height="100%" fill="#eef5f0"/>
+        <style>
+          .title { font: 700 34px Arial, sans-serif; fill: #173b27; }
+          .subtitle { font: 20px Arial, sans-serif; fill: #42634e; }
+          .label { font: 20px Arial, sans-serif; fill: #27382d; }
+          .value { font: 700 20px Consolas, monospace; fill: #16713c; }
+        </style>
+        <text x="60" y="64" class="title">Hậu kiểm dataset v1.3 sau xử lý</text>
+        <text x="60" y="108" class="subtitle">Nguồn: metadata/dataset_version.json và reports/v1_3_final_audit.json</text>
+        
+        <rect x="60" y="170" width="1080" height="64" rx="8" fill="#ffffff"/>
+        <text x="90" y="211" class="label">Stage</text>
+        <text x="750" y="211" class="value">v1_3_complete</text>
+        <rect x="60" y="242" width="1080" height="64" rx="8" fill="#f4f8f5"/>
+        <text x="90" y="283" class="label">Ảnh active</text>
+        <text x="750" y="283" class="value">82073</text>
+        <rect x="60" y="314" width="1080" height="64" rx="8" fill="#ffffff"/>
+        <text x="90" y="355" class="label">Số lớp</text>
+        <text x="750" y="355" class="value">58</text>
+        <rect x="60" y="386" width="1080" height="64" rx="8" fill="#f4f8f5"/>
+        <text x="90" y="427" class="label">Số group</text>
+        <text x="750" y="427" class="value">46989</text>
+        <rect x="60" y="458" width="1080" height="64" rx="8" fill="#ffffff"/>
+        <text x="90" y="499" class="label">Cross-label group</text>
+        <text x="750" y="499" class="value">0</text>
+        <rect x="60" y="530" width="1080" height="64" rx="8" fill="#f4f8f5"/>
+        <text x="90" y="571" class="label">Group xuyên split</text>
+        <text x="750" y="571" class="value">0</text>
+        <rect x="60" y="602" width="1080" height="64" rx="8" fill="#ffffff"/>
+        <text x="90" y="643" class="label">SHA-256 xuyên split</text>
+        <text x="750" y="643" class="value">0</text>
+        <rect x="60" y="674" width="1080" height="64" rx="8" fill="#f4f8f5"/>
+        <text x="90" y="715" class="label">Near-duplicate xuyên split</text>
+        <text x="750" y="715" class="value">0</text>
+        <rect x="60" y="746" width="1080" height="64" rx="8" fill="#ffffff"/>
+        <text x="90" y="787" class="label">Đủ lớp ở mọi split</text>
+        <text x="750" y="787" class="value">True</text>
+        </svg>
