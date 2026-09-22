@@ -6,7 +6,7 @@ import torch
 # Base directories
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATASET_DIR = Path(
-    os.getenv("AGRIVISION_DATASET_DIR", r"D:\AgriVisionAI_Data\v1.2")
+    os.getenv("AGRIVISION_DATASET_DIR", r"D:\AgriVisionAI_Data\v1.3")
 )
 IMAGE_DIR = DATASET_DIR / "images"
 MANIFEST_DIR = DATASET_DIR / "manifests"

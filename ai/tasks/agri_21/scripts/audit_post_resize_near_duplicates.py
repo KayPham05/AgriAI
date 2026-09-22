@@ -57,6 +57,11 @@ def audit_post_resize_near_duplicates(dataset_dir: Path) -> dict[str, object]:
     images_dir = dataset_dir / "images"
     reports_dir = dataset_dir / "reports"
     rows = read_csv(dataset_dir / "manifests" / "dataset_manifest.csv")
+    metadata = json.loads(
+        (dataset_dir / "metadata" / "dataset_version.json").read_text(
+            encoding="utf-8"
+        )
+    )
 
     rows_by_hash: dict[int, list[dict[str, str]]] = defaultdict(list)
     for row in rows:
@@ -165,7 +170,7 @@ def audit_post_resize_near_duplicates(dataset_dir: Path) -> dict[str, object]:
         str(row["relationship"]) for row in review_rows
     )
     summary: dict[str, object] = {
-        "dataset_version": "v1.2",
+        "dataset_version": metadata["dataset_version"],
         "image_count": len(rows),
         "group_count_before_merge": len({row["group_id"] for row in rows}),
         "unique_dhash_count": len(rows_by_hash),

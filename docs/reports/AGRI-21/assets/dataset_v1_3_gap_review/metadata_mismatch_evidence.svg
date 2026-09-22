@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="782" viewBox="0 0 1600 782">
+        <rect width="100%" height="100%" fill="#f1f4f8"/>
+        <style>
+          .title { font: 700 34px Arial, sans-serif; fill: #172033; }
+          .subtitle { font: 20px Arial, sans-serif; fill: #49556a; }
+          .head { font: 700 20px Arial, sans-serif; fill: #ffffff; }
+          .field { font: 700 18px Consolas, monospace; fill: #172033; }
+          .bad { font: 17px Consolas, monospace; fill: #a01818; }
+          .good { font: 17px Consolas, monospace; fill: #17633a; }
+        </style>
+        <text x="40" y="58" class="title">Bằng chứng: metadata v1.3 không khớp manifest</text>
+        <text x="40" y="98" class="subtitle">Đỏ: giá trị đang lưu trong dataset_version.json · Xanh: tính lại từ manifest hoặc nguồn v1.2 đã khai báo</text>
+        <rect x="40" y="132" width="1520" height="78" rx="12" fill="#25324a"/>
+        <text x="64" y="180" class="head">Trường</text>
+        <text x="430" y="180" class="head">Đang lưu</text>
+        <text x="1010" y="180" class="head">Giá trị đúng / kỳ vọng</text>
+        
+            <rect x="40" y="210" width="1520" height="92" fill="#ffffff"/>
+            <text x="64" y="247" class="field">active_image_count</text>
+            <text x="430" y="247" class="bad">75025</text>
+            <text x="1010" y="247" class="good">82073</text>
+            <rect x="40" y="302" width="1520" height="92" fill="#f7f8fa"/>
+            <text x="64" y="339" class="field">classes</text>
+            <text x="430" y="339" class="bad">42</text>
+            <text x="1010" y="339" class="good">58</text>
+            <rect x="40" y="394" width="1520" height="92" fill="#ffffff"/>
+            <text x="64" y="431" class="field">group_count</text>
+            <text x="430" y="431" class="bad">40200</text>
+            <text x="1010" y="431" class="good">47003</text>
+            <rect x="40" y="486" width="1520" height="92" fill="#f7f8fa"/>
+            <text x="64" y="523" class="field">split_group_counts</text>
+            <text x="430" y="523" class="bad">{&quot;train&quot;: 28159, &quot;test&quot;: 8031, &quot;val&quot;: 4010}</text>
+            <text x="1010" y="523" class="good">{&quot;train&quot;: 32921, &quot;val&quot;: 4690, &quot;test&quot;: 9392}</text>
+            <rect x="40" y="578" width="1520" height="92" fill="#ffffff"/>
+            <text x="64" y="615" class="field">source_dataset_dir</text>
+            <text x="430" y="615" class="bad">&quot;D:\\AgriVisionAI_Data\\v1.1&quot;</text>
+            <text x="1010" y="615" class="good">&quot;D:\\AgriVisionAI_Data\\v1.2&quot;</text>
+            <rect x="40" y="670" width="1520" height="92" fill="#f7f8fa"/>
+            <text x="64" y="707" class="field">source_manifest</text>
+            <text x="430" y="707" class="bad">&quot;D:\\AgriVisionAI_Data\\v1.0\\manifests\\dataset_manifest.csv&quot;</text>
+            <text x="1010" y="707" class="good">&quot;D:\\AgriVisionAI_Data\\v1.2\\manifests\\dataset_manifest.csv&quot;</text>
+        </svg>
