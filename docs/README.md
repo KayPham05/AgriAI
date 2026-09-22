@@ -12,11 +12,13 @@ thuộc thiết bị của một thành viên.
 <dataset_root>/
 ├── v1.0/
 ├── v1.1/
-└── v1.2/
+├── v1.2/
+└── v1.3/
 ```
 
 Cấu trúc bên trong từng phiên bản phải được giữ nguyên. Khi chạy mô hình, đặt
-`AGRIVISION_DATASET_DIR` trỏ tới `<dataset_root>/v1.2`.
+`AGRIVISION_DATASET_DIR` trỏ tới `<dataset_root>/v1.3`. Bản v1.2 được giữ làm
+nguồn dữ liệu đã làm sạch và làm mốc đối chiếu pipeline cho v1.3.
 
 ## Cấu trúc
 

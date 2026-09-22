@@ -61,7 +61,7 @@ def generate_contact_sheet(
         with Image.open(image_path) as source:
             original = source.convert("RGB")
         if original.size != (CELL_SIZE, CELL_SIZE):
-            raise ValueError(f"Ảnh v1.2 không phải 224x224: {image_path}")
+            raise ValueError(f"Ảnh dataset không phải 224x224: {image_path}")
 
         y = HEADER_HEIGHT + row_index * row_height
         sheet.paste(original, (0, y))

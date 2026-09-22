@@ -1,4 +1,3 @@
-import json
 import sys
 from pathlib import Path
 import torch
@@ -8,6 +7,14 @@ from ai.configs import config
 from ai.data.dataset import create_dataloaders
 from ai.networks.convnext import build_model
 from ai.utils.metrics import compute_metrics, get_detailed_report, get_confusion_matrix
+from ai.utils.evaluation_support import (
+    MIN_RELIABLE_TEST_SAMPLES,
+    find_low_support_classes,
+)
+from ai.utils.label_mapping import (
+    ensure_matching_label_mappings,
+    normalize_checkpoint_label_mapping,
+)
 from ai.utils.visualizer import plot_confusion_matrix
 
 def evaluate():
@@ -23,10 +30,18 @@ def evaluate():
     print(f"[*] Đang tải checkpoint: {config.BEST_MODEL_PATH.name}...")
     checkpoint = torch.load(config.BEST_MODEL_PATH, map_location=config.DEVICE)
     num_classes = checkpoint.get("num_classes")
-    idx_to_info = checkpoint.get("idx_to_info")
+    idx_to_info = normalize_checkpoint_label_mapping(
+        checkpoint.get("idx_to_info"), num_classes
+    )
 
     # Tải dữ liệu test
-    _, _, test_loader, _, _ = create_dataloaders()
+    _, _, test_loader, dataset_num_classes, dataset_idx_to_info = create_dataloaders()
+    if dataset_num_classes != num_classes:
+        raise ValueError(
+            "Số lớp checkpoint không khớp dataset hiện tại: "
+            f"{num_classes} != {dataset_num_classes}"
+        )
+    ensure_matching_label_mappings(idx_to_info, dataset_idx_to_info)
     print(f"[*] Tổng số mẫu kiểm thử: {len(test_loader.dataset)}")
 
     # Xây dựng và nạp weights cho model
@@ -58,7 +73,15 @@ def evaluate():
     print("=" * 40)
 
     # Lấy danh sách tên lớp
-    target_names = [idx_to_info[str(i)]["compound_label"] if str(i) in idx_to_info else idx_to_info[i]["compound_label"] for i in range(num_classes)]
+    target_names = [idx_to_info[index]["compound_label"] for index in range(num_classes)]
+    low_support_classes = find_low_support_classes(all_targets, idx_to_info)
+    if low_support_classes:
+        print(
+            "\n[!] Cảnh báo: metric theo lớp có thể dao động vì test support "
+            f"< {MIN_RELIABLE_TEST_SAMPLES}:"
+        )
+        for label, support in low_support_classes:
+            print(f"    - {label}: {support} mẫu")
 
     # Báo cáo chi tiết từng lớp
     print("\n📋 BÁO CÁO PHÂN LOẠI CHI TIẾT THEO TỪNG LOẠI CÂY & BỆNH:")
