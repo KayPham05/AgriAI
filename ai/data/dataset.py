@@ -20,6 +20,7 @@ REQUIRED_COLUMNS = {
     "split",
 }
 SPLIT_NAMES = ("train", "val", "test")
+TARGET_FIELDS = ("compound_label", "plant", "condition")
 
 
 class PlantLeafDataset:
@@ -43,6 +44,33 @@ class PlantLeafDataset:
         if self.transform is not None:
             image = self.transform(image)
         return image, record["label_idx"]
+
+
+def compute_class_weights(
+    records: list[dict[str, Any]],
+    num_classes: int,
+) -> list[float]:
+    """Return balanced inverse-frequency weights from training records only."""
+
+    if num_classes <= 0:
+        raise ValueError("num_classes phải lớn hơn 0")
+
+    class_counts = [0] * num_classes
+    for record in records:
+        label_idx = record["label_idx"]
+        if not isinstance(label_idx, int) or not 0 <= label_idx < num_classes:
+            raise ValueError(f"label_idx không hợp lệ: {label_idx!r}")
+        class_counts[label_idx] += 1
+
+    missing_classes = [index for index, count in enumerate(class_counts) if count == 0]
+    if missing_classes:
+        raise ValueError(f"Train set thiếu class index: {missing_classes}")
+
+    sample_count = len(records)
+    return [
+        sample_count / (num_classes * class_count)
+        for class_count in class_counts
+    ]
 
 
 def _read_split_manifest(
@@ -122,12 +150,19 @@ def _read_split_manifest(
 
 def load_manifest_splits(
     dataset_dir: str | Path,
+    target_field: str = "compound_label",
 ) -> tuple[
     dict[str, list[dict[str, Any]]],
     dict[str, int],
     dict[int, dict[str, str]],
 ]:
-    """Load and validate fixed split membership from the three manifests."""
+    """Load fixed split membership and map the selected target to class indices."""
+
+    if target_field not in TARGET_FIELDS:
+        choices = ", ".join(TARGET_FIELDS)
+        raise ValueError(
+            f"Target field không hợp lệ: {target_field!r}; chọn một trong: {choices}"
+        )
 
     dataset_root = Path(dataset_dir).resolve()
     images_dir = (dataset_root / "images").resolve()
@@ -146,7 +181,6 @@ def load_manifest_splits(
 
     seen_paths: dict[str, str] = {}
     group_to_split: dict[str, str] = {}
-    group_to_label: dict[str, str] = {}
     labels_by_split: dict[str, set[str]] = {}
     for split, records in records_by_split.items():
         labels_by_split[split] = set()
@@ -168,17 +202,7 @@ def load_manifest_splits(
                     f"({previous_group_split}, {split})"
                 )
             group_to_split[group_id] = split
-            previous_group_label = group_to_label.get(group_id)
-            if (
-                previous_group_label is not None
-                and previous_group_label != record["compound_label"]
-            ):
-                raise ValueError(
-                    f"group_id chứa nhiều nhãn: {group_id} "
-                    f"({previous_group_label}, {record['compound_label']})"
-                )
-            group_to_label[group_id] = record["compound_label"]
-            labels_by_split[split].add(record["compound_label"])
+            labels_by_split[split].add(record[target_field])
 
     reference_labels = labels_by_split["train"]
     for split in ("val", "test"):
@@ -191,21 +215,27 @@ def load_manifest_splits(
             )
 
     class_to_idx = {
-        compound_label: index
-        for index, compound_label in enumerate(sorted(reference_labels))
+        label: index for index, label in enumerate(sorted(reference_labels))
     }
     idx_to_info: dict[int, dict[str, str]] = {}
-    for compound_label, index in class_to_idx.items():
-        plant, disease = compound_label.split("___", maxsplit=1)
-        idx_to_info[index] = {
-            "plant": plant,
-            "disease": disease,
-            "compound_label": compound_label,
-        }
+    for label, index in class_to_idx.items():
+        info = {"label": label, "target_field": target_field}
+        if target_field == "compound_label":
+            plant, disease = label.split("___", maxsplit=1)
+            info.update(
+                plant=plant,
+                disease=disease,
+                compound_label=label,
+            )
+        elif target_field == "plant":
+            info.update(plant=label, disease="")
+        else:
+            info.update(plant="", disease=label)
+        idx_to_info[index] = info
 
     for records in records_by_split.values():
         for record in records:
-            record["label_idx"] = class_to_idx[record["compound_label"]]
+            record["label_idx"] = class_to_idx[record[target_field]]
 
     return records_by_split, class_to_idx, idx_to_info
 
@@ -214,6 +244,8 @@ def create_dataloaders(
     dataset_dir: str | Path | None = None,
     batch_size: int | None = None,
     num_workers: int | None = None,
+    target_field: str = "compound_label",
+    label_map_path: str | Path | None = None,
 ):
     """Create loaders from fixed manifests; no split is generated here."""
 
@@ -223,13 +255,19 @@ def create_dataloaders(
     from ai.data.augmentations import get_train_transforms, get_val_transforms
 
     dataset_root = Path(dataset_dir or config.DATASET_DIR)
-    records_by_split, class_to_idx, idx_to_info = load_manifest_splits(dataset_root)
+    records_by_split, class_to_idx, idx_to_info = load_manifest_splits(
+        dataset_root,
+        target_field=target_field,
+    )
 
     label_map = {
+        "target_field": target_field,
         "class_to_idx": class_to_idx,
         "idx_to_info": idx_to_info,
     }
-    with config.LABEL_MAP_PATH.open("w", encoding="utf-8") as handle:
+    resolved_label_map_path = Path(label_map_path or config.LABEL_MAP_PATH)
+    resolved_label_map_path.parent.mkdir(parents=True, exist_ok=True)
+    with resolved_label_map_path.open("w", encoding="utf-8") as handle:
         json.dump(label_map, handle, ensure_ascii=False, indent=2)
 
     batch_size = batch_size or config.BATCH_SIZE

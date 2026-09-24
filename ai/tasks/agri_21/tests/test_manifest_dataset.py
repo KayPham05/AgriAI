@@ -9,7 +9,11 @@ from unittest.mock import patch
 
 from PIL import Image
 
-from ai.data.dataset import create_dataloaders, load_manifest_splits
+from ai.data.dataset import (
+    compute_class_weights,
+    create_dataloaders,
+    load_manifest_splits,
+)
 
 
 FIELDNAMES = [
@@ -85,6 +89,25 @@ class ManifestDatasetTests(unittest.TestCase):
                 {"Cay_a/Benh_a/test_0.jpg", "Cay_b/Khoe_manh/test_1.jpg"},
             )
 
+    def test_loads_plant_and_disease_targets_from_same_manifests(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._make_dataset(root)
+
+            plant_records, plant_to_idx, _ = load_manifest_splits(
+                root,
+                target_field="plant",
+            )
+            disease_records, disease_to_idx, _ = load_manifest_splits(
+                root,
+                target_field="condition",
+            )
+
+            self.assertEqual(plant_to_idx, {"Cay_a": 0, "Cay_b": 1})
+            self.assertEqual(disease_to_idx, {"Benh_a": 0, "Khoe_manh": 1})
+            self.assertEqual(plant_records["train"][1]["label_idx"], 1)
+            self.assertEqual(disease_records["train"][1]["label_idx"], 1)
+
     def test_rejects_group_leakage_between_manifests(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -95,6 +118,18 @@ class ManifestDatasetTests(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "Rò rỉ group_id"):
                 load_manifest_splits(root)
+
+    def test_allows_multi_label_group_within_one_split(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._make_dataset(root)
+            rows = self._read_manifest(root, "train")
+            rows[1]["group_id"] = rows[0]["group_id"]
+            self._write_manifest(root, "train", rows)
+
+            records, _, _ = load_manifest_splits(root)
+
+            self.assertEqual(len(records["train"]), 2)
 
     def test_rejects_row_with_wrong_split(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -152,6 +187,18 @@ class ManifestDatasetTests(unittest.TestCase):
             self.assertEqual(num_classes, 2)
             with fake_config.LABEL_MAP_PATH.open("r", encoding="utf-8") as handle:
                 self.assertEqual(len(json.load(handle)["class_to_idx"]), 2)
+
+    def test_class_weights_are_computed_from_training_records(self) -> None:
+        records = [
+            {"label_idx": 0},
+            {"label_idx": 0},
+            {"label_idx": 0},
+            {"label_idx": 1},
+        ]
+
+        weights = compute_class_weights(records, num_classes=2)
+
+        self.assertEqual(weights, [2 / 3, 2.0])
 
 
 if __name__ == "__main__":

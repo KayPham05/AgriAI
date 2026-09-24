@@ -55,6 +55,8 @@ coverage.xml
 htmlcov/
 
 # Build and packaging artifacts
+.ua/
+/colab_upload/
 build/
 dist/
 *.egg-info/
@@ -84,3 +86,6 @@ secrets/
 Thumbs.db
 Desktop.ini
 desktop.ini
+
+#local
+/colab_upload/

@@ -51,6 +51,32 @@ class AugmentationTests(unittest.TestCase):
             )
         )
 
+    def test_v1_3_training_uses_light_geometry_without_resizing(self) -> None:
+        pipeline = get_train_transforms()
+        rotation = next(
+            transform
+            for transform in pipeline.transforms
+            if isinstance(transform, transforms.RandomRotation)
+        )
+
+        self.assertFalse(
+            any(
+                isinstance(
+                    transform,
+                    (transforms.Resize, transforms.RandomVerticalFlip),
+                )
+                for transform in pipeline.transforms
+            )
+        )
+        self.assertEqual(rotation.degrees, [-15.0, 15.0])
+
+    def test_v1_3_validation_does_not_resize_preprocessed_images(self) -> None:
+        pipeline = get_val_transforms()
+
+        self.assertFalse(
+            any(isinstance(transform, transforms.Resize) for transform in pipeline.transforms)
+        )
+
     def test_inference_preserves_aspect_ratio_and_uses_dataset_padding(self) -> None:
         pipeline = get_inference_transforms(image_size=224)
         letterbox = pipeline.transforms[0]
