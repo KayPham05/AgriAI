@@ -1,5 +1,10 @@
 import sys
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
+
 def test_environment():
     print("=" * 60)
     print("🔍 KIỂM TRA MÔI TRƯỜNG PHẦN CỨNG VÀ PYTORCH CUDA")
@@ -23,20 +28,43 @@ def test_environment():
         print(f"[*] Tên GPU: {gpu_name}")
         print(f"[*] Tổng VRAM: {vram_mb:.0f} MiB")
 
-        # Test forward pass with dummy tensor
-        print("\n[*] Đang kiểm tra Forward Pass với mô hình và batch size = 16...")
         import torchvision.models as models
+        if __package__:
+            from ai.configs import config
+        else:
+            from configs import config
+
+        # Test forward pass with dummy tensor
+        print(
+            "\n[*] Đang kiểm tra Forward Pass với mô hình và "
+            f"batch size = {config.BATCH_SIZE}..."
+        )
         model = models.convnext_tiny(weights=None)
-        model.classifier[2] = torch.nn.Linear(model.classifier[2].in_features, 30)
+        model.classifier[2] = torch.nn.Linear(
+            model.classifier[2].in_features,
+            config.EXPECTED_NUM_CLASSES,
+        )
         model.cuda()
 
-        dummy_input = torch.randn(16, 3, 224, 224, device="cuda")
+        dummy_input = torch.randn(
+            config.BATCH_SIZE,
+            3,
+            config.IMAGE_SIZE,
+            config.IMAGE_SIZE,
+            device="cuda",
+        )
         with torch.amp.autocast("cuda"):
             output = model(dummy_input)
 
+        if not torch.isfinite(output).all():
+            raise RuntimeError("Forward pass AMP sinh giá trị NaN/Inf")
+
         mem_allocated = torch.cuda.memory_allocated(0) / (1024 ** 2)
         print(f"[*] Output shape: {output.shape}")
-        print(f"[*] VRAM sử dụng cho batch 16: ~{mem_allocated:.1f} MiB (Rất an toàn trên GTX 1650 4GB!)")
+        print(
+            f"[*] VRAM sử dụng cho batch {config.BATCH_SIZE}: "
+            f"~{mem_allocated:.1f} MiB"
+        )
         print("\n✅ MÔI TRƯỜNG ĐÃ SẴN SÀNG 100% ĐỂ HUẤN LUYỆN!")
         print("=" * 60)
         return True

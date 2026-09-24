@@ -5,8 +5,10 @@ import torch
 
 # Base directories
 BASE_DIR = Path(__file__).resolve().parent.parent
+DATASET_VERSION = "v1.3"
+DEFAULT_DATASET_DIR = Path(r"D:\AgriVisionAI_Data") / DATASET_VERSION
 DATASET_DIR = Path(
-    os.getenv("AGRIVISION_DATASET_DIR", r"D:\AgriVisionAI_Data\v1.2")
+    os.getenv("AGRIVISION_DATASET_DIR", str(DEFAULT_DATASET_DIR))
 )
 IMAGE_DIR = DATASET_DIR / "images"
 MANIFEST_DIR = DATASET_DIR / "manifests"
@@ -29,11 +31,17 @@ PIN_MEMORY = True if torch.cuda.is_available() else False
 
 # Training Hyperparameters 
 IMAGE_SIZE = 224
-BATCH_SIZE = 16
-GRADIENT_ACCUMULATION_STEPS = 2
-EPOCHS = 30
-LEARNING_RATE = 1e-4
-WEIGHT_DECAY = 1e-2
+EXPECTED_NUM_CLASSES = 58
+BATCH_SIZE = 8
+GRADIENT_ACCUMULATION_STEPS = 4
+EPOCHS = 10
+FREEZE_EPOCHS = 3
+WARMUP_EPOCHS = 3
+HEAD_LEARNING_RATE = 3e-4
+BACKBONE_LEARNING_RATE = 3e-5
+LEARNING_RATE = HEAD_LEARNING_RATE
+MIN_LR_FACTOR = 0.01
+WEIGHT_DECAY = 0.05
 LABEL_SMOOTHING = 0.1               # Tránh overfit và cải thiện độ khái quát
 DROPOUT_RATE = 0.2
 EARLY_STOPPING_PATIENCE = 7
