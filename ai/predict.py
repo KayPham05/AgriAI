@@ -1,5 +1,4 @@
 import argparse
-import json
 import sys
 from pathlib import Path
 from typing import Dict, Union
@@ -11,6 +10,7 @@ from PIL import Image
 from ai.configs import config
 from ai.data.augmentations import get_inference_transforms
 from ai.networks.convnext import build_model
+from ai.utils.label_mapping import normalize_checkpoint_label_mapping
 
 class LeafDiseasePredictor:
     """
@@ -25,13 +25,9 @@ class LeafDiseasePredictor:
         # Nạp checkpoint
         checkpoint = torch.load(self.checkpoint_path, map_location=config.DEVICE)
         self.num_classes = checkpoint["num_classes"]
-        self.idx_to_info = checkpoint.get("idx_to_info")
-
-        # Fallback đọc từ file json nếu checkpoint không có
-        if not self.idx_to_info and config.LABEL_MAP_PATH.exists():
-            with open(config.LABEL_MAP_PATH, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                self.idx_to_info = data.get("idx_to_info", {})
+        self.idx_to_info = normalize_checkpoint_label_mapping(
+            checkpoint.get("idx_to_info"), self.num_classes
+        )
 
         # Khởi tạo mô hình
         self.model = build_model(num_classes=self.num_classes, pretrained=False, device=config.DEVICE)
@@ -64,12 +60,7 @@ class LeafDiseasePredictor:
 
         predictions = []
         for prob, idx in zip(topk_probs, topk_indices):
-            idx_key = str(idx) if str(idx) in self.idx_to_info else idx
-            info = self.idx_to_info.get(idx_key, {
-                "plant": "Unknown",
-                "disease": f"Class_{idx}",
-                "compound_label": f"Class_{idx}"
-            })
+            info = self.idx_to_info[idx]
             predictions.append({
                 "plant": info["plant"],
                 "disease": info["disease"],

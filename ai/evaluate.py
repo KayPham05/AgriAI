@@ -16,6 +16,10 @@ from ai.configs import config
 from ai.configs.classification_tasks import get_task_config, task_names
 from ai.data.dataset import create_dataloaders
 from ai.networks.convnext import build_model
+from ai.utils.evaluation_support import (
+    MIN_RELIABLE_TEST_SAMPLES,
+    find_low_support_classes,
+)
 from ai.utils.metrics import (
     compute_metrics,
     get_confusion_matrix,
@@ -70,8 +74,12 @@ def evaluate_task(task_name: str, checkpoint_path: str | Path | None = None) -> 
         )
 
     idx_to_info = checkpoint.get("idx_to_info") or dataset_idx_to_info
+    normalized_idx_to_info = {
+        index: _info_for_index(idx_to_info, index)
+        for index in range(num_classes)
+    }
     target_names = [
-        _info_for_index(idx_to_info, index)["label"]
+        normalized_idx_to_info[index]["label"]
         for index in range(num_classes)
     ]
     dataset_target_names = [
@@ -120,6 +128,18 @@ def evaluate_task(task_name: str, checkpoint_path: str | Path | None = None) -> 
         num_classes=num_classes,
     )
     top_confusions = get_top_confusions(matrix, target_names)
+    low_support_classes = find_low_support_classes(
+        all_targets,
+        normalized_idx_to_info,
+    )
+
+    if low_support_classes:
+        print(
+            "Cảnh báo: metric theo lớp có thể dao động vì test support "
+            f"< {MIN_RELIABLE_TEST_SAMPLES}:"
+        )
+        for label, support in low_support_classes:
+            print(f"- {label}: {support} mẫu")
 
     (task.output_dir / "classification_report.txt").write_text(
         report_text,

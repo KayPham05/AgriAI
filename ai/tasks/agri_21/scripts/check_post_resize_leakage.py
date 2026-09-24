@@ -64,6 +64,11 @@ def check_post_resize_leakage(dataset_dir: Path) -> dict[str, object]:
     images_dir = dataset_dir / "images"
     reports_dir = dataset_dir / "reports"
     rows = read_csv(dataset_dir / "manifests" / "dataset_manifest.csv")
+    metadata = json.loads(
+        (dataset_dir / "metadata" / "dataset_version.json").read_text(
+            encoding="utf-8"
+        )
+    )
 
     path_cross_split = cross_split_values(rows, "image_path")
     group_cross_split = cross_split_values(rows, "group_id")
@@ -130,7 +135,7 @@ def check_post_resize_leakage(dataset_dir: Path) -> dict[str, object]:
         str(row["relationship"]) for row in review_rows
     )
     summary: dict[str, object] = {
-        "dataset_version": "v1.2",
+        "dataset_version": metadata["dataset_version"],
         "image_count": len(rows),
         "path_cross_split_count": len(path_cross_split),
         "group_id_cross_split_count": len(group_cross_split),
