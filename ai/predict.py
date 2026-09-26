@@ -78,7 +78,10 @@ class LeafDiseasePredictor:
             predictions.append({
                 "plant": info["plant"],
                 "disease": info["disease"],
-                "compound_label": info["compound_label"],
+                "compound_label": info.get(
+                    "compound_label",
+                    info.get("label", f"Class_{idx}"),
+                ),
                 "confidence": round(prob * 100, 2)
             })
 
