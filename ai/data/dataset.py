@@ -1,203 +1,301 @@
+"""Dataset loader backed by the fixed train/val/test CSV manifests."""
+
+from __future__ import annotations
+
+import csv
 import json
-import logging
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import Any, Callable
 
-import torch
-from torch.utils.data import Dataset, DataLoader
 from PIL import Image
-from sklearn.model_selection import train_test_split
 
-from configs import config
-from data.augmentations import get_train_transforms, get_val_transforms
 
-VALID_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+REQUIRED_COLUMNS = {
+    "image_path",
+    "plant",
+    "condition",
+    "compound_label",
+    "status",
+    "group_id",
+    "split",
+}
+SPLIT_NAMES = ("train", "val", "test")
+TARGET_FIELDS = ("compound_label", "plant", "condition")
 
-class PlantLeafDataset(Dataset):
-    """
-    PyTorch Dataset nạp ảnh lá cây từ danh sách mẫu (image_path, label_idx).
-    """
-    def __init__(self, samples: List[Tuple[Path, int]], transform=None):
-        self.samples = samples
+
+class PlantLeafDataset:
+    """PyTorch-compatible map-style dataset without importing torch eagerly."""
+
+    def __init__(
+        self,
+        records: list[dict[str, Any]],
+        transform: Callable[[Image.Image], Any] | None = None,
+    ) -> None:
+        self.records = records
         self.transform = transform
 
     def __len__(self) -> int:
-        return len(self.samples)
+        return len(self.records)
 
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
-        img_path, label = self.samples[idx]
-        try:
-            image = Image.open(img_path).convert("RGB")
-        except Exception as e:
-            raise RuntimeError(f"Lỗi khi đọc ảnh: {img_path}. Chi tiết: {e}")
-
-        if self.transform:
+    def __getitem__(self, index: int) -> tuple[Any, int]:
+        record = self.records[index]
+        with Image.open(record["resolved_image_path"]) as source:
+            image = source.convert("RGB")
+        if self.transform is not None:
             image = self.transform(image)
+        return image, record["label_idx"]
 
-        return image, label
+
+def compute_class_weights(
+    records: list[dict[str, Any]],
+    num_classes: int,
+) -> list[float]:
+    """Return balanced inverse-frequency weights from training records only."""
+
+    if num_classes <= 0:
+        raise ValueError("num_classes phải lớn hơn 0")
+
+    class_counts = [0] * num_classes
+    for record in records:
+        label_idx = record["label_idx"]
+        if not isinstance(label_idx, int) or not 0 <= label_idx < num_classes:
+            raise ValueError(f"label_idx không hợp lệ: {label_idx!r}")
+        class_counts[label_idx] += 1
+
+    missing_classes = [index for index, count in enumerate(class_counts) if count == 0]
+    if missing_classes:
+        raise ValueError(f"Train set thiếu class index: {missing_classes}")
+
+    sample_count = len(records)
+    return [
+        sample_count / (num_classes * class_count)
+        for class_count in class_counts
+    ]
 
 
-def scan_dataset(data_dir: Path = config.DATA_DIR) -> Tuple[List[dict], Dict[str, int], Dict[int, dict]]:
-    """
-    Quét đệ quy thư mục ảnh theo cấu trúc 2 tầng:
-    data_dir/
-      └── <Loại_Cây>/
-            └── <Loại_Bệnh>/
-                  └── <tệp_ảnh>
+def _read_split_manifest(
+    manifest_path: Path,
+    images_dir: Path,
+    expected_split: str,
+) -> list[dict[str, Any]]:
+    if expected_split not in SPLIT_NAMES:
+        raise ValueError(f"Split không hợp lệ: {expected_split}")
+    if not manifest_path.is_file():
+        raise FileNotFoundError(f"Không tìm thấy manifest: {manifest_path}")
 
-    Returns:
-        all_samples: Danh sách thông tin từng ảnh [{path, plant, disease, compound_label, label_idx}]
-        class_to_idx: Dict ánh xạ tên lớp gộp sang chỉ số nguyên
-        idx_to_info: Dict ánh xạ chỉ số nguyên sang {plant, disease, compound_label}
-    """
-    data_dir = Path(data_dir)
-    if not data_dir.exists():
-        raise FileNotFoundError(f"Không tìm thấy thư mục dữ liệu tại: {data_dir.resolve()}")
+    records: list[dict[str, Any]] = []
+    with manifest_path.open("r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        missing_columns = REQUIRED_COLUMNS - set(reader.fieldnames or [])
+        if missing_columns:
+            missing = ", ".join(sorted(missing_columns))
+            raise ValueError(f"{manifest_path.name} thiếu cột bắt buộc: {missing}")
 
-    plant_dirs = [d for d in data_dir.iterdir() if d.is_dir() and not d.name.startswith(".")]
-    if not plant_dirs:
+        for line_number, row in enumerate(reader, start=2):
+            actual_split = row["split"].strip()
+            if actual_split != expected_split:
+                raise ValueError(
+                    f"{manifest_path.name}:{line_number} có split={actual_split!r}, "
+                    f"phải là {expected_split!r}"
+                )
+            if row["status"].strip() != "valid":
+                raise ValueError(
+                    f"{manifest_path.name}:{line_number} không có status='valid'"
+                )
+
+            plant = row["plant"].strip()
+            condition = row["condition"].strip()
+            compound_label = row["compound_label"].strip()
+            group_id = row["group_id"].strip()
+            if not plant or not condition or not group_id:
+                raise ValueError(
+                    f"{manifest_path.name}:{line_number} thiếu plant, condition hoặc group_id"
+                )
+            if compound_label != f"{plant}___{condition}":
+                raise ValueError(
+                    f"{manifest_path.name}:{line_number} có compound_label không khớp"
+                )
+
+            relative_path = Path(row["image_path"].strip())
+            if not relative_path.parts or relative_path.is_absolute() or ".." in relative_path.parts:
+                raise ValueError(
+                    f"{manifest_path.name}:{line_number} có image_path không an toàn"
+                )
+            resolved_image_path = (images_dir / relative_path).resolve()
+            try:
+                resolved_image_path.relative_to(images_dir)
+            except ValueError as error:
+                raise ValueError(
+                    f"{manifest_path.name}:{line_number} trỏ ra ngoài thư mục images"
+                ) from error
+            if not resolved_image_path.is_file():
+                raise FileNotFoundError(
+                    f"{manifest_path.name}:{line_number} không tìm thấy ảnh: "
+                    f"{resolved_image_path}"
+                )
+
+            record = dict(row)
+            record["plant"] = plant
+            record["condition"] = condition
+            record["compound_label"] = compound_label
+            record["group_id"] = group_id
+            record["split"] = actual_split
+            record["resolved_image_path"] = resolved_image_path
+            records.append(record)
+
+    if not records:
+        raise ValueError(f"Manifest rỗng: {manifest_path}")
+    return records
+
+
+def load_manifest_splits(
+    dataset_dir: str | Path,
+    target_field: str = "compound_label",
+) -> tuple[
+    dict[str, list[dict[str, Any]]],
+    dict[str, int],
+    dict[int, dict[str, str]],
+]:
+    """Load fixed split membership and map the selected target to class indices."""
+
+    if target_field not in TARGET_FIELDS:
+        choices = ", ".join(TARGET_FIELDS)
         raise ValueError(
-            f"Thư mục '{data_dir}' chưa có các thư mục loại cây. "
-            "Vui lòng tạo thư mục con đại diện cho từng loại cây trong ai/Image."
+            f"Target field không hợp lệ: {target_field!r}; chọn một trong: {choices}"
         )
 
-    raw_samples = []
-    compound_classes = set()
+    dataset_root = Path(dataset_dir).resolve()
+    images_dir = (dataset_root / "images").resolve()
+    manifests_dir = dataset_root / "manifests"
+    if not images_dir.is_dir():
+        raise FileNotFoundError(f"Không tìm thấy thư mục ảnh: {images_dir}")
 
-    for plant_dir in sorted(plant_dirs):
-        plant_name = plant_dir.name
-        disease_dirs = [d for d in plant_dir.iterdir() if d.is_dir() and not d.name.startswith(".")]
-        
-        for disease_dir in sorted(disease_dirs):
-            disease_name = disease_dir.name
-            compound_label = f"{plant_name}___{disease_name}"
-            compound_classes.add(compound_label)
-
-            for file_path in disease_dir.iterdir():
-                if file_path.is_file() and file_path.suffix.lower() in VALID_EXTENSIONS:
-                    raw_samples.append({
-                        "path": file_path,
-                        "plant": plant_name,
-                        "disease": disease_name,
-                        "compound_label": compound_label
-                    })
-
-    if not raw_samples:
-        raise ValueError(
-            f"Không tìm thấy ảnh hợp lệ (.jpg, .png, ...) trong các thư mục con của '{data_dir}'."
+    records_by_split = {
+        split: _read_split_manifest(
+            manifests_dir / f"{split}.csv",
+            images_dir,
+            split,
         )
-
-    # Đánh chỉ số lớp theo thứ tự alphabet cố định
-    sorted_classes = sorted(list(compound_classes))
-    class_to_idx = {cls_name: idx for idx, cls_name in enumerate(sorted_classes)}
-    idx_to_info = {
-        idx: {
-            "compound_label": cls_name,
-            "plant": cls_name.split("___")[0],
-            "disease": cls_name.split("___")[1] if "___" in cls_name else cls_name
-        }
-        for cls_name, idx in class_to_idx.items()
+        for split in SPLIT_NAMES
     }
 
-    # Gán nhãn số vào từng mẫu
-    all_samples = []
-    for s in raw_samples:
-        s["label_idx"] = class_to_idx[s["compound_label"]]
-        all_samples.append(s)
+    seen_paths: dict[str, str] = {}
+    group_to_split: dict[str, str] = {}
+    labels_by_split: dict[str, set[str]] = {}
+    for split, records in records_by_split.items():
+        labels_by_split[split] = set()
+        for record in records:
+            path_key = str(record["resolved_image_path"]).casefold()
+            previous_split = seen_paths.get(path_key)
+            if previous_split is not None:
+                raise ValueError(
+                    f"Ảnh xuất hiện nhiều lần trong manifest: "
+                    f"{record['image_path']} ({previous_split}, {split})"
+                )
+            seen_paths[path_key] = split
 
-    # Lưu lại file json để phục vụ inference sau này
-    label_map_data = {
-        "class_to_idx": class_to_idx,
-        "idx_to_info": idx_to_info
+            group_id = record["group_id"]
+            previous_group_split = group_to_split.get(group_id)
+            if previous_group_split is not None and previous_group_split != split:
+                raise ValueError(
+                    f"Rò rỉ group_id giữa các split: {group_id} "
+                    f"({previous_group_split}, {split})"
+                )
+            group_to_split[group_id] = split
+            labels_by_split[split].add(record[target_field])
+
+    reference_labels = labels_by_split["train"]
+    for split in ("val", "test"):
+        if labels_by_split[split] != reference_labels:
+            missing = sorted(reference_labels - labels_by_split[split])
+            extra = sorted(labels_by_split[split] - reference_labels)
+            raise ValueError(
+                f"Tập lớp của {split}.csv không khớp train.csv; "
+                f"thiếu={missing}, thừa={extra}"
+            )
+
+    class_to_idx = {
+        label: index for index, label in enumerate(sorted(reference_labels))
     }
-    with open(config.LABEL_MAP_PATH, "w", encoding="utf-8") as f:
-        json.dump(label_map_data, f, ensure_ascii=False, indent=2)
+    idx_to_info: dict[int, dict[str, str]] = {}
+    for label, index in class_to_idx.items():
+        info = {"label": label, "target_field": target_field}
+        if target_field == "compound_label":
+            plant, disease = label.split("___", maxsplit=1)
+            info.update(
+                plant=plant,
+                disease=disease,
+                compound_label=label,
+            )
+        elif target_field == "plant":
+            info.update(plant=label, disease="")
+        else:
+            info.update(plant="", disease=label)
+        idx_to_info[index] = info
 
-    return all_samples, class_to_idx, idx_to_info
+    for records in records_by_split.values():
+        for record in records:
+            record["label_idx"] = class_to_idx[record[target_field]]
+
+    return records_by_split, class_to_idx, idx_to_info
 
 
 def create_dataloaders(
-    data_dir: Path = config.DATA_DIR,
-    batch_size: int = config.BATCH_SIZE,
-    num_workers: int = config.NUM_WORKERS,
-    random_seed: int = config.RANDOM_SEED
-) -> Tuple[DataLoader, DataLoader, DataLoader, int, Dict[int, dict]]:
-    """
-    Quét dữ liệu, chia tập Train/Val/Test theo tỷ lệ (phân tầng Stratified) và tạo các DataLoader.
-    """
-    all_samples, class_to_idx, idx_to_info = scan_dataset(data_dir=data_dir)
-    num_classes = len(class_to_idx)
+    dataset_dir: str | Path | None = None,
+    batch_size: int | None = None,
+    num_workers: int | None = None,
+    target_field: str = "compound_label",
+    label_map_path: str | Path | None = None,
+):
+    """Create loaders from fixed manifests; no split is generated here."""
 
-    paths = [s["path"] for s in all_samples]
-    labels = [s["label_idx"] for s in all_samples]
+    from torch.utils.data import DataLoader
 
-    # Kiểm tra tính phân tầng (Stratify): Mỗi lớp phải có tối thiểu 2 ảnh để split
-    class_counts = {}
-    for lbl in labels:
-        class_counts[lbl] = class_counts.get(lbl, 0) + 1
-    
-    can_stratify = all(count >= 2 for count in class_counts.values())
-    stratify_labels = labels if can_stratify else None
+    from ai.configs import config
+    from ai.data.augmentations import get_train_transforms, get_val_transforms
 
-    # Chia Train + (Val + Test)
-    val_test_ratio = config.VAL_RATIO + config.TEST_RATIO
-    train_paths, val_test_paths, train_labels, val_test_labels = train_test_split(
-        paths,
-        labels,
-        test_size=val_test_ratio,
-        random_state=random_seed,
-        stratify=stratify_labels
+    dataset_root = Path(dataset_dir or config.DATASET_DIR)
+    records_by_split, class_to_idx, idx_to_info = load_manifest_splits(
+        dataset_root,
+        target_field=target_field,
     )
 
-    # Chia tiếp Val và Test (50/50 của phần còn lại)
-    val_ratio_in_remaining = config.VAL_RATIO / val_test_ratio
-    can_stratify_remaining = False
-    if can_stratify:
-        val_test_counts = {}
-        for lbl in val_test_labels:
-            val_test_counts[lbl] = val_test_counts.get(lbl, 0) + 1
-        can_stratify_remaining = all(count >= 2 for count in val_test_counts.values())
+    label_map = {
+        "target_field": target_field,
+        "class_to_idx": class_to_idx,
+        "idx_to_info": idx_to_info,
+    }
+    resolved_label_map_path = Path(label_map_path or config.LABEL_MAP_PATH)
+    resolved_label_map_path.parent.mkdir(parents=True, exist_ok=True)
+    with resolved_label_map_path.open("w", encoding="utf-8") as handle:
+        json.dump(label_map, handle, ensure_ascii=False, indent=2)
 
-    val_paths, test_paths, val_labels, test_labels = train_test_split(
-        val_test_paths,
-        val_test_labels,
-        test_size=(1.0 - val_ratio_in_remaining),
-        random_state=random_seed,
-        stratify=val_test_labels if can_stratify_remaining else None
+    batch_size = batch_size or config.BATCH_SIZE
+    num_workers = config.NUM_WORKERS if num_workers is None else num_workers
+    loader_options = {
+        "batch_size": batch_size,
+        "num_workers": num_workers,
+        "pin_memory": config.PIN_MEMORY,
+    }
+    train_dataset = PlantLeafDataset(
+        records_by_split["train"],
+        transform=get_train_transforms(),
     )
-
-    # Tạo mẫu (Path, Label)
-    train_samples = list(zip(train_paths, train_labels))
-    val_samples = list(zip(val_paths, val_labels))
-    test_samples = list(zip(test_paths, test_labels))
-
-    train_dataset = PlantLeafDataset(train_samples, transform=get_train_transforms())
-    val_dataset = PlantLeafDataset(val_samples, transform=get_val_transforms())
-    test_dataset = PlantLeafDataset(test_samples, transform=get_val_transforms())
+    val_dataset = PlantLeafDataset(
+        records_by_split["val"],
+        transform=get_val_transforms(),
+    )
+    test_dataset = PlantLeafDataset(
+        records_by_split["test"],
+        transform=get_val_transforms(),
+    )
 
     train_loader = DataLoader(
         train_dataset,
-        batch_size=batch_size,
         shuffle=True,
-        num_workers=num_workers,
-        pin_memory=config.PIN_MEMORY,
-        drop_last=True if len(train_dataset) > batch_size else False
+        drop_last=len(train_dataset) > batch_size,
+        **loader_options,
     )
-
-    val_loader = DataLoader(
-        val_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-        pin_memory=config.PIN_MEMORY
-    )
-
-    test_loader = DataLoader(
-        test_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-        pin_memory=config.PIN_MEMORY
-    )
-
-    return train_loader, val_loader, test_loader, num_classes, idx_to_info
+    val_loader = DataLoader(val_dataset, shuffle=False, **loader_options)
+    test_loader = DataLoader(test_dataset, shuffle=False, **loader_options)
+    return train_loader, val_loader, test_loader, len(class_to_idx), idx_to_info

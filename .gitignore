@@ -17,6 +17,9 @@ __pycache__/
 !/docs/plans/.gitkeep
 
 # Local dataset and generated mappings
+/datasets/
+/datasets tunning/
+/data/raw/
 /ai/Image/
 /ai/class_to_idx.json
 /ai/class_mapping.json
@@ -37,19 +40,53 @@ wandb/
 *.log
 events.out.tfevents.*
 
+# Temporary and staging artifacts produced by dataset scripts
+# (build_resized_dataset.py creates .*.staging next to the output dir)
+.*.staging/
+*.tmp
+
+# Deprecated stub directories created during refactoring — not source code
+/ai/scripts/
+/ai/tests/
+
+# Test and coverage outputs
+.coverage
+coverage.xml
+htmlcov/
+
+# Build and packaging artifacts
+.ua/
+/colab_upload/
+build/
+dist/
+*.egg-info/
+
+# Profiling outputs
+*.prof
+*.pstats
+
 # Temporary files
 /tmp/
 /.cache/
 
-# Secrets
+# Secrets and credentials
 .env
 .env.*
 !.env.example
+secrets/
+*.pem
+*.key
+*.p12
+*service-account*.json
 
 # Editor and operating system files
 .idea/
 .vscode/
 .DS_Store
 Thumbs.db
+Desktop.ini
+desktop.ini
 
-
+#local
+/colab_upload/
+/ai/kaggle/
