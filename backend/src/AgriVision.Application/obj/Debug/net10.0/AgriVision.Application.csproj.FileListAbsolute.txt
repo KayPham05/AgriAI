@@ -1,0 +1,16 @@
+D:\Git\HK1N4\Project1\AgriAI\src\AgriVision.Application\bin\Debug\net10.0\AgriVision.Application.deps.json
+D:\Git\HK1N4\Project1\AgriAI\src\AgriVision.Application\bin\Debug\net10.0\AgriVision.Application.dll
+D:\Git\HK1N4\Project1\AgriAI\src\AgriVision.Application\bin\Debug\net10.0\AgriVision.Application.pdb
+D:\Git\HK1N4\Project1\AgriAI\src\AgriVision.Application\bin\Debug\net10.0\AgriVision.Domain.dll
+D:\Git\HK1N4\Project1\AgriAI\src\AgriVision.Application\bin\Debug\net10.0\AgriVision.Domain.pdb
+D:\Git\HK1N4\Project1\AgriAI\src\AgriVision.Application\obj\Debug\net10.0\AgriVision.Application.csproj.AssemblyReference.cache
+D:\Git\HK1N4\Project1\AgriAI\src\AgriVision.Application\obj\Debug\net10.0\AgriVision.Application.GeneratedMSBuildEditorConfig.editorconfig
+D:\Git\HK1N4\Project1\AgriAI\src\AgriVision.Application\obj\Debug\net10.0\AgriVision.Application.AssemblyInfoInputs.cache
+D:\Git\HK1N4\Project1\AgriAI\src\AgriVision.Application\obj\Debug\net10.0\AgriVision.Application.AssemblyInfo.cs
+D:\Git\HK1N4\Project1\AgriAI\src\AgriVision.Application\obj\Debug\net10.0\AgriVision.Application.csproj.CoreCompileInputs.cache
+D:\Git\HK1N4\Project1\AgriAI\src\AgriVision.Application\obj\Debug\net10.0\AgriVision.Application.sourcelink.json
+D:\Git\HK1N4\Project1\AgriAI\src\AgriVision.Application\obj\Debug\net10.0\AgriVisi.8D33A796.Up2Date
+D:\Git\HK1N4\Project1\AgriAI\src\AgriVision.Application\obj\Debug\net10.0\AgriVision.Application.dll
+D:\Git\HK1N4\Project1\AgriAI\src\AgriVision.Application\obj\Debug\net10.0\refint\AgriVision.Application.dll
+D:\Git\HK1N4\Project1\AgriAI\src\AgriVision.Application\obj\Debug\net10.0\AgriVision.Application.pdb
+D:\Git\HK1N4\Project1\AgriAI\src\AgriVision.Application\obj\Debug\net10.0\ref\AgriVision.Application.dll

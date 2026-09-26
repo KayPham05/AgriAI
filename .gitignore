@@ -23,6 +23,9 @@ __pycache__/
 /ai/Image/
 /ai/class_to_idx.json
 /ai/class_mapping.json
+v1.2/
+v1.3/
+v1.3.zip
 
 # Model checkpoints and exports
 /ai/checkpoints/

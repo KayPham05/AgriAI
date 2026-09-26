@@ -1,0 +1,6 @@
+{
+  "AgriVision.API, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "D:\\Git\\HK1N4\\Project1\\AgriAI\\backend\\src\\AgriVision.API",
+  "AgriVision.Application, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "D:\\Git\\HK1N4\\Project1\\AgriAI\\backend\\src\\AgriVision.Application",
+  "AgriVision.Domain, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "D:\\Git\\HK1N4\\Project1\\AgriAI\\backend\\src\\AgriVision.Domain",
+  "AgriVision.Infrastructure, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "D:\\Git\\HK1N4\\Project1\\AgriAI\\backend\\src\\AgriVision.Infrastructure"
+}

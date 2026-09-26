@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "jnsJxlfXjw0=",
+  "success": true,
+  "projectFilePath": "D:\\Git\\HK1N4\\Project1\\AgriAI\\backend\\src\\AgriVision.Domain\\AgriVision.Domain.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\ASUS\\.nuget\\packages\\microsoft.netcore.app.ref\\9.0.16\\microsoft.netcore.app.ref.9.0.16.nupkg.sha512",
+    "C:\\Users\\ASUS\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\9.0.16\\microsoft.windowsdesktop.app.ref.9.0.16.nupkg.sha512",
+    "C:\\Users\\ASUS\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\9.0.16\\microsoft.aspnetcore.app.ref.9.0.16.nupkg.sha512"
+  ],
+  "logs": []
+}

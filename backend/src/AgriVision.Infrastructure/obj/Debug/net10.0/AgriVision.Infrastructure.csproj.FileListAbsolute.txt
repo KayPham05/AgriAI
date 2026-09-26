@@ -1,0 +1,6 @@
+D:\Git\HK1N4\Project1\AgriAI\src\AgriVision.Infrastructure\obj\Debug\net10.0\AgriVision.Infrastructure.csproj.AssemblyReference.cache
+D:\Git\HK1N4\Project1\AgriAI\src\AgriVision.Infrastructure\obj\Debug\net10.0\AgriVision.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+D:\Git\HK1N4\Project1\AgriAI\src\AgriVision.Infrastructure\obj\Debug\net10.0\AgriVision.Infrastructure.AssemblyInfoInputs.cache
+D:\Git\HK1N4\Project1\AgriAI\src\AgriVision.Infrastructure\obj\Debug\net10.0\AgriVision.Infrastructure.AssemblyInfo.cs
+D:\Git\HK1N4\Project1\AgriAI\src\AgriVision.Infrastructure\obj\Debug\net10.0\AgriVision.Infrastructure.csproj.CoreCompileInputs.cache
+D:\Git\HK1N4\Project1\AgriAI\src\AgriVision.Infrastructure\obj\Debug\net10.0\AgriVision.Infrastructure.sourcelink.json
