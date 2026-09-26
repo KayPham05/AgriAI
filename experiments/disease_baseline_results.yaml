@@ -1,0 +1,43 @@
+task_id: "AGRI-005"
+experiment_id: null
+dataset_version: "v1.3"
+model: "ConvNeXt-Tiny, 45-class disease classifier, dropout=0.2"
+pretrained: "ImageNet-1K (ConvNeXt_Tiny_Weights.DEFAULT)"
+image_size: 224
+batch_size: 8
+effective_batch_size: 32
+gradient_accumulation_steps: 4
+epochs: 10
+freeze_epochs: 3
+optimizer: "AdamW, weight_decay=0.05"
+learning_rate:
+  backbone: 0.00003
+  classification_head: 0.0003
+scheduler: "3-epoch warmup + cosine decay, minimum LR factor=0.01"
+loss: "Class-weighted CrossEntropyLoss, label_smoothing=0.1"
+augmentation:
+  - "RandomHorizontalFlip(p=0.5)"
+  - "RandomRotation(degrees=15)"
+  - "ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2)"
+  - "ImageNet normalization"
+seed: 42
+test_samples: 16415
+accuracy: 0.9730734085
+precision: 0.9332175884
+recall: 0.9592924995
+macro_f1: 0.9358020674
+weighted_f1: 0.9805415544
+balanced_accuracy: 0.9592924995
+inference_time: null
+notes: |
+  Freeze backbone trong 3 epoch đầu, sau đó fine-tune toàn bộ model.
+  Checkpoint tốt nhất được lưu tại epoch 10.
+  Validation accuracy=0.966622 và macro-F1=0.931624.
+  Test trên 16.415 ảnh, phân loại sai 442 ảnh.
+  Lỗi lớn nhất: 227 ảnh Khoe_manh bị dự đoán thành Dom_than_la.
+  Dom_than_la chỉ có 8 mẫu test và precision=0.0260; class weight của
+  lớp này rất cao (45.5944), khiến model dự đoán quá mức.
+  Dataset có một số nhãn phân biệt bởi chữ hoa/thường như
+  Khoe_manh/khoe_manh và Than_thu/than_thu.
+  Lỗi scheduler xuất hiện sau epoch 10, nhưng checkpoint đã được lưu
+  trước lỗi nên kết quả đánh giá vẫn hợp lệ.
