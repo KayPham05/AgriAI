@@ -1,6 +1,6 @@
 # AGRI-45 - T010 — Backend & Database system
 
-- **Owner:** Tran Trung Thong
+- **Owner:** Phạm Tấn Kha (KayPham05)
 - **Completion date:** 2026-09-26
 - **Branch:** AGRI-45-backend-database-system
 - **Pull request:** AGRI-45 T010 — Backend & Database system
@@ -18,8 +18,8 @@
 - `backend/src/AgriVision.Infrastructure/`: `AppDbContext`, Npgsql EF Core provider, `JwtTokenGenerator`, `CloudinaryImageStorage`, `DbInitializer` for data seeding.
 - `backend/src/AgriVision.API/`: `AuthController`, `HealthController`, `PlantsController`, `DiseasesController`, `PredictionsController`, `GlobalExceptionMiddleware`, Swagger UI with JWT Bearer scheme.
 - `docker-compose.yml`: Docker configuration for PostgreSQL 16 container `agrivision_postgres`.
-- `docs/reports/BACKEND_SYSTEM_REPORT_AND_FRONTEND_INTEGRATION_GUIDE.md`: Backend architecture report and API mapping documentation.
 - `docs/backend_frontend_integration_handbook.md`: Detailed handbook for future AI subagents/developers connecting Frontend to Backend.
+- `docs/task-logs/AGRI-45/AGRI-45-kha.md`: Official task report log for AGRI-45.
 
 ## 3. Results and Verification
 - **Build Verification:** `dotnet build backend/AgriVision.sln` succeeded with 0 errors.
