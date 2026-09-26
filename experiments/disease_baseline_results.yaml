@@ -1,5 +1,5 @@
 task_id: "AGRI-005"
-experiment_id: null
+experiment_id: "EXP-01"
 dataset_version: "v1.3"
 model: "ConvNeXt-Tiny, 45-class disease classifier, dropout=0.2"
 pretrained: "ImageNet-1K (ConvNeXt_Tiny_Weights.DEFAULT)"
