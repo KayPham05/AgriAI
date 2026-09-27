@@ -54,8 +54,11 @@ events.out.tfevents.*
 
 # Test and coverage outputs
 .coverage
+.coverage.*
 coverage.xml
 htmlcov/
+TestResults/
+*.trx
 
 # Build and packaging artifacts
 .ua/
@@ -71,6 +74,9 @@ dist/
 # Temporary files
 /tmp/
 /.cache/
+
+# Local image uploads from the backend
+/backend/**/wwwroot/uploads/
 
 # Secrets and credentials
 .env
@@ -90,11 +96,9 @@ Thumbs.db
 Desktop.ini
 desktop.ini
 
-#local
-/colab_upload/
-
 # Node.js / Frontend
 node_modules/
+.pnpm-store/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
