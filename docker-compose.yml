@@ -1,20 +1,67 @@
-version: '3.8'
-
 services:
   postgres:
-    image: postgres:16-alpine
+    build: ./docker/postgres
     container_name: agrivision_postgres
     restart: always
     environment:
       POSTGRES_DB: agrivision_db
       POSTGRES_USER: agrivision_user
-      POSTGRES_PASSWORD: agrivision_pass
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U agrivision_user -d agrivision_db"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  ai-health:
+    image: python:3.12-alpine
+    command: ["python", "/app/mock_ai_health.py"]
+    environment:
+      AI_HEALTH_HOST: 0.0.0.0
+    volumes:
+      - ./.github/scripts/mock_ai_health.py:/app/mock_ai_health.py:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build: ./backend
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=agrivision_db;Username=agrivision_user;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      JwtSettings__Secret: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      AiService__BaseUrl: http://ai-health:8000
+    ports:
+      - "${API_HOST_PORT:-5080}:8080"
+    volumes:
+      - uploads:/app/wwwroot/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ai-health:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/api/health | grep -q '\"status\":\"Healthy\"'"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "${FRONTEND_HOST_PORT:-3000}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/ | grep -q 'id=\"root\"'"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -22,3 +69,4 @@ services:
 volumes:
   postgres_data:
     driver: local
+  uploads:

@@ -99,3 +99,37 @@ Chạy toàn bộ kiểm thử dữ liệu từ root repository:
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s ai/tasks/agri_21/tests -p "test_*.py"
 ```
+
+## Chạy bộ khung web, API và PostgreSQL bằng Docker
+
+`docker-compose.yml` dựng PostgreSQL mẫu, ASP.NET Core API, React/Vite build
+được phục vụ bằng Nginx và AI **health stub**. Stub chỉ có `/health`, không
+chạy model hoặc cung cấp `/predict`. Database và user ban đầu do image
+PostgreSQL tạo theo `POSTGRES_*`; EF Core migration tạo schema ứng dụng.
+
+Từ root repository, tạo `.env` từ [.env.example](.env.example), điền
+`POSTGRES_PASSWORD` và `JWT_SECRET` bằng giá trị riêng của môi trường, rồi chạy:
+
+```powershell
+Copy-Item .env.example .env
+# Sửa hai giá trị trống trong .env trước khi tiếp tục.
+docker compose config --quiet
+docker compose up --build --detach --wait
+docker compose ps
+Invoke-RestMethod http://localhost:5080/api/health
+docker compose down
+```
+
+Web ở `http://localhost:3000`; Nginx chuyển `/api/` sang backend. Có thể đổi
+cổng host qua `POSTGRES_HOST_PORT`, `API_HOST_PORT`, `FRONTEND_HOST_PORT` trong
+`.env`. `docker compose down` giữ volume; không dùng `down -v` nếu cần dữ liệu.
+`docker/postgres/init.sql` là mẫu và chỉ chạy khi volume DB trống. Nếu volume
+đã có từ lần chạy trước, đổi `POSTGRES_PASSWORD` trong `.env` không đổi mật
+khẩu bên trong DB: dùng đúng cấu hình của volume đó hoặc chủ động tạo DB test
+mới. API chạy ở `Production` nên không seed tài khoản demo có mật khẩu cố định.
+
+Workflow [CI](.github/workflows/ci.yml) build và đợi health của các container
+trước khi chạy các job test. .NET unit job xuất TRX/Cobertura và kiểm tra có
+branch coverage; hiện chưa đặt ngưỡng phần trăm. Mỗi job test dùng runner riêng;
+integration test tự tạo PostgreSQL bằng Testcontainers. Đây là CI, chưa có bước
+triển khai CD hoặc kiểm thử dự đoán thật.

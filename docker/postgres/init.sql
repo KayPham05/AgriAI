@@ -1,0 +1,2 @@
+-- Sample initialization hook. POSTGRES_DB/USER/PASSWORD create the database.
+-- EF Core migrations own the AgriVision application schema and seed data.
