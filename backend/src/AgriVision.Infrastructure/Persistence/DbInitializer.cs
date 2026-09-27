@@ -2,6 +2,7 @@ using AgriVision.Domain.Entities;
 using AgriVision.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace AgriVision.Infrastructure.Persistence;
@@ -12,6 +13,7 @@ public static class DbInitializer
     {
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var environment = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
         var logger = scope.ServiceProvider.GetService<ILogger<AppDbContext>>();
 
         try
@@ -21,7 +23,10 @@ public static class DbInitializer
                 await context.Database.MigrateAsync();
             }
 
-            await SeedUsersAsync(context);
+            if (environment.IsDevelopment())
+            {
+                await SeedUsersAsync(context);
+            }
             await SeedMasterDataAsync(context);
         }
         catch (Exception ex)
