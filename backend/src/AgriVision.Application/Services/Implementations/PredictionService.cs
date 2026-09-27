@@ -45,12 +45,21 @@ public class PredictionService : IPredictionService
             throw new ArgumentException($"Invalid file extension '{extension}'. Allowed extensions are: {string.Join(", ", AllowedExtensions)}");
         }
 
-        // 1. Upload image to Cloudinary / Local storage
-        var uploadResult = await _imageStorage.UploadImageAsync(file, cancellationToken);
+        byte[] imageBytes;
+        await using (var requestStream = file.OpenReadStream())
+        await using (var buffer = new MemoryStream())
+        {
+            await requestStream.CopyToAsync(buffer, cancellationToken);
+            imageBytes = buffer.ToArray();
+        }
 
-        // 2. Call AI prediction service
-        using var stream = file.OpenReadStream();
-        var aiResult = await _diseasePredictor.PredictAsync(stream, file.FileName, cancellationToken);
+        // Storage and prediction receive independent streams so neither service can
+        // dispose or advance the stream needed by the next processing step.
+        await using var storageStream = new MemoryStream(imageBytes, writable: false);
+        var uploadResult = await _imageStorage.UploadImageAsync(storageStream, file.FileName, cancellationToken);
+
+        await using var predictionStream = new MemoryStream(imageBytes, writable: false);
+        var aiResult = await _diseasePredictor.PredictAsync(predictionStream, file.FileName, cancellationToken);
 
         // 3. Find matching PlantDisease in database
         var primaryPlantDisease = await _plantDiseaseRepository.GetByClassIndexAsync(aiResult.ClassIndex, cancellationToken)

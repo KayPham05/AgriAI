@@ -38,21 +38,37 @@ public class CloudinaryImageStorage : IImageStorage
 
     public async Task<AppImageUploadResult> UploadImageAsync(Stream imageStream, string fileName, CancellationToken cancellationToken = default)
     {
+        await using var buffer = new MemoryStream();
+        if (imageStream.CanSeek)
+        {
+            imageStream.Position = 0;
+        }
+        await imageStream.CopyToAsync(buffer, cancellationToken);
+        var imageBytes = buffer.ToArray();
+
         if (_cloudinary != null)
         {
-            var uploadParams = new ImageUploadParams
+            try
             {
-                File = new FileDescription(fileName, imageStream),
-                Folder = "agrivision/predictions"
-            };
+                await using var cloudinaryStream = new MemoryStream(imageBytes, writable: false);
+                var uploadParams = new ImageUploadParams
+                {
+                    File = new FileDescription(fileName, cloudinaryStream),
+                    Folder = "agrivision/predictions"
+                };
 
-            var uploadResult = await _cloudinary.UploadAsync(uploadParams, cancellationToken);
-            if (uploadResult.Error == null)
-            {
-                return new AppImageUploadResult(uploadResult.PublicId, uploadResult.SecureUrl.ToString());
+                var uploadResult = await _cloudinary.UploadAsync(uploadParams, cancellationToken);
+                if (uploadResult.Error == null)
+                {
+                    return new AppImageUploadResult(uploadResult.PublicId, uploadResult.SecureUrl.ToString());
+                }
+
+                _logger.LogWarning("Cloudinary upload failed: {Error}. Falling back to local storage.", uploadResult.Error.Message);
             }
-
-            _logger.LogWarning("Cloudinary upload failed: {Error}. Falling back to local storage.", uploadResult.Error.Message);
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                _logger.LogWarning(exception, "Cloudinary is unavailable. Falling back to local storage.");
+            }
         }
 
         // Local storage fallback
@@ -62,12 +78,7 @@ public class CloudinaryImageStorage : IImageStorage
         var fileExtension = Path.GetExtension(fileName);
         var publicId = $"local_{Guid.NewGuid()}{fileExtension}";
         var filePath = Path.Combine(uploadsFolder, publicId);
-
-        using (var fileStream = new FileStream(filePath, FileMode.Create))
-        {
-            imageStream.Position = 0;
-            await imageStream.CopyToAsync(fileStream, cancellationToken);
-        }
+        await File.WriteAllBytesAsync(filePath, imageBytes, cancellationToken);
 
         var relativeUrl = $"/uploads/predictions/{publicId}";
         return new AppImageUploadResult(publicId, relativeUrl);
