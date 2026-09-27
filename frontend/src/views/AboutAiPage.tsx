@@ -68,9 +68,9 @@ export const AboutAiPage: React.FC<AboutAiViewProps> = ({ onNavigateDiagnose }) 
       <div className="relative overflow-hidden rounded-[32px] bg-[#173e2a] p-1">
         <div className="intro-grid absolute inset-0 opacity-20" />
         <div className="absolute inset-0 bg-gradient-to-br from-[#173e2a] via-[#1f4e38] to-[#173e2a]" />
-        
+
         <div className="relative flex flex-col gap-10 overflow-hidden rounded-[28px] bg-[#173e2a]/50 p-8 backdrop-blur-xl sm:p-12 lg:flex-row lg:items-center">
-          
+
           <div className="lg:w-1/2">
             <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.15em] text-[#86efac]">
               <Microscope className="h-4 w-4" /> Explainable AI (XAI)
@@ -89,10 +89,10 @@ export const AboutAiPage: React.FC<AboutAiViewProps> = ({ onNavigateDiagnose }) 
           <div className="relative flex justify-center lg:w-1/2">
             <div className="relative w-full max-w-md">
               <div className="absolute -inset-4 rounded-[32px] bg-gradient-to-r from-[#4ade80] to-[#3b82f6] opacity-30 blur-2xl" />
-              <img 
-                src="/images/vietnam-rice-leaves.png" 
-                alt="Lá lúa trong khu vực phân tích minh họa" 
-                className="relative aspect-video w-full rounded-[24px] object-cover shadow-2xl ring-1 ring-white/10" 
+              <img
+                src="/images/vietnam-rice-leaves.png"
+                alt="Lá lúa trong khu vực phân tích minh họa"
+                className="relative aspect-video w-full rounded-[24px] object-cover shadow-2xl ring-1 ring-white/10"
               />
               <div className="absolute -bottom-6 -left-6 rounded-2xl bg-white/10 p-4 backdrop-blur-md ring-1 ring-white/20">
                 <div className="flex items-center gap-3">
@@ -107,7 +107,7 @@ export const AboutAiPage: React.FC<AboutAiViewProps> = ({ onNavigateDiagnose }) 
               </div>
             </div>
           </div>
-          
+
         </div>
       </div>
     </section>
