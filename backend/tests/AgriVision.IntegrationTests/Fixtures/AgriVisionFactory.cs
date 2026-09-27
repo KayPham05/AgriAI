@@ -23,6 +23,7 @@ public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseSetting("AiService:BaseUrl", "http://127.0.0.1:1");
         builder.ConfigureServices(services =>
         {
             var descriptor = services.SingleOrDefault(
