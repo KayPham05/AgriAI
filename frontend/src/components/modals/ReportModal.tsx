@@ -16,8 +16,8 @@ export const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, resul
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-[#E2E8E4] overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 backdrop-blur-xs sm:p-4">
+      <div className="flex max-h-[calc(100dvh-1rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[#E2E8E4] bg-white shadow-2xl sm:max-h-[90vh]">
         
         {/* Header Bar */}
         <div className="p-4 border-b border-[#E2E8E4] flex items-center justify-between bg-[#F8FAF9]">
@@ -49,11 +49,11 @@ export const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, resul
         </div>
 
         {/* Printable Certificate Body */}
-        <div className="p-6 overflow-y-auto space-y-6 text-sm text-[#17211B] printable-area">
+        <div className="printable-area space-y-6 overflow-y-auto p-4 text-sm text-[#17211B] sm:p-6">
           <p className="rounded-xl border border-amber-300 bg-amber-50 p-3 font-semibold text-amber-950">DỮ LIỆU MINH HỌA — Không dùng để chẩn đoán hoặc điều trị cây trồng.</p>
           
           {/* Top Banner Meta */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-[#F8FAF9] rounded-xl border border-[#E2E8E4]">
+          <div className="grid grid-cols-1 gap-4 rounded-xl border border-[#E2E8E4] bg-[#F8FAF9] p-4 min-[380px]:grid-cols-2 sm:grid-cols-4">
             <div>
               <p className="text-[11px] text-[#647067]">Cây trồng</p>
               <p className="font-semibold text-sm text-[#17211B]">{result.plant}</p>
