@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using AgriVision.IntegrationTests.Fixtures;
 using FluentAssertions;
 using Xunit;
@@ -15,14 +16,17 @@ public class HealthControllerTests : IClassFixture<AgriVisionFactory>
     }
 
     [Fact]
-    public async Task GetHealth_ShouldReturn200OK_WithHealthDetails()
+    public async Task GetHealth_ShouldReportDatabaseReady_WithoutAiService()
     {
         // Act
         var response = await _client.GetAsync("/api/health");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var content = await response.Content.ReadAsStringAsync();
-        content.Should().NotBeNullOrEmpty();
+        using var content = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var checks = content.RootElement.GetProperty("checks");
+        checks.GetProperty("database").GetString().Should().Be("Healthy");
+        checks.GetProperty("aiService").GetString().Should().Be("Unreachable");
+        content.RootElement.GetProperty("status").GetString().Should().Be("Degraded");
     }
 }

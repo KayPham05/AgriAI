@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 namespace AgriVision.API.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route("api/[controller]")]
 public class HealthController : ControllerBase
 {
     private readonly AppDbContext _dbContext;
