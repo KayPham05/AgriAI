@@ -18,8 +18,8 @@ python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
 
 ```powershell
 cd frontend
-npm.cmd install
-npm.cmd run dev
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
 Open `http://localhost:3000`, then choose **Chẩn đoán**. Vite proxies `/api` to `http://127.0.0.1:8000`, so no API URL is needed for local development. To target a different backend, set `VITE_API_BASE_URL` in `frontend/.env.local` to its origin (for example `http://localhost:8000`) and restart Vite. That backend must allow the frontend origin through CORS.
@@ -43,8 +43,8 @@ The demo backend deliberately returns this same response for every valid image. 
 
 ```powershell
 cd frontend
-npm.cmd run lint
-npm.cmd run build
+pnpm lint
+pnpm build
 ```
 
 From `backend`, run `python tests/smoke_demo_api.py` for a successful multipart request and invalid file cases. For a UI check, test one valid image, one non-image file, a file above 15 MB, and a request with the backend stopped. Confirm the preview, loading, result and error states. No browser automation is configured in this repository.

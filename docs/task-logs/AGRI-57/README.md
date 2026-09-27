@@ -59,7 +59,7 @@ python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
 Mở một terminal mới tại thư mục gốc và chạy:
 ```powershell
 cd frontend
-npm install
-npm run dev
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 *Trang web sẽ được mở tại `http://localhost:3000`. Bạn có thể truy cập để trải nghiệm tính năng "Chẩn đoán".*
