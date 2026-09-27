@@ -32,6 +32,19 @@ docs/
 └── notebooks/   Jupyter notebook phục vụ khám phá và ghi chép
 ```
 
+## Kế hoạch phát triển và kiểm thử
+
+- [Kế hoạch phát triển, yêu cầu và ERD](development_roadmap.md)
+- [Chiến lược kiểm thử, test case và branch coverage](notes/testing_strategy.md)
+- [Hiện trạng Docker và CI](reports/AGRI-75/README.md)
+- [Viewpoint kiểm thử AgriVision](notes/agri_test_viewpoints.md)
+- [Mẫu và ca kiểm thử API](notes/agri_api_test_cases.md)
+- [Mẫu và ca kiểm thử giao diện](notes/agri_screen_test_cases.md)
+- [Mẫu và ca kiểm thử unit](notes/agri_unit_test_cases.md)
+- [Mẫu và ca kiểm thử integration](notes/agri_integration_test_cases.md)
+- [Báo cáo thực hiện kiểm thử và CI](notes/testing_ci_execution_report.md)
+- [Báo cáo AGRI-75 về mức hoàn thành CI và kiểm thử](reports/AGRI-75/README.md)
+
 ## Quy ước
 
 | Thư mục | Tên file đề xuất | Ví dụ |
