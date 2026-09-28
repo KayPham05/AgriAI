@@ -1,8 +1,11 @@
+using AgriVision.Application.Common.Interfaces.Services;
 using AgriVision.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Testcontainers.PostgreSql;
 using Xunit;
 
@@ -39,6 +42,11 @@ public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
                 options.UseNpgsql(_dbContainer.GetConnectionString());
             });
 
+            services.RemoveAll<IImageStorage>();
+            services.RemoveAll<IPlantDiseasePredictor>();
+            services.AddSingleton<IImageStorage, FakeImageStorage>();
+            services.AddSingleton<IPlantDiseasePredictor, FakePlantDiseasePredictor>();
+
             // Ensure database schema is created
             var sp = services.BuildServiceProvider();
             using var scope = sp.CreateScope();
@@ -51,5 +59,74 @@ public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         await _dbContainer.StopAsync();
         await _dbContainer.DisposeAsync();
+    }
+
+    private sealed class FakeImageStorage : IImageStorage
+    {
+        public Task<ImageUploadResult> UploadImageAsync(
+            IFormFile file,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(CreateResult(file.FileName));
+        }
+
+        public async Task<ImageUploadResult> UploadImageAsync(
+            Stream imageStream,
+            string fileName,
+            CancellationToken cancellationToken = default)
+        {
+            using var buffer = new MemoryStream();
+            await imageStream.CopyToAsync(buffer, cancellationToken);
+
+            if (buffer.Length == 0)
+            {
+                throw new InvalidOperationException("The uploaded image is empty.");
+            }
+
+            return CreateResult(fileName);
+        }
+
+        public Task<bool> DeleteImageAsync(
+            string publicId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(true);
+        }
+
+        private static ImageUploadResult CreateResult(string fileName)
+        {
+            var safeFileName = Path.GetFileName(fileName);
+            return new ImageUploadResult(
+                $"integration/{safeFileName}",
+                $"https://images.test/{safeFileName}");
+        }
+    }
+
+    private sealed class FakePlantDiseasePredictor : IPlantDiseasePredictor
+    {
+        private static readonly AiPredictionResult Result = new(
+            ClassIndex: 1,
+            ClassName: "Tomato___Early_blight",
+            Confidence: 0.94f,
+            TopK:
+            [
+                new AiPredictionTopKItem(1, "Tomato___Early_blight", 0.94f),
+                new AiPredictionTopKItem(0, "Tomato___Healthy", 0.06f)
+            ]);
+
+        public Task<AiPredictionResult> PredictAsync(
+            IFormFile file,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Result);
+        }
+
+        public Task<AiPredictionResult> PredictAsync(
+            Stream imageStream,
+            string fileName,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Result);
+        }
     }
 }

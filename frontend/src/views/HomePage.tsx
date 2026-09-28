@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowRight, Camera, Leaf, ShieldCheck } from 'lucide-react';
+import { ArrowRight, BrainCircuit, Camera, CheckCircle2, Database, Leaf, ScanLine, ShieldCheck } from 'lucide-react';
 import { NavigationTab, Plant } from '../types';
 import { CORE_PLANT_IDS, SUPPORTED_PLANTS } from '../data/plantData';
 
@@ -11,7 +11,7 @@ interface HomeViewProps {
 const steps = [
   { number: '01', icon: Camera, title: 'Chụp một chiếc lá', description: 'Đưa lá vào giữa khung hình, chọn nơi có ánh sáng tự nhiên và lấy nét rõ.' },
   { number: '02', icon: ShieldCheck, title: 'Kiểm tra tệp ảnh', description: 'Định dạng, dung lượng và khả năng mở ảnh được kiểm tra trước khi tải lên.' },
-  { number: '03', icon: Leaf, title: 'Xem kết quả demo', description: 'Gửi ảnh tới Backend Demo để xem cách LeafAI trình bày cây, bệnh và độ tin cậy.' },
+  { number: '03', icon: Leaf, title: 'Xem kết quả', description: 'Nhận loại cây, tên bệnh và độ tin cậy từ hệ thống phân loại LeafAI.' },
 ];
 
 const corePlants = CORE_PLANT_IDS.map((id) => SUPPORTED_PLANTS.find((plant) => plant.id === id)).filter((plant): plant is Plant => Boolean(plant));
@@ -35,6 +35,114 @@ const bannerDescriptions: Record<string, string> = {
   mango: 'Dưới tán xoài, những chiếc lá dài đón nắng. Một góc vườn quen thuộc để khám phá và quan sát.',
   durian: 'Lá sầu riêng thon dài bao quanh trái non. Tìm hiểu cây từ hình dáng chiếc lá trong vườn.',
   pomelo: 'Lá bưởi xanh đậm bên những trái đang lớn. Cùng nhìn kỹ các chi tiết của một loài cây rất Việt Nam.',
+};
+
+const demoScenarios = [
+  {
+    id: 'rice',
+    plant: 'Lúa',
+    disease: 'Đạo ôn lá',
+    confidence: 94.7,
+    imageUrl: '/images/vietnam-rice-leaves.png',
+    color: '#ffb45c',
+  },
+  {
+    id: 'tomato',
+    plant: 'Cà chua',
+    disease: 'Đốm lá sớm',
+    confidence: 91.8,
+    imageUrl: SUPPORTED_PLANTS.find((plant) => plant.id === 'tomato')?.imageUrl ?? '/images/vietnam-rice-leaves.png',
+    color: '#ff8b72',
+  },
+  {
+    id: 'corn',
+    plant: 'Ngô',
+    disease: 'Gỉ sắt lá',
+    confidence: 89.4,
+    imageUrl: SUPPORTED_PLANTS.find((plant) => plant.id === 'corn')?.imageUrl ?? '/images/vietnam-rice-leaves.png',
+    color: '#e9c65d',
+  },
+] as const;
+
+interface AiExperienceSectionProps {
+  onNavigate: (tab: NavigationTab) => void;
+}
+
+const AiExperienceSection: React.FC<AiExperienceSectionProps> = ({ onNavigate }) => {
+  const [selectedScenarioId, setSelectedScenarioId] = useState<(typeof demoScenarios)[number]['id']>('rice');
+  const selectedScenario = demoScenarios.find((scenario) => scenario.id === selectedScenarioId) ?? demoScenarios[0];
+
+  return (
+    <section className="ai-experience-section mx-auto max-w-[1380px] px-4 py-14 sm:px-8 sm:py-20 lg:px-12">
+      <div className="ai-experience-shell overflow-hidden rounded-[32px] border border-white/10 lg:rounded-[48px]">
+        <div className="grid lg:grid-cols-[1.08fr_.92fr]">
+          <div className="relative min-h-[430px] overflow-hidden bg-[#0c1d13] sm:min-h-[560px]">
+            <img key={selectedScenario.id} src={selectedScenario.imageUrl} alt={`Lá ${selectedScenario.plant} dùng minh họa phân tích`} className="ai-experience-image absolute inset-0 h-full w-full object-cover" />
+            <div className="ai-experience-image-shade absolute inset-0" />
+            <div className="ai-experience-grid absolute inset-0" aria-hidden="true" />
+            <div className="ai-experience-sweep absolute inset-x-0" aria-hidden="true" />
+            <div className="ai-focus-point ai-focus-point-one" aria-hidden="true"><span /></div>
+            <div className="ai-focus-point ai-focus-point-two" aria-hidden="true"><span /></div>
+
+            <div className="absolute inset-x-5 top-5 flex items-center justify-between gap-3 sm:inset-x-8 sm:top-8">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-[#10291b]/75 px-3 py-2 text-[11px] font-bold uppercase tracking-[.14em] text-[#d9f3c8] backdrop-blur-xl">
+                <span className="h-2 w-2 rounded-full bg-[#9ee47d] shadow-[0_0_14px_#9ee47d]" /> AI vision preview
+              </span>
+              <span className="rounded-full border border-white/15 bg-black/30 px-3 py-2 text-[10px] font-semibold text-white/70 backdrop-blur-xl">Dữ liệu minh họa</span>
+            </div>
+
+            <div className="absolute inset-x-5 bottom-5 sm:inset-x-8 sm:bottom-8">
+              <div className="max-w-sm rounded-[24px] border border-white/15 bg-[#0a1710]/72 p-4 text-white shadow-2xl backdrop-blur-2xl sm:p-5">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#9ee47d]/15 text-[#b8ef9d]"><ScanLine className="h-5 w-5" /></span>
+                  <div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-white/50">Vùng chú ý của mô hình</p><p className="mt-1 truncate text-sm font-semibold text-white">Đang khoanh vùng đặc trưng trên lá</p></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative flex flex-col justify-between bg-[#10271a] p-6 text-white sm:p-10 lg:p-12">
+            <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-[#82b96b]/10 blur-3xl" />
+            <div className="relative">
+              <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.18em] text-[#a9d990]"><BrainCircuit className="h-4 w-4" /> Trải nghiệm LeafAI</span>
+              <h2 className="mt-5 text-3xl font-extrabold leading-tight tracking-[-.035em] text-white sm:text-4xl">Từ một chiếc lá<br />đến tín hiệu dễ hiểu.</h2>
+              <p className="mt-5 max-w-lg text-sm leading-7 text-white/60 sm:text-base">Xem trước cách giao diện trình bày kết quả phân loại. Khi dùng thật, ảnh của bạn được gửi đến backend và kết quả được lưu vào tài khoản.</p>
+
+              <div className="mt-7 flex flex-wrap gap-2" role="tablist" aria-label="Chọn mẫu minh họa">
+                {demoScenarios.map((scenario) => (
+                  <button key={scenario.id} type="button" role="tab" aria-selected={scenario.id === selectedScenario.id} onClick={() => setSelectedScenarioId(scenario.id)} className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${scenario.id === selectedScenario.id ? 'border-[#a9d990] bg-[#a9d990] text-[#15321e]' : 'border-white/15 bg-white/[.04] text-white/65 hover:border-white/35 hover:text-white'}`}>
+                    {scenario.plant}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-8 rounded-[26px] border border-white/10 bg-white/[.055] p-5 backdrop-blur-sm sm:p-6" aria-live="polite">
+                <div className="flex flex-col gap-5 min-[420px]:flex-row min-[420px]:items-end min-[420px]:justify-between">
+                  <div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-white/40">Kết quả minh họa</p><p className="mt-2 text-2xl font-bold text-white">{selectedScenario.disease}</p><p className="mt-1 text-sm text-[#a9d990]">Cây {selectedScenario.plant}</p></div>
+                  <div className="min-[420px]:text-right"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-white/40">Độ tin cậy</p><p className="mt-1 text-4xl font-black tracking-tight text-white">{selectedScenario.confidence}<span className="text-lg text-[#a9d990]">%</span></p></div>
+                </div>
+                <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10"><div key={selectedScenario.id} className="ai-confidence-fill h-full rounded-full" style={{ width: `${selectedScenario.confidence}%`, backgroundColor: selectedScenario.color }} /></div>
+                <div className="mt-5 flex items-start gap-2 text-xs leading-5 text-white/50"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#a9d990]" /> Kết quả thật luôn đi kèm cảnh báo tham khảo và lịch sử có thể kiểm tra lại.</div>
+              </div>
+            </div>
+
+            <button type="button" onClick={() => onNavigate('diagnose')} className="group relative mt-8 inline-flex min-h-14 w-full items-center justify-center gap-3 overflow-hidden rounded-full bg-[#b9ef9d] px-6 text-sm font-extrabold text-[#15321e] shadow-[0_16px_36px_rgba(103,172,79,.2)] transition hover:-translate-y-1 hover:bg-[#c9ffac]">
+              Phân tích ảnh của bạn <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </button>
+          </div>
+        </div>
+
+        <div className="grid border-t border-white/10 bg-[#0b1e12] sm:grid-cols-3">
+          {[{ icon: BrainCircuit, value: 'ConvNeXt-Tiny', label: 'Kiến trúc phân loại' }, { icon: Database, value: `${corePlants.length} nhóm cây`, label: 'Danh mục tích hợp' }, { icon: ShieldCheck, value: 'JWT + ASP.NET', label: 'Phiên đăng nhập & API' }].map(({ icon: Icon, value, label }) => (
+            <div key={value} className="flex items-center gap-4 border-b border-white/10 px-6 py-5 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0 lg:px-10">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/[.06] text-[#a9d990]"><Icon className="h-5 w-5" /></span>
+              <div><strong className="block text-sm font-bold text-white">{value}</strong><span className="mt-0.5 block text-xs text-white/45">{label}</span></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 };
 
 export const HomePage: React.FC<HomeViewProps> = ({ onNavigate, onSelectPlant }) => {
@@ -124,20 +232,19 @@ export const HomePage: React.FC<HomeViewProps> = ({ onNavigate, onSelectPlant })
         }}
         aria-roledescription="carousel"
         aria-label="Banner các loại cây trồng LeafAI"
-        className={`nature-hero nature-banner relative flex min-h-[730px] items-center overflow-hidden bg-[#e8edda] lg:min-h-[760px] ${isPaused ? 'is-paused' : ''} ${heroVisible ? '' : 'is-offscreen'}`}
+        className={`nature-hero nature-banner relative flex min-h-[610px] items-center overflow-hidden bg-[#e8edda] sm:min-h-[680px] lg:min-h-[760px] ${isPaused ? 'is-paused' : ''} ${heroVisible ? '' : 'is-offscreen'}`}
       >
         {previousIndex !== activeIndex && <div className="nature-banner-photo nature-banner-photo-previous" aria-hidden="true"><img src={previousImage} alt="" /></div>}
-        <div key={activePlant.id} className="nature-banner-photo nature-banner-photo-active" aria-hidden="true"><img src={activeImage} alt="" /></div>
+        <div key={`photo-${activePlant.id}`} className="nature-banner-photo nature-banner-photo-active" aria-hidden="true"><img src={activeImage} alt="" /></div>
         <div className="nature-hero-shade" aria-hidden="true" />
         <div className="nature-sunbeam" aria-hidden="true" />
-        <div key={activePlant.id} className={`nature-cutout-frame nature-cutout-frame-${activePlant.id}`} aria-hidden="true">
+        <div key={`cutout-${activePlant.id}`} className={`nature-cutout-frame nature-cutout-frame-${activePlant.id}`} aria-hidden="true">
           <img className="nature-plant-cutout" src={activeFoliage} alt="" />
         </div>
         {activePlant.id === 'rice' && <>
           {[1, 2, 3].map((leaf) => <img key={leaf} className={`nature-floating-leaf nature-floating-leaf-${leaf}`} src="/images/rice-leaf-cutout.png" alt="" aria-hidden="true" />)}
         </>}
 
-        {/* Floating AI HUD - Đặt sát lề trái theo yêu cầu */}
         <div key={`scanner-${activePlant.id}`} className="absolute left-3 top-1/2 z-20 hidden w-[260px] -translate-y-1/2 lg:block xl:left-8 xl:w-[300px] 2xl:left-[3%] 2xl:w-[340px]" style={{ animationDelay: '0.4s' }}>
           <div className="relative overflow-visible">
             <div className="relative rounded-3xl border border-white/60 bg-white/20 p-2.5 shadow-[0_32px_64px_rgba(36,92,58,0.15)] backdrop-blur-xl transition-transform duration-500 hover:scale-[1.02]">
@@ -155,12 +262,12 @@ export const HomePage: React.FC<HomeViewProps> = ({ onNavigate, onSelectPlant })
                 <div className="absolute bottom-3 left-0 w-full px-3 xl:bottom-4 xl:px-4">
                   <div className="flex flex-col gap-1.5 rounded-xl border border-white/50 bg-white/90 p-2.5 shadow-lg backdrop-blur-md xl:gap-2 xl:p-3.5">
                     <div className="flex items-center justify-between">
-                       <span className="text-xs font-bold text-[#245c3a] xl:text-sm">Bệnh lý:</span>
-                       <span className="text-xs font-black text-[#52814d] xl:text-sm">Khỏe mạnh</span>
+                       <span className="text-xs font-bold text-[#245c3a] xl:text-sm">Mẫu cây:</span>
+                       <span className="text-xs font-black text-[#52814d] xl:text-sm">{activePlant.name}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                       <span className="text-xs font-bold text-[#245c3a] xl:text-sm">Độ tin cậy:</span>
-                       <span className="text-xs font-black text-[#52814d] xl:text-sm">98.5%</span>
+                       <span className="text-xs font-bold text-[#245c3a] xl:text-sm">Trạng thái:</span>
+                       <span className="text-xs font-black text-[#52814d] xl:text-sm">Sẵn sàng</span>
                     </div>
                   </div>
                 </div>
@@ -172,18 +279,17 @@ export const HomePage: React.FC<HomeViewProps> = ({ onNavigate, onSelectPlant })
           </div>
         </div>
 
-        {/* Text Container - Điều chỉnh chính xác padding để cách HUD đúng 80px (4 ô ly vở) */}
-        <div className="relative z-10 w-full px-5 py-20 sm:px-8 lg:pl-[352px] xl:pl-[412px] 2xl:pl-[calc(3vw+420px)]">
-          <div key={`copy-${activePlant.id}`} className="nature-banner-copy max-w-[620px]" aria-live={isPaused ? 'polite' : 'off'}>
-            <h1 className="mt-7 text-[clamp(2.7rem,5vw,4.7rem)] font-extrabold leading-[1.12] tracking-[-.045em] text-[#173e2a] drop-shadow-[0_0_15px_rgba(255,255,255,0.6)]">
-              Hiểu lá {bannerNames[activePlant.id]}.<br /><span className="bg-gradient-to-r from-[#245c3a] to-[#52814d] bg-clip-text text-transparent">Chăm mùa màng.</span>
+        <div className="relative z-10 w-full px-4 py-14 sm:px-8 sm:py-20 lg:pl-[352px] xl:pl-[412px] 2xl:pl-[calc(3vw+420px)]">
+          <div key={`copy-${activePlant.id}`} className="nature-banner-copy max-w-[620px] lg:max-w-[700px]" aria-live={isPaused ? 'polite' : 'off'}>
+            <h1 className="mt-6 text-[clamp(2.25rem,10vw,4.7rem)] font-extrabold leading-[1.12] tracking-[-.045em] text-[#173e2a] drop-shadow-[0_0_15px_rgba(255,255,255,0.6)] sm:mt-7 sm:text-[clamp(2.7rem,7vw,4.7rem)] lg:text-[clamp(3rem,4.2vw,4rem)]">
+              Hiểu từng chiếc lá.<br /><span className="bg-gradient-to-r from-[#245c3a] to-[#52814d] bg-clip-text text-transparent">Giữ trọn mùa xanh.</span>
             </h1>
             <p className="mt-6 text-base font-medium leading-8 text-[#3c5440] sm:text-lg">
               {bannerDescriptions[activePlant.id]}
             </p>
-            <div className="mt-9 flex flex-col gap-4 sm:flex-row">
+            <div className="mt-8 flex flex-col gap-3 sm:mt-9 sm:flex-row sm:gap-4">
               <button type="button" onClick={() => onNavigate('diagnose')} className="inline-flex min-h-14 items-center justify-center gap-3 rounded-full bg-[#245c3a] px-8 text-base font-semibold text-white shadow-[0_16px_32px_rgba(24,71,39,.25)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#1c4b2e] hover:shadow-[0_20px_40px_rgba(24,71,39,.35)]">
-                <Camera className="h-5 w-5" /> Thử giao diện chẩn đoán <ArrowRight className="h-4 w-4" />
+                <Camera className="h-5 w-5" /> Chẩn đoán lá ngay <ArrowRight className="h-4 w-4" />
               </button>
               <button type="button" onClick={() => onSelectPlant(activePlant)} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full border-2 border-[#b8cdb1] bg-white/80 px-7 text-base font-bold text-[#245c3a] backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:bg-white hover:shadow-lg">
                 Khám phá {bannerNames[activePlant.id]}
@@ -193,12 +299,14 @@ export const HomePage: React.FC<HomeViewProps> = ({ onNavigate, onSelectPlant })
         </div>
       </section>
 
+      <AiExperienceSection onNavigate={onNavigate} />
+
       <section className="nature-intro-section mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:px-12">
         <img className="nature-intro-leaf" src="/images/rice-leaf-cutout.png" alt="" aria-hidden="true" loading="lazy" />
         <div className="max-w-2xl" data-reveal>
           <span className="text-sm font-bold uppercase tracking-[.2em] text-[#66864d]">Dễ bắt đầu ngay tại vườn</span>
           <h2 className="mt-3 text-3xl font-bold tracking-tight text-[#173e2a] sm:text-4xl">Ba bước gần gũi, dễ làm</h2>
-          <p className="mt-4 text-base leading-7 text-[#607163]">Bắt đầu từ ảnh lá bạn chụp. Bản demo kiểm tra tệp và hiển thị phản hồi giả lập từ backend trong lúc mô hình được hoàn thiện.</p>
+          <p className="mt-4 text-base leading-7 text-[#607163]">Bắt đầu từ ảnh lá bạn chụp. LeafAI kiểm tra tệp, gửi ảnh đến backend và hiển thị kết quả phân loại theo contract API thống nhất.</p>
         </div>
         <div className="mt-9 grid gap-5 md:grid-cols-3">
           {steps.map(({ number, icon: Icon, title, description }) => (
@@ -242,12 +350,12 @@ export const HomePage: React.FC<HomeViewProps> = ({ onNavigate, onSelectPlant })
           <img className="nature-story-inset" src="/images/vietnam-tea-plant.png" alt="Lá chè trong vườn Việt Nam" loading="lazy" />
           
           <div className="absolute -left-4 top-1/4 flex animate-bounce flex-col items-center gap-1 rounded-2xl border border-[#dce6d5] bg-white/95 p-4 shadow-xl backdrop-blur-md sm:-left-8" style={{ animationDuration: '4s' }}>
-            <span className="text-3xl font-black text-[#245c3a]">10+</span>
-            <span className="text-xs font-bold text-[#607163]">Loài cây</span>
+            <span className="text-3xl font-black text-[#245c3a]">{corePlants.length}</span>
+            <span className="text-xs font-bold text-[#607163]">Nhóm cây chính</span>
           </div>
           <div className="absolute bottom-1/4 left-2 flex animate-bounce flex-col items-center gap-1 rounded-2xl border border-[#dce6d5] bg-white/95 p-4 shadow-xl backdrop-blur-md sm:left-6" style={{ animationDuration: '5s', animationDelay: '1s' }}>
-            <span className="text-3xl font-black text-[#245c3a]">95%</span>
-            <span className="text-xs font-bold text-[#607163]">Chính xác</span>
+            <span className="text-3xl font-black text-[#245c3a]">API</span>
+            <span className="text-xs font-bold text-[#607163]">Kết nối backend</span>
           </div>
         </div>
         <div data-reveal className="nature-story-copy"><span className="text-sm font-bold uppercase tracking-[.2em] text-[#66864d]">Đồng hành cùng cây trồng</span><h2 className="mt-3 text-3xl font-bold leading-tight tracking-tight text-[#173e2a] sm:text-4xl">Một bức ảnh rõ bắt đầu từ sự quan sát kỹ.</h2><p className="mt-5 text-base leading-8 text-[#607163]">Mỗi loại cây có hình dạng lá và dấu hiệu bệnh khác nhau. LeafAI được thiết kế để bạn dễ chụp ảnh, xem lại thông tin và trao đổi với người có chuyên môn khi cần.</p><button type="button" onClick={() => onNavigate('diseases')} className="nature-story-link mt-7 inline-flex items-center gap-2 font-semibold text-[#245c3a]">Tìm hiểu thư viện bệnh lá <ArrowRight className="h-4 w-4" /></button></div>
