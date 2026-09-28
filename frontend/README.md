@@ -1,28 +1,38 @@
-# LeafAI Frontend Demo
+# LeafAI Frontend
 
-React + Vite frontend for the leaf upload and Backend Demo prediction flow. The API returns a mock result; no AI model is connected.
+Next.js App Router frontend for the LeafAI plant-disease classification experience. Styling uses Tailwind CSS 4 and dependencies are managed with pnpm.
 
 The home page banner cycles through all 13 plants in the project. Visitors can select a plant from the banner strip or use the previous/next buttons; automatic transitions stop when the banner is out of view and are disabled when the device requests reduced motion.
 
 ## Run locally
 
-Requirements: Node.js 20.19+ (or 22.12+), Python 3.9+.
+Requirements: Node.js 20.9+, pnpm 10, and .NET 9 SDK.
 
 Open two terminals from the project root:
 
 ```powershell
 cd backend
-python -m pip install -r requirements.txt
-python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+dotnet restore AgriVision.sln
+dotnet run --project src/AgriVision.API/AgriVision.API.csproj --launch-profile http
 ```
 
 ```powershell
 cd frontend
+corepack enable
 pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open `http://localhost:3000`, then choose **Chẩn đoán**. Vite proxies `/api` to `http://127.0.0.1:8000`, so no API URL is needed for local development. To target a different backend, set `VITE_API_BASE_URL` in `frontend/.env.local` to its origin (for example `http://localhost:8000`) and restart Vite. That backend must allow the frontend origin through CORS.
+Open `http://localhost:3000`. Next.js rewrites `/api/*` to the ASP.NET API at `http://127.0.0.1:5034`, so no API URL is needed for local development. Set `API_PROXY_TARGET` to change the server-side proxy destination, or `NEXT_PUBLIC_API_BASE_URL` to call a public API origin directly. Restart Next.js after changing environment variables.
+
+## Commands
+
+```powershell
+pnpm dev
+pnpm lint
+pnpm build
+pnpm start
+```
 
 ## Demo flow
 
@@ -31,13 +41,24 @@ Open `http://localhost:3000`, then choose **Chẩn đoán**. Vite proxies `/api`
 3. Press **Phân tích**. The page shows upload progress, then an analyzing state while waiting for the API.
 4. On success, the crop, disease and confidence come from the JSON response. On network or API errors, the page shows the error and a retry action.
 
-The request is `POST /api/predictions`, `multipart/form-data`, with the file in the `image` field. The response contract is:
+The request is `POST /api/predictions`, `multipart/form-data`, with the file in the `file` field. The response follows the backend `PredictionResultDto` contract:
 
 ```json
-{ "crop": "Tomato", "disease": "Early Blight", "confidence": 0.94 }
+{
+  "id": "prediction-guid",
+  "imagePath": "https://...",
+  "predictedPlantDisease": {
+    "className": "Tomato___Early_blight",
+    "plant": { "name": "Tomato", "vietnameseName": "Cà chua" },
+    "disease": { "name": "Early Blight", "vietnameseName": "Bệnh đốm vòng" }
+  },
+  "confidence": 0.94,
+  "predictionDetails": [],
+  "createdAt": "2026-09-27T00:00:00Z"
+}
 ```
 
-The demo backend deliberately returns this same response for every valid image. The UI labels it as a mock result and does not hard-code the prediction. Replacing the backend response changes the result shown on the page without changing the UI.
+Authenticated requests include the JWT bearer token, allowing predictions to appear in `GET /api/predictions` history and to be removed through `DELETE /api/predictions/{id}`.
 
 ## Checks
 
@@ -47,4 +68,4 @@ pnpm lint
 pnpm build
 ```
 
-From `backend`, run `python tests/smoke_demo_api.py` for a successful multipart request and invalid file cases. For a UI check, test one valid image, one non-image file, a file above 15 MB, and a request with the backend stopped. Confirm the preview, loading, result and error states. No browser automation is configured in this repository.
+From the repository root, run `dotnet test backend/AgriVision.sln` for backend coverage. For a UI check, test registration, login, one valid image, one non-image file, a file above 15 MB, and a request with the backend stopped. Confirm the authentication, preview, loading, result, and error states.

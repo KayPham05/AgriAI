@@ -27,7 +27,7 @@ export const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({
   if (!isOpen || !result) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-2 backdrop-blur-xs animate-in fade-in duration-200 sm:p-6">
       
       <div className="bg-white w-full max-w-4xl rounded-3xl border border-[#E2E8E4] shadow-2xl overflow-hidden my-auto flex flex-col max-h-[90vh]">
         
@@ -37,7 +37,7 @@ export const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
             <div>
               <h2 className="font-display font-bold text-base sm:text-lg text-[#17211B]">
-                Chi tiết mẫu minh họa
+                Chi tiết kết quả chẩn đoán
               </h2>
               <p className="text-xs text-[#647067]">
                 Thời điểm ghi nhận: {result.timestamp}
@@ -55,21 +55,25 @@ export const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1">
-          <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">Dữ liệu này chỉ minh họa giao diện. Bản đồ nhiệt không được tạo từ mô hình AI.</p>
+        <div className="flex-1 space-y-6 overflow-y-auto p-4 sm:p-6">
+          {result.isDemo && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">Dữ liệu này được lưu cục bộ từ phiên dùng thử.</p>}
           
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
             
             {/* Left: Grad-CAM Viewer */}
             <div className="md:col-span-7">
-              <GradCamViewer
-                originalUrl={result.originalImageUrl}
-                heatmapUrl={result.gradcam_url}
-                overlayUrl={result.gradcam_url}
-                segmentationUrl={null}
-                detectionBoxes={null}
-                diseaseLabel={result.prediction}
-              />
+              {result.gradcam_url ? (
+                <GradCamViewer
+                  originalUrl={result.originalImageUrl}
+                  heatmapUrl={result.gradcam_url}
+                  overlayUrl={result.gradcam_url}
+                  segmentationUrl={null}
+                  detectionBoxes={null}
+                  diseaseLabel={result.prediction}
+                />
+              ) : (
+                <div className="overflow-hidden rounded-2xl border border-[#E2E8E4] bg-[#0A100D]"><img src={result.originalImageUrl} alt="Ảnh lá đã chẩn đoán" className="aspect-4/3 h-full w-full object-contain" /></div>
+              )}
             </div>
 
             {/* Right: Metrics & Details */}
@@ -115,11 +119,11 @@ export const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({
                 <div className="pt-2 border-t border-[#E2E8E4] text-[11px] text-[#647067] space-y-1 font-mono">
                   <div className="flex justify-between">
                     <span>Trạng thái:</span>
-                    <span className="text-[#17211B]">Dữ liệu minh họa</span>
+                    <span className="text-[#17211B]">{result.isDemo ? 'Lưu trên trình duyệt' : 'Đồng bộ backend'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Mã hồ sơ:</span>
-                    <span className="text-[#17211B]">{result.id}</span>
+                    <span className="break-all text-right text-[#17211B]">{result.id}</span>
                   </div>
                 </div>
               </div>
@@ -131,7 +135,7 @@ export const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({
         </div>
 
         {/* Modal Bottom Footer Actions */}
-        <div className="p-4 sm:p-5 border-t border-[#E2E8E4] bg-[#F8FAF9] flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 border-t border-[#E2E8E4] bg-[#F8FAF9] p-4 min-[480px]:flex-row min-[480px]:flex-wrap min-[480px]:items-center min-[480px]:justify-between sm:p-5">
           <button
             onClick={() => setIsReportOpen(true)}
             className="px-4 py-2.5 bg-white border border-[#E2E8E4] hover:bg-[#F8FAF9] text-[#17211B] rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs cursor-pointer"

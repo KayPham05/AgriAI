@@ -19,8 +19,8 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white max-w-md w-full rounded-2xl p-6 shadow-xl border border-[#E2E8E4] space-y-4 animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-xs sm:p-4">
+      <div className="w-full max-w-md space-y-4 rounded-2xl border border-[#E2E8E4] bg-white p-5 shadow-xl animate-in fade-in zoom-in-95 duration-150 sm:p-6">
         <div className="flex items-start justify-between">
           <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
             <Trash2 className="w-5 h-5" />
@@ -39,10 +39,10 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
           <p className="text-sm text-[#647067] mt-1.5 leading-relaxed">{description}</p>
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-2">
+        <div className="flex flex-col-reverse gap-2 pt-2 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-end min-[380px]:gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-[#647067] hover:text-[#17211B] rounded-xl hover:bg-[#F8FAF9] transition-colors cursor-pointer"
+            className="w-full rounded-xl px-4 py-2 text-sm font-medium text-[#647067] transition-colors hover:bg-[#F8FAF9] hover:text-[#17211B] min-[380px]:w-auto cursor-pointer"
           >
             Hủy bỏ
           </button>
@@ -51,7 +51,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
               onConfirm();
               onClose();
             }}
-            className="px-4 py-2 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 active:bg-rose-800 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-rose-700 active:bg-rose-800 min-[380px]:w-auto cursor-pointer"
           >
             <Trash2 className="w-4 h-4" />
             <span>Xác nhận xóa</span>
