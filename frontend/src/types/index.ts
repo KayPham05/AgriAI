@@ -97,6 +97,7 @@ export interface DiseaseSummary {
 
 export interface Plant {
   id: string;
+  backendId?: string;
   name: string;
   scientificName: string;
   category: 'Cây lương thực' | 'Cây ăn trái' | 'Cây công nghiệp' | 'Khác' | 'Food Crops' | 'Fruit Trees' | 'Industrial Crops' | 'Other';
@@ -108,6 +109,7 @@ export interface Plant {
 
 export interface Disease {
   id: string;
+  backendId?: string;
   name: string;
   plant: string;
   plantId: string;

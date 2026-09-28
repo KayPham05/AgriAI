@@ -98,8 +98,8 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-xl rounded-2xl overflow-hidden shadow-2xl flex flex-col border border-[#E2E8E4]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/80 p-2 backdrop-blur-sm sm:p-4">
+      <div className="flex max-h-[calc(100dvh-1rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-[#E2E8E4] bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)]">
         
         {/* Header */}
         <div className="px-5 py-4 border-b border-[#E2E8E4] flex items-center justify-between bg-[#F8FAF9]">
@@ -125,7 +125,7 @@ export const CameraCaptureModal: React.FC<CameraCaptureModalProps> = ({
         </div>
 
         {/* Viewfinder / Capture Canvas */}
-        <div className="relative bg-black aspect-4/3 flex items-center justify-center overflow-hidden">
+        <div className="relative flex aspect-4/3 min-h-0 items-center justify-center overflow-hidden bg-black">
           {error ? (
             <div className="p-6 text-center text-white max-w-sm">
               <AlertCircle className="w-10 h-10 text-amber-400 mx-auto mb-3" />

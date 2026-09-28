@@ -38,7 +38,7 @@ export const DiseaseDetailPage: React.FC<DiseaseDetailViewProps> = ({
       <div className="soft-workspace-card bg-white rounded-3xl border border-[#E2E8E4] overflow-hidden shadow-sm">
         
         {/* Banner Image */}
-        <div className="aspect-21/9 sm:aspect-3/1 overflow-hidden bg-black relative">
+        <div className="relative aspect-[4/5] overflow-hidden bg-black min-[480px]:aspect-[16/10] sm:aspect-3/1">
           <img
             src={disease.heroImage}
             alt={disease.name}
@@ -46,9 +46,9 @@ export const DiseaseDetailPage: React.FC<DiseaseDetailViewProps> = ({
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
           
-          <div className="absolute bottom-6 left-6 right-6 text-white flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div className="absolute inset-x-4 bottom-4 flex flex-col justify-between gap-4 text-white sm:inset-x-6 sm:bottom-6 sm:flex-row sm:items-end">
             <div>
-              <div className="flex items-center gap-2 mb-1.5">
+              <div className="mb-1.5 flex flex-wrap items-center gap-2">
                 <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-600 text-white shadow-xs">
                   Bệnh do {disease.category}
                 </span>
@@ -56,7 +56,7 @@ export const DiseaseDetailPage: React.FC<DiseaseDetailViewProps> = ({
                   {disease.plant}
                 </span>
               </div>
-              <h1 className="font-display font-bold text-3xl sm:text-4xl">{disease.name}</h1>
+              <h1 className="font-display text-2xl font-bold sm:text-4xl">{disease.name}</h1>
               {disease.scientificName && (
                 <p className="text-sm italic text-gray-300 mt-1">{disease.scientificName}</p>
               )}

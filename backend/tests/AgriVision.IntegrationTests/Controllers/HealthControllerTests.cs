@@ -18,7 +18,7 @@ public class HealthControllerTests : IClassFixture<AgriVisionFactory>
     public async Task GetHealth_ShouldReturn200OK_WithHealthDetails()
     {
         // Act
-        var response = await _client.GetAsync("/api/health");
+        var response = await _client.GetAsync("/health");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
