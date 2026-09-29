@@ -1,5 +1,9 @@
 # Kế hoạch kiểm thử AgriVision AI
 
+> Cập nhật CI/Docker/coverage ngày 2026-09-29: xem
+> [báo cáo AGRI-75](../reports/AGRI-75/ci_branch_coverage.md).
+> Các số liệu và mô tả Vite bên dưới là lịch sử ngày 2026-09-27.
+
 > Đối chiếu với `main` commit `65082f6`, cập nhật ngày 2026-09-27. Bảng test
 > case là thiết kế kiểm thử; trạng thái `cần bổ sung` không có nghĩa là test đã pass.
 

@@ -5,30 +5,42 @@ These instructions apply to the entire repository.
 ## Project
 
 - Build an end-to-end plant leaf disease classification system using ConvNeXt-Tiny.
-- Keep classification as the core scope. Add detection, segmentation, severity estimation, backend, or frontend only when explicitly requested.
+- The application includes a Next.js web frontend, an ASP.NET Core Web API, and PostgreSQL. The intended inference service is FastAPI; a CI health mock is not model inference.
+- Keep classification as the core scope. Add detection, segmentation, or severity estimation only when explicitly requested.
 
 ## Directory structure
 
 ```text
-ai/data/                        Runtime data loading and preprocessing (dùng chung)
-ai/tasks/agri_21/scripts/       Script tạo và audit dataset v1.0–v1.2 (AGRI-21)
-ai/tasks/agri_21/tests/         Unit tests riêng cho các script AGRI-21
-ai/                             Training, evaluation, inference, và AI utilities
+ai/                             Training, evaluation, CLI inference, shared data code
+ai/tasks/agri_21/               Offline dataset scripts and their tests
+backend/src/                    ASP.NET Core API, application, domain, infrastructure
+backend/tests/                  .NET unit and PostgreSQL Testcontainers integration tests
+frontend/src/                   Next.js pages, views, services, and Vitest tests
+docker/                         PostgreSQL image setup
+.github/workflows/ci.yml        CI jobs and coverage gates
+docs/                           Plans, technical reports, task logs, and notes
 experiments/                    Versioned experiment records under EXP-XXX
-docs/                           Project documentation and task logs
 .agents/rules/                  Repository-specific rules
 .agents/skills/                 Reusable agent skills
-.agents/workflows/              Reusable workflows
 ```
 
+- Root `docker-compose.yml` starts web, API, and PostgreSQL; `docker-compose.ci.yml` adds an AI health mock. `backend/docker-compose.yml` is a separate PostgreSQL setup for backend development.
 - Keep datasets, checkpoints, generated outputs, caches, and secrets out of Git.
 
 ## Conventions
 
 - Follow `.agents/rules/project_rules.md` for naming, Jira, commits, pull requests, reviewers, and task reports.
+- Follow `.agents/rules/directory_structure.md` when placing AI code or documentation. Use `docs/reports/AGRI-XXX/` for task evidence and `docs/task-logs/` for required completion reports.
 - Use `snake_case.py` for Python, `EXP-XXX` for experiments, `v<major>.<minor>` for datasets, and `convnext-tiny-v<major>.<minor>` for models.
 - Prefer readable, typed, minimal code; reuse existing modules before adding abstractions or dependencies.
 - Preserve agreed labels, dataset splits, versions, experiment IDs, and metric semantics.
+- Treat passing tests, service health, branch coverage, and real model inference as separate evidence. Never present a stub or mock result as a validated prediction.
+
+## Verification
+
+- CI runs Compose smoke, Python tests, .NET unit and integration tests, and frontend lint/tests/build. See `.github/workflows/ci.yml` and `docs/reports/AGRI-75/README.md` for the current scope and evidence.
+- Target **80% branch coverage separately** for backend, frontend, and Python. Until the test suites reach that target, CI enforces measured interim floors of backend 35%, frontend 25%, and Python 40%; raise them as coverage improves. Backend coverage merges unit and integration runs before applying the gate; see `.github/workflows/ci.yml` and `docs/reports/AGRI-75/ci_branch_coverage.md`.
+- Run the smallest relevant local checks after a change. Backend integration tests require Docker; AI tests in CI use CPU dependencies and do not validate a real checkpoint.
 
 ## Important rules
 
