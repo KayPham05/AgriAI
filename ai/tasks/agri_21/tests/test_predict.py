@@ -1,10 +1,12 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import torch
 from PIL import Image
 
+from ai.configs.plant_disease_mapping import get_plant_to_diseases
 from ai.predict import CombinedPlantDiseasePredictor, LeafDiseasePredictor
 
 
@@ -29,6 +31,53 @@ class _StaticPredictor:
 
 
 class PredictionTests(unittest.TestCase):
+    def test_checkpoint_dataset_version_is_available_for_combined_inference(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            checkpoint_path = Path(temporary_directory) / "model.pth"
+            checkpoint_path.touch()
+            checkpoint = {
+                "dataset_version": "v1.4",
+                "num_classes": 44,
+                "idx_to_info": {0: {"label": "Khoe_manh"}},
+                "model_state_dict": {},
+            }
+            with patch("ai.predict.torch.load", return_value=checkpoint), patch(
+                "ai.predict.build_model"
+            ), patch("ai.predict.get_inference_transforms"):
+                predictor = LeafDiseasePredictor(checkpoint_path)
+
+        self.assertEqual(predictor.dataset_version, "v1.4")
+
+    def test_v1_4_pepper_labels_do_not_change_v1_3_mapping(self) -> None:
+        old_labels = get_plant_to_diseases("v1.3")["Ot"]
+        new_labels = get_plant_to_diseases("v1.4")["Ot"]
+
+        self.assertIn("Ruoi_trang", old_labels)
+        self.assertNotIn("Ruoi_trang", new_labels)
+        self.assertEqual(
+            new_labels,
+            {
+                "Dom_la_cercospora",
+                "Dom_vi_khuan",
+                "Khoe_manh",
+                "Phan_trang",
+                "Thieu_dinh_duong",
+                "Virus_xoan_la",
+            },
+        )
+        self.assertEqual(
+            len({
+                label
+                for labels in get_plant_to_diseases("v1.4").values()
+                for label in labels
+            }),
+            44,
+        )
+        self.assertEqual(
+            sum(len(labels) for labels in get_plant_to_diseases("v1.4").values()),
+            59,
+        )
+
     def test_disease_prediction_excludes_labels_from_other_plants(self) -> None:
         predictor = LeafDiseasePredictor.__new__(LeafDiseasePredictor)
         predictor.num_classes = 2
@@ -113,6 +162,30 @@ class PredictionTests(unittest.TestCase):
                 "Virus_kham_la",
                 "Virus_xoan_vang_la",
             },
+        )
+
+    def test_v1_4_checkpoint_uses_v1_4_pepper_labels(self) -> None:
+        predictor = CombinedPlantDiseasePredictor.__new__(
+            CombinedPlantDiseasePredictor
+        )
+        predictor.plant_predictor = _StaticPredictor(
+            {
+                "image_path": "D:/1.jpg",
+                "plant": "Ot",
+                "confidence": 90.0,
+                "top_predictions": [],
+            }
+        )
+        predictor.disease_predictor = _StaticPredictor(
+            {"disease": "Phan_trang", "confidence": 80.0, "top_predictions": []}
+        )
+        predictor.disease_predictor.dataset_version = "v1.4"
+
+        predictor.predict_image(Path("D:/1.jpg"))
+
+        self.assertEqual(
+            predictor.disease_predictor.allowed_labels,
+            get_plant_to_diseases("v1.4")["Ot"],
         )
 
     def test_plant_checkpoint_mapping_does_not_require_compound_label(self) -> None:

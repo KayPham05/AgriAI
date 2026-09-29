@@ -31,7 +31,7 @@ PIN_MEMORY = True if torch.cuda.is_available() else False
 
 # Training Hyperparameters 
 IMAGE_SIZE = 224
-EXPECTED_NUM_CLASSES = 58
+EXPECTED_NUM_CLASSES = 59 if DATASET_VERSION == "v1.4" else 58
 BATCH_SIZE = 8
 GRADIENT_ACCUMULATION_STEPS = 4
 EPOCHS = 10

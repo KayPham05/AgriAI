@@ -1,9 +1,10 @@
-"""Allowed disease labels for each plant in dataset v1.3."""
+"""Allowed disease labels for each plant by dataset version."""
 
 from __future__ import annotations
 
+from ai.configs import config
 
-PLANT_TO_DISEASES: dict[str, frozenset[str]] = {
+PLANT_TO_DISEASES_V1_3: dict[str, frozenset[str]] = {
     "Ca_chua": frozenset(
         {
             "Chay_la_som",
@@ -77,3 +78,28 @@ PLANT_TO_DISEASES: dict[str, frozenset[str]] = {
         }
     ),
 }
+
+PLANT_TO_DISEASES_V1_4: dict[str, frozenset[str]] = {
+    **PLANT_TO_DISEASES_V1_3,
+    "Ot": frozenset(
+        {
+            "Dom_la_cercospora",
+            "Dom_vi_khuan",
+            "Khoe_manh",
+            "Phan_trang",
+            "Thieu_dinh_duong",
+            "Virus_xoan_la",
+        }
+    ),
+}
+
+
+def get_plant_to_diseases(dataset_version: str) -> dict[str, frozenset[str]]:
+    if dataset_version == "v1.3":
+        return PLANT_TO_DISEASES_V1_3
+    if dataset_version == "v1.4":
+        return PLANT_TO_DISEASES_V1_4
+    raise ValueError(f"Chưa có bảng cây-bệnh cho dataset {dataset_version}")
+
+
+PLANT_TO_DISEASES = get_plant_to_diseases(config.DATASET_VERSION)

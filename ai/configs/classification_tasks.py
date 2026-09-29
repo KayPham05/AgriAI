@@ -44,7 +44,7 @@ _TASKS = {
     "disease": ClassificationTaskConfig(
         name="disease",
         target_field="condition",
-        expected_num_classes=45,
+        expected_num_classes=44 if config.DATASET_VERSION == "v1.4" else 45,
         use_class_weights=True,
         checkpoint_dir=config.CHECKPOINT_DIR / "disease",
         output_dir=config.OUTPUT_DIR / "disease",

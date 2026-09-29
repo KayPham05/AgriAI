@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from PIL import Image
 
 from ai.configs import config
-from ai.configs.plant_disease_mapping import PLANT_TO_DISEASES
+from ai.configs.plant_disease_mapping import get_plant_to_diseases
 from ai.data.augmentations import get_inference_transforms
 from ai.networks.convnext import build_model
 
@@ -36,6 +36,7 @@ class LeafDiseasePredictor:
         # Nạp checkpoint
         checkpoint = torch.load(self.checkpoint_path, map_location=config.DEVICE)
         self.num_classes = checkpoint["num_classes"]
+        self.dataset_version = checkpoint.get("dataset_version", "v1.3")
         self.idx_to_info = checkpoint.get("idx_to_info")
 
         # Fallback đọc từ file json nếu checkpoint không có
@@ -148,7 +149,8 @@ class CombinedPlantDiseasePredictor:
     ) -> Dict:
         plant_result = self.plant_predictor.predict_image(image_path, top_k)
         plant = plant_result["plant"]
-        allowed_diseases = PLANT_TO_DISEASES.get(plant)
+        dataset_version = getattr(self.disease_predictor, "dataset_version", "v1.3")
+        allowed_diseases = get_plant_to_diseases(dataset_version).get(plant)
         if allowed_diseases is None:
             raise ValueError(f"Không có danh sách bệnh cho loài cây: {plant}")
 
