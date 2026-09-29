@@ -52,6 +52,9 @@ trình huấn luyện và thứ tự batch.
 .\.venv\Scripts\python.exe -m ai.predict --help
 ```
 
+Backend có thể gọi AI service qua HTTP. Xem cách chạy và hợp đồng API tại
+`docs/notes/inference_api_guide.md`.
+
 Hai baseline loài cây và bệnh dùng chung ConvNeXt-Tiny cùng split v1.3:
 
 - `plant`: 10 lớp từ cột `plant`.
