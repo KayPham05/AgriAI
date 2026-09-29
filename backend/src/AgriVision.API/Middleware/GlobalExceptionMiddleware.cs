@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using AgriVision.Infrastructure.Services;
 
 namespace AgriVision.API.Middleware;
 
@@ -33,6 +34,7 @@ public class GlobalExceptionMiddleware
 
         var statusCode = exception switch
         {
+            AiServiceException aiServiceException => aiServiceException.StatusCode,
             KeyNotFoundException => HttpStatusCode.NotFound,
             UnauthorizedAccessException => HttpStatusCode.Unauthorized,
             ArgumentException or InvalidOperationException => HttpStatusCode.BadRequest,
