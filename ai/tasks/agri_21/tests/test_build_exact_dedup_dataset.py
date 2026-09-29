@@ -1,4 +1,5 @@
 import csv
+import json
 import shutil
 import tempfile
 import unittest
@@ -62,6 +63,12 @@ class BuildExactDedupDatasetTest(unittest.TestCase):
             self.assertEqual(actions["copied_canonical"], 2)
             self.assertEqual(actions["skipped_exact_duplicate"], 1)
             self.assertEqual(actions["quarantined_label_conflict"], 2)
+            metadata = json.loads(
+                (output_dir / "metadata" / "dataset_version.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(metadata["source_dataset_version"], "v1.0")
 
 
 if __name__ == "__main__":

@@ -123,6 +123,16 @@ class BuildResizedDatasetTests(unittest.TestCase):
             )
             self.assertTrue(all(row["width"] == "224" for row in output_records))
             self.assertTrue(all(row["height"] == "224" for row in output_records))
+            output_metadata = json.loads(
+                (output_dir / "metadata" / "dataset_version.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(output_metadata["source_dataset_version"], "v1.1")
+            self.assertEqual(
+                output_metadata["source_manifest"],
+                str(manifests_dir / "dataset_manifest.csv"),
+            )
 
     @staticmethod
     def _write_manifest(path: Path, rows: list[dict[str, object]]) -> None:

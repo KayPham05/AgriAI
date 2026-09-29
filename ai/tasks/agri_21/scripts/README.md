@@ -5,7 +5,7 @@ import bởi DataLoader khi train hoặc inference. Chạy từ root repository 
 dạng module:
 
 ```powershell
-.\.venv\Scripts\python.exe -m ai.scripts.dataset.<script_name> --help
+.\.venv\Scripts\python.exe -m ai.tasks.agri_21.scripts.<script_name> --help
 ```
 
 Thứ tự pipeline AGRI-21:
@@ -27,3 +27,18 @@ Thứ tự pipeline AGRI-21:
 
 Dataset đã hoàn tất không cần chạy lại các bước thay đổi dữ liệu. Xem bằng
 chứng và trạng thái cuối tại `docs/reports/AGRI-21/README.md`.
+
+Batch Ớt thay thế và dataset v1.4 dùng các script `prepare_v1_4_pepper.py`,
+`build_v1_4_dataset.py`, `finalize_v1_4_dataset.py`. Thứ tự và bằng chứng ở
+`docs/notebooks/dataset_v1_4_overview.md`. Không chạy các decision hard-code
+cho ảnh Ớt v1.1 lên batch v1.4.
+
+Khi tạo riêng batch Ớt v1.4, truyền `--dataset-version v1.4` cho
+`build_exact_dedup_dataset` và `build_resized_dataset`. Hai bước ghi phiên bản
+nguồn từ metadata đầu vào để truy vết đúng từng stage.
+
+Sau khi finalize batch tiếng Anh, `relocate_v1_4_vietnamese_labels.py` tạo bản
+sao tại `D:/AgriVisionAI_Data/v1.4`, đổi đồng bộ sáu nhãn Ớt và xác minh SHA-256
+toàn bộ ảnh trước khi công bố thư mục đích. Bản nguồn không bị xóa. Checkpoint
+train từ nhãn cũ cần chạy `relabel_v1_4_checkpoint.py` sau khi train xong để
+hoán vị classifier theo thứ tự nhãn mới; không chỉ sửa tên trong JSON.

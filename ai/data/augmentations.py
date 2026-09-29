@@ -42,7 +42,7 @@ def get_val_transforms(image_size=config.IMAGE_SIZE):
 
 def get_inference_transforms(image_size=config.IMAGE_SIZE):
     """
-    Giữ tỷ lệ và đệm ảnh inference giống preprocessing của dataset v1.3.
+    Giữ tỷ lệ và đệm ảnh inference giống preprocessing của dataset v1.4.
     """
     return transforms.Compose([
         ResizeWithPadding(target_size=image_size, fill=PADDING_COLOR),
