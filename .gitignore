@@ -12,13 +12,10 @@ __pycache__/
 # Notebook cache
 .ipynb_checkpoints/
 
-# Personal plans
-/docs/plans/*
-!/docs/plans/.gitkeep
-
 # Local dataset and generated mappings
 /datasets/
 /datasets tunning/
+/Ớt bổ sung
 /data/raw/
 /ai/Image/
 /ai/class_to_idx.json
@@ -56,6 +53,7 @@ events.out.tfevents.*
 .coverage
 .coverage.*
 coverage.xml
+coverage/
 htmlcov/
 TestResults/
 *.trx
@@ -92,9 +90,6 @@ secrets/
 Thumbs.db
 Desktop.ini
 desktop.ini
-
-#local
-/colab_upload/
 
 # Node.js / Frontend
 node_modules/

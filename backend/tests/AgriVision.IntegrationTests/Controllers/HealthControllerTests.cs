@@ -19,7 +19,7 @@ public class HealthControllerTests : IClassFixture<AgriVisionFactory>
     public async Task GetHealth_ShouldReportDatabaseReady_WithoutAiService()
     {
         // Act
-        var response = await _client.GetAsync("/health");
+        var response = await _client.GetAsync("/api/health");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
