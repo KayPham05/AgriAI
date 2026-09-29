@@ -1,7 +1,6 @@
 services:
   postgres:
     build: ./docker/postgres
-    container_name: agrivision_postgres
     restart: always
     environment:
       POSTGRES_DB: agrivision_db
@@ -17,34 +16,19 @@ services:
       timeout: 5s
       retries: 5
 
-  ai-health:
-    image: python:3.12-alpine
-    command: ["python", "/app/mock_ai_health.py"]
-    environment:
-      AI_HEALTH_HOST: 0.0.0.0
-    volumes:
-      - ./.github/scripts/mock_ai_health.py:/app/mock_ai_health.py:ro
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
   backend:
     build: ./backend
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=agrivision_db;Username=agrivision_user;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       JwtSettings__Secret: ${JWT_SECRET:?Set JWT_SECRET in .env}
-      AiService__BaseUrl: http://ai-health:8000
+      AiService__BaseUrl: ${AI_SERVICE_URL:-http://host.docker.internal:8000}
     ports:
       - "${API_HOST_PORT:-5080}:8080"
     volumes:
       - uploads:/app/wwwroot/uploads
     depends_on:
       postgres:
-        condition: service_healthy
-      ai-health:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/api/health | grep -q '\"status\":\"Healthy\"'"]
@@ -54,17 +38,21 @@ services:
       start_period: 20s
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        API_PROXY_TARGET: http://backend:8080
     ports:
-      - "${FRONTEND_HOST_PORT:-3000}:80"
+      - "${FRONTEND_HOST_PORT:-3000}:3000"
     depends_on:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/ | grep -q 'id=\"root\"'"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r => { if (!r.ok) process.exit(1); }).catch(() => process.exit(1))"]
       interval: 5s
       timeout: 5s
       retries: 5
+      start_period: 20s
 
 volumes:
   postgres_data:
