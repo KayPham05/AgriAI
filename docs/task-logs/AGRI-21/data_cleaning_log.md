@@ -212,3 +212,21 @@ Sau bước này, `v1.1` có **75.032 ảnh và 75.032 SHA-256 duy nhất**.
 Dataset v1.3 đã đi qua cùng các gate của v1.2: audit, dedup/group review, resize 224×224 giữ tỷ lệ, group-aware split, augmentation QA và leakage check Hamming 0–5 hậu-resize. Dataset cuối có 82.073 ảnh, 46.989 group và split 57.449/8.209/16.415; cả ba tập có đủ 58 lớp và không còn leakage high-confidence. DataLoader mặc định dùng ba manifest cố định của `v1.3`, không chia lại dữ liệu trong script training.
 
 **Trạng thái DoD dữ liệu: HOÀN THÀNH.**
+
+## 15. Bổ sung v1.4 thay toàn bộ ảnh ớt (2026-09-28)
+
+- Đã kiểm tra lại vấn đề nhãn: sáu nhóm ớt mới không có ánh xạ được xác nhận sang năm lớp cũ. v1.4 giữ sáu nhãn riêng, loại toàn bộ 469 ảnh ớt cũ và dùng 6.396 ảnh mới.
+- Đã hoàn thành audit 7.074 ảnh nguồn, loại 678 ảnh trùng SHA-256, review/gộp near-duplicate cùng nhãn, split theo group, resize 224×224, ghép với phần không phải ớt của v1.3 và hậu kiểm leakage.
+- Dataset cuối có 88.000 ảnh, 59 lớp, split 61.599/8.802/17.599; 0 path/group/SHA-256 và 0 cặp high-confidence xuyên split. Manifest và checksum 88.000 ảnh đã kiểm tra.
+- Đã sửa metadata phiên bản nguồn ở hai bước trung gian và logic script để lần chạy sau ghi đúng provenance. Đã tách hardlink ảnh trung gian khỏi bản cuối.
+- Đã tạo và xem contact sheet augmentation cho 10 cây và sáu lớp ớt; unit test liên quan pass 6/6, compile và `git diff --check` pass.
+- Cấu hình train và mapping checkpoint đã chuyển sang v1.4/59 lớp. Train 10 epoch đang chạy; chưa có kết quả test cuối. Xem [báo cáo v1.4](../../reports/AGRI-21/dataset_v1_4_pepper_replacement.md) để biết bằng chứng và giới hạn kiểm tra.
+
+## 16. Việt hóa nhãn Ớt và chuyển bản v1.4 (2026-09-28)
+
+- Đổi sáu tên nhóm Ớt nguồn sang `Dom_vi_khuan`, `Dom_la_cercospora`, `Virus_xoan_la`, `Khoe_manh`, `Thieu_dinh_duong`, `Phan_trang`; cập nhật đồng bộ thư mục ảnh, bốn manifest, phân bố lớp và mapping đường dẫn. Lưu ánh xạ cũ→mới trong metadata.
+- Tạo bản chính tại `D:/AgriVisionAI_Data/v1.4` qua thư mục staging. Kiểm tra lại SHA-256 đủ 88.000 ảnh; 81.604 dòng của 9 cây khác giữ nguyên hoàn toàn, 6.396 ảnh Ớt giữ nguyên checksum/group/split. Manifest mới SHA-256 `52d95e178700ad29faa64dd3c5095fe9029dd68f0f71ff833c9cf375b858b87e`.
+- DataLoader đọc đúng 61.599/8.802/17.599 ảnh, 59 lớp `compound` và 44 giá trị `condition`; 0 path/group/SHA-256 xuyên split, 0 cross-label group. Đã tạo contact sheet mới với nhãn Việt.
+- Một batch train thật tại đích cho tensor `(8, 3, 224, 224)` hữu hạn; unit test kiểm tra hoán vị 59 output của checkpoint pass.
+- Run gốc hoàn tất 10 epoch; best validation Macro-F1 0,9662. `scheduler.step()` lỗi sau epoch cuối, nhưng checkpoint epoch 10 còn nguyên; đã sửa điều kiện bước scheduler, khôi phục history/summary từ TensorBoard và đánh giá test thủ công: 17.599 ảnh, Macro-F1 0,9631.
+- Đã hoán vị classifier sang mapping tiếng Việt và đánh giá lại trên cùng tập: năm metric tổng trùng tuyệt đối. Project hiện trỏ mặc định đến `D:/AgriVisionAI_Data/v1.4`. Bản dataset cũ, checkpoint và output tiếng Anh được lưu ở các thư mục `*_english_label_archive`; không xóa dữ liệu.

@@ -4,6 +4,11 @@
 
 ## Trạng thái cuối
 
+- Dataset `v1.4`: 88.000 ảnh, 10 loại cây, 59 lớp; 6.396 ảnh ớt mới thay toàn bộ
+  469 ảnh ớt v1.3. Split cố định: 61.599 train, 8.802 validation, 17.599 test.
+- Hậu kiểm v1.4: 0 path, group, SHA-256 và near-duplicate high-confidence xuyên split.
+  Run 10 epoch đã xong; best validation Macro-F1 0,9662, test Macro-F1 0,9631
+  trên 17.599 ảnh. Checkpoint nhãn Việt cho cùng dự đoán và metric.
 - Dataset `v1.3`: 82.073 ảnh, 10 loại cây, 58 lớp; trạng thái `v1_3_complete`.
 - Split cố định theo `group_id`: 57.449 train, 8.209 validation, 16.415 test.
 - Hậu kiểm v1.3: 0 cross-label group; 0 path, `group_id`, SHA-256 và near-duplicate
@@ -19,6 +24,8 @@
 
 ## Tài liệu chính
 
+- [Kiểm tra hợp đồng nhãn và pipeline v1.4](dataset_v1_4_pepper_replacement.md)
+- [Tổng quan dataset v1.4](../../notebooks/dataset_v1_4_overview.md)
 - [Review các điểm chưa đạt của dataset v1.3](dataset_v1_3_gap_review.md)
 - [Tổng quan chi tiết dataset v1.3](../../notebooks/dataset_v1_3_overview.md)
 - [So sánh v1.3 hiện tại với snapshot cũ](../../notebooks/dataset_v1_3_current_vs_old_comparison.md)

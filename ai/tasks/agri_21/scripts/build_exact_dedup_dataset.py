@@ -195,13 +195,19 @@ def build_exact_dedup_dataset(
     }
     metadata_dir = staging_dir / "metadata"
     metadata_dir.mkdir(parents=True, exist_ok=True)
+    audit_metadata_path = manifest_path.parent.parent / "metadata" / "dataset_version.json"
+    source_version = (
+        json.loads(audit_metadata_path.read_text(encoding="utf-8"))["dataset_version"]
+        if audit_metadata_path.is_file()
+        else "v1.0"
+    )
     with (metadata_dir / "dataset_version.json").open(
         "w", encoding="utf-8"
     ) as metadata_file:
         json.dump(
             {
                 "dataset_version": dataset_version,
-                "source_dataset_version": "v1.0",
+                "source_dataset_version": source_version,
                 "generated_at_utc": datetime.now(timezone.utc).isoformat(),
                 "stage": "exact_dedup_only",
                 "image_copy_status": "copied_and_sha256_verified",
