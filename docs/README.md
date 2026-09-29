@@ -36,6 +36,9 @@ docs/
 
 ## Kế hoạch phát triển và kiểm thử
 
+- [Kế hoạch CI/CD hiện tại](plans/ci_cd_plan.md)
+- [Báo cáo unit và integration test AGRI-75](reports/AGRI-75/unit_integration_test_report.md)
+
 - [Kế hoạch phát triển, yêu cầu và ERD](development_roadmap.md)
 - [Chiến lược kiểm thử, test case và branch coverage](notes/testing_strategy.md)
 - [Hiện trạng Docker và CI](reports/AGRI-75/README.md)

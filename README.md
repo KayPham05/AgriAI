@@ -102,17 +102,17 @@ Chạy toàn bộ kiểm thử dữ liệu từ root repository:
 
 ## Chạy bộ khung web, API và PostgreSQL bằng Docker
 
-`docker-compose.yml` dựng PostgreSQL mẫu, ASP.NET Core API, React/Vite build
-được phục vụ bằng Nginx và AI **health stub**. Stub chỉ có `/health`, không
-chạy model hoặc cung cấp `/predict`. Database và user ban đầu do image
-PostgreSQL tạo theo `POSTGRES_*`; EF Core migration tạo schema ứng dụng.
+`docker-compose.yml` dựng PostgreSQL, ASP.NET Core API và Next.js standalone.
+Backend gọi AI service thật tại `AI_SERVICE_URL`; service đó cần được chạy
+riêng. PostgreSQL tạo database/user theo `POSTGRES_*`; EF Core migration tạo
+schema ứng dụng.
 
 Từ root repository, tạo `.env` từ [.env.example](.env.example), điền
-`POSTGRES_PASSWORD` và `JWT_SECRET` bằng giá trị riêng của môi trường, rồi chạy:
+`POSTGRES_PASSWORD`, `JWT_SECRET` và `AI_SERVICE_URL`, rồi chạy:
 
 ```powershell
 Copy-Item .env.example .env
-# Sửa hai giá trị trống trong .env trước khi tiếp tục.
+# Điền cấu hình trong .env và khởi động AI service trước khi tiếp tục.
 docker compose config --quiet
 docker compose up --build --detach --wait
 docker compose ps
@@ -120,7 +120,7 @@ Invoke-RestMethod http://localhost:5080/api/health
 docker compose down
 ```
 
-Web ở `http://localhost:3000`; Nginx chuyển `/api/` sang backend. Có thể đổi
+Web ở `http://localhost:3000`; Next.js chuyển `/api/` sang backend. Có thể đổi
 cổng host qua `POSTGRES_HOST_PORT`, `API_HOST_PORT`, `FRONTEND_HOST_PORT` trong
 `.env`. `docker compose down` giữ volume; không dùng `down -v` nếu cần dữ liệu.
 `docker/postgres/init.sql` là mẫu và chỉ chạy khi volume DB trống. Nếu volume
@@ -128,8 +128,24 @@ cổng host qua `POSTGRES_HOST_PORT`, `API_HOST_PORT`, `FRONTEND_HOST_PORT` tron
 khẩu bên trong DB: dùng đúng cấu hình của volume đó hoặc chủ động tạo DB test
 mới. API chạy ở `Production` nên không seed tài khoản demo có mật khẩu cố định.
 
-Workflow [CI](.github/workflows/ci.yml) build và đợi health của các container
-trước khi chạy các job test. .NET unit job xuất TRX/Cobertura và kiểm tra có
-branch coverage; hiện chưa đặt ngưỡng phần trăm. Mỗi job test dùng runner riêng;
-integration test tự tạo PostgreSQL bằng Testcontainers. Đây là CI, chưa có bước
-triển khai CD hoặc kiểm thử dự đoán thật.
+Để kiểm tra startup khi chưa có AI service, dùng override dành riêng cho CI:
+
+```powershell
+docker compose -p agrivision-smoke -f docker-compose.yml -f docker-compose.ci.yml up --build --detach --wait
+docker compose -p agrivision-smoke -f docker-compose.yml -f docker-compose.ci.yml down
+```
+
+Override thêm AI **health stub**, chỉ có `/health`, không có `/predict`.
+Chọn cổng host còn trống nếu đang chạy stack khác. Muốn chỉ chạy database,
+dùng `docker compose up -d postgres` tại root; không cần chạy thêm file Compose
+PostgreSQL độc lập trong `backend/`.
+
+Workflow [CI](.github/workflows/ci.yml) chạy độc lập Compose smoke, backend
+unit/integration, frontend và toàn bộ Python unit suite trên CPU. Backend gộp
+coverage của hai suite. Mục tiêu riêng cho backend, frontend và Python là **80%
+branch coverage**; mức sàn CI hiện tại lần lượt là **35%, 25%, 40%** theo artifact
+đã đo và sẽ tăng dần khi thêm test. Test pass chưa đủ để CI pass. Job `ci-gate` yêu cầu mọi job thành công;
+sau khi xác minh trên GitHub, cấu hình nó làm required check trong branch protection.
+TRX, coverage HTML/XML và log Compose được upload kể cả khi gate thất bại.
+Xem [cấu hình, lệnh chạy và bằng chứng AGRI-75](docs/reports/AGRI-75/ci_branch_coverage.md).
+Đây là CI, chưa có CD hoặc kiểm thử model suy luận thật.

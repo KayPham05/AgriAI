@@ -6,7 +6,7 @@ The home page banner cycles through all 13 plants in the project. Visitors can s
 
 ## Run locally
 
-Requirements: Node.js 20.9+, pnpm 10, and .NET 9 SDK.
+Requirements: Node.js 24, pnpm 10.34.5 (pinned in `package.json`), and .NET 9 SDK.
 
 Open two terminals from the project root:
 
@@ -23,13 +23,15 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open `http://localhost:3000`. Next.js rewrites `/api/*` to the ASP.NET API at `http://127.0.0.1:5034`, so no API URL is needed for local development. Set `API_PROXY_TARGET` to change the server-side proxy destination, or `NEXT_PUBLIC_API_BASE_URL` to call a public API origin directly. Restart Next.js after changing environment variables.
+Open `http://localhost:3000`. Next.js rewrites `/api/*` to the ASP.NET API at `http://127.0.0.1:5034`. Set `API_PROXY_TARGET` to change the proxy destination, or `NEXT_PUBLIC_API_BASE_URL` to call a public API origin directly. Restart the development server after changing environment variables. Production settings are read at build time: rebuild the image when changing the proxy destination. Root Compose builds with `API_PROXY_TARGET=http://backend:8080` and runs the standalone Node server on port 3000.
 
 ## Commands
 
 ```powershell
 pnpm dev
 pnpm lint
+pnpm test
+pnpm test:coverage
 pnpm build
 pnpm start
 ```
@@ -68,4 +70,6 @@ pnpm lint
 pnpm build
 ```
 
-From the repository root, run `dotnet test backend/AgriVision.sln` for backend coverage. For a UI check, test registration, login, one valid image, one non-image file, a file above 15 MB, and a request with the backend stopped. Confirm the authentication, preview, loading, result, and error states.
+`pnpm test:coverage` runs every Vitest file, including component and mocked API integration tests. The current CI floor is 25% branch coverage across `src/`, with an 80% target that will rise as tests expand. Reports are in `../.cache/coverage/frontend/`. Reports include untested source files; this suite does not test real backend/model inference.
+
+For backend coverage commands, see the [CI report](../docs/reports/AGRI-75/ci_branch_coverage.md). For a UI check, test registration, login, one valid image, one non-image file, a file above 15 MB, and a request with the backend stopped. Confirm the authentication, preview, loading, result, and error states.

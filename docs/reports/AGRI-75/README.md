@@ -1,5 +1,29 @@
 # AGRI-75 — Báo cáo thiết lập CI và kiểm thử
 
+Tài liệu hiện tại: [kế hoạch CI/CD](../../plans/ci_cd_plan.md) và [báo cáo unit/integration test](unit_integration_test_report.md).
+
+## Cập nhật ngày 2026-09-29
+
+**DoD chưa hoàn thành:** cấu hình CI/Docker đã được kiểm chứng cục bộ; các suite
+đã chạy pass nhưng cả ba phần chưa đạt mục tiêu **80% branch coverage**. Gate
+tạm thời là backend 35%, frontend 25%, Python 40% để chặn suy giảm trong khi
+bổ sung test; đây không phải xác nhận đạt mục tiêu.
+Xem [báo cáo CI và branch coverage hiện tại](ci_branch_coverage.md) để biết phạm vi,
+lệnh chạy, số test, artifact, Docker smoke và phần còn lại.
+
+Backend: 16 unit + 4 integration pass, coverage gộp 40,65%. Frontend: 31 test
+pass, coverage 26,72%. Python Linux/Python 3.12: 43 test pass, coverage 44,73%
+từ lần đo trước.
+Docker Next.js/API/PostgreSQL/AI health stub: 4 service healthy ở lần chạy trước.
+FastAPI adapter nay trả lỗi 503/502 thay vì dự đoán giả khi AI lỗi hoặc phản hồi
+sai. Chưa chạy workflow trên GitHub hoặc bật required check. Không xác nhận suy
+luận model thật.
+
+## Lịch sử ngày 2026-09-27
+
+Phần dưới ghi lại lần chạy cũ; cấu hình hiện tại và bằng chứng mới nằm ở báo cáo
+ngày 2026-09-29 liên kết phía trên.
+
 - **Ngày đối chiếu:** 2026-09-27
 - **Nhánh:** `AGRI-75-ci-testing-setup`; base `main` `65082f6`
 - **Trạng thái DoD:** **Chưa hoàn thành**. Đã thiết lập và kiểm chứng CI cơ bản tại máy; workflow đã commit cục bộ nhưng chưa có kết quả GitHub Actions. CD chưa được thiết lập.
