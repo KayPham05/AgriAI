@@ -5,7 +5,7 @@ import torch
 
 # Base directories
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATASET_VERSION = "v1.3"
+DATASET_VERSION = os.getenv("AGRIVISION_DATASET_VERSION", "v1.3")
 DEFAULT_DATASET_DIR = Path(r"D:\AgriVisionAI_Data") / DATASET_VERSION
 DATASET_DIR = Path(
     os.getenv("AGRIVISION_DATASET_DIR", str(DEFAULT_DATASET_DIR))

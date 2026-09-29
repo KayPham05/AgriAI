@@ -88,5 +88,6 @@ Desktop.ini
 desktop.ini
 
 #local
+/notebooks/
 /colab_upload/
 /ai/kaggle/
