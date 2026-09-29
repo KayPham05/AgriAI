@@ -4,6 +4,8 @@ from pathlib import Path
 from sys import argv
 from xml.etree import ElementTree
 
+from check_coverage import read_branch_counts
+
 
 def main() -> None:
     results_dir = Path(argv[1])
@@ -27,11 +29,7 @@ def main() -> None:
     if total == 0 or passed != total or failed:
         raise SystemExit(f"Invalid test result: total={total}, passed={passed}, failed={failed}")
 
-    coverage = ElementTree.parse(coverage_files[0]).getroot()
-    covered = int(coverage.get("branches-covered", "0"))
-    valid = int(coverage.get("branches-valid", "0"))
-    if valid == 0:
-        raise SystemExit("Cobertura has no branch coverage data")
+    covered, valid = read_branch_counts(coverage_files[0])
     print(f".NET tests: {passed}/{total} passed; branch coverage: {covered}/{valid} ({covered / valid:.2%})")
 
 
