@@ -3,6 +3,7 @@ using AgriVision.Application.Common.Interfaces.Persistence;
 using AgriVision.Application.Common.Interfaces.Services;
 using AgriVision.Application.Services.Implementations;
 using AgriVision.Domain.Entities;
+using AgriVision.Infrastructure.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 
@@ -123,6 +124,19 @@ public class PredictionServiceTests
         _predictionRepository.AddedPredictions.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task PredictAsync_ShouldNotPersistPrediction_WhenAiServiceFails()
+    {
+        var imageBytes = Encoding.UTF8.GetBytes("leaf image");
+        var formFile = new FormFile(new MemoryStream(imageBytes), 0, imageBytes.Length, "file", "leaf.jpg");
+        _diseasePredictor.Error = new AiServiceException("AI service timed out.", System.Net.HttpStatusCode.ServiceUnavailable);
+
+        var act = () => _predictionService.PredictAsync(formFile, userId: null);
+
+        await act.Should().ThrowAsync<AiServiceException>();
+        _predictionRepository.AddedPredictions.Should().BeEmpty();
+    }
+
     private static byte[] ReadAllBytes(Stream stream)
     {
         using var buffer = new MemoryStream();
@@ -228,6 +242,7 @@ public class PredictionServiceTests
 
     private sealed class RecordingPlantDiseasePredictor : IPlantDiseasePredictor
     {
+        public Exception? Error { get; set; }
         public AiPredictionResult Result { get; set; } =
             new(0, "Tomato___Healthy", 1, []);
 
@@ -248,6 +263,7 @@ public class PredictionServiceTests
             PredictCount++;
             ReceivedStream = imageStream;
             PredictedImageBytes = ReadAllBytes(imageStream);
+            if (Error != null) throw Error;
             return Task.FromResult(Result);
         }
     }

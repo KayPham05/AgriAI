@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPrediction } from './predictionApi';
+import { createPrediction, deletePrediction, getPredictionById, getPredictionHistory } from './predictionApi';
 
 class MockXMLHttpRequest {
   static latest: MockXMLHttpRequest | null = null;
@@ -130,5 +130,95 @@ describe('createPrediction', () => {
     MockXMLHttpRequest.latest?.respond(200, { crop: 'Tomato' });
 
     await expect(request).rejects.toThrow('không đúng contract');
+  });
+
+  it('shows a clear timeout error and rejects a network failure', async () => {
+    const timedOut = createPrediction(new File(['leaf'], 'leaf.png', { type: 'image/png' }));
+    MockXMLHttpRequest.latest?.ontimeout?.();
+    await expect(timedOut).rejects.toThrow('quá thời gian chờ');
+
+    const networkFailure = createPrediction(new File(['leaf'], 'leaf.png', { type: 'image/png' }));
+    MockXMLHttpRequest.latest?.onerror?.();
+    await expect(networkFailure).rejects.toThrow('Không thể kết nối backend');
+  });
+
+  it('aborts a request when its signal is cancelled', async () => {
+    const controller = new AbortController();
+    const request = createPrediction(new File(['leaf'], 'leaf.png', { type: 'image/png' }), {
+      signal: controller.signal,
+    });
+
+    controller.abort();
+
+    await expect(request).rejects.toThrow('đã được hủy');
+  });
+
+  it('maps top predictions and healthy labels from a complete response', async () => {
+    const request = createPrediction(new File(['leaf'], 'leaf.png', { type: 'image/png' }));
+    MockXMLHttpRequest.latest?.respond(201, {
+      ...successfulResponse,
+      predictedPlantDisease: {
+        ...successfulResponse.predictedPlantDisease,
+        disease: { ...successfulResponse.predictedPlantDisease.disease, name: 'Healthy', vietnameseName: null },
+      },
+      predictionDetails: [{
+        classIndex: 0,
+        className: 'Tomato___Healthy',
+        confidence: 0.94,
+        plantDisease: null,
+      }],
+    });
+
+    const result = await request;
+
+    expect(result.diagnosis.isHealthy).toBe(true);
+    expect(result.diagnosis.top_predictions).toEqual([
+      expect.objectContaining({ label: 'Tomato___Healthy', confidence: 0.94, isHealthy: true }),
+    ]);
+  });
+});
+
+describe('prediction history requests', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('loads history with the user token and maps localized labels', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        items: [{
+          id: 'one', imagePath: '/leaf.jpg', plantName: 'Tomato', plantVietnameseName: 'Cà chua',
+          diseaseName: 'Early Blight', diseaseVietnameseName: 'Cháy lá sớm', confidence: 0.8,
+          createdAt: '2026-09-27T10:00:00Z',
+        }],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const items = await getPredictionHistory('jwt-token');
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/predictions?pageNumber=1&pageSize=100',
+      expect.objectContaining({ headers: { Authorization: 'Bearer jwt-token' } }));
+    expect(items[0]).toMatchObject({ plant: 'Cà chua', prediction: 'Cháy lá sớm', confidence: 0.8 });
+  });
+
+  it('surfaces backend errors when loading a prediction', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false, status: 503, json: async () => ({ message: 'AI service is unavailable.' }),
+    }));
+
+    await expect(getPredictionById('one', 'jwt-token')).rejects.toThrow('AI service is unavailable.');
+  });
+
+  it('deletes a prediction with authorization and reports failure', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true }).mockResolvedValueOnce({
+      ok: false, status: 403, json: async () => ({ detail: 'Forbidden' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await deletePrediction('one', 'jwt-token');
+    await expect(deletePrediction('two', 'jwt-token')).rejects.toThrow('Forbidden');
+    expect(fetchMock).toHaveBeenCalledWith('/api/predictions/one', {
+      method: 'DELETE', headers: { Authorization: 'Bearer jwt-token' },
+    });
   });
 });

@@ -1,4 +1,6 @@
+using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using AgriVision.Application.Common.Interfaces.Services;
 using Microsoft.AspNetCore.Http;
@@ -32,59 +34,72 @@ public class FastApiPlantDiseasePredictor : IPlantDiseasePredictor
 
     public async Task<AiPredictionResult> PredictAsync(Stream imageStream, string fileName, CancellationToken cancellationToken = default)
     {
+        using var content = new MultipartFormDataContent();
+        content.Add(new StreamContent(imageStream), "file", fileName);
+
+        HttpResponseMessage response;
         try
         {
-            using var content = new MultipartFormDataContent();
-            var streamContent = new StreamContent(imageStream);
-            content.Add(streamContent, "file", fileName);
-
-            var response = await _httpClient.PostAsync("/predict", content, cancellationToken);
+            response = await _httpClient.PostAsync("/predict", content, cancellationToken);
             response.EnsureSuccessStatusCode();
-
-            var apiResult = await response.Content.ReadFromJsonAsync<FastApiPredictionResponse>(cancellationToken: cancellationToken);
-
-            if (apiResult != null)
-            {
-                var topK = apiResult.TopK?.Select(item => new AiPredictionTopKItem(item.ClassIndex, item.ClassName, item.Confidence))
-                    ?? Enumerable.Empty<AiPredictionTopKItem>();
-
-                return new AiPredictionResult(
-                    apiResult.ClassIndex,
-                    apiResult.ClassName,
-                    apiResult.Confidence,
-                    topK
-                );
-            }
         }
-        catch (Exception ex)
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            _logger.LogError(ex, "Failed to communicate with FastAPI AI service at {BaseUrl}. Falling back to default prediction.", _httpClient.BaseAddress);
+            _logger.LogError(ex, "FastAPI AI service timed out at {BaseUrl}.", _httpClient.BaseAddress);
+            throw new AiServiceException("AI service timed out. Please try again later.", HttpStatusCode.ServiceUnavailable, ex);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "FastAPI AI service request failed at {BaseUrl}.", _httpClient.BaseAddress);
+            throw new AiServiceException("AI service is unavailable. Please try again later.", HttpStatusCode.ServiceUnavailable, ex);
         }
 
-        // Mock/Fallback prediction if AI Service is unreachable during testing/offline
-        return new AiPredictionResult(
-            ClassIndex: 0,
-            ClassName: "Tomato___Healthy",
-            Confidence: 0.95f,
-            TopK: new[]
+        using (response)
+        {
+            FastApiPredictionResponse? apiResult;
+            try
             {
-                new AiPredictionTopKItem(0, "Tomato___Healthy", 0.95f),
-                new AiPredictionTopKItem(1, "Tomato___Early_blight", 0.03f),
-                new AiPredictionTopKItem(2, "Tomato___Late_blight", 0.02f)
+                apiResult = await response.Content.ReadFromJsonAsync<FastApiPredictionResponse>(cancellationToken: cancellationToken);
             }
-        );
+            catch (JsonException ex)
+            {
+                throw new AiServiceException("AI service returned an invalid response.", HttpStatusCode.BadGateway, ex);
+            }
+            catch (NotSupportedException ex)
+            {
+                throw new AiServiceException("AI service returned an invalid response.", HttpStatusCode.BadGateway, ex);
+            }
+
+            if (apiResult?.ClassIndex is not >= 0 || string.IsNullOrWhiteSpace(apiResult.ClassName)
+                || apiResult.Confidence is not float confidence || !float.IsFinite(confidence)
+                || confidence is < 0 or > 1 || apiResult.TopK is not { Count: > 0 }
+                || apiResult.TopK.Any(item => item is null || item.ClassIndex is not >= 0
+                    || string.IsNullOrWhiteSpace(item.ClassName)
+                    || item.Confidence is not float score || !float.IsFinite(score)
+                    || score is < 0 or > 1))
+            {
+                throw new AiServiceException("AI service returned an invalid response.", HttpStatusCode.BadGateway);
+            }
+
+            return new AiPredictionResult(
+                apiResult.ClassIndex.Value,
+                apiResult.ClassName,
+                confidence,
+                apiResult.TopK.Select(item => new AiPredictionTopKItem(item.ClassIndex!.Value, item.ClassName!, item.Confidence!.Value))
+            );
+        }
     }
 
     private class FastApiPredictionResponse
     {
         [JsonPropertyName("class_index")]
-        public int ClassIndex { get; set; }
+        public int? ClassIndex { get; set; }
 
         [JsonPropertyName("class_name")]
-        public string ClassName { get; set; } = string.Empty;
+        public string? ClassName { get; set; }
 
         [JsonPropertyName("confidence")]
-        public float Confidence { get; set; }
+        public float? Confidence { get; set; }
 
         [JsonPropertyName("top_k")]
         public List<FastApiTopKResponse>? TopK { get; set; }
@@ -93,12 +108,12 @@ public class FastApiPlantDiseasePredictor : IPlantDiseasePredictor
     private class FastApiTopKResponse
     {
         [JsonPropertyName("class_index")]
-        public int ClassIndex { get; set; }
+        public int? ClassIndex { get; set; }
 
         [JsonPropertyName("class_name")]
-        public string ClassName { get; set; } = string.Empty;
+        public string? ClassName { get; set; }
 
         [JsonPropertyName("confidence")]
-        public float Confidence { get; set; }
+        public float? Confidence { get; set; }
     }
 }

@@ -1,0 +1,6 @@
+# CPU torch/torchvision are installed separately from the official PyTorch index.
+coverage==7.10.6
+numpy==2.2.6
+pillow==11.3.0
+scikit-learn==1.7.1
+tqdm==4.67.1

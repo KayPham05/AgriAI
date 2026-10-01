@@ -12,7 +12,7 @@ class ClassificationTaskConfigTests(unittest.TestCase):
         self.assertEqual(plant.expected_num_classes, 10)
         self.assertFalse(plant.use_class_weights)
         self.assertEqual(disease.target_field, "condition")
-        self.assertEqual(disease.expected_num_classes, 45)
+        self.assertEqual(disease.expected_num_classes, 44)
         self.assertTrue(disease.use_class_weights)
 
     def test_tasks_write_to_separate_artifact_directories(self) -> None:

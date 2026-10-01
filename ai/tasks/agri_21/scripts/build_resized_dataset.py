@@ -176,6 +176,7 @@ def build_resized_dataset(
     output_dir: Path,
     workers: int = 8,
     progress_interval: int = 1000,
+    dataset_version: str = "v1.2",
 ) -> dict[str, object]:
     source_dir = source_dir.resolve()
     output_dir = output_dir.resolve()
@@ -244,12 +245,13 @@ def build_resized_dataset(
         )
         metadata = {
             **source_metadata,
-            "dataset_version": "v1.2",
-            "source_dataset_version": "v1.1",
+            "dataset_version": dataset_version,
+            "source_dataset_version": source_metadata["dataset_version"],
             "root_source_dataset_version": source_metadata.get(
                 "source_dataset_version"
             ),
             "source_dataset_dir": str(source_dir),
+            "source_manifest": str(source_manifest_path),
             "generated_at_utc": datetime.now(timezone.utc).isoformat(),
             "stage": "resized_224_letterbox_complete",
             "preprocessing": {
@@ -301,6 +303,7 @@ def main() -> None:
     parser.add_argument("output_dir", type=Path)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--progress-interval", type=int, default=1000)
+    parser.add_argument("--dataset-version", default="v1.2")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
@@ -326,6 +329,7 @@ def main() -> None:
         args.output_dir,
         workers=args.workers,
         progress_interval=args.progress_interval,
+        dataset_version=args.dataset_version,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 

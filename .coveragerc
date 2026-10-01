@@ -1,0 +1,19 @@
+[run]
+branch = True
+source = ai
+data_file = .cache/coverage/python/.coverage
+
+[report]
+show_missing = True
+omit =
+    ai/tasks/*/tests/*
+    ai/tests/*
+    # Deprecated local stubs, already excluded from Git.
+    ai/scripts/*
+    ai/test_gpu.py
+
+[xml]
+output = .cache/coverage/python/coverage.xml
+
+[html]
+directory = .cache/coverage/python/html

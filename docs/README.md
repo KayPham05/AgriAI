@@ -13,12 +13,14 @@ thuộc thiết bị của một thành viên.
 ├── v1.0/
 ├── v1.1/
 ├── v1.2/
-└── v1.3/
+├── v1.3/
+└── v1.4/
 ```
 
 Cấu trúc bên trong từng phiên bản phải được giữ nguyên. Khi chạy mô hình, đặt
-`AGRIVISION_DATASET_DIR` trỏ tới `<dataset_root>/v1.3`. Bản v1.2 được giữ làm
-nguồn dữ liệu đã làm sạch và làm mốc đối chiếu pipeline cho v1.3.
+Trên máy này, `<dataset_root>` là `D:/AgriVisionAI_Data`. Đặt
+`AGRIVISION_DATASET_DIR` trỏ tới `<dataset_root>/v1.4`. Bản v1.3 được giữ làm
+mốc đối chiếu; v1.4 thay toàn bộ ảnh ớt và dùng hợp đồng 59 lớp.
 
 ## Cấu trúc
 
@@ -31,6 +33,22 @@ docs/
 ├── journals/    Nhật ký phát triển theo ngày của từng thành viên
 └── notebooks/   Jupyter notebook phục vụ khám phá và ghi chép
 ```
+
+## Kế hoạch phát triển và kiểm thử
+
+- [Kế hoạch CI/CD hiện tại](plans/ci_cd_plan.md)
+- [Báo cáo unit và integration test AGRI-75](reports/AGRI-75/unit_integration_test_report.md)
+
+- [Kế hoạch phát triển, yêu cầu và ERD](development_roadmap.md)
+- [Chiến lược kiểm thử, test case và branch coverage](notes/testing_strategy.md)
+- [Hiện trạng Docker và CI](reports/AGRI-75/README.md)
+- [Viewpoint kiểm thử AgriVision](notes/agri_test_viewpoints.md)
+- [Mẫu và ca kiểm thử API](notes/agri_api_test_cases.md)
+- [Mẫu và ca kiểm thử giao diện](notes/agri_screen_test_cases.md)
+- [Mẫu và ca kiểm thử unit](notes/agri_unit_test_cases.md)
+- [Mẫu và ca kiểm thử integration](notes/agri_integration_test_cases.md)
+- [Báo cáo thực hiện kiểm thử và CI](notes/testing_ci_execution_report.md)
+- [Báo cáo AGRI-75 về mức hoàn thành CI và kiểm thử](reports/AGRI-75/README.md)
 
 ## Quy ước
 

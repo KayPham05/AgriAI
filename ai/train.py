@@ -343,7 +343,8 @@ def run_training(args: argparse.Namespace) -> Path:
                 f"acc={val_metrics['accuracy']:.4f} "
                 f"f1={val_metrics['f1_macro']:.4f}"
             )
-            scheduler.step()
+            if epoch < epochs:
+                scheduler.step()
             if patience_counter >= config.EARLY_STOPPING_PATIENCE:
                 print(
                     f"Dừng sớm sau {patience_counter} epoch không cải thiện val F1."
