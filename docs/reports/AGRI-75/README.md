@@ -2,6 +2,28 @@
 
 Tài liệu hiện tại: [kế hoạch CI/CD](../../plans/ci_cd_plan.md) và [báo cáo unit/integration test](unit_integration_test_report.md).
 
+## Cập nhật ngày 2026-10-02 — Dependency và commit gate
+
+Đã xóa `.github/dependabot.yml` theo yêu cầu giữ phiên bản dependency hiện tại.
+Các PR Dependabot đã mở không tự đóng; thiết lập security updates trên GitHub
+không được thay đổi trong lần sửa này.
+
+Commit gate dùng mốc cố định `727aa59f5b1ded338df09ba338ca13b45c12a864`
+(HEAD hiện tại của AGRI-75): bỏ qua commit đó và toàn bộ tổ tiên của nó,
+bao gồm toàn bộ commit nội dung đã có trên `main` local. Commit mới
+trong PR hoặc push vẫn phải theo Conventional Commits và có mã Jira. Commit
+merge được bỏ qua, nhưng commit nội dung được đưa vào qua merge vẫn được kiểm
+tra. Chạy thủ công kiểm tra toàn bộ commit nội dung ngoài mốc; không tăng mốc
+ở các lần merge sau. Commit trên nhánh cũ chưa nằm trong lịch sử của mốc vẫn
+được kiểm tra; commit cũ bị squash/rebase thành SHA mới cũng được kiểm tra.
+
+Nguồn: [workflow](../../../.github/workflows/ci.yml),
+[script chọn và kiểm tra commit](../../../.github/scripts/lint_commits.cjs).
+Kiểm chứng cục bộ: `node --test .github/scripts/test_lint_commits.cjs` pass,
+bao gồm lịch sử cũ, commit mới đúng/sai chuẩn, push tạo nhánh, merge và mốc
+không tồn tại. Chưa chạy workflow trên GitHub; actionlint qua Docker bị chặn
+do không truy cập được daemon. Các gate test/build/coverage/secret scan giữ nguyên.
+
 ## Cập nhật ngày 2026-10-02 — Secret scan
 
 Chủ tài khoản xác nhận khóa Cloudinary đã thu hồi. Đã làm sạch lịch sử và

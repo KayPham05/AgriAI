@@ -17,6 +17,9 @@ jobs:
   commitlint:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      # History through the current checkout is exempt; do not advance this marker.
+      COMMITLINT_BASELINE: 727aa59f5b1ded338df09ba338ca13b45c12a864
     steps:
       - uses: actions/checkout@v7
         with:
@@ -30,26 +33,13 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - name: Validate PR commits
-        if: github.event_name == 'pull_request'
+      - name: Validate new content commits
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: pnpm run commitlint --from "$BASE_SHA" --to "$HEAD_SHA" --verbose
-      - name: Validate pushed commits
-        if: github.event_name == 'push'
-        env:
-          BEFORE_SHA: ${{ github.event.before }}
-          HEAD_SHA: ${{ github.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          if [[ "$BEFORE_SHA" == "0000000000000000000000000000000000000000" ]]; then
-            pnpm run commitlint --last --verbose
-          else
-            pnpm run commitlint --from "$BEFORE_SHA" --to "$HEAD_SHA" --verbose
-          fi
-      - name: Validate current commit on manual runs
-        if: github.event_name == 'workflow_dispatch'
-        run: pnpm run commitlint --last --verbose
+          node --test .github/scripts/test_lint_commits.cjs
+          node .github/scripts/lint_commits.cjs
 
   secret-scan:
     runs-on: ubuntu-latest
