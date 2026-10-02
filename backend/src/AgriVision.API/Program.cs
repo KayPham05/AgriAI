@@ -32,8 +32,11 @@ builder.Services.AddCors(options =>
 });
 
 // 3. Configure JWT Authentication
-var jwtSecret = builder.Configuration["JwtSettings:Secret"]
-    ?? "AgriVisionAI_Super_Secret_Key_For_JWT_Authentication_987654321!";
+var jwtSecret = builder.Configuration["JwtSettings:Secret"];
+if (string.IsNullOrWhiteSpace(jwtSecret) || Encoding.UTF8.GetByteCount(jwtSecret) < 32)
+{
+    throw new InvalidOperationException("JwtSettings:Secret must be at least 32 UTF-8 bytes.");
+}
 var jwtIssuer = builder.Configuration["JwtSettings:Issuer"] ?? "AgriVisionAPI";
 var jwtAudience = builder.Configuration["JwtSettings:Audience"] ?? "AgriVisionApp";
 
@@ -66,7 +69,7 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "AgriVision AI API",
         Version = "v1",
-        Description = "ASP.NET Core Web API (.NET 9) Clean Architecture for AgriVision AI Plant Leaf Disease Classification."
+        Description = "ASP.NET Core Web API for AgriVision AI Plant Leaf Disease Classification."
     });
 
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -101,7 +104,7 @@ var app = builder.Build();
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
 // 6. HTTP Pipeline
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Enabled"))
 {
     app.UseSwagger();
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "AgriVision AI API v1"));
@@ -119,18 +122,10 @@ app.MapGet("/", () => Results.Redirect("/swagger"));
 
 app.MapControllers();
 
-// 7. Seed Database Data
+// 7. Migrate and seed database before accepting requests.
 using (var scope = app.Services.CreateScope())
 {
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    try
-    {
-        await DbInitializer.SeedAsync(scope.ServiceProvider);
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "An error occurred while seeding the database.");
-    }
+    await DbInitializer.SeedAsync(scope.ServiceProvider);
 }
 
 app.Run();
