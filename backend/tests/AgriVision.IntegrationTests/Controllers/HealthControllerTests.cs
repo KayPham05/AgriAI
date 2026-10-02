@@ -26,7 +26,18 @@ public class HealthControllerTests : IClassFixture<AgriVisionFactory>
         using var content = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var checks = content.RootElement.GetProperty("checks");
         checks.GetProperty("database").GetString().Should().Be("Healthy");
-        checks.GetProperty("aiService").GetString().Should().Be("Unreachable");
+        checks.TryGetProperty("aiService", out _).Should().BeFalse();
+        content.RootElement.GetProperty("status").GetString().Should().Be("Healthy");
+    }
+
+    [Fact]
+    public async Task GetDependencies_ShouldReportUnavailableAi()
+    {
+        var response = await _client.GetAsync("/api/health/deps");
+
+        response.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+        using var content = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        content.RootElement.GetProperty("checks").GetProperty("aiService").GetString().Should().Be("Unreachable");
         content.RootElement.GetProperty("status").GetString().Should().Be("Degraded");
     }
 }

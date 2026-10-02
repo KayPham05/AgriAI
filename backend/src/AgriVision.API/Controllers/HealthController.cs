@@ -35,13 +35,25 @@ public class HealthController : ControllerBase
             isDbConnected = false;
         }
 
+        var healthResponse = new
+        {
+            Status = isDbConnected ? "Healthy" : "Degraded",
+            Timestamp = DateTime.UtcNow,
+            Checks = new { Database = isDbConnected ? "Healthy" : "Unhealthy" }
+        };
+        return isDbConnected ? Ok(healthResponse) : StatusCode(503, healthResponse);
+    }
+
+    [HttpGet("deps")]
+    public async Task<IActionResult> CheckDependencies(CancellationToken cancellationToken)
+    {
         var isAiServiceHealthy = false;
         var aiBaseUrl = _configuration["AiService:BaseUrl"] ?? "http://localhost:8000";
         try
         {
-            var client = _httpClientFactory.CreateClient();
+            using var client = _httpClientFactory.CreateClient();
             client.Timeout = TimeSpan.FromSeconds(3);
-            var response = await client.GetAsync($"{aiBaseUrl}/health", cancellationToken);
+            using var response = await client.GetAsync($"{aiBaseUrl.TrimEnd('/')}/health", cancellationToken);
             isAiServiceHealthy = response.IsSuccessStatusCode;
         }
         catch
@@ -49,17 +61,17 @@ public class HealthController : ControllerBase
             isAiServiceHealthy = false;
         }
 
-        var status = (isDbConnected && isAiServiceHealthy) ? "Healthy" : "Degraded";
+        var status = isAiServiceHealthy ? "Healthy" : "Degraded";
 
-        return Ok(new
+        var healthResponse = new
         {
             Status = status,
             Timestamp = DateTime.UtcNow,
             Checks = new
             {
-                Database = isDbConnected ? "Healthy" : "Unhealthy",
                 AiService = isAiServiceHealthy ? "Healthy" : "Unreachable"
             }
-        });
+        };
+        return status == "Healthy" ? Ok(healthResponse) : StatusCode(503, healthResponse);
     }
 }
