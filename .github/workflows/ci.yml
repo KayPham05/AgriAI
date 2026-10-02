@@ -61,7 +61,7 @@ jobs:
       - name: Scan Git history for secrets
         run: |
           mkdir -p .cache/secret-scan
-          docker run --rm --volume "$PWD:/repo:ro" --volume "$PWD/.cache/secret-scan:/reports" ghcr.io/gitleaks/gitleaks:v8.24.2 git /repo --log-opts="--all" --no-banner --redact --verbose --report-format json --report-path /reports/gitleaks.json
+          docker run --rm --volume "$PWD:/repo:ro" --volume "$PWD/.cache/secret-scan:/reports" ghcr.io/gitleaks/gitleaks:v8.24.2 git /repo --log-opts="--all" --gitleaks-ignore-path /repo/.gitleaksignore --no-banner --redact --verbose --report-format json --report-path /reports/gitleaks.json
       - uses: actions/upload-artifact@v7
         if: always()
         with:

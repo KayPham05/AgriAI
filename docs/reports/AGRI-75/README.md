@@ -2,6 +2,13 @@
 
 Tài liệu hiện tại: [kế hoạch CI/CD](../../plans/ci_cd_plan.md) và [báo cáo unit/integration test](unit_integration_test_report.md).
 
+## Cập nhật ngày 2026-10-02 — Secret scan
+
+Đã xác minh và loại trừ đúng bốn fingerprint của token minh họa bị cắt trong
+tài liệu cũ. Lịch sử nhánh AGRI-75 còn ba finding; scan mọi ref local còn 27
+finding. **Secret gate vẫn fail**; credential cần chủ tài khoản xác minh/đổi
+và lịch sử Git cần xử lý có phối hợp. Xem [phân loại và bằng chứng kiểm chứng](secret_scan_triage.md).
+
 ## Cập nhật ngày 2026-10-01
 
 Backend dùng .NET 9: unit 18/18 và integration 9/9 pass. Đã tách health DB/AI,
