@@ -59,7 +59,15 @@ jobs:
         with:
           fetch-depth: 0
       - name: Scan Git history for secrets
-        run: docker run --rm --volume "$PWD:/repo:ro" ghcr.io/gitleaks/gitleaks:v8.24.2 git /repo --log-opts="--all" --no-banner --redact
+        run: |
+          mkdir -p .cache/secret-scan
+          docker run --rm --volume "$PWD:/repo:ro" --volume "$PWD/.cache/secret-scan:/reports" ghcr.io/gitleaks/gitleaks:v8.24.2 git /repo --log-opts="--all" --no-banner --redact --verbose --report-format json --report-path /reports/gitleaks.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: secret-scan-results
+          path: .cache/secret-scan/gitleaks.json
+          retention-days: 7
 
   compose-smoke:
     runs-on: ubuntu-latest
