@@ -16,6 +16,3 @@ services:
   backend:
     environment:
       AiService__BaseUrl: http://ai-health:8000
-    depends_on:
-      ai-health:
-        condition: service_healthy

@@ -74,6 +74,8 @@ dist/
 /.cache/
 
 # Secrets and credentials
+# Keep environment-specific .NET settings local; appsettings.json stays tracked.
+/backend/src/AgriVision.API/appsettings.*.json
 .env
 .env.*
 !.env.example
@@ -81,6 +83,9 @@ secrets/
 *.pem
 *.key
 *.p12
+*.pfx
+*.jks
+*.keystore
 *service-account*.json
 
 # Editor and operating system files
@@ -113,3 +118,4 @@ backend/.api-*.log
 *.sln.docstates
 *.userprefs
 *.suo
+appsettings.Development.json

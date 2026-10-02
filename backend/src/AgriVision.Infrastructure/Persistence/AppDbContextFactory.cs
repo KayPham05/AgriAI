@@ -22,7 +22,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         var configuration = builder.Build();
 
         var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? "Host=localhost;Port=5432;Database=agrivision_db;Username=agrivision_user;Password=agrivision_pass";
+            ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is required.");
 
         optionsBuilder.UseNpgsql(connectionString);
 

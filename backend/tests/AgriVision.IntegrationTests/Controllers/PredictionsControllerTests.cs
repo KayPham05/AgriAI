@@ -1,12 +1,16 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using AgriVision.Application.Common.Interfaces.Services;
+using AgriVision.Infrastructure.Services;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using AgriVision.Application.DTOs.Prediction;
 using AgriVision.Infrastructure.Persistence;
 using AgriVision.IntegrationTests.Fixtures;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace AgriVision.IntegrationTests.Controllers;
 
@@ -66,6 +70,24 @@ public class PredictionsControllerTests : IClassFixture<AgriVisionFactory>
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var responseBody = await response.Content.ReadAsStringAsync();
         responseBody.Should().Contain("Invalid file extension");
+    }
+
+    [Fact]
+    public async Task CreatePrediction_ShouldReturn503_WhenAiIsUnavailable()
+    {
+        using var application = _factory.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IPlantDiseasePredictor>();
+                services.AddHttpClient<IPlantDiseasePredictor, FastApiPlantDiseasePredictor>();
+            }));
+        using var client = application.CreateClient();
+        using var request = CreateImageRequest("leaf.jpg", "image/jpeg");
+
+        var response = await client.PostAsync("/api/predictions", request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("AI service is unavailable");
     }
 
     private static MultipartFormDataContent CreateImageRequest(string fileName, string contentType)

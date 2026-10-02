@@ -19,8 +19,11 @@ public class JwtTokenGenerator : IJwtTokenGenerator
 
     public string GenerateToken(User user)
     {
-        var secret = _configuration["JwtSettings:Secret"] 
-            ?? "AgriVisionAI_Super_Secret_Key_For_JWT_Authentication_987654321!";
+        var secret = _configuration["JwtSettings:Secret"];
+        if (string.IsNullOrWhiteSpace(secret) || Encoding.UTF8.GetByteCount(secret) < 32)
+        {
+            throw new InvalidOperationException("JwtSettings:Secret must be at least 32 UTF-8 bytes.");
+        }
         var issuer = _configuration["JwtSettings:Issuer"] ?? "AgriVisionAPI";
         var audience = _configuration["JwtSettings:Audience"] ?? "AgriVisionApp";
         var expiryMinutesStr = _configuration["JwtSettings:ExpiryMinutes"] ?? "1440";

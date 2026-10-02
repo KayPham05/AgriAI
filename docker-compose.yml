@@ -1,17 +1,17 @@
 services:
   postgres:
-    build: ./docker/postgres
+    image: postgres:16-alpine
     restart: always
     environment:
       POSTGRES_DB: agrivision_db
       POSTGRES_USER: agrivision_user
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     ports:
-      - "${POSTGRES_HOST_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD-SHELL", "PGPASSWORD=\"$$POSTGRES_PASSWORD\" psql -X -w -h postgres -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\" -v ON_ERROR_STOP=1 -qAtc 'SELECT 1' | grep -qx 1"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -20,9 +20,16 @@ services:
     build: ./backend
     environment:
       ASPNETCORE_ENVIRONMENT: Production
+      Swagger__Enabled: "true"
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=agrivision_db;Username=agrivision_user;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       JwtSettings__Secret: ${JWT_SECRET:?Set JWT_SECRET in .env}
       AiService__BaseUrl: ${AI_SERVICE_URL:-http://host.docker.internal:8000}
+      AiService__TimeoutSeconds: ${AI_TIMEOUT_SECONDS:-15}
+      Cloudinary__CloudName: ${CLOUDINARY_CLOUD_NAME:-}
+      Cloudinary__ApiKey: ${CLOUDINARY_API_KEY:-}
+      Cloudinary__ApiSecret: ${CLOUDINARY_API_SECRET:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${API_HOST_PORT:-5080}:8080"
     volumes:

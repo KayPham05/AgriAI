@@ -16,7 +16,7 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
         var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? "Host=localhost;Port=5432;Database=agrivision_db;Username=agrivision_user;Password=agrivision_pass";
+            ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is required.");
 
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(connectionString));
@@ -35,7 +35,8 @@ public static class DependencyInjection
         services.AddScoped<IImageStorage, CloudinaryImageStorage>();
 
         // Register AI Disease Predictor HTTP Client & Service
-        services.AddHttpClient<IPlantDiseasePredictor, FastApiPlantDiseasePredictor>();
+        services.AddHttpClient<IPlantDiseasePredictor, FastApiPlantDiseasePredictor>(client =>
+            client.Timeout = TimeSpan.FromSeconds(configuration.GetValue("AiService:TimeoutSeconds", 15)));
 
         return services;
     }

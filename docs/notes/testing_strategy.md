@@ -7,7 +7,7 @@
 > Đối chiếu với `main` commit `65082f6`, cập nhật ngày 2026-09-27. Bảng test
 > case là thiết kế kiểm thử; trạng thái `cần bổ sung` không có nghĩa là test đã pass.
 
-## 1. Bằng chứng hiện tại
+## 1. Bằng chứng lịch sử ngày 2026-09-27
 
 | Khu vực | Có trong repo | Kết quả kiểm tra tại máy này |
 |---|---|---|
@@ -32,7 +32,7 @@ có **số test được chạy**. Exit code 0 với chỉ thông báo build th�
 | Contract AI | Trường JSON, đơn vị confidence, canonical label, top-k, lỗi checkpoint | Checkpoint và ảnh fixture được version hóa bên ngoài Git; test rõ khi thiếu. |
 | Frontend | Validate ảnh, loading/error/result, lịch sử | Mock API phù hợp hợp đồng đã chốt. |
 | End-to-end | Một ảnh qua CLI → AI HTTP → .NET → web/DB | Môi trường staging với checkpoint xác nhận; kiểm tra cùng mapping và kết quả. |
-| AI evaluation | Macro-F1, per-class recall/support, confusion matrix | Manifest v1.3 cố định; chọn bằng validation, test sau khi chốt. |
+| AI evaluation | Macro-F1, per-class recall/support, confusion matrix | Manifest v1.4 cố định cho run hiện hành; xem báo cáo AGRI-21 về checkpoint và metric nội bộ. |
 
 ## 3. Test case ưu tiên
 
@@ -41,15 +41,15 @@ có **số test được chạy**. Exit code 0 với chỉ thông báo build th�
 | TC-01 | Tải JPG/PNG hợp lệ | API gọi AI thật, ánh xạ đúng lớp, lưu một bản ghi và trả kết quả đúng contract. | Cần bổ sung E2E |
 | TC-02 | Thiếu file, file rỗng, định dạng sai | 4xx; không upload, không gọi AI, không lưu DB. | Cần bổ sung |
 | TC-03 | File vượt giới hạn hoặc nội dung không phải ảnh dù đuôi hợp lệ | 4xx; không lưu ảnh/bản ghi. | Cần bổ sung |
-| TC-04 | AI service timeout, lỗi HTTP hoặc checkpoint thiếu | Trả lỗi dịch vụ rõ ràng; không tạo dự đoán giả hay bản ghi thành công. | Cần bổ sung; code hiện có fallback giả |
-| TC-05 | AI trả `class_index`/nhãn không có trong mapping DB | Trả lỗi contract/mapping; không chọn lớp đầu tiên để thay thế. | Cần bổ sung; code hiện có fallback |
+| TC-04 | AI service timeout, lỗi HTTP hoặc checkpoint thiếu | Trả lỗi dịch vụ rõ ràng; không tạo dự đoán giả hay bản ghi thành công. | Adapter AI hiện trả lỗi; cần kiểm thử xuyên tầng |
+| TC-05 | AI trả `class_index`/nhãn không có trong mapping DB | Trả lỗi contract/mapping; không chọn lớp đầu tiên để thay thế. | Cần bổ sung; `PredictionService` vẫn fallback sang lớp đầu tiên |
 | TC-06 | AI trả confidence ngoài khoảng đã chốt hoặc top-k không nhất quán | Từ chối phản hồi và ghi log an toàn. | Cần bổ sung |
 | TC-07 | Lưu DB lỗi sau khi upload ảnh | Không trả thành công; xử lý ảnh mồ côi theo chính sách đã chốt. | Cần bổ sung |
 | TC-08 | Người A đọc/xóa lịch sử của người B | Bị từ chối; dữ liệu của B giữ nguyên. | Cần bổ sung integration |
 | TC-09 | Migration + seed trên DB trống | Schema hợp lệ, mapping DB khớp checkpoint triển khai. | Cần bổ sung |
 | TC-10 | Cùng ảnh qua CLI và HTTP AI | Canonical label, preprocessing và confidence khớp trong sai số số học đã định. | Cần bổ sung |
 | TC-11 | Web nhận lỗi 4xx/5xx, mạng ngắt, hủy upload | Hiện trạng thái/lời báo đúng; không hiển thị kết quả cũ như kết quả mới. | Cần bổ sung frontend |
-| TC-12 | Data v1.3 train/val/test | Không chia lại, không trùng path/group xuyên split; nhãn checkpoint đúng manifest. | Có test một phần; cần chạy full suite |
+| TC-12 | Data v1.4 train/val/test | Không chia lại, không trùng path/group xuyên split; nhãn checkpoint đúng manifest. | Có báo cáo AGRI-21; cần đối chiếu khi chạy lại |
 
 ## 4. Branch coverage và gate đề xuất
 
