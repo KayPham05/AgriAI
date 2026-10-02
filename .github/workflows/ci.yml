@@ -14,6 +14,53 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  commitlint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Validate PR commits
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: pnpm run commitlint --from "$BASE_SHA" --to "$HEAD_SHA" --verbose
+      - name: Validate pushed commits
+        if: github.event_name == 'push'
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          if [[ "$BEFORE_SHA" == "0000000000000000000000000000000000000000" ]]; then
+            pnpm run commitlint --last --verbose
+          else
+            pnpm run commitlint --from "$BEFORE_SHA" --to "$HEAD_SHA" --verbose
+          fi
+      - name: Validate current commit on manual runs
+        if: github.event_name == 'workflow_dispatch'
+        run: pnpm run commitlint --last --verbose
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Scan Git history for secrets
+        run: docker run --rm --volume "$PWD:/repo:ro" ghcr.io/gitleaks/gitleaks:v8.24.2 git /repo --log-opts="--all" --no-banner --redact
+
   compose-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -41,7 +88,14 @@ jobs:
           docker compose up --build --detach --wait --wait-timeout 180
           docker compose exec -T postgres pg_isready -U agrivision_user -d agrivision_db
           curl --fail --silent --show-error --max-time 15 http://127.0.0.1:5080/api/health > .cache/compose/api-health.json
-          python3 -c 'import json,sys; h=json.load(sys.stdin); assert h["status"] == "Healthy" and h["checks"]["database"] == "Healthy" and h["checks"]["aiService"] == "Healthy", h' < .cache/compose/api-health.json
+          python3 -c 'import json,sys; h=json.load(sys.stdin); assert h["status"] == "Healthy" and h["checks"]["database"] == "Healthy", h' < .cache/compose/api-health.json
+          curl --fail --silent --show-error --max-time 15 http://127.0.0.1:5080/api/health/deps > .cache/compose/ai-health.json
+          python3 -c 'import json,sys; assert json.load(sys.stdin)["checks"]["aiService"] == "Healthy"' < .cache/compose/ai-health.json
+          docker compose exec -T backend sh -c 'test -w /app/wwwroot/uploads/predictions'
+          docker compose stop ai-health
+          test "$(curl --silent --show-error --max-time 15 -o .cache/compose/ai-unavailable.json -w '%{http_code}' http://127.0.0.1:5080/api/health/deps)" = 503
+          curl --fail --silent --show-error --max-time 15 http://127.0.0.1:5080/api/health > .cache/compose/api-without-ai.json
+          python3 -c 'import json,sys; assert json.load(sys.stdin)["status"] == "Healthy"' < .cache/compose/api-without-ai.json
           curl --fail --silent --show-error --max-time 15 http://127.0.0.1:3000/ > .cache/compose/frontend.html
           grep -q 'LeafAI' .cache/compose/frontend.html
           curl --fail --silent --show-error --max-time 15 http://127.0.0.1:3000/api/health > .cache/compose/proxy-health.json
@@ -161,7 +215,7 @@ jobs:
 
   ci-gate:
     if: always()
-    needs: [compose-smoke, python-tests, backend-tests, frontend]
+    needs: [commitlint, secret-scan, compose-smoke, python-tests, backend-tests, frontend]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
