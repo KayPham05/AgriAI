@@ -1,13 +1,20 @@
 # AGRI-75 — Phân loại finding secret scan ngày 2026-10-02
 
-## Kết luận
+## Trạng thái sau khi xử lý lịch sử
+
+Chủ tài khoản xác nhận khóa Cloudinary đã thu hồi. Lịch sử của bốn nhánh đã
+được cập nhật; `.gitleaksignore` được xóa vì token mẫu đã thay bằng placeholder
+trong lịch sử. Xem [báo cáo làm sạch lịch sử](secret_history_cleanup.md).
+Các số liệu dưới đây ghi nhận lần phân loại trước khi viết lại lịch sử.
+
+## Kết luận trước khi viết lại lịch sử
 
 Secret gate **chưa pass**. Log GitHub Actions do người dùng cung cấp có 7 finding.
 Bốn finding là cùng một token minh họa bị cắt; ba finding còn lại cần chủ tài
 khoản xác minh và xử lý lịch sử Git. Không ghi giá trị credential trong báo cáo.
 
 Nguồn cấu hình: [workflow CI](../../../.github/workflows/ci.yml),
-[ngoại lệ theo fingerprint](../../../.gitleaksignore) và
+ngoại lệ theo fingerprint tại commit trước khi làm sạch lịch sử và
 [cấu hình API hiện tại](../../../backend/src/AgriVision.API/appsettings.json).
 
 ## Phân loại 7 finding trong log CI

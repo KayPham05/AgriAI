@@ -4,6 +4,14 @@ Tài liệu hiện tại: [kế hoạch CI/CD](../../plans/ci_cd_plan.md) và [b
 
 ## Cập nhật ngày 2026-10-02 — Secret scan
 
+Chủ tài khoản xác nhận khóa Cloudinary đã thu hồi. Đã làm sạch lịch sử và
+force-push có lease cho `main`, AGRI-45, AGRI-57 và AGRI-75. Clone mới từ GitHub
+quét toàn bộ chín nhánh, không dùng ignore: **0 finding, exit 0**. Năm nhánh
+khác giữ nguyên SHA. Chưa xác nhận toàn bộ CI xanh.
+Xem [báo cáo làm sạch lịch sử và phạm vi còn lại](secret_history_cleanup.md).
+
+Phân loại trước khi viết lại lịch sử:
+
 Đã xác minh và loại trừ đúng bốn fingerprint của token minh họa bị cắt trong
 tài liệu cũ. Lịch sử nhánh AGRI-75 còn ba finding; scan mọi ref local còn 27
 finding. **Secret gate vẫn fail**; credential cần chủ tài khoản xác minh/đổi
