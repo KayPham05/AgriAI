@@ -16,7 +16,7 @@ ai/tasks/agri_21/               Offline dataset scripts and their tests
 backend/src/                    ASP.NET Core API, application, domain, infrastructure
 backend/tests/                  .NET unit and PostgreSQL Testcontainers integration tests
 frontend/src/                   Next.js pages, views, services, and Vitest tests
-docker/                         PostgreSQL image setup
+docker-compose.yml              Web, API, and PostgreSQL for local development
 .github/workflows/ci.yml        CI jobs and coverage gates
 docs/                           Plans, technical reports, task logs, and notes
 experiments/                    Versioned experiment records under EXP-XXX
@@ -24,7 +24,7 @@ experiments/                    Versioned experiment records under EXP-XXX
 .agents/skills/                 Reusable agent skills
 ```
 
-- Root `docker-compose.yml` starts web, API, and PostgreSQL; `docker-compose.ci.yml` adds an AI health mock. `backend/docker-compose.yml` is a separate PostgreSQL setup for backend development.
+- Root `docker-compose.yml` starts web, API, and PostgreSQL; `docker-compose.ci.yml` adds an AI health mock. For PostgreSQL alone, run `docker compose up -d postgres` from the repository root.
 - Keep datasets, checkpoints, generated outputs, caches, and secrets out of Git.
 
 ## Conventions
