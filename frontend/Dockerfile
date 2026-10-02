@@ -1,4 +1,4 @@
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 RUN npm install -g pnpm@10.34.5
 COPY package.json pnpm-lock.yaml ./
@@ -9,7 +9,7 @@ ENV API_PROXY_TARGET=$API_PROXY_TARGET
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm run build
 
-FROM node:24-alpine AS runtime
+FROM node:26-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
