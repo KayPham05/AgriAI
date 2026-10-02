@@ -22,7 +22,8 @@ PostgreSQL dùng trực tiếp image `postgres:16-alpine`; schema do EF Core mig
 `/api/health/deps` giám sát AI. Timeout dự đoán mặc định 15 giây, chưa retry POST.
 Compose smoke tắt AI mock để kiểm tra API/web còn hoạt động và kiểm tra quyền
 ghi uploads của backend. HTTP contract stub nằm trong integration suite, không
-được xem là kiểm chứng model thật. Dependabot kiểm tra dependency hàng tuần;
+được xem là kiểm chứng model thật. Đã bỏ cấu hình Dependabot ngày 2026-10-02
+theo yêu cầu giữ phiên bản dependency hiện tại;
 chưa thêm vulnerability/image scan gate hay coverage ratchet ở giai đoạn setup.
 
 Chi tiết ca kiểm thử: [báo cáo unit/integration](../reports/AGRI-75/unit_integration_test_report.md). Cấu hình và artifact: [báo cáo coverage](../reports/AGRI-75/ci_branch_coverage.md).
