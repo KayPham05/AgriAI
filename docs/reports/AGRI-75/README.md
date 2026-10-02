@@ -2,6 +2,17 @@
 
 Tài liệu hiện tại: [kế hoạch CI/CD](../../plans/ci_cd_plan.md) và [báo cáo unit/integration test](unit_integration_test_report.md).
 
+## Cập nhật ngày 2026-10-01
+
+Backend dùng .NET 9: unit 18/18 và integration 9/9 pass. Đã tách health DB/AI,
+đặt timeout dự đoán, bổ sung HTTP contract stub và kiểm tra API trả 503 khi AI
+không truy cập được. Compose smoke xác nhận web/API còn hoạt động khi tắt AI;
+uploads có quyền ghi dưới user thường. Chưa đo lại coverage hoặc chạy GitHub Actions.
+
+Gitleaks quét lịch sử 65 commit, phát hiện 31 finding cần phân loại/xử lý;
+secret gate chưa pass. Dependabot đã thêm; chưa triển khai thêm scanner gate,
+coverage ratchet hay CD. Chi tiết kiểm chứng tại [kế hoạch CI/CD](../../plans/ci_cd_plan.md).
+
 ## Cập nhật ngày 2026-09-29
 
 **DoD chưa hoàn thành:** cấu hình CI/Docker đã được kiểm chứng cục bộ; các suite
@@ -33,7 +44,7 @@ ngày 2026-09-29 liên kết phía trên.
 
 | Hạng mục | Hiện trạng | Nguồn |
 |---|---|---|
-| Khởi động dịch vụ | Compose build và khởi động PostgreSQL, AI health stub, backend, frontend theo điều kiện healthy. | [`docker-compose.yml`](../../../docker-compose.yml), [`backend/Dockerfile`](../../../backend/Dockerfile), [`frontend/Dockerfile`](../../../frontend/Dockerfile), [`docker/postgres/Dockerfile`](../../../docker/postgres/Dockerfile) |
+| Khởi động dịch vụ | Backend chờ PostgreSQL healthy; frontend chờ backend healthy. AI health stub chạy độc lập trong Compose CI. `/api/health` kiểm tra DB, `/api/health/deps` kiểm tra AI. PostgreSQL dùng image chính thức; image tùy biến được nhắc ở báo cáo gốc đã bỏ. | [`docker-compose.yml`](../../../docker-compose.yml), [`backend/Dockerfile`](../../../backend/Dockerfile), [`frontend/Dockerfile`](../../../frontend/Dockerfile) |
 | CI | Workflow PR và push `main` chạy `service-health` trước `python-smoke`, `dotnet-unit`, `dotnet-integration`, `frontend`. | [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) |
 | Test .NET | Unit test xuất TRX và Cobertura; integration test dùng PostgreSQL Testcontainers. Script kiểm tra có test thực chạy và có dữ liệu branch coverage. | [`backend/tests/`](../../../backend/tests/), [`check_dotnet_test_results.py`](../../../.github/scripts/check_dotnet_test_results.py) |
 | Python và frontend | CI chạy hai module Python độc lập dependency; frontend chạy `pnpm lint` (`tsc --noEmit`) và `pnpm build`. | [`ci.yml`](../../../.github/workflows/ci.yml), [`frontend/package.json`](../../../frontend/package.json) |
