@@ -2,28 +2,28 @@
 
 > Chuyển cấu trúc từ `Testing Document/Copy of Test viewpoint.md` sang đúng
 > phạm vi AgriVision. Không chuyển trạng thái Done hoặc kết quả của dự án mẫu.
-> Trạng thái sản phẩm dựa trên `main` commit `65082f6` và xác nhận của nhóm
-> ngày 2026-09-27 rằng model chưa cho kết quả đạt yêu cầu.
+> Các case là thiết kế; trạng thái dưới đây được đối chiếu với mã hiện tại.
+> Mã FR/NFR tham chiếu [đặc tả yêu cầu](../system_requirements.md).
 
 ## Cách dùng
 
 - `Hiện có`: có mã tương ứng; chưa đồng nghĩa chạy test pass.
 - `Mock`: chỉ kiểm thử hành vi demo, không báo đạt chức năng dự đoán thật.
 - `Chờ`: chưa có phụ thuộc để chạy; testcase đặt `Blocked` kèm lý do.
-- Mỗi viewpoint gắn yêu cầu ở [kế hoạch phát triển](../development_roadmap.md),
+- Mỗi viewpoint gắn yêu cầu ở [đặc tả](../system_requirements.md),
   test case ở [kế hoạch test](testing_strategy.md), và bằng chứng khi chạy.
 
 | ID | Khu vực / yêu cầu | Viewpoint cần xác nhận | Trạng thái sản phẩm | Ưu tiên |
 |---|---|---|---|---|
-| VP-DATA-01 | Dataset, NFR-01 | Manifest v1.3 cố định; split/group/mapping không bị tạo lại lúc train. | Có pipeline; full suite chưa chạy ở môi trường hiện tại. | Cao |
-| VP-ML-01 | Train/evaluate, NFR-01 | Metric validation, chọn checkpoint, test set đóng, nhãn và preprocessing được version hóa. | Chờ model đạt gate; chưa có kết quả được xác nhận. | Cao |
-| VP-API-01 | Upload, FR-01 | File thiếu/rỗng, sai loại, quá giới hạn, nội dung hỏng không gọi AI/lưu DB. | API có validate đuôi file; cần kiểm tra giới hạn và nội dung. | Cao |
-| VP-API-02 | Predict, FR-02/03 | AI timeout/lỗi, response sai, class không tồn tại: không trả/lưu kết quả giả. | Có fallback mock; chưa đạt hành vi mục tiêu. | Rất cao |
-| VP-API-03 | Auth/history, FR-04/05 | Đăng nhập, phân quyền xem/xóa, phân trang, tách dữ liệu từng user. | Có API và vài test; chưa xác nhận integration. | Cao |
-| VP-DB-01 | DB, FR-03 | Migration, seed canonical label, transaction và ảnh mồ côi khi lỗi. | Có migration/seed minh họa; mapping chưa khớp checkpoint. | Cao |
-| VP-WEB-01 | Tải ảnh, FR-01 | Chọn/kéo thả, preview, lỗi file, hủy request, loading. | Có UI React/Vite demo; chưa là Next.js. | Trung bình |
-| VP-WEB-02 | Kết quả/lịch sử, FR-02/04 | Response thật, thông báo lỗi, không giữ kết quả cũ, quyền lịch sử. | UI và localStorage demo; chờ contract/API. | Trung bình |
-| VP-E2E-01 | Xuyên tầng, FR-02/03 | Cùng ảnh qua CLI–AI HTTP–API–web có cùng nhãn; DB lưu đúng version. | Chờ checkpoint, service AI và contract. | Cao sau model gate |
+| VP-DATA-01 | Dataset, NFR-05 | Manifest v1.4 cố định; split/group/mapping không bị tạo lại lúc train. | Có pipeline và báo cáo AGRI-21; kiểm thử HTTP với model thật còn chờ. | Cao |
+| VP-ML-01 | Train/evaluate, NFR-05 | Metric validation, chọn checkpoint, test set đóng, nhãn và preprocessing được version hóa. | Có kết quả nội bộ v1.4; chưa kiểm tra xuyên tầng. | Cao |
+| VP-API-01 | Upload, FR-04/NFR-02 | File thiếu/rỗng, sai loại, quá giới hạn, nội dung hỏng không gọi AI/lưu DB. | API kiểm tra file rỗng/đuôi; chưa giới hạn dung lượng hoặc kiểm tra nội dung. | Cao |
+| VP-API-02 | Predict, FR-05/06 | AI timeout/lỗi, response sai, class không tồn tại: không trả/lưu kết quả giả. | Adapter AI báo lỗi; mapping DB vẫn có fallback sang lớp đầu tiên. | Rất cao |
+| VP-API-03 | Auth/history, FR-02/07 | Đăng nhập, phân quyền xem/xóa, phân trang, tách dữ liệu từng user. | Có API/test; GET theo ID chưa kiểm tra chủ sở hữu. | Cao |
+| VP-DB-01 | DB, FR-06 | Migration, seed canonical label, transaction và ảnh mồ côi khi lỗi. | Có migration/seed minh họa; mapping chưa khớp checkpoint v1.4. | Cao |
+| VP-WEB-01 | Tải ảnh, FR-04 | Chọn/kéo thả, preview, lỗi file, hủy request, loading. | Có Next.js và Vitest; cần kiểm tra theo policy ảnh thống nhất. | Trung bình |
+| VP-WEB-02 | Kết quả/lịch sử, FR-05/07 | Response thật, thông báo lỗi, không giữ kết quả cũ, quyền lịch sử. | UI có test mock; E2E với AI thật còn chờ. | Trung bình |
+| VP-E2E-01 | Xuyên tầng, FR-05/06 | Cùng ảnh qua CLI–AI HTTP–API–web có cùng nhãn; DB lưu đúng version. | Chờ FastAPI thật và contract. | Cao sau model gate |
 
 ## Quy tắc giao việc
 
