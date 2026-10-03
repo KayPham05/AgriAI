@@ -58,3 +58,11 @@ Giữ tài liệu đề xuất, ERD và các thay đổi không liên quan; khô
 - Subject dự kiến: `docs(docs): AGRI-76 document current system analysis and design` và `docs(docs): AGRI-76 align test documentation with current contracts`.
 - Không thêm `.agents/skills/devops-iac-engineer/`, không thay đổi Git config, không bỏ qua hooks, không rewrite history hoặc push.
 - Kiểm tra trước commit: 15 Markdown (gồm README root), 117 liên kết nội bộ/heading hợp lệ, hàng rào code cân bằng; SVG hợp lệ XML; `git diff --check` đạt. Hai subject dự kiến đều qua commitlint của repo với 0 lỗi/cảnh báo. Không chạy lại runtime tests vì chỉ thay đổi tài liệu.
+
+## 7. Bổ sung skill theo yêu cầu tiếp theo
+
+- Hai commit tài liệu đã tạo: `0b90406` (phân tích/thiết kế) và `6b29cfb` (tài liệu kiểm thử); skill ban đầu được giữ ngoài hai commit đó.
+- Người dùng yêu cầu bổ sung phần thiếu của [devops-iac-engineer](../../.agents/skills/devops-iac-engineer/README.md), sau đó xác nhận dùng AGRI-76 cho commit skill riêng. Đây là tooling theo yêu cầu bổ sung, không phải chức năng DevOps đã triển khai của sản phẩm.
+- Bổ sung bảy reference, helper stdlib, ba mẫu local và unittest; chỉnh tài liệu skill để phản ánh capability thực tế. Không thêm Terraform/Kubernetes vào stack đang chạy hoặc thay CI policy.
+- Kiểm tra local: 10 test helper đạt; skill validator, syntax Python, YAML mẫu và liên kết đạt. Native CLI được mock; chưa kiểm chứng cloud/cluster/secret scanner thật hoặc full CI.
+- Subject: `chore(skills): AGRI-76 add devops iac engineer skill`. Không push hay tạo PR trong lần này. Bằng chứng và giới hạn chi tiết ở [implementation guide](../../.agents/skills/devops-iac-engineer/IMPLEMENTATION_GUIDE.md).
