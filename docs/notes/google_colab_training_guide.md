@@ -1,5 +1,7 @@
 # Hướng dẫn train AgriVision AI trên Google Colab
 
+> Hướng dẫn này ghi lại hai baseline `plant`/`disease` trên dataset v1.3. Cấu hình AI hiện dùng v1.4 và task `compound` 59 lớp; xem [README dự án](../../README.md) và [báo cáo AGRI-21](../reports/AGRI-21/README.md) trước khi chạy thí nghiệm mới.
+
 Notebook đã chuẩn bị:
 
 ```text

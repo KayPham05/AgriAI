@@ -1,5 +1,7 @@
 # Báo Cáo Hệ Thống Backend & Hướng Dẫn Tích Hợp Frontend (AgriVision AI)
 
+> Báo cáo lịch sử ngày 2026-09-26. Các tài khoản mẫu chỉ được seed trong môi trường Development; URL, mật khẩu mẫu, luồng AI/Cloudinary và kết luận vận hành bên dưới không phải hướng dẫn cho cấu hình hiện tại. Xem [phân tích hiện trạng và khoảng trống](../../system_requirements.md#8-ma-trận-truy-vết-yêu-cầu-và-hiện-trạng) và [tech stack](../../tech_stack.md).
+
 **Ngày cập nhật:** 26/09/2026  
 **Công nghệ sử dụng:** ASP.NET Core Web API (.NET 9), Entity Framework Core 9, PostgreSQL 16 (Docker Container), Cloudinary API, JWT Bearer Authentication, xUnit, Moq, Testcontainers.
 
@@ -40,9 +42,9 @@ backend/
    - **Container:** Khởi chạy PostgreSQL 16 Alpine trong Docker (`agrivision_postgres`) lắng nghe tại port `5432`.
    - **Migration:** Đã áp dụng EF Core Code-First Migration (`20260925161222_InitialCreate`) tạo sẵn đầy đủ cấu trúc bảng.
    - **Tài khoản & Dữ liệu mẫu (Seeded Data):**
-     - 👑 **Admin Account:** `admin@agrivision.ai` / `AdminPassword123!`
-     - 🧑‍🌾 **User Account:** `user@agrivision.ai` / `UserPassword123!`
-     - 🌱 **Master Data:** Dữ liệu mẫu cho Cà chua, Khoai tây, Ngô, Lúa, Xoài.
+     - **Admin Account:** tài khoản mẫu chỉ dành cho Development.
+     - **User Account:** tài khoản mẫu chỉ dành cho Development.
+     - **Master Data:** Dữ liệu mẫu cho Cà chua, Khoai tây, Ngô, Lúa, Xoài.
 
 4. **Tối Ưu & Sửa Lỗi Hệ Thống:**
    - Đăng ký bổ sung `IJwtTokenGenerator` vào `DependencyInjection.cs` của lớp Infrastructure.
@@ -89,10 +91,10 @@ File cấu hình nằm tại `backend/src/AgriVision.API/appsettings.json`:
   },
   "AllowedHosts": "*",
   "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5432;Database=agrivision_db;Username=agrivision_user;Password=agrivision_pass"
+    "DefaultConnection": "<SET_VIA_ENV_OR_USER_SECRETS>"
   },
   "JwtSettings": {
-    "Secret": "AgriVisionAI_Super_Secret_Key_For_JWT_Authentication_987654321!",
+    "Secret": "<JWT_SECRET_FROM_ENV>",
     "Issuer": "AgriVisionAPI",
     "Audience": "AgriVisionApp",
     "ExpiryMinutes": 1440
@@ -311,4 +313,4 @@ sequenceDiagram
 ---
 
 ## 5. Tổng Kết
-Hệ thống Backend AgriVision AI hiện đã đạt trạng thái sẵn sàng cao (Production-Ready) với đầy đủ các chuẩn Clean Architecture, bảo mật JWT/BCrypt, tích hợp AI & Cloudinary, Docker PostgreSQL tự động hoá cùng bộ kiểm thử Unit Test đạt 100% tỷ lệ vượt qua. Lập trình viên Frontend có thể hoàn toàn dựa vào tài liệu này để triển khai giao diện người dùng.
+Kết luận tại thời điểm báo cáo chỉ phản ánh phạm vi kiểm thử đã ghi nhận. Trạng thái triển khai hiện tại, các khoảng trống về AI thật, quyền truy cập và lưu ảnh được mô tả trong [phân tích hiện trạng và khoảng trống](../../system_requirements.md#8-ma-trận-truy-vết-yêu-cầu-và-hiện-trạng) và [lộ trình](../../development_roadmap.md).

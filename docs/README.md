@@ -1,4 +1,4 @@
-# Project Documentation
+# Tài liệu dự án AgriVision AI
 
 Thư mục này lưu tài liệu làm việc và báo cáo của các thành viên. Không lưu dataset, model checkpoint, generated output hoặc secret tại đây.
 
@@ -18,9 +18,23 @@ thuộc thiết bị của một thành viên.
 ```
 
 Cấu trúc bên trong từng phiên bản phải được giữ nguyên. Khi chạy mô hình, đặt
-Trên máy này, `<dataset_root>` là `D:/AgriVisionAI_Data`. Đặt
-`AGRIVISION_DATASET_DIR` trỏ tới `<dataset_root>/v1.4`. Bản v1.3 được giữ làm
-mốc đối chiếu; v1.4 thay toàn bộ ảnh ớt và dùng hợp đồng 59 lớp.
+`AGRIVISION_DATASET_DIR` trỏ tới `<dataset_root>/v1.4`. Bản v1.3 là mốc đối
+chiếu; v1.4 thay toàn bộ ảnh Ớt và dùng hợp đồng 59 lớp. Xem
+[báo cáo AGRI-21](reports/AGRI-21/README.md) để kiểm tra nhãn và artifact.
+
+## Điểm vào chính
+
+- [Tech stack và trạng thái](tech_stack.md)
+- [Yêu cầu hệ thống](system_requirements.md)
+- [Sơ đồ thiết kế](system_design_diagrams.md)
+- [Phân tích hiện trạng và thiết kế AGRI-76](reports/AGRI-76/README.md)
+- [Tasklog chỉnh sửa tài liệu AGRI-76](task-logs/AGRI-76-documentation.md)
+- [Lộ trình phát triển](development_roadmap.md)
+- [Dataset và mô hình AGRI-21](reports/AGRI-21/README.md)
+- [Kế hoạch CI/CD](plans/ci_cd_plan.md)
+
+README ở root là điểm bắt đầu. Các report và nhật ký dưới đây là bằng chứng theo
+task hoặc thời điểm; không dùng số liệu lịch sử để mô tả trạng thái hiện tại.
 
 ## Cấu trúc
 
@@ -34,21 +48,20 @@ docs/
 └── notebooks/   Jupyter notebook phục vụ khám phá và ghi chép
 ```
 
-## Kế hoạch phát triển và kiểm thử
+## Báo cáo và ghi chú chi tiết
 
-- [Kế hoạch CI/CD hiện tại](plans/ci_cd_plan.md)
+- [Hướng dẫn chạy Docker local và smoke test](notes/docker_run_guide.md)
+- [Docker và pipeline CI ngắn gọn](notes/docker_pipeline.md)
+- [Quy tắc commit và commitlint trong CI](notes/commitlint.md)
 - [Báo cáo unit và integration test AGRI-75](reports/AGRI-75/unit_integration_test_report.md)
-
-- [Kế hoạch phát triển, yêu cầu và ERD](development_roadmap.md)
 - [Chiến lược kiểm thử, test case và branch coverage](notes/testing_strategy.md)
-- [Hiện trạng Docker và CI](reports/AGRI-75/README.md)
 - [Viewpoint kiểm thử AgriVision](notes/agri_test_viewpoints.md)
 - [Mẫu và ca kiểm thử API](notes/agri_api_test_cases.md)
 - [Mẫu và ca kiểm thử giao diện](notes/agri_screen_test_cases.md)
 - [Mẫu và ca kiểm thử unit](notes/agri_unit_test_cases.md)
 - [Mẫu và ca kiểm thử integration](notes/agri_integration_test_cases.md)
 - [Báo cáo thực hiện kiểm thử và CI](notes/testing_ci_execution_report.md)
-- [Báo cáo AGRI-75 về mức hoàn thành CI và kiểm thử](reports/AGRI-75/README.md)
+- [Báo cáo AGRI-75 về Docker, CI và kiểm thử](reports/AGRI-75/README.md)
 
 ## Quy ước
 
