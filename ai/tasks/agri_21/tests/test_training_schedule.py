@@ -3,7 +3,7 @@ import unittest
 import torch
 import torch.nn as nn
 
-from ai.train import build_optimizer
+from ai.train import advance_scheduler_for_next_epoch, build_optimizer
 from ai.utils.training import set_finetuning_phase, warmup_cosine_factor
 
 
@@ -19,6 +19,25 @@ class _FakeModel:
 
 
 class TrainingScheduleTests(unittest.TestCase):
+    def test_scheduler_does_not_advance_after_final_epoch(self) -> None:
+        class FakeScheduler:
+            def __init__(self) -> None:
+                self.step_count = 0
+
+            def step(self) -> None:
+                self.step_count += 1
+
+        scheduler = FakeScheduler()
+
+        for completed_epoch in range(1, 11):
+            advance_scheduler_for_next_epoch(
+                scheduler,
+                completed_epoch=completed_epoch,
+                total_epochs=10,
+            )
+
+        self.assertEqual(scheduler.step_count, 9)
+
     def test_freezes_then_unfreezes_backbone(self) -> None:
         model = _FakeModel()
 

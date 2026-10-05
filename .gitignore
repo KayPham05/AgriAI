@@ -20,6 +20,7 @@ __pycache__/
 /ai/Image/
 /ai/class_to_idx.json
 /ai/class_mapping.json
+/ai/kaggle/
 v1.2/
 v1.3/
 v1.3.zip

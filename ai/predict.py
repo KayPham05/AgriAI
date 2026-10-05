@@ -1,4 +1,5 @@
 import argparse
+import json
 import sys
 from pathlib import Path
 from typing import Dict, Union
@@ -8,9 +9,19 @@ import torch.nn.functional as F
 from PIL import Image
 
 from ai.configs import config
+from ai.configs.plant_disease_mapping import get_plant_to_diseases
 from ai.data.augmentations import get_inference_transforms
 from ai.networks.convnext import build_model
-from ai.utils.label_mapping import normalize_checkpoint_label_mapping
+
+PLANT_CHECKPOINT_PATH = config.CHECKPOINT_DIR / "plant" / "best_convnext_tiny.pth"
+DISEASE_CHECKPOINT_PATH = (
+    config.CHECKPOINT_DIR / "disease" / "best_convnext_tiny.pth"
+)
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
 
 class LeafDiseasePredictor:
     """
@@ -25,9 +36,14 @@ class LeafDiseasePredictor:
         # Nạp checkpoint
         checkpoint = torch.load(self.checkpoint_path, map_location=config.DEVICE)
         self.num_classes = checkpoint["num_classes"]
-        self.idx_to_info = normalize_checkpoint_label_mapping(
-            checkpoint.get("idx_to_info"), self.num_classes
-        )
+        self.dataset_version = checkpoint.get("dataset_version", config.DATASET_VERSION)
+        self.idx_to_info = checkpoint.get("idx_to_info")
+
+        # Fallback đọc từ file json nếu checkpoint không có
+        if not self.idx_to_info and config.LABEL_MAP_PATH.exists():
+            with open(config.LABEL_MAP_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                self.idx_to_info = data.get("idx_to_info", {})
 
         # Khởi tạo mô hình
         self.model = build_model(num_classes=self.num_classes, pretrained=False, device=config.DEVICE)
@@ -37,7 +53,12 @@ class LeafDiseasePredictor:
         self.transform = get_inference_transforms()
 
     @torch.no_grad()
-    def predict_image(self, image_path: Union[str, Path], top_k: int = 3) -> Dict:
+    def predict_image(
+        self,
+        image_path: Union[str, Path],
+        top_k: int = 3,
+        allowed_labels: set[str] | frozenset[str] | None = None,
+    ) -> Dict:
         """
         Dự đoán nhãn cho 1 bức ảnh lá cây đơn lẻ.
         """
@@ -51,20 +72,52 @@ class LeafDiseasePredictor:
 
         with torch.amp.autocast("cuda", enabled=config.USE_AMP):
             logits = self.model(tensor)
-            probs = F.softmax(logits, dim=1).squeeze(0)
+
+        candidate_count = self.num_classes
+        if allowed_labels is not None:
+            allowed_indices = []
+            for idx in range(self.num_classes):
+                idx_key = str(idx) if str(idx) in self.idx_to_info else idx
+                info = self.idx_to_info.get(idx_key, {})
+                label = info.get("label") or info.get("disease")
+                if label in allowed_labels:
+                    allowed_indices.append(idx)
+
+            if not allowed_indices:
+                raise ValueError(
+                    "Không có lớp checkpoint nào khớp với danh sách nhãn cho phép"
+                )
+
+            filtered_logits = torch.full_like(logits, float("-inf"))
+            filtered_logits[:, allowed_indices] = logits[:, allowed_indices]
+            logits = filtered_logits
+            candidate_count = len(allowed_indices)
+
+        probs = F.softmax(logits, dim=1).squeeze(0)
 
         # Lấy Top K xác suất cao nhất
-        topk_probs, topk_indices = torch.topk(probs, k=min(top_k, self.num_classes))
+        topk_probs, topk_indices = torch.topk(
+            probs,
+            k=min(top_k, candidate_count),
+        )
         topk_probs = topk_probs.cpu().tolist()
         topk_indices = topk_indices.cpu().tolist()
 
         predictions = []
         for prob, idx in zip(topk_probs, topk_indices):
-            info = self.idx_to_info[idx]
+            idx_key = str(idx) if str(idx) in self.idx_to_info else idx
+            info = self.idx_to_info.get(idx_key, {
+                "plant": "Unknown",
+                "disease": f"Class_{idx}",
+                "compound_label": f"Class_{idx}"
+            })
             predictions.append({
                 "plant": info["plant"],
                 "disease": info["disease"],
-                "compound_label": info["compound_label"],
+                "compound_label": info.get(
+                    "compound_label",
+                    info.get("label", f"Class_{idx}"),
+                ),
                 "confidence": round(prob * 100, 2)
             })
 
@@ -78,29 +131,155 @@ class LeafDiseasePredictor:
         }
 
 
+class CombinedPlantDiseasePredictor:
+    """Run the plant and disease classifiers for the same input image."""
+
+    def __init__(
+        self,
+        plant_checkpoint_path: Union[str, Path] = PLANT_CHECKPOINT_PATH,
+        disease_checkpoint_path: Union[str, Path] = DISEASE_CHECKPOINT_PATH,
+    ) -> None:
+        self.plant_predictor = LeafDiseasePredictor(plant_checkpoint_path)
+        self.disease_predictor = LeafDiseasePredictor(disease_checkpoint_path)
+
+    def predict_image(
+        self,
+        image_path: Union[str, Path],
+        top_k: int = 3,
+    ) -> Dict:
+        if top_k < 1:
+            raise ValueError("top_k phải lớn hơn 0")
+        plant_result = self.plant_predictor.predict_image(image_path, top_k)
+        dataset_version = getattr(
+            self.disease_predictor, "dataset_version", config.DATASET_VERSION
+        )
+        plant_to_diseases = get_plant_to_diseases(dataset_version)
+        plant_predictions = plant_result["top_predictions"] or [
+            {"plant": plant_result["plant"], "confidence": plant_result["confidence"]}
+        ]
+        groups = []
+        for prediction in plant_predictions[:top_k]:
+            plant = prediction["plant"]
+            allowed_diseases = plant_to_diseases.get(plant)
+            if allowed_diseases is None:
+                raise ValueError(f"Không có danh sách bệnh cho loài cây: {plant}")
+            disease_result = self.disease_predictor.predict_image(
+                image_path,
+                top_k,
+                allowed_labels=allowed_diseases,
+            )
+            groups.append(
+                {
+                    "plant": plant,
+                    "confidence": prediction["confidence"],
+                    "diseases": disease_result.get("top_predictions", []),
+                    "best_disease": disease_result["disease"],
+                    "best_disease_confidence": disease_result["confidence"],
+                }
+            )
+
+        best = groups[0]
+
+        return {
+            "image_path": plant_result["image_path"],
+            "plant": best["plant"],
+            "plant_confidence": best["confidence"],
+            "disease": best["best_disease"],
+            "disease_confidence": best["best_disease_confidence"],
+            "top_plant_predictions": plant_result["top_predictions"],
+            "top_disease_predictions": best["diseases"],
+            "plant_disease_predictions": groups,
+        }
+
+
+def print_single_result(result: Dict) -> None:
+    """Print the result produced by one checkpoint."""
+
+    print("\n" + "=" * 55)
+    print("🌿 KẾT QUẢ PHÂN LOẠI LÁ CÂY (AgriVisionAI) 🌿")
+    print("=" * 55)
+    print(f"📁 Tệp ảnh           : {result['image_path']}")
+    print(f"🌱 LOẠI CÂY TRỒNG    : {result['plant']}")
+    print(f"🦠 TÌNH TRẠNG BỆNH   : {result['disease']}")
+    print(f"🎯 ĐỘ TIN CẬY        : {result['confidence']:.2f}%")
+    print("-" * 55)
+    print(f"🔍 Top {len(result['top_predictions'])} khả năng cao nhất:")
+    for rank, prediction in enumerate(result["top_predictions"], start=1):
+        print(
+            f"  {rank}. [{prediction['plant']} - {prediction['disease']}]: "
+            f"{prediction['confidence']:.2f}%"
+        )
+    print("=" * 55 + "\n")
+
+
+def print_combined_result(result: Dict) -> None:
+    """Print plant and disease results from the two-checkpoint pipeline."""
+
+    print("\n" + "=" * 60)
+    print("🌿 KẾT QUẢ NHẬN DIỆN CÂY VÀ BỆNH (AgriVisionAI) 🌿")
+    print("=" * 60)
+    print(f"📁 Tệp ảnh           : {result['image_path']}")
+    print(
+        f"🌱 LOẠI CÂY TRỒNG    : {result['plant']} "
+        f"({result['plant_confidence']:.2f}%)"
+    )
+    print(
+        f"🦠 TÌNH TRẠNG BỆNH   : {result['disease']} "
+        f"({result['disease_confidence']:.2f}%)"
+    )
+    print("-" * 60)
+    print("🔍 Các loài cây và bệnh có khả năng cao nhất:")
+    for rank, prediction in enumerate(result["plant_disease_predictions"], start=1):
+        print(
+            f"  {rank}. {prediction['plant']}: "
+            f"{prediction['confidence']:.2f}%"
+        )
+        for disease_rank, disease in enumerate(prediction["diseases"], start=1):
+            print(
+                f"     {disease_rank}. {disease['disease']}: "
+                f"{disease['confidence']:.2f}%"
+            )
+    print("=" * 60 + "\n")
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Dự đoán loại cây và loại bệnh từ ảnh lá cây (ConvNeXt-Tiny)")
+    parser = argparse.ArgumentParser(
+        description="Dự đoán loài cây và bệnh từ một ảnh lá cây"
+    )
     parser.add_argument("--image", type=str, required=True, help="Đường dẫn đến file ảnh lá cây (.jpg, .png)")
-    parser.add_argument("--checkpoint", type=str, default=str(config.BEST_MODEL_PATH), help="Đường dẫn file trọng số .pth")
-    parser.add_argument("--topk", type=int, default=3, help="Số lượng dự đoán xác suất cao nhất hiển thị")
+    parser.add_argument(
+        "--plant-checkpoint",
+        type=str,
+        default=str(PLANT_CHECKPOINT_PATH),
+        help="Checkpoint nhận diện loài cây",
+    )
+    parser.add_argument(
+        "--disease-checkpoint",
+        type=str,
+        default=str(DISEASE_CHECKPOINT_PATH),
+        help="Checkpoint nhận diện bệnh",
+    )
+    parser.add_argument(
+        "--checkpoint",
+        type=str,
+        default=None,
+        help="Chạy một checkpoint duy nhất để tương thích với lệnh cũ",
+    )
+    parser.add_argument("--topk", type=int, default=3, help="Số loài cây và số bệnh cho mỗi loài (mặc định: 3)")
     args = parser.parse_args()
 
     try:
-        predictor = LeafDiseasePredictor(checkpoint_path=args.checkpoint)
-        result = predictor.predict_image(args.image, top_k=args.topk)
-
-        print("\n" + "=" * 55)
-        print("🌿 KẾT QUẢ CHẨN ĐOÁN LÁ CÂY (AgriVisionAI) 🌿")
-        print("=" * 55)
-        print(f"📁 Tệp ảnh           : {result['image_path']}")
-        print(f"🌱 LOẠI CÂY TRỒNG    : {result['plant']}")
-        print(f"🦠 TÌNH TRẠNG BỆNH   : {result['disease']}")
-        print(f"🎯 ĐỘ TIN CẬY        : {result['confidence']:.2f}%")
-        print("-" * 55)
-        print(f"🔍 Top {len(result['top_predictions'])} khả năng cao nhất:")
-        for rank, p in enumerate(result['top_predictions'], start=1):
-            print(f"  {rank}. [{p['plant']} - {p['disease']}]: {p['confidence']:.2f}%")
-        print("=" * 55 + "\n")
+        if args.checkpoint:
+            predictor = LeafDiseasePredictor(args.checkpoint)
+            result = predictor.predict_image(args.image, top_k=args.topk)
+            print_single_result(result)
+        else:
+            predictor = CombinedPlantDiseasePredictor(
+                plant_checkpoint_path=args.plant_checkpoint,
+                disease_checkpoint_path=args.disease_checkpoint,
+            )
+            result = predictor.predict_image(args.image, top_k=args.topk)
+            print_combined_result(result)
 
     except Exception as e:
         print(f"\n[!] Lỗi khi thực hiện dự đoán: {e}")

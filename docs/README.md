@@ -17,9 +17,9 @@ thuộc thiết bị của một thành viên.
 └── v1.4/
 ```
 
-Cấu trúc bên trong từng phiên bản phải được giữ nguyên. Khi chạy mô hình, đặt
-Trên máy này, `<dataset_root>` là `D:/AgriVisionAI_Data`. Đặt
-`AGRIVISION_DATASET_DIR` trỏ tới `<dataset_root>/v1.4`. Bản v1.3 được giữ làm
+Cấu trúc bên trong từng phiên bản phải được giữ nguyên. Trên máy này,
+`<dataset_root>` là `D:/AgriVisionAI_Data`; bản mặc định là `v1.4`.
+Đặt `AGRIVISION_DATASET_DIR` khi dataset nằm ở vị trí khác. Bản v1.3 là
 mốc đối chiếu; v1.4 thay toàn bộ ảnh ớt và dùng hợp đồng 59 lớp.
 
 ## Cấu trúc

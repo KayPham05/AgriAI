@@ -5,8 +5,8 @@ import torch
 
 # Base directories
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATASET_VERSION = "v1.4"
-DEFAULT_DATASET_DIR = Path("D:/AgriVisionAI_Data") / DATASET_VERSION
+DATASET_VERSION = os.getenv("AGRIVISION_DATASET_VERSION", "v1.4")
+DEFAULT_DATASET_DIR = Path(r"D:\AgriVisionAI_Data") / DATASET_VERSION
 DATASET_DIR = Path(
     os.getenv("AGRIVISION_DATASET_DIR", str(DEFAULT_DATASET_DIR))
 )
@@ -15,9 +15,9 @@ MANIFEST_DIR = DATASET_DIR / "manifests"
 TRAIN_MANIFEST_PATH = MANIFEST_DIR / "train.csv"
 VAL_MANIFEST_PATH = MANIFEST_DIR / "val.csv"
 TEST_MANIFEST_PATH = MANIFEST_DIR / "test.csv"
-CHECKPOINT_DIR = BASE_DIR / "checkpoints" / DATASET_VERSION
-OUTPUT_DIR = BASE_DIR / "outputs" / DATASET_VERSION
-LABEL_MAP_PATH = CHECKPOINT_DIR / "class_to_idx.json"
+CHECKPOINT_DIR = BASE_DIR / "checkpoints"
+OUTPUT_DIR = BASE_DIR / "outputs"
+LABEL_MAP_PATH = BASE_DIR / "class_to_idx.json"
 
 # Make sure output directories exist
 CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
@@ -31,7 +31,7 @@ PIN_MEMORY = True if torch.cuda.is_available() else False
 
 # Training Hyperparameters 
 IMAGE_SIZE = 224
-EXPECTED_NUM_CLASSES = 59
+EXPECTED_NUM_CLASSES = 59 if DATASET_VERSION == "v1.4" else 58
 BATCH_SIZE = 8
 GRADIENT_ACCUMULATION_STEPS = 4
 EPOCHS = 10

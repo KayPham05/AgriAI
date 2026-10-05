@@ -6,7 +6,7 @@ Hệ thống nhận diện bệnh lá cây sử dụng ConvNeXt-Tiny.
 
 ```text
 ai/data/                        DataLoader và preprocessing dùng chung
-ai/tasks/agri_21/scripts/       Công cụ tạo và audit dataset v1.0–v1.3
+ai/tasks/agri_21/scripts/       Công cụ tạo và audit dataset đến v1.4
 ai/tasks/agri_21/tests/         Kiểm thử pipeline dữ liệu AGRI-21
 ai/                             Huấn luyện, đánh giá và suy luận
 .agents/rules/       Quy tắc dành cho agent
@@ -16,18 +16,14 @@ experiments/         Kết quả được tổ chức theo EXP-XXX
 
 ## Dataset
 
-Dataset không được lưu trong Git. Bản dùng để huấn luyện hiện tại là `v1.3`
-và sẽ được phát hành qua Google Drive. Liên kết tải sẽ được bổ sung sau khi
-hoàn tất upload và xác minh checksum.
-
-`v1.3` gồm 82.073 ảnh JPEG 224×224, 10 loại cây và 58 lớp. Dataset kế thừa
-75.025 ảnh đã xử lý theo pipeline v1.2, sau đó bổ sung Lúa/Xoài và chạy lại
-group-aware split, exact leakage, near-duplicate Hamming 0–5 và augmentation QA.
+Dataset không được lưu trong Git. Phiên bản mặc định hiện tại là `v1.4`:
+88.000 ảnh trong ba manifest (61.599 train, 8.802 val, 17.599 test),
+10 loài cây, 44 nhãn bệnh phân biệt hoa/thường và 59 nhãn cây-bệnh.
 
 Sau khi tải về, giữ nguyên cấu trúc:
 
 ```text
-v1.3/
+v1.4/
 ├── images/
 ├── manifests/
 │   ├── train.csv
@@ -37,10 +33,12 @@ v1.3/
 └── reports/
 ```
 
-Khai báo thư mục dataset cho phiên làm việc hiện tại bằng biến môi trường:
+Mặc định code đọc `D:\AgriVisionAI_Data\v1.4`. Khi đặt dataset ở nơi khác,
+khai báo cả phiên bản và đường dẫn trong phiên làm việc hiện tại:
 
 ```powershell
-$env:AGRIVISION_DATASET_DIR = "<dataset_root>\v1.3"
+$env:AGRIVISION_DATASET_VERSION = "v1.4"
+$env:AGRIVISION_DATASET_DIR = "<dataset_root>\v1.4"
 ```
 
 Pipeline đọc trực tiếp `train.csv`, `val.csv` và `test.csv` trong thư mục
@@ -49,17 +47,61 @@ trình huấn luyện và thứ tự batch.
 
 ## Chạy module AI
 
+Chạy các lệnh PowerShell từ thư mục gốc repository. Tạo môi trường trong chính
+repo này (script `ai/setup_env.bat` dùng thư mục làm việc hiện tại, nên không
+gọi trực tiếp từ root):
+
 ```powershell
-.\ai\setup_env.bat
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+.\.venv\Scripts\python.exe -m pip install -r ai\requirements.txt
+```
+
+Các lệnh train, evaluate và dự đoán CLI chạy riêng khi cần:
+
+```powershell
 .\.venv\Scripts\python.exe -m ai.train
 .\.venv\Scripts\python.exe -m ai.evaluate
 .\.venv\Scripts\python.exe -m ai.predict --help
 ```
 
-Hai baseline loài cây và bệnh dùng chung ConvNeXt-Tiny cùng split v1.3:
+FastAPI có thêm API tương thích HTTP với adapter hiện tại của backend:
+`GET /health` xác nhận checkpoint đã nạp và `POST /predict` nhận multipart
+`file`. Phản hồi gồm `class_index`, `class_name`, `confidence` (0-1) và
+`top_k`. Chỉ số lớp được tính từ 59 nhãn cây-bệnh v1.4 theo cùng thứ tự
+`sorted()` của pipeline dữ liệu. Endpoint `/v1/predictions` cũ vẫn dùng được.
+
+Để chạy **chỉ backend AI trên máy**, cần có
+`ai/checkpoints/plant/best_convnext_tiny.pth` và
+`ai/checkpoints/disease/best_convnext_tiny.pth`. Mở terminal thứ nhất:
+
+```powershell
+$env:AGRIVISION_DATASET_VERSION = "v1.4"
+.\.venv\Scripts\python.exe -m uvicorn ai.service.app:app --host 127.0.0.1 --port 8000
+```
+
+Giữ terminal này mở. Trong terminal thứ hai, tại cùng thư mục root, kiểm tra
+model đã nạp rồi gửi ảnh JPG/PNG (thay đường dẫn ảnh của bạn):
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/health
+curl.exe -F "file=@D:\duong-dan\anh-la.jpg" http://127.0.0.1:8000/predict
+```
+
+`/health` trả `{"status":"Healthy"}` khi hai checkpoint đã sẵn sàng. Lệnh
+`curl.exe` trả nhãn cây-bệnh và top-k, không cần khởi động Docker hay backend
+.NET. Nếu cổng 8000 đang dùng, đổi `--port` và các URL kiểm tra cùng lúc.
+
+Database backend hiện chỉ seed 11 nhãn mẫu và chưa đồng bộ với 59 nhãn v1.4.
+Không dùng kết quả dự đoán qua web làm kết quả thật cho tới khi cập nhật bảng
+`PlantDiseases` và bỏ fallback nhãn không khớp trong backend.
+
+Hai baseline loài cây và bệnh dùng chung ConvNeXt-Tiny cùng split v1.4:
 
 - `plant`: 10 lớp từ cột `plant`.
-- `disease`: 45 nhãn phân biệt hoa/thường từ cột `condition`, có weighted loss.
+- `disease`: 44 nhãn phân biệt hoa/thường từ cột `condition`, có weighted loss.
+
+Task `compound` sử dụng 59 nhãn từ cột `compound_label`.
 
 ```powershell
 .\.venv\Scripts\python.exe -m ai.train --task plant
@@ -75,7 +117,9 @@ Theo dõi hai nhánh bằng TensorBoard:
 ```
 
 Checkpoint và báo cáo được tách lần lượt dưới `ai/checkpoints/<task>/` và
-`ai/outputs/<task>/`.
+`ai/outputs/<task>/`. Không đổi các đường dẫn này vì checkpoint v1.4 hiện có
+đang được lưu tại đó; kiểm tra `dataset_version` trong metadata checkpoint
+trước khi dùng checkpoint với một phiên bản dataset khác.
 
 Để chạy tuần tự cả hai nhánh và đánh giá checkpoint tốt nhất:
 
