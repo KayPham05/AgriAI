@@ -1,8 +1,109 @@
-# AgriVision AI
+<div align="center">
+  <h1>AgriVision AI</h1>
+  <p><strong>Nhận diện bệnh lá cây với ConvNeXt-Tiny</strong></p>
+  <p>Tải ảnh lá cây, xem kết quả phân loại và quản lý lịch sử dự đoán.</p>
+  <p>
+    <img src="https://img.shields.io/badge/Next.js-111111?style=flat-square&amp;logo=nextdotjs&amp;logoColor=white" alt="Next.js">
+    <img src="https://img.shields.io/badge/ASP.NET_Core-9-512BD4?style=flat-square&amp;logo=dotnet&amp;logoColor=white" alt="ASP.NET Core 9">
+    <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&amp;logo=postgresql&amp;logoColor=white" alt="PostgreSQL 16">
+    <img src="https://img.shields.io/badge/PyTorch-EE4C2C?style=flat-square&amp;logo=pytorch&amp;logoColor=white" alt="PyTorch">
+  </p>
+  <p>
+    <a href="#overview">Tổng quan</a> ·
+    <a href="#quick-start">Chạy nhanh</a> ·
+    <a href="#dataset">Dataset</a> ·
+    <a href="#ai-module">Module AI</a> ·
+    <a href="#testing">Kiểm thử</a> ·
+    <a href="#documentation">Tài liệu</a>
+  </p>
+</div>
 
-Hệ thống nhận diện bệnh lá cây sử dụng ConvNeXt-Tiny.
+---
 
-## Tài liệu cần đọc
+<a name="overview"></a>
+
+## Tổng quan
+
+AgriVision AI là dự án môn học về phân loại bệnh lá cây. Giao diện Next.js kết nối
+ASP.NET Core Web API để xử lý tài khoản, danh mục và lịch sử; PostgreSQL lưu dữ
+liệu ứng dụng. FastAPI là lớp phục vụ mô hình ConvNeXt-Tiny.
+
+```text
+Next.js → ASP.NET Core Web API → PostgreSQL
+                             → FastAPI → ConvNeXt-Tiny
+```
+
+| Thành phần | Vai trò | Hiện trạng |
+|---|---|---|
+| Web | Tải ảnh, hiển thị kết quả, xem lịch sử | Đã có màn hình và luồng gọi API |
+| Backend | Xác thực, danh mục, dự đoán và lịch sử | Đã có API và kiểm tra quyền sở hữu lịch sử |
+| PostgreSQL | Lưu dữ liệu và quản lý phiên bản schema | Đã tích hợp với backend; migration chạy riêng |
+| AI | Huấn luyện, đánh giá và phân loại ảnh lá cây | Có pipeline và báo cáo checkpoint; chưa nghiệm thu suy luận thật xuyên suốt web–API–AI |
+
+> **Trạng thái tích hợp:** kiểm thử, health check và AI mock không xác nhận chất lượng
+> mô hình hay luồng suy luận thật. Xem [lộ trình](docs/development_roadmap.md) và
+> [báo cáo mô hình](docs/reports/AGRI-21/README.md) để theo dõi phần còn lại.
+
+<a name="quick-start"></a>
+
+## Chạy nhanh
+
+Cần Docker với Compose. Chạy các lệnh PowerShell từ thư mục gốc repository.
+Compose mặc định khởi động web, API và PostgreSQL; AI service chạy riêng tại
+`AI_SERVICE_URL`.
+
+### 1. Chuẩn bị cấu hình
+
+Nếu chưa có `.env`, tạo từ [.env.example](.env.example):
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Điền `POSTGRES_PASSWORD`, `JWT_SECRET` (ít nhất 32 byte UTF-8) và `AI_SERVICE_URL`.
+`CLOUDINARY_*` là tùy chọn; khi bỏ trống, API lưu ảnh vào volume local.
+
+### 2. Tạo schema và khởi động
+
+Với database đã có dữ liệu, [sao lưu và review migration](.agents/commands/database.md)
+trước khi áp dụng. Chỉ chuyển sang lệnh tiếp theo khi lệnh trước thành công.
+
+```powershell
+docker compose config --quiet
+docker compose build backend frontend
+docker compose up -d --wait --wait-timeout 120 postgres
+docker compose run --rm --no-deps backend --migrate
+docker compose up -d --wait --wait-timeout 120 backend frontend
+docker compose ps
+Invoke-RestMethod http://localhost:5080/api/health
+```
+
+Migration chạy riêng và ghi lịch sử trong `__EFMigrationsHistory`. Backend dừng
+khởi động nếu còn migration chưa áp dụng. Compose chạy API ở `Production`, nên
+không seed tài khoản hay danh mục demo.
+
+### 3. Truy cập ứng dụng
+
+| Dịch vụ | Địa chỉ mặc định | Ghi chú |
+|---|---|---|
+| Web | <http://localhost:3000> | Next.js chuyển `/api/` sang backend |
+| API health | <http://localhost:5080/api/health> | Kiểm tra kết nối DB |
+| AI dependency health | <http://localhost:5080/api/health/deps> | Trả 503 khi AI không truy cập được |
+| PostgreSQL | `127.0.0.1:5432` | Chỉ mở cổng trên loopback của host |
+
+Đổi cổng qua `FRONTEND_HOST_PORT`, `API_HOST_PORT`, `POSTGRES_HOST_PORT` trong
+`.env`. Để dừng stack và giữ dữ liệu:
+
+```powershell
+docker compose down
+```
+
+Xem [hướng dẫn Docker](docs/notes/docker_run_guide.md) để xử lý lỗi cấu hình,
+volume có sẵn và smoke test với AI health mock.
+
+<a name="documentation"></a>
+
+## Tài liệu
 
 | Cần biết | Tài liệu |
 |---|---|
@@ -12,20 +113,34 @@ Hệ thống nhận diện bệnh lá cây sử dụng ConvNeXt-Tiny.
 | Thứ tự công việc còn lại | [Lộ trình phát triển](docs/development_roadmap.md) |
 | Dataset, nhãn và bằng chứng mô hình | [Báo cáo AGRI-21](docs/reports/AGRI-21/README.md) |
 | Kiểm thử, Docker và kế hoạch triển khai | [Kế hoạch CI/CD](docs/plans/ci_cd_plan.md) |
+| Phân tích và thiết kế AGRI-76 | [Bộ tài liệu AGRI-76](docs/reports/AGRI-76/README.md) |
+| Schema và migration backend | [Entities](docs/notes/database_entities.md) · [Migration](docs/notes/database_migrations.md) |
+| Phương án triển khai demo lên VPS | [Kế hoạch VPS](docs/vps_deployment.md) |
+| Lệnh phát triển và kiểm tra local | [Commands](.agents/commands/README.md) |
 
 Đọc đúng tài liệu theo việc cần làm; [mục lục tài liệu](docs/README.md) chứa báo cáo và ghi chú chi tiết. Chỉ triển khai phần đã có yêu cầu; sơ đồ và kế hoạch mô tả mục tiêu, không xác nhận tính năng đã hoàn thành.
 
-## Cấu trúc
+## Cấu trúc dự án
 
 ```text
-ai/data/                        DataLoader và preprocessing dùng chung
-ai/tasks/agri_21/scripts/       Công cụ tạo và audit dataset đến v1.4
-ai/tasks/agri_21/tests/         Kiểm thử pipeline dữ liệu AGRI-21
-ai/                             Huấn luyện, đánh giá và suy luận
-.agents/rules/       Quy tắc dành cho agent
-docs/                Nhật ký task và tài liệu dự án
-experiments/         Kết quả được tổ chức theo EXP-XXX
+AgriAI/
+├── frontend/                 Next.js, giao diện và tests
+├── backend/                  ASP.NET Core API, migrations và tests
+├── ai/                       Huấn luyện, đánh giá và suy luận
+│   ├── data/                 DataLoader và preprocessing dùng chung
+│   └── tasks/agri_21/        Công cụ và tests pipeline dataset
+├── notebooks/                Notebook huấn luyện trên Colab
+├── database/                 SQL và tài liệu baseline ERD
+├── experiments/              Thí nghiệm được tổ chức theo EXP-XXX
+├── docs/                     Tài liệu, bằng chứng và task logs
+├── .agents/                  Quy tắc, skills và lệnh cho agent
+└── docker-compose.yml        Web, API và PostgreSQL
 ```
+
+Schema ứng dụng lấy từ EF Core migrations trong `backend/`; SQL trong `database/`
+là baseline ERD trước đó. Dataset, checkpoint, output, cache và secrets nằm ngoài Git.
+
+<a name="dataset"></a>
 
 ## Dataset
 
@@ -59,7 +174,14 @@ Pipeline đọc trực tiếp `train.csv`, `val.csv` và `test.csv` trong thư m
 `manifests/`. Script training không chia lại dữ liệu; seed chỉ điều khiển quá
 trình huấn luyện và thứ tự batch.
 
-## Chạy module AI
+<a name="ai-module"></a>
+
+## Module AI
+
+<details>
+<summary><strong>Thiết lập môi trường, huấn luyện, đánh giá và Colab</strong></summary>
+
+### Môi trường và CLI
 
 Chạy các lệnh PowerShell từ thư mục gốc repository. Tạo môi trường trong chính
 repo này (script `ai/setup_env.bat` dùng thư mục làm việc hiện tại, nên không
@@ -109,7 +231,7 @@ Script cũ sau chỉ chạy tuần tự hai baseline `plant` và `disease`:
 .\ai\run_classification_baselines.bat
 ```
 
-## Google Colab
+### Google Colab
 
 Notebook Colab chạy từng baseline và lưu artifact trên Google Drive:
 
@@ -118,7 +240,7 @@ notebooks/01_train_classification_colab.ipynb
 ```
 
 Xem hướng dẫn chuẩn bị project, dataset ZIP và GPU tại
-`docs/notes/google_colab_training_guide.md`.
+[hướng dẫn Google Colab](docs/notes/google_colab_training_guide.md).
 
 Chạy toàn bộ kiểm thử dữ liệu từ root repository:
 
@@ -126,7 +248,12 @@ Chạy toàn bộ kiểm thử dữ liệu từ root repository:
 .\.venv\Scripts\python.exe -m unittest discover -s ai/tasks/agri_21/tests -p "test_*.py"
 ```
 
-## Chạy bộ khung web, API và PostgreSQL bằng Docker
+</details>
+
+## Docker nâng cao
+
+<details>
+<summary><strong>Cấu hình backend, volume và smoke test với AI mock</strong></summary>
 
 Xem [hướng dẫn chạy Docker từng bước](docs/notes/docker_run_guide.md) để chuẩn bị
 `.env`, khởi động, kiểm tra health, chạy smoke với mock và xử lý lỗi.
@@ -141,10 +268,11 @@ Từ root repository, tạo `.env` từ [.env.example](.env.example), điền
 rồi chạy. `CLOUDINARY_*` là tùy chọn; khi bỏ trống API lưu ảnh vào volume local.
 
 ```powershell
-Copy-Item .env.example .env
-# Điền cấu hình trong .env trước khi tiếp tục.
 docker compose config --quiet
-docker compose up --build --detach --wait
+docker compose build backend frontend
+docker compose up -d --wait --wait-timeout 120 postgres
+docker compose run --rm --no-deps backend --migrate
+docker compose up -d --wait --wait-timeout 120 backend frontend
 docker compose ps
 Invoke-RestMethod http://localhost:5080/api/health
 docker compose down
@@ -162,7 +290,8 @@ mới. API chạy ở `Production` nên không seed tài khoản demo có mật 
 Khi chạy backend trực tiếp ở `Development`, đặt cả hai biến
 `DemoUsers__AdminPassword` và `DemoUsers__UserPassword` để tạo tài khoản demo
 trên DB chưa có người dùng. Nếu không đặt, backend không tạo tài khoản demo.
-Nếu migration hoặc seed dữ liệu thất bại, API dừng khởi động. Khi chạy backend
+Migration và seed Development chạy trong lệnh `--migrate`; nếu thất bại, lệnh trả
+mã lỗi và cần xử lý trước khi khởi động API. Khi chạy backend
 ngoài Compose, phải cấp `ConnectionStrings__DefaultConnection` và
 `JwtSettings__Secret` qua biến môi trường hoặc user secrets; `appsettings` không
 chứa credential.
@@ -183,13 +312,37 @@ Override thêm AI **health stub**, chỉ có `/health`, không có `/predict`.
 Chọn cổng host còn trống nếu đang chạy stack khác. Muốn chỉ chạy database,
 dùng `docker compose up -d postgres` tại root.
 
+</details>
+
+<a name="testing"></a>
+
+## Kiểm thử
+
+Chạy kiểm thử bằng lệnh riêng sau khi chuẩn bị môi trường tương ứng.
+
+| Phần | Phạm vi | Hướng dẫn |
+|---|---|---|
+| Backend | Unit, integration với PostgreSQL, đọc/ghi API–DB | [Backend tests](.agents/commands/backend.md) |
+| Frontend | Unit và integration giao diện | [Frontend tests](.agents/commands/frontend.md) |
+| Python / AI | Kiểm thử code và pipeline dữ liệu | [AI tests](.agents/commands/ai.md) |
+| Docker | Khởi động và kiểm tra health các service | [Docker checks](.agents/commands/docker.md) |
+
+Integration backend cần Docker. Kiểm tra đọc/ghi trên backend image thật có bước
+dọn dữ liệu thử nghiệm; xem [hướng dẫn database](.agents/commands/database.md).
+
 Workflow [CI](.github/workflows/ci.yml) quét secret bằng Gitleaks và chạy độc lập Compose smoke, backend
 unit/integration, frontend và toàn bộ Python unit suite trên CPU. Backend gộp
 coverage của hai suite. Mục tiêu riêng cho backend, frontend và Python là **80%
-branch coverage**; mức sàn CI hiện tại lần lượt là **35%, 25%, 40%** theo artifact
+branch coverage**; mức sàn CI hiện tại lần lượt là **50%, 25%, 40%** theo artifact
 đã đo và sẽ tăng dần khi thêm test. Test pass chưa đủ để CI pass. Job `ci-gate` yêu cầu mọi job thành công;
 sau khi xác minh trên GitHub, cấu hình nó làm required check trong branch protection.
 TRX, coverage HTML/XML và log Compose được upload kể cả khi gate thất bại.
 Xem [cấu hình, lệnh chạy và bằng chứng AGRI-75](docs/reports/AGRI-75/ci_branch_coverage.md).
 Chưa cấu hình CD staging vì chưa có nhu cầu triển khai VPS; xem [kế hoạch CI/CD](docs/plans/ci_cd_plan.md).
 Chưa có kiểm thử model suy luận thật.
+
+## Đóng góp
+
+Đọc [quy tắc dự án](.agents/rules/project_rules.md) trước khi tạo nhánh hoặc PR.
+Dùng Jira key thật, commit theo Conventional Commits, bổ sung task log và bằng
+chứng kiểm thử phù hợp. PR cần người review của phần tương ứng.
