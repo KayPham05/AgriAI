@@ -48,7 +48,7 @@ và FastAPI inference thật vẫn chưa đầy đủ. Xem [analysis hiện tạ
 
 ## 2. Thiết kế mục tiêu — không phải hiện trạng AGRI-76
 
-Cập nhật yêu cầu ngày 2026-10-06 theo [các quyết định đã chốt](confirmed_decisions.md), [QD-01–QD-08](notes/user_story_decisions_2026-10-06.md) và [đặc tả mục tiêu](system_requirements.md). Phần 1 và ERD ở phần 3 phản ánh source/schema khảo sát; gallery phân biệt hiện tại, ERD lịch sử và 7 sơ đồ target_. Snapshot đã có source; Google/email/reset/multi-image endpoints vẫn chưa đầy đủ.
+Cập nhật yêu cầu ngày 2026-10-06 theo [Yêu cầu mục tiêu](system_requirements.md), [Yêu cầu mục tiêu](system_requirements.md) và [đặc tả mục tiêu](system_requirements.md). Phần 1 và ERD ở phần 3 phản ánh source/schema khảo sát; gallery phân biệt hiện tại, ERD lịch sử và 7 sơ đồ target_. Snapshot đã có source; Google/email/reset/multi-image endpoints vẫn chưa đầy đủ.
 
 Các sơ đồ bên dưới thể hiện một phần thiết kế mục tiêu, chưa bao phủ toàn bộ yêu cầu đã chốt. Chi tiết contract/schema còn cần thiết kế và triển khai. Khi một nhánh chưa được vẽ, yêu cầu vẫn theo AC nguồn; không dùng sự thiếu vắng đó để chuyển quyết định đã chốt thành yêu cầu còn mở. Không dùng sơ đồ mục tiêu làm bằng chứng hoàn thành chức năng.
 
@@ -314,7 +314,7 @@ erDiagram
 
 ### Contract mới và thiết kế dữ liệu cần bổ sung
 
-Theo [sổ quyết định](notes/user_story_decisions_2026-10-06.md#contract-và-dữ-liệu-mục-tiêu-cần-triển-khai), mục tiêu cần trạng thái xác minh email, mã có hạn/dùng một lần, danh tính Google; danh sách ảnh theo lượt; snapshot nội dung lịch sử. Schema/migration AGRI-70 đã có metadata auth/ảnh/snapshot; endpoint Google/email/reset/multi-image còn cần triển khai. ERD 9 bảng ở trên phản ánh dữ liệu hiện tại.
+Theo [Yêu cầu mục tiêu](system_requirements.md), mục tiêu cần trạng thái xác minh email, mã có hạn/dùng một lần, danh tính Google; danh sách ảnh theo lượt; snapshot nội dung lịch sử. Schema/migration AGRI-70 đã có metadata auth/ảnh/snapshot; endpoint Google/email/reset/multi-image còn cần triển khai. ERD 9 bảng ở trên phản ánh dữ liệu hiện tại.
 
 ## 4. Nguồn đối chiếu trong repo
 

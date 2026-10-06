@@ -4,7 +4,7 @@ Cập nhật 07/10/2026 theo working tree sau AGRI-70; nền commit 99d6e56 ch�
 
 ## Phân biệt hiện trạng và mục tiêu cập nhật
 
-[Phỏng vấn đã xác nhận](../../notes/user_story_decisions_2026-10-06.md) cập nhật mục tiêu ngày 2026-10-06. UC-01–UC-10 đã đối chiếu source mới sau AGRI-70; đặc tả không tự chứng minh nghiệm thu toàn bộ User Story. Đăng ký trả JWT ngay, web chặn khách và thiếu Google/reset là hành vi hiện tại, không bác bỏ yêu cầu sản phẩm mới.
+[Yêu cầu mục tiêu](../../system_requirements.md) cập nhật mục tiêu ngày 2026-10-06. UC-01–UC-10 đã đối chiếu source mới sau AGRI-70; đặc tả không tự chứng minh nghiệm thu toàn bộ User Story. Đăng ký trả JWT ngay, web chặn khách và thiếu Google/reset là hành vi hiện tại, không bác bỏ yêu cầu sản phẩm mới.
 
 ## Ranh giới web và API
 
@@ -191,4 +191,4 @@ Use Case diagram có đúng 10 mục tiêu nghiệp vụ. Association nối acto
 | US-08 | UC-06 | Tự lưu lượt của tài khoản cùng mọi ảnh/snapshot; web phải điều hướng phân trang. Schema đã có prediction_images/snapshot; API vẫn một ảnh, legacy dùng catalog và UI phân trang chưa đủ. |
 | US-09 | UC-07 | Xóa bản ghi của mình; giữ cleanup hết hạn theo AC nguồn. Xác nhận/xóa ảnh ngay/lỗi một phần vẫn là đề xuất cần thiết kế. |
 
-Tiền điều kiện mục tiêu: dự đoán không đòi phiên; lịch sử/xóa cần phiên và owner. Các thông số chưa chốt dùng trạng thái đề xuất ở story, không sao chép số mẫu sang contract production. Xem [thiết kế mục tiêu](../../system_design_diagrams.md#2-thiết-kế-mục-tiêu--không-phải-hiện-trạng-agri-76) và [AC nguồn](../../notebooks/user_stories_overview_nguyen_pham_bao_khanh_2026-10-05.md).
+Tiền điều kiện mục tiêu: dự đoán không đòi phiên; lịch sử/xóa cần phiên và owner. Các thông số chưa chốt dùng trạng thái đề xuất ở story, không sao chép số mẫu sang contract production. Xem [thiết kế mục tiêu](../../system_design_diagrams.md#2-thiết-kế-mục-tiêu--không-phải-hiện-trạng-agri-76) và [Yêu cầu mục tiêu](../../system_requirements.md).

@@ -24,7 +24,6 @@ bổ sung vận hành migration/expiry riêng và sửa catalog DELETE soft-dele
 - [Task log AGRI-76](../../task-logs/AGRI-76/AGRI-76-documentation.md).
 - [Task log AGRI-70](../../task-logs/AGRI-70-database-migrations.md): code/schema/migration và kiểm thử runtime; không gán phần code đó vào AGRI-76.
 - [Yêu cầu mục tiêu](../../system_requirements.md), [tài liệu sơ đồ tổng quan](../../system_design_diagrams.md), [quy trình mục tiêu cốt lõi](core_target_workflows.md).
-- [Quyết định đã chốt](../../confirmed_decisions.md) / [phỏng vấn](../../notes/user_story_decisions_2026-10-06.md).
 
 ## Nguồn và giới hạn
 

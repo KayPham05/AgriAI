@@ -83,7 +83,7 @@ DFD chỉ biểu diễn dữ liệu; bước kiểm tra quyền, thứ tự AI/m
 
 Bổ sung [mapping Activity/Sequence/State cho quy trình mục tiêu cốt lõi](core_target_workflows.md#sơ-đồ-và-mapping): đăng nhập → `target_*_authentication`; nhánh người đã đăng nhập phân loại một ảnh/xem kết quả → `target_*_prediction`; lịch sử/chi tiết/xóa của mình → `target_*_history`. State `target_state_prediction` là lifecycle logic đề xuất cho một lần xử lý ảnh, không phải `PredictionStatus` UI hoặc cột trạng thái DB. Mapping hiện trạng phía trên đã đối chiếu lại; các bước Planned được ghi riêng trong tài liệu mục tiêu.
 
-Nguồn [QD-01–QD-08](../../notes/user_story_decisions_2026-10-06.md) → FR/NFR cập nhật trong [đặc tả](../../system_requirements.md) → [US/AC mục tiêu](../../notebooks/user_stories_overview_nguyen_pham_bao_khanh_2026-10-05.md) → [đối chiếu UC mục tiêu](use_case_specifications.md#đối-chiếu-use-case-mục-tiêu-sau-phỏng-vấn). Ma trận trên đã cập nhật source sau AGRI-70, không chứng minh nghiệm thu toàn bộ yêu cầu mới. Ngưỡng cảnh báo không phải ngưỡng từ chối ảnh; trung bình confidence không phải thay đổi metric đánh giá checkpoint.
+Nguồn [FR/NFR mục tiêu](../../system_requirements.md) → [đối chiếu UC mục tiêu](use_case_specifications.md#đối-chiếu-use-case-mục-tiêu-sau-phỏng-vấn). Bộ User Story riêng giữ local ngoài PR; mã US/AC chỉ là tham chiếu lịch sử. Ma trận trên đã cập nhật source sau AGRI-70, không chứng minh nghiệm thu toàn bộ yêu cầu mới. Ngưỡng cảnh báo không phải ngưỡng từ chối ảnh; trung bình confidence không phải thay đổi metric đánh giá checkpoint.
 
 ## 6. Delta sau AGRI-70
 

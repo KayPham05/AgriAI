@@ -136,3 +136,10 @@ Giữ tài liệu đề xuất, ERD và các thay đổi không liên quan; khô
 - Chỉ stage phần mục lục AGRI-76 trong `docs/README.md`; các thay đổi mục lục khác giữ ngoài index. Không đưa backend/tests/EF migration, Docker/config, database SQL, hướng dẫn migration/Entities hoặc task log AGRI-70 vào commit. Không push.
 - Commitlint kiểm message đạt 0 lỗi/0 cảnh báo; staged whitespace đạt; 36 SVG/gallery validator và 509 local links/12 anchors đạt. Quét mẫu credential trong staged content không có finding; không chạy dedicated secret scanner hoặc application/model tests.
 - Đã tick mục commit source editable bằng commit thực tế. DoD Jira vẫn chờ Team Lead review và xử lý feedback; không dùng subagent thay human approval.
+
+## 16. Tách tài liệu User Story khỏi PR — 2026-10-07
+
+- Theo yêu cầu người dùng, bỏ tracking 12 file: chín User Story, một overview, biên bản quyết định User Story và bản tổng hợp quyết định riêng. Giữ nguyên nội dung các file ở local để xử lý trong phạm vi khác.
+- Hai commit trước đã có trên remote theo remote-tracking ref; dùng commit tiếp theo để loại các file khỏi diff PR, không viết lại lịch sử và không force-push. Các file vẫn tồn tại trong lịch sử commit cũ.
+- Giữ requirements/design và bộ mô hình AGRI-76. Đổi liên kết tới file đã loại thành tài liệu yêu cầu mục tiêu; mã US/AC trong bảng còn là tham chiếu lịch sử, không khẳng định bộ User Story thuộc PR.
+- Không stage thay đổi AGRI-70 hoặc thay đổi khác trong working tree. Không push; Team Lead review/feedback vẫn chưa hoàn tất.

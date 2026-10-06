@@ -6,7 +6,7 @@
 
 ## Nguồn cập nhật yêu cầu — 2026-10-06
 
-Nguồn đồng bộ yêu cầu mục tiêu là [bản tổng hợp các quyết định đã chốt](confirmed_decisions.md). Nguồn phỏng vấn ngày 2026-10-05 được ghi tại [sổ quyết định](notes/user_story_decisions_2026-10-06.md). Chúng cập nhật quyền khách, giới hạn tổng lượt, kết quả nhiều ảnh, cảnh báo/thuốc, auth và snapshot lịch sử; thay những mục mục tiêu cũ tương ứng. Mô hình source/schema hiện tại đã cập nhật 07/10/2026; ma trận phần 8 giữ riêng baseline lịch sử 05/10; cập nhật triển khai database ngày 2026-10-06 được ghi riêng tại [quy trình migration và kiểm thử](notes/database_migrations.md). Quy tắc chi tiết dùng AC nguồn trong [bộ User Story](notebooks/user_stories_overview_nguyen_pham_bao_khanh_2026-10-05.md).
+Yêu cầu mục tiêu dưới đây tổng hợp quyết định phỏng vấn ngày 05–06/10/2026. Các file User Story, biên bản và bản tổng hợp riêng được giữ local, không thuộc phạm vi PR AGRI-76. Mã US/AC trong bảng giữ làm tham chiếu lịch sử; quy tắc sản phẩm được nêu trực tiếp trong tài liệu này. Mô hình source/schema cập nhật ngày 07/10; ma trận phần 8 giữ baseline lịch sử 05/10. Triển khai database và kiểm thử thuộc AGRI-70.
 
 ## 0. Hiện trạng và phạm vi phân tích AGRI-76
 
@@ -104,7 +104,7 @@ Các điều kiện nghiệm thu quan trọng: khách dự đoán được nhưn
 
 ## 6. Quyết định còn mở
 
-Theo mục 6 của [bản tổng hợp](confirmed_decisions.md):
+Các thông số mục tiêu còn cần chốt:
 
 1. **Ảnh đầu vào:** quy đổi MB sang byte, số ảnh tối đa; xử lý lỗi một ảnh trong nhóm. Quyền dự đoán khách, định dạng, giới hạn tổng lượt và cách gộp kết quả đã chốt.
 2. **Confidence:** số chữ số/cách làm tròn. Ngưỡng cảnh báo và điều kiện không gợi ý thuốc đã chốt; cơ chế kỹ thuật nhận biết ảnh ngoài phạm vi cần thiết kế và kiểm chứng, không phải quyền tùy chọn trả một nhãn cho ảnh lạ.
@@ -118,9 +118,6 @@ Theo mục 6 của [bản tổng hợp](confirmed_decisions.md):
 
 ## 7. Tài liệu liên quan
 
-- [Tổng hợp các quyết định đã chốt](confirmed_decisions.md)
-- [Nguồn quyết định phỏng vấn](notes/user_story_decisions_2026-10-06.md)
-- [User Story và AC](notebooks/user_stories_overview_nguyen_pham_bao_khanh_2026-10-05.md)
 - [Review triển khai VPS](notes/vps_deployment_review.md)
 
 - [ERD, BFD và DFD](system_design_diagrams.md)
