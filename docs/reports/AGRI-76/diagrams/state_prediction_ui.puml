@@ -1,0 +1,60 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title State — PredictionStatus trong DiagnosePage
+hide empty description
+[*] --> idle : mount / status initial
+state idle
+state uploading
+state analyzing
+state success #FBECE5
+state error
+idle --> uploading : analyze [selectedFile && !busy]
+error --> uploading : analyze [selectedFile && !busy] / retry
+success --> uploading : analyze [selectedFile && !busy]
+uploading --> analyzing : onUploadComplete [!aborted]
+uploading --> success : promise resolved [!aborted]
+analyzing --> success : promise resolved [!aborted]
+uploading --> error : catch [!aborted]
+analyzing --> error : catch [!aborted]
+idle --> error : selectFile / MIME,size,decode invalid
+error --> error : selectFile invalid
+success --> error : selectFile invalid (via clearImage)
+idle --> idle : clearImage / reset
+uploading --> idle : clearImage / abort + reset
+analyzing --> idle : clearImage / abort + reset
+success --> idle : clearImage / reset
+error --> idle : clearImage / reset
+note bottom of idle
+Ảnh chọn hợp lệ vẫn idle.
+isPreparing là state riêng, không phải PredictionStatus.
+Abort khi unmount không tạo error; component bị hủy.
+end note
+note bottom of success
+Không phải lifecycle lưu DB.
+Prediction entity không có Status / Failed / Processing.
+end note
+@enduml

@@ -1,0 +1,54 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title MỤC TIÊU — State xử lý một ảnh (đề xuất) — UC-05
+top to bottom direction
+state "Chờ ảnh" as Idle
+state "Đang kiểm JWT / ảnh" as Validating
+state "Đang lưu ảnh cloud" as Uploading
+state "Đang suy luận / kiểm mapping" as Processing
+state "Đang lưu kết quả DB" as Saving
+state "Hoàn tất" as Completed #FBECE5
+state "Thất bại" as Failed
+[*] --> Idle
+Idle --> Validating : submit [có ảnh]
+Validating --> Uploading : validation [JWT và ảnh hợp lệ]
+Uploading --> Processing : upload [có tham chiếu ảnh]
+Processing --> Saving : predict [response và mapping hợp lệ]
+Saving --> Completed : save [DB commit thành công]
+Validating --> Failed : JWT / ảnh không hợp lệ
+Uploading --> Failed : lỗi storage
+Processing --> Failed : lỗi AI / contract / mapping\n/ yêu cầu cleanup ảnh
+Saving --> Failed : lỗi DB\n/ rollback và yêu cầu cleanup ảnh
+Completed --> [*] : trả kết quả thành công
+Failed --> [*] : trả lỗi
+legend bottom
+Trạng thái logic của một lần xử lý, không phải enum/cột đã triển khai.
+Completed chỉ sau commit DB; upload HTTP xong không đồng nghĩa AI đã chạy.
+DB Prediction hiện không có status; không sửa ERD/SQL theo sơ đồ đề xuất này.
+Retry nếu có là request mới; policy cleanup/retry còn cần chốt.
+endlegend
+@enduml

@@ -1,0 +1,91 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Activity — UC-05 API hiện tại
+|Backend|
+start
+:POST /api/predictions;\nUserId nullable từ claims;
+if (File không rỗng và .jpg/.jpeg/.png?) then (có)
+ :Buffer bytes;
+else (không)
+ :400;
+ stop
+endif
+|HTTP AI client|
+:PredictAsync stream độc lập;\nPOST /predict;
+if (HTTP / timeout thành công?) then (có)
+else (không)
+ |Backend|
+ :503; chưa upload ảnh;
+ stop
+endif
+|HTTP AI client|
+if (JSON / contract hợp lệ?) then (có)
+ :AiPredictionResult;
+else (không)
+ |Backend|
+ :502; chưa upload ảnh;
+ stop
+endif
+|Database|
+:Tra ClassIndex top-1 và từng top-k;
+|Backend|
+if (Tất cả index/name khớp catalog?) then (có)
+ :Tạo Prediction / details trong bộ nhớ;
+else (không)
+ :400; không fallback;
+ stop
+endif
+if (Có UserId?) then (không / khách)
+ :Map DTO; 200;\nkhông lưu ảnh / lịch sử;
+ stop
+else (có)
+ |Image storage|
+ :UploadImageAsync;\nCloudinary hoặc fallback local;
+ if (Storage thành công?) then (có)
+ else (không)
+  |Backend|
+  :Exception qua middleware;
+  stop
+ endif
+ |Backend|
+ :Thêm PredictionImage hết hạn +30 ngày;\nmap kết quả / serialize snapshot JSON;
+ |Database|
+ :AddAsync / SaveChangesAsync;
+ if (Ghi DB thành công?) then (có)
+  |Backend|
+  :201 + Location;
+ else (không)
+  |Backend|
+  :Giữ exception gốc;
+  |Image storage|
+  :Cố DeleteImageAsync với CancellationToken.None;
+  |Backend|
+  :Log cleanup lỗi nếu có;\nrethrow lỗi persistence gốc;
+ endif
+endif
+stop
+@enduml

@@ -1,0 +1,112 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title ERD — schema PostgreSQL live (2026-10-05)
+hide circle
+hide methods
+entity users {
+ * id: uuid <<PK>>
+ --
+ * full_name: varchar(150)
+ * email: varchar(255) <<UK>>
+ * password_hash: text
+ * role: varchar(30) = User
+ * created_at: timestamptz
+ updated_at: timestamptz
+}
+entity plants {
+ * id: uuid <<PK>>
+ --
+ * name: varchar(100) <<UK>>
+ vietnamese_name: varchar(150)
+ scientific_name: varchar(200)
+ description: text
+ * is_active: boolean = true
+ * created_at: timestamptz
+ updated_at: timestamptz
+}
+entity diseases {
+ * id: uuid <<PK>>
+ --
+ * name: varchar(150) <<UK>>
+ vietnamese_name: varchar(200)
+ description: text
+ symptoms: text
+ treatment: text
+ prevention: text
+ * is_active: boolean = true
+ * created_at: timestamptz
+ updated_at: timestamptz
+}
+entity plant_diseases {
+ * id: uuid <<PK>>
+ --
+ * plant_id: uuid <<FK>>
+ * disease_id: uuid <<FK>>
+ * class_name: varchar(255)
+ * class_index: integer <<UK>>
+ * is_active: boolean = true
+}
+entity predictions #FBECE5 {
+ * id: uuid <<PK>>
+ --
+ user_id: uuid <<FK nullable>>
+ * image_path: text
+ image_public_id: text
+ * predicted_plant_disease_id: uuid <<FK>>
+ * confidence: double precision
+ * created_at: timestamptz
+}
+entity prediction_details {
+ * id: uuid <<PK>>
+ --
+ * prediction_id: uuid <<FK>>
+ * plant_disease_id: uuid <<FK>>
+ * probability: double precision
+ * rank: integer
+}
+users |o--o{ predictions : SET NULL
+plants ||--o{ plant_diseases : RESTRICT
+diseases ||--o{ plant_diseases : RESTRICT
+plant_diseases ||--o{ predictions : RESTRICT
+predictions ||--o{ prediction_details : CASCADE
+plant_diseases ||--o{ prediction_details : RESTRICT
+note bottom of plant_diseases
+UNIQUE(plant_id, disease_id)
+CHECK(class_index >= 0)
+class_name không UNIQUE
+end note
+note bottom of prediction_details
+UNIQUE(prediction_id, rank)
+CHECK(rank > 0)
+Không CHECK probability/confidence [0,1]
+end note
+legend bottom
+* = NOT NULL; dòng không * = nullable
+Bội số theo DB, không theo kỳ vọng sản phẩm.
+Không thêm bảng session/status/model/job.
+endlegend
+@enduml

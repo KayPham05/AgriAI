@@ -1,0 +1,64 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Activity — UC-06 xem kết quả
+|User|
+start
+|Frontend|
+if (Đã vào app sau đăng nhập/restore?) then (yes)
+else (no)
+ :IntroPage / LoginModal;
+ stop
+endif
+|User|
+:Chọn kết quả hoặc chờ POST;
+|Frontend|
+if (Kết quả từ POST?) then (yes)
+ :mapPredictionResult / hiển thị;
+else (history)
+  :getPredictionById(id, token);
+  note right
+  Guest browser chưa có đường vào UI.
+  GET theo ID công khai cho API trực tiếp.
+  end note
+  |Backend|
+  :GET /api/predictions/{id}\nkhông Authorize / owner check;
+  |Database|
+  :GetByIdAsync / Include navigation;
+  if (Có prediction?) then (yes)
+   |Backend|
+   :200 PredictionResultDto;
+   |Frontend|
+   :Hiển thị chi tiết;
+  else (no)
+   |Backend|
+   :404;
+   |Frontend|
+   :Hiển thị lỗi;
+  endif
+endif
+stop
+@enduml

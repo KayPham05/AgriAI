@@ -1,0 +1,95 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Class — repositories, adapters, configuration
+hide empty members
+interface IPredictionRepository
+interface IPlantDiseaseRepository
+interface IImageStorage
+interface IPlantDiseasePredictor
+class PredictionRepository {
+ - _context: AppDbContext
+ + GetByIdAsync(id, cancellationToken)
+ + GetByUserIdAsync(userId, pageNumber, pageSize, cancellationToken)
+ + GetCountByUserIdAsync(userId, cancellationToken)
+ + AddAsync(prediction, cancellationToken)
+ + DeleteAsync(prediction, cancellationToken)
+}
+class PlantDiseaseRepository {
+ - _context: AppDbContext
+ + GetByClassIndexAsync(classIndex, cancellationToken)
+ + GetByClassNameAsync(className, cancellationToken)
+ + GetAllAsync(includeInactive, cancellationToken)
+}
+class AppDbContext {
+ + Users: DbSet<User>
+ + Plants: DbSet<Plant>
+ + Diseases: DbSet<Disease>
+ + PlantDiseases: DbSet<PlantDisease>
+ + Predictions: DbSet<Prediction>
+ + PredictionDetails: DbSet<PredictionDetail>
+ + PredictionImages: DbSet<PredictionImage>
+ + UserIdentities: DbSet<UserIdentity>
+ + UserActionTokens: DbSet<UserActionToken>
+ # OnModelCreating(modelBuilder)
+}
+class DbContext <<EF Core>>
+class CloudinaryImageStorage {
+ - _cloudinary: Cloudinary?
+ + UploadImageAsync(imageStream, fileName, cancellationToken)
+ + UploadImageAsync(file, cancellationToken)
+ + DeleteImageAsync(publicId, cancellationToken): Task<bool>
+}
+class FastApiPlantDiseasePredictor {
+ - _httpClient: HttpClient
+ + PredictAsync(imageStream, fileName, cancellationToken)
+ + PredictAsync(file, cancellationToken)
+}
+interface IConfiguration <<Microsoft>>
+class ImageExpiryCleanup <<static>> {
+ + {static} RunAsync(services, cancellationToken): Task<int>
+}
+class DbInitializer <<static>> {
+ + {static} SeedAsync(serviceProvider): Task
+}
+ImageExpiryCleanup ..> AppDbContext
+ImageExpiryCleanup ..> IImageStorage
+DbInitializer ..> AppDbContext
+PredictionRepository ..|> IPredictionRepository
+PlantDiseaseRepository ..|> IPlantDiseaseRepository
+CloudinaryImageStorage ..|> IImageStorage
+FastApiPlantDiseasePredictor ..|> IPlantDiseasePredictor
+PredictionRepository --> AppDbContext : injected
+PlantDiseaseRepository --> AppDbContext : injected
+AppDbContext --|> DbContext
+CloudinaryImageStorage ..> IConfiguration : constructor config
+FastApiPlantDiseasePredictor ..> IConfiguration : constructor config
+note bottom of IConfiguration
+Không có class AiSettings tự tạo.
+DI Infrastructure đăng ký HTTP timeout,
+Npgsql, repos và storage.
+end note
+@enduml

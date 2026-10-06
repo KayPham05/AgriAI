@@ -1,0 +1,68 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Sequence — UC-07 xóa owner/Admin hiện tại
+actor "Owner / Admin" as User
+participant "App / predictionApi" as Web
+participant "Controller + middleware" as API
+participant PredictionService as Service
+participant IImageStorage as Storage
+database PostgreSQL as DB
+User -> Web : xác nhận xóa
+Web -> API : DELETE /api/predictions/{id} + JWT
+alt JWT/UserId không hợp lệ
+ API --> Web : 401
+else Đã xác thực
+ API -> Service : DeletePredictionAsync(id,userId,isAdmin,ct)
+ Service -> DB : GetByIdAsync
+ DB --> Service : prediction hoặc null
+ alt Không có bản ghi
+  Service --> API : KeyNotFoundException
+  API --> Web : 404
+ else Có bản ghi
+  alt Owner khác và không Admin
+   Service --> API : UnauthorizedAccessException
+   API --> Web : 401
+  else Được phép
+   loop Từng public ID chưa DeletedAt + legacy ID (distinct)
+    Service -> Storage : DeleteImageAsync(publicId)
+    Storage --> Service : true / false / exception
+   end
+   alt Storage false hoặc exception
+    Service --> API : InvalidOperationException hoặc lỗi storage
+    API --> Web : 400 nếu false; exception theo middleware
+    note over Service,DB: Giữ prediction; không gọi DeleteAsync.\nẢnh xóa trước đó có thể đã mất; không có distributed transaction.
+   else Storage thành công / không có ID
+    Service -> DB : DeleteAsync / SaveChanges;\nCASCADE details và images
+    DB --> Service : done hoặc exception
+    Service --> API : done hoặc lỗi DB
+    API --> Web : 204 khi done; lỗi DB theo middleware
+   end
+  end
+ end
+end
+Web --> User : cập nhật danh sách / lỗi
+@enduml

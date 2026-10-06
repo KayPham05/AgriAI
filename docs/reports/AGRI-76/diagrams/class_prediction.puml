@@ -1,0 +1,85 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Class — orchestration prediction (thành viên chọn lọc)
+hide empty members
+class PredictionsController {
+ - _predictionService: IPredictionService
+ + Predict(request, cancellationToken): Task<ActionResult<PredictionResultDto>>
+ + GetHistory(pageNumber, pageSize, cancellationToken)
+ + GetById(id, cancellationToken)
+ + Delete(id, cancellationToken)
+}
+interface IPredictionService {
+ + PredictAsync(file, userId, cancellationToken): Task<PredictionResultDto>
+ + GetPredictionByIdAsync(id, cancellationToken, userId)
+ + GetPredictionHistoryAsync(userId, pageNumber, pageSize, cancellationToken)
+ + DeletePredictionAsync(id, userId, isAdmin, cancellationToken)
+}
+class ControllerBase <<ASP.NET Core>>
+PredictionsController --|> ControllerBase
+class PredictionService #FBECE5 {
+ - _predictionRepository: IPredictionRepository
+ - _plantDiseaseRepository: IPlantDiseaseRepository
+ - _imageStorage: IImageStorage
+ - _diseasePredictor: IPlantDiseasePredictor
+ - _logger: ILogger<PredictionService>
+ + PredictAsync(file, userId, cancellationToken)
+ + GetPredictionByIdAsync(id, cancellationToken, userId)
+ + GetPredictionHistoryAsync(userId, pageNumber, pageSize, cancellationToken)
+ + DeletePredictionAsync(id, userId, isAdmin, cancellationToken)
+ - {static} MapToResultDto(prediction, primaryPlantDisease)
+ - {static} ProjectImages(prediction)
+ - {static} ReadStoredResult(prediction)
+}
+interface IPredictionRepository {
+ + GetByIdAsync(id, cancellationToken)
+ + GetByUserIdAsync(userId, pageNumber, pageSize, cancellationToken)
+ + GetCountByUserIdAsync(userId, cancellationToken)
+ + AddAsync(prediction, cancellationToken)
+ + DeleteAsync(prediction, cancellationToken)
+}
+interface IPlantDiseaseRepository {
+ + GetByClassIndexAsync(classIndex, cancellationToken)
+ + GetByClassNameAsync(className, cancellationToken)
+ + GetAllAsync(includeInactive, cancellationToken)
+}
+interface IImageStorage {
+ + UploadImageAsync(file, cancellationToken)
+ + UploadImageAsync(imageStream, fileName, cancellationToken)
+ + DeleteImageAsync(publicId, cancellationToken): Task<bool>
+}
+interface IPlantDiseasePredictor {
+ + PredictAsync(file, cancellationToken)
+ + PredictAsync(imageStream, fileName, cancellationToken): Task<AiPredictionResult>
+}
+PredictionsController --> IPredictionService : injected
+PredictionService ..|> IPredictionService
+PredictionService --> IPredictionRepository : injected
+PredictionService --> IPlantDiseaseRepository : injected
+PredictionService --> IImageStorage : injected
+PredictionService --> IPlantDiseasePredictor : injected
+@enduml

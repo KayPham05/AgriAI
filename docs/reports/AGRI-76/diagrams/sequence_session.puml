@@ -1,0 +1,72 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Sequence — UC-03 / UC-04 phiên và hồ sơ
+actor User
+participant "App / ProfilePage" as Web
+participant authApi as Auth
+participant "Browser storage" as Browser
+participant "AuthController / AuthService" as API
+database "UserRepository / PostgreSQL" as DB
+User -> Web : reload
+Web -> Auth : restoreAuthSession()
+Auth -> Browser : đọc leafai_auth_session
+Browser --> Auth : serialized session hoặc null
+alt có session token
+ Auth -> API : GET /api/auth/me + Bearer
+ alt JWT hợp lệ / claim parse được
+  API -> DB : GetByIdAsync(userId)
+  DB --> API : User hoặc null
+  API --> Auth : 200 UserDto hoặc 404
+ else token/claim sai
+  API --> Auth : 401
+ end
+ alt response thành công
+  Auth --> Web : AuthSession(user từ server)
+  Web -> Web : setHasEnteredApp(true) / mở ứng dụng
+ else lỗi restore
+  Auth -> Browser : clearAuthSession
+  Auth --> Web : null
+ end
+else không có session
+ Auth --> Web : null
+end
+note over Web: Restore thất bại/không có phiên: hasEnteredApp=false, IntroPage/LoginModal.
+opt đã vào ứng dụng: sửa hồ sơ UI (UC-03)
+ User -> Web : ProfilePage.handleSave
+ Web -> Web : setUserProfile(name,role hiển thị,location)
+ note over Web,DB: Không có request profile update / không đổi users hoặc JWT role.
+end
+opt đăng xuất browser (UC-04)
+ User -> Web : onLogout
+ Web -> Auth : clearAuthSession()
+ Auth -> Browser : remove localStorage + sessionStorage
+ Web -> Web : guestProfile / readGuestHistory / home
+ Web -> Web : setHasEnteredApp(false) / hiển thị IntroPage
+ note over API: Không có server revoke-token call.
+end
+Web --> User : hồ sơ / trạng thái phiên
+@enduml

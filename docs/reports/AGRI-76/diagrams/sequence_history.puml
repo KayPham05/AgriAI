@@ -1,0 +1,66 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Sequence — UC-06 list/detail theo owner
+actor User
+participant "App / predictionApi" as Web
+participant PredictionsController as Controller
+participant PredictionService as Service
+database "PredictionRepository / PostgreSQL" as DB
+User -> Web : mở lịch sử
+Web -> Controller : GET /api/predictions?pageNumber=1&pageSize=100 + JWT
+alt JWT hoặc UserId không hợp lệ
+ Controller --> Web : 401; không gọi service
+else Đã xác thực
+ Controller -> Service : GetPredictionHistoryAsync(userId,page,size,ct)
+ Service -> Service : pageNumber/pageSize > 0; sai -> 400
+ Service -> DB : count / list theo UserId; Includes images/catalog
+ DB --> Service : predictions + images + catalog
+ Service -> Service : ReadStoredResult:\nsnapshot hoặc MapToResultDto legacy;\nẩn URL hết hạn / ProjectImages
+ Service --> Controller : PagedResult<PredictionHistoryDto>
+ Controller --> Web : 200
+ Web --> User : danh sách
+end
+User -> Web : chọn kết quả
+Web -> Controller : GET /api/predictions/{id} + JWT
+alt JWT/UserId không hợp lệ (khách gồm ở đây)
+ Controller --> Web : 401; không gọi service
+else JWT hợp lệ
+ Controller -> Service : GetPredictionByIdAsync(id,ct,userId)
+ Service -> DB : GetByIdAsync / Includes images/catalog/details
+ DB --> Service : prediction hoặc null
+ alt Không tồn tại hoặc owner khác
+  Service --> Controller : null
+  Controller --> Web : 404 (Admin cũng không được đọc record khác)
+ else Owner khớp
+  Service -> Service : ReadStoredResult; snapshot hoặc legacy;\nURL ảnh hết hạn bị ẩn
+  Service --> Controller : PredictionResultDto
+  Controller --> Web : 200
+ end
+end
+Web --> User : chi tiết hoặc lỗi
+note over Web: Web cần login/restore và hasEnteredApp=true;\nkhách API chỉ xem kết quả POST của lượt hiện tại.
+@enduml

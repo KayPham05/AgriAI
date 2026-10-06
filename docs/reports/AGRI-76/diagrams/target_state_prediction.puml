@@ -1,0 +1,53 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title MỤC TIÊU — State logic một ảnh tài khoản — UC-05
+top to bottom direction
+state "Chờ ảnh" as Idle
+state "Kiểm ảnh / phiên nhánh tài khoản" as Validating
+state "Suy luận / kiểm mapping" as Processing
+state "Lưu ảnh" as Uploading
+state "Lưu DB / snapshot" as Saving
+state "Hoàn tất" as Completed #FBECE5
+state "Thất bại" as Failed
+[*] --> Idle
+Idle --> Validating : submit [có ảnh]
+Validating --> Processing : validation [hợp lệ]
+Processing --> Uploading : response [mapping khớp]
+Uploading --> Saving : upload [thành công]
+Saving --> Completed : save [DB commit]
+Validating --> Failed : validation lỗi
+Processing --> Failed : AI / contract / mapping lỗi
+Uploading --> Failed : storage lỗi
+Saving --> Failed : persistence lỗi / cố cleanup ảnh
+Completed --> [*] : 201
+Failed --> [*] : lỗi
+legend bottom
+State logic đề xuất, không phải enum/cột DB hoặc PredictionStatus UI.
+Validation đầy đủ / FastAPI bridge còn Planned; thứ tự khớp source mới.
+Khách có luồng riêng không persistence; retry nếu có là request mới.
+endlegend
+@enduml

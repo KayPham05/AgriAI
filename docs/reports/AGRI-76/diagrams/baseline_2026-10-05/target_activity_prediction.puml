@@ -1,0 +1,78 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title MỤC TIÊU — Activity phân loại một ảnh và xem kết quả — UC-05 / UC-06
+|Người dùng|
+start
+:Đăng nhập / chọn một ảnh / yêu cầu phân loại;
+|Frontend|
+:Kiểm ảnh phía client / POST /api/predictions + JWT;
+|ASP.NET Core|
+if (JWT hợp lệ?) then (có)
+else (không)
+ :Trả 401;
+ stop
+endif
+if (Dung lượng / định dạng / nội dung ảnh hợp lệ?) then (có)
+else (không)
+ :Trả lỗi validation;
+ stop
+endif
+:Lưu ảnh cloud / nhận tham chiếu;
+if (Lưu ảnh thành công?) then (có)
+else (không)
+ :Trả lỗi storage;
+ stop
+endif
+:POST /predict qua HTTP AI client;
+|FastAPI AI Service|
+:Preprocess theo checkpoint / chạy ConvNeXt-Tiny;
+:Trả nhãn / confidence / top-k;
+|ASP.NET Core|
+:Kiểm response / tra mapping DB;
+if (AI response và mapping hợp lệ?) then (có)
+else (không)
+ :Yêu cầu cleanup ảnh / trả lỗi;
+ stop
+endif
+:Ghi predictions và prediction_details\ntrong transaction DB;
+if (DB commit thành công?) then (có)
+ :Trả 201 PredictionResultDto;
+ |Frontend|
+ :Hiển thị cây / bệnh / confidence / ảnh;
+ |Người dùng|
+ :Xem kết quả;
+else (không)
+ |ASP.NET Core|
+ :Rollback DB / yêu cầu cleanup ảnh / trả lỗi;
+endif
+stop
+legend bottom
+PLANNED: Authorize POST, validation server đầy đủ, FastAPI thật,
+mapping nghiêm ngặt và cleanup ảnh khi AI/DB lỗi.
+Một ảnh/request; không chốt batch, ngưỡng confidence hoặc policy retry.
+endlegend
+@enduml

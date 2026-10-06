@@ -1,0 +1,86 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Activity — UC-05 prediction phía API
+|Backend|
+start
+:POST /api/predictions\nUserId từ JWT nếu có;
+if (File không rỗng / đuôi hợp lệ?) then (yes)
+ :Buffer ảnh;
+else (no)
+ :400;
+ stop
+endif
+|Image storage|
+:UploadImageAsync;
+if (Cloudinary cấu hình và upload thành công?) then (yes)
+ :Trả public ID / secure URL;
+else (no)
+ :Ghi file local / trả local ID và URL;
+endif
+|Backend|
+:Gọi predictor với stream độc lập;
+|HTTP AI client|
+:POST /predict multipart file;
+if (HTTP thất bại hoặc timeout?) then (yes)
+ :AiServiceException 503;
+ |Backend|
+ :Trả 503 / chưa lưu prediction;
+ note right: Ảnh đã lưu; chưa có cleanup.
+ stop
+else (no)
+ |HTTP AI client|
+ if (JSON / contract hợp lệ?) then (yes)
+  :Trả AiPredictionResult;
+ else (no)
+  :AiServiceException 502;
+  |Backend|
+  :Trả 502 / chưa lưu prediction;
+  stop
+ endif
+endif
+|Backend|
+:Mapping ClassIndex rồi ClassName;
+if (Không tìm thấy mapping chính?) then (yes)
+ :Lấy bản ghi đầu tiên active;
+ if (Danh mục trống?) then (yes)
+  :InvalidOperationException / 400;
+  stop
+ endif
+endif
+:Tạo Prediction / details top-k\nitem không khớp dùng lớp chính;
+|Database|
+:IPredictionRepository.AddAsync\nSaveChangesAsync;
+if (Ghi DB thành công?) then (yes)
+ |Backend|
+ :201 PredictionResultDto + Location;
+else (no)
+ |Backend|
+ :Exception qua middleware\nDB update error thường 500;
+ note right: Không có bước tự dọn ảnh.
+endif
+stop
+@enduml

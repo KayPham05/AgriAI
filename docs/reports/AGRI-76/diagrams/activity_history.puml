@@ -1,0 +1,87 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Activity — UC-06 lịch sử / UC-07 xóa hiện tại
+|Frontend|
+start
+if (Đã login/restore và vào app?) then (có)
+ :GET /api/predictions page=1/100 + JWT;
+else (không)
+ :IntroPage / LoginModal;
+ stop
+endif
+|Backend|
+if (JWT/UserId hợp lệ và page/size > 0?) then (có)
+ |Database|
+ :Count/list theo UserId;\nsort / skip / take / Includes;
+ |Backend|
+ :Snapshot hoặc catalog legacy;\nẩn URL ảnh hết hạn; 200 PagedResult;
+ |Frontend|
+ :Hiển thị history;
+else (không)
+ |Backend|
+ :401 auth hoặc 400 pagination;
+ |Frontend|
+ :Ghi warning tải history;
+ stop
+endif
+|User|
+if (Chọn chi tiết?) then (có)
+ |Frontend|
+ :GET /api/predictions/{id} + JWT;
+ |Backend|
+ if (JWT hợp lệ / record tồn tại / đúng owner?) then (có)
+  :200 snapshot hoặc legacy;\nẩn URL hết hạn;
+ else (không)
+  :401 auth / 404 missing hoặc sai owner;
+ endif
+endif
+|User|
+if (Xác nhận xóa?) then (có)
+ |Frontend|
+ :DELETE /api/predictions/{id} + JWT;
+ |Backend|
+ if (JWT hợp lệ / tồn tại / owner hoặc Admin?) then (có)
+  |Image storage|
+  :Xóa từng ID distinct;
+  if (Tất cả storage trả true?) then (có / không có ID)
+   |Database|
+   :DeleteAsync / SaveChanges;\ncascade details và images;
+   |Backend|
+   :204 nếu DB thành công;\nexception DB qua middleware;
+  else (không / exception)
+   |Backend|
+   :Giữ history; trả lỗi;\n400 nếu bool false;
+  endif
+ else (không)
+  |Backend|
+  :401 auth/quyền hoặc 404 missing;
+ endif
+ |Frontend|
+ :Loại khỏi state khi 204;\nhiển thị lỗi khi thất bại;
+endif
+stop
+@enduml

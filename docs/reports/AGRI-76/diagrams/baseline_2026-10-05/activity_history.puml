@@ -1,0 +1,83 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Activity — UC-06 lịch sử / UC-07 xóa
+|User|
+start
+|Frontend|
+if (Đã vào app sau đăng nhập/restore?) then (yes)
+else (no)
+ :IntroPage / LoginModal;
+ stop
+endif
+|User|
+:Mở lịch sử;
+|Frontend|
+ :GET /api/predictions\npageNumber=1,pageSize=100 + JWT;
+ |Backend|
+ if (JWT hợp lệ?) then (yes)
+  |Database|
+  :Lọc UserId / count / sort / page;
+  |Backend|
+  :200 PagedResult;
+  |Frontend|
+  :Map danh sách server;
+  note right
+  Nhánh guest browser còn trong code,
+  chưa có đường vào HistoryPage từ UI khách.
+  end note
+ else (no)
+  |Backend|
+  :401;
+  |Frontend|
+  :Ghi warning lỗi tải history;
+  stop
+ endif
+|User|
+if (Yêu cầu xóa và xác nhận?) then (yes)
+ |Frontend|
+  :DELETE /api/predictions/{id} + JWT;
+  |Backend|
+  :Authenticate / tải prediction;
+  if (Tồn tại và owner hoặc Admin?) then (yes)
+   |Image storage|
+   :DeleteImageAsync nếu có public ID;
+   note right: bool false chưa được service kiểm.
+   |Database|
+   :Xóa prediction / cascade details;
+   |Backend|
+   :204;
+   |Frontend|
+   :Loại khỏi state / thông báo thành công;
+  else (no)
+   |Backend|
+   :404 nếu không có; 401 nếu sai owner;
+   |Frontend|
+   :Hiển thị lỗi xóa;
+  endif
+endif
+stop
+@enduml

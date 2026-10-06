@@ -1,0 +1,67 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title MỤC TIÊU — Sequence lịch sử / chi tiết / xóa của mình — UC-06 / UC-07
+actor "Người dùng đã đăng nhập" as User
+participant "Next.js Frontend" as Web
+participant "ASP.NET Core Backend" as API
+database PostgreSQL as DB
+participant "Cloud storage" as Cloud
+User -> Web : Mở lịch sử
+Web -> API : GET /api/predictions + JWT / pagination
+API -> API : Kiểm JWT / lấy UserId
+API -> DB : Count/list theo UserId / sort / page
+DB --> API : Danh sách của user
+API --> Web : 200 PagedResult
+Web --> User : Lịch sử
+User -> Web : Chọn kết quả
+Web -> API : GET /api/predictions/{id} + JWT
+API -> DB : Đọc prediction và owner
+DB --> API : Bản ghi hoặc không có
+alt JWT hợp lệ / record tồn tại / owner khớp
+ API --> Web : 200 PredictionResultDto
+ Web --> User : Chi tiết / ảnh được phép xem
+else Không được phép hoặc không tồn tại
+ API --> Web : Lỗi xác thực / quyền / không tìm thấy
+ Web --> User : Hiển thị lỗi
+end
+opt User xác nhận xóa bản ghi của mình
+ User -> Web : Xác nhận xóa
+ Web -> API : DELETE /api/predictions/{id} + JWT
+ API -> API : Kiểm lại JWT / bản ghi / owner
+ API -> Cloud : Xóa ảnh nếu có tham chiếu
+ Cloud --> API : Kết quả xóa
+ API -> DB : Xóa prediction / cascade prediction_details
+ DB --> API : Kết quả lưu
+ API --> Web : 204 chỉ khi thao tác thành công
+ Web --> User : Cập nhật lịch sử
+ note over API,Cloud: Nếu auth/storage/DB lỗi: trả lỗi, không tiếp tục như luồng thành công (xem Activity).
+end
+legend bottom
+PLANNED: JWT và owner check cho GET theo ID.
+List và DELETE owner có code; sơ đồ mục tiêu không chứng minh đã nghiệm thu.
+endlegend
+@enduml

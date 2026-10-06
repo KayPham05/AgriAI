@@ -1,0 +1,77 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title MỤC TIÊU — Activity xem lịch sử / chi tiết và xóa của mình — UC-06 / UC-07
+|Người dùng|
+start
+:Mở lịch sử khi đã đăng nhập;
+|Frontend|
+:GET /api/predictions + JWT / pagination;
+|ASP.NET Core|
+if (JWT hợp lệ?) then (có)
+ :Truy vấn predictions theo UserId;
+ :Trả danh sách / pagination;
+else (không)
+ :Trả 401;
+ stop
+endif
+|Frontend|
+:Hiển thị lịch sử;
+|Người dùng|
+:Chọn một kết quả;
+|Frontend|
+:GET /api/predictions/{id} + JWT;
+|ASP.NET Core|
+if (JWT hợp lệ / bản ghi tồn tại / đúng owner?) then (có)
+ :Trả chi tiết và tham chiếu ảnh được phép xem;
+else (không)
+ :Trả lỗi xác thực / quyền / không tìm thấy;
+ stop
+endif
+|Frontend|
+:Hiển thị chi tiết;
+|Người dùng|
+if (Xác nhận xóa kết quả?) then (có)
+ |Frontend|
+ :DELETE /api/predictions/{id} + JWT;
+ |ASP.NET Core|
+ :Kiểm lại JWT / bản ghi / owner;
+ if (Được phép và thao tác storage/DB thành công?) then (có)
+  :Xóa ảnh / prediction / cascade details;\ntrả 204;
+  |Frontend|
+  :Cập nhật danh sách;
+ else (không)
+  |ASP.NET Core|
+  :Trả lỗi / không báo xóa thành công;
+ endif
+endif
+stop
+legend bottom
+PLANNED: JWT và owner check cho GET theo ID.
+Xóa owner có code; handling lỗi storage/DB cần hoàn thiện.
+Không mô tả Admin hoặc scheduler ảnh 30 ngày trong luồng cốt lõi này.
+endlegend
+@enduml

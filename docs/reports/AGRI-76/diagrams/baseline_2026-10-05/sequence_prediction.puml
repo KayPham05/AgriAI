@@ -1,0 +1,66 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Sequence — UC-05 luồng HTTP thành công
+autonumber
+actor User
+note right of User: Web: User đã vào app sau đăng nhập/restore.\nKhách gọi POST API trực tiếp, không có màn hình prediction guest.
+participant "Next.js / predictionApi" as Web
+participant "ASP.NET API\nController + PredictionService" as API
+participant "CloudinaryImageStorage" as Storage
+participant "FastApiPlantDiseasePredictor\nHTTP client" as Client
+participant "HTTP AI /predict\nserver bên ngoài chưa xác minh" as AI
+database PostgreSQL as DB
+User -> Web : chọn ảnh / analyze()
+Web -> API : POST /api/predictions\nmultipart file; JWT nếu có
+API -> API : kiểm file / buffer / UserId
+API -> Storage : UploadImageAsync(stream, filename)
+Storage --> API : ImageUploadResult(PublicId, SecureUrl)
+note over Storage
+Cloudinary nếu có và thành công;
+thiếu cấu hình/lỗi upload thì local.
+end note
+API -> Client : PredictAsync(stream độc lập, filename)
+Client -> AI : POST /predict multipart file
+AI --> Client : class_index, class_name, confidence, top_k
+Client -> Client : kiểm JSON / confidence [0,1]
+Client --> API : AiPredictionResult
+API -> DB : mapping theo ClassIndex rồi ClassName
+DB --> API : PlantDisease hoặc không có
+note over API,DB
+Fallback đầu tiên khi top-1 không khớp;
+top-k không khớp dùng lớp chính.
+end note
+API -> DB : AddAsync(Prediction + details) / SaveChanges
+DB --> API : hoàn tất
+API --> Web : 201 PredictionResultDto + Location
+Web -> Web : mapPredictionResult / onPredictionCreated
+Web --> User : hiển thị cây, bệnh, top-k, confidence
+note over AI
+Không vẽ AI -> ConvNeXt như đã tích hợp.
+Xem sequence_ai_cli cho inference Python riêng.
+end note
+@enduml
