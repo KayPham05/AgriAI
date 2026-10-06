@@ -39,9 +39,9 @@ Theo [Jira description](../../task-logs/AGRI-76/Jira-description.md), các mục
 - [x] Review kỹ thuật độc lập của subagent và xử lý findings còn lại.
 - [ ] Đã review với Team Lead (cần reviewer/feedback thật).
 - [ ] Đã chỉnh theo feedback Team Lead.
-- [ ] Source/editable đã commit vào repository.
+- [x] Source/editable đã commit vào repository: `6fb0536` — `docs: AGRI-76 align requirements and diagrams with current schema`.
 
-**DoD Jira chưa hoàn tất** khi còn review Team Lead/feedback hoặc commit. Không
+**DoD Jira chưa hoàn tất** vì còn review Team Lead/feedback. Source editable đã commit; không
 đánh dấu subagent là Team Lead, không tạo phê duyệt/commit hash giả.
 
 ## Kiểm chứng lịch sử — 05/10/2026

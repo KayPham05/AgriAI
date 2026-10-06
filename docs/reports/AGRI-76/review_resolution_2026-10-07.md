@@ -27,6 +27,6 @@ Visual QA xem lại tám sơ đồ bị ảnh hưởng; refresh ERD và DFD Leve
 ## Điều kiện nghiệm thu còn chờ
 
 - Team Lead review và phản hồi thật; xử lý phản hồi nếu có.
-- Commit source editable thực tế theo quy tắc Git của repo.
+- Source editable đã commit tại `6fb0536` ngày 07/10/2026, theo yêu cầu người dùng; commit chỉ chứa tài liệu AGRI-76 và nguồn yêu cầu liên quan, không chứa code/migration hoặc task log AGRI-70.
 
-Không ghi Team Lead, approval hay commit hash giả. Theo [checklist](verification.md), phần kỹ thuật đã hoàn tất; DoD Jira vẫn chưa đủ hai điều kiện trên. Không chạy lại application/model tests trong lần sửa tài liệu này.
+Không ghi Team Lead hoặc approval giả. Theo [checklist](verification.md), phần kỹ thuật và commit editable đã hoàn tất; DoD Jira còn Team Lead review/feedback. Không chạy lại application/model tests trong lần sửa tài liệu này.

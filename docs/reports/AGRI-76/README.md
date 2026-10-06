@@ -2,7 +2,7 @@
 
 - **Đối chiếu:** 07/10/2026, working tree sau AGRI-70 trên nền commit 99d6e56.
 - **Branch:** AGRI-76-requirements-analysis-design.
-- **DoD Jira:** Chưa hoàn tất; cập nhật mô hình/kiểm chứng kỹ thuật và review độc lập không thay Team Lead review hoặc commit editable.
+- **DoD Jira:** Chưa hoàn tất; phần kỹ thuật/review độc lập đạt, source editable đã commit tại `6fb0536`; còn Team Lead review và xử lý feedback.
 - **Jira yêu cầu:** [Description/DoD](../../task-logs/AGRI-76/Jira-description.md).
 
 ## Kết quả và điểm vào

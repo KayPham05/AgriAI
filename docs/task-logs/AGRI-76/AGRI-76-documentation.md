@@ -129,3 +129,10 @@ Giữ tài liệu đề xuất, ERD và các thay đổi không liên quan; khô
 - Render thành công 36 source PlantUML/SVG/gallery; kiểm XML/accessibility/IDs, skill validator và visual QA tám sơ đồ bị ảnh hưởng. Sửa lỗi renderer ẩn varchar(n), kiểm trực tiếp SVG đủ 69 cột/kiểu/default/ràng buộc.
 - Sau sửa đã spawn subagent read-only review; xử lý findings vòng 1 về target table, snapshot error HTTP status và UC-10 CLI precondition. Review vòng 2 **technical PASS**, không còn P1/P2. Câu lặp biên tập đã sửa. [Chi tiết xử lý review](../../reports/AGRI-76/review_resolution_2026-10-07.md).
 - [Verification/DoD](../../reports/AGRI-76/verification.md) đánh dấu phần kỹ thuật hoàn tất. Chưa có Team Lead review/feedback thật và chưa commit editable; chưa đánh dấu Jira Done. Không chạy lại runtime/model tests, không stage/commit/push.
+
+## 15. Commit tài liệu AGRI-76 theo yêu cầu — 2026-10-07
+
+- Commit `6fb0536`: `docs: AGRI-76 align requirements and diagrams with current schema`. Gồm bộ mô hình/editable/render/metadata/review, task log và Jira description AGRI-76, requirements/design tổng quan và nguồn User Story/quyết định liên quan.
+- Chỉ stage phần mục lục AGRI-76 trong `docs/README.md`; các thay đổi mục lục khác giữ ngoài index. Không đưa backend/tests/EF migration, Docker/config, database SQL, hướng dẫn migration/Entities hoặc task log AGRI-70 vào commit. Không push.
+- Commitlint kiểm message đạt 0 lỗi/0 cảnh báo; staged whitespace đạt; 36 SVG/gallery validator và 509 local links/12 anchors đạt. Quét mẫu credential trong staged content không có finding; không chạy dedicated secret scanner hoặc application/model tests.
+- Đã tick mục commit source editable bằng commit thực tế. DoD Jira vẫn chờ Team Lead review và xử lý feedback; không dùng subagent thay human approval.
