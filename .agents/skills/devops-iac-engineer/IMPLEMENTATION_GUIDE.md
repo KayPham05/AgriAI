@@ -1,10 +1,10 @@
-# Bổ sung và kiểm chứng skill
+# Skill additions and verification
 
-## Công việc
+## Work completed
 
-Ngày 2026-10-03: biên soạn bảy reference thiếu; thêm helper stdlib, unittest và ba mẫu local; cập nhật README/directory map để không hứa có package/tool chưa tồn tại. SKILL.md giữ Compose/CI và ranh giới phê duyệt; không gắn Jira key không liên quan.
+On 2026-10-03: authored seven missing references; added a standard-library helper, unit tests, and three local examples; updated the README/directory map to avoid promising unavailable packages or tools. SKILL.md preserves Compose/CI and authorization boundaries; unrelated Jira keys must not be assigned.
 
-## Commands từ thư mục skill
+## Commands from the skill directory
 
 ```text
 python scripts/devops_utils.py --help
@@ -17,34 +17,34 @@ python scripts/devops_utils.py security scan-secrets --directory <directory-to-s
 python -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-Angle-bracket values phải thay bằng đầu vào được chọn. Parent output cần tồn tại; project/environment chỉ nhận lowercase letters/digits/hyphen. Output tồn tại bị từ chối. I/O failure có thể để lại file dở dang; script không tự recursive delete.
+Replace angle-bracket values with the selected inputs. The output parent directory must exist; project/environment names accept only lowercase letters, digits, and hyphens. Existing outputs are rejected. I/O failures may leave partial files; the script does not perform automatic recursive deletion.
 
-## Phụ thuộc và giới hạn
+## Dependencies and limitations
 
-| Lệnh | Phụ thuộc / side effect | Kết luận |
+| Command | Dependencies / side effects | What it demonstrates |
 |---|---|---|
-| Generate/init | Python 3.10+; file local mới | Không provisioning/controller |
-| Terraform validate | Terraform trên PATH, directory đã init; không auto-init | Syntax/internal consistency, không cloud/state |
-| Kubernetes validate | kubectl, context/cluster/RBAC; server dry-run/admission | Không persist resource, không offline |
-| Scan secrets | Gitleaks có dir; output redacted | Directory, không Git history |
-| Unittest | stdlib, native CLI mock | Hành vi helper, không native validation thật |
+| Generate/init | Python 3.10+; new local files | No provisioning or controller installation |
+| Terraform validate | Terraform on PATH, initialized directory; no automatic init | Syntax/internal consistency, not cloud/state validation |
+| Kubernetes validate | kubectl, context/cluster/RBAC; server dry-run/admission | No resource persistence; not offline |
+| Scan secrets | Gitleaks with dir; redacted output | Directory scan, not Git history |
+| Unit tests | Standard library, mocked native CLIs | Helper behavior, not real native validation |
 
-Exit code tool được giữ; lỗi prerequisite/I/O/timeout trả 2. Không có apply/destroy/deploy/push hoặc --schema-version; schema từ cluster.
+Native tool exit codes are preserved; prerequisite/I/O/timeout errors return 2. There are no apply/destroy/deploy/push commands or --schema-version option; the schema comes from the cluster.
 
-## CI và ngoại lệ commit
+## CI and commit exceptions
 
-Subject chore(skills): add devops iac engineer skill đã thử với commitlint repo và trượt jira-subject. ci-gate yêu cầu commitlint thành công. Ngoại lệ bằng lời không đổi CI: cần key thật liên quan hoặc yêu cầu/duyệt policy riêng; không tăng baseline.
+The subject chore(skills): add devops iac engineer skill was tested against repository commitlint and failed jira-subject. ci-gate requires commitlint to pass. A verbal exception does not change CI: use a real related key or obtain a separate policy change request/approval; do not advance the baseline.
 
-Sau đó người dùng xác nhận dùng AGRI-76 cho commit bổ sung skill. Subject được chọn là `chore(skills): AGRI-76 add devops iac engineer skill`; không thay policy hoặc baseline CI. Việc gắn key này là quyết định trực tiếp của người dùng, không suy ra triển khai DevOps thuộc phạm vi phân tích hệ thống đã hoàn tất.
+The user subsequently confirmed AGRI-76 for the commit adding the skill. The selected subject was `chore(skills): AGRI-76 add devops iac engineer skill`; CI policy and the baseline were unchanged. This key assignment was a direct user decision and does not imply that DevOps deployment belongs to a completed system-analysis scope.
 
-CI hiện chưa chạy tests trong skill; [workflow mẫu](examples/pipelines/skill-check.yml) không tự active. Không sửa workflow, dependency hay stack. Chưa có GitHub run cho phần mới.
+CI does not currently run the skill tests; the [example workflow](examples/pipelines/skill-check.yml) is not automatically active. No workflow, dependency, or stack changes were made. There is no GitHub run for the additions.
 
-## Kết quả local
+## Local results
 
-- Unittest helper: 10 tests đạt trên Python venv local, gồm từ chối traversal/overwrite, lỗi tool/timeout, giữ exit code và server dry-run/redaction argv. Native CLI được mock.
+- Helper unit tests: 10 passed in the local Python virtual environment, covering traversal/overwrite rejection, tool/timeout errors, exit-code preservation, and server dry-run/redaction arguments. Native CLIs were mocked.
 - Skill Creator quick_validate.py: Skill is valid.
-- Kiểm tra PowerShell: 11 Markdown, 43 liên kết local hợp lệ; fences cân bằng, không trailing whitespace.
-- CLI --help chạy được; Python syntax và cấu trúc hai YAML mẫu đạt. Tổng 16 file skill không trailing whitespace; targeted secret-pattern check không có match, không thay cho Gitleaks. Tool discovery thấy kubectl, nhưng chưa gọi cluster; Terraform/Gitleaks không có trên PATH.
-- Python trong sandbox bị chặn executable gốc; chạy lại kiểm tra local với quyền được duyệt, không deploy hoặc truy cập cluster.
-- Chưa chạy Terraform/kubectl/Gitleaks thật, chưa chạy full CI GitHub. Mẫu image example/app:1.0 không có đảm bảo tồn tại/production-ready.
-- Lần bổ sung ban đầu chưa stage/commit/push; lần tiếp theo được người dùng yêu cầu commit với AGRI-76. Không push; CI workflow và commitlint policy không thay đổi.
+- PowerShell checks: 11 Markdown files, 43 valid local links; balanced fences and no trailing whitespace.
+- CLI --help worked; Python syntax and the structure of both YAML examples passed checks. All 16 skill files had no trailing whitespace; a targeted secret-pattern check found no matches and does not replace Gitleaks. Tool discovery found kubectl, but no cluster was contacted; Terraform/Gitleaks were not on PATH.
+- The sandbox blocked the underlying Python executable; local checks were rerun with approved permissions, without deployment or cluster access.
+- Real Terraform/kubectl/Gitleaks validation and full GitHub CI were not run. The example/app:1.0 image is not guaranteed to exist or be production-ready.
+- The initial additions were not staged/committed/pushed; the user subsequently requested a commit with AGRI-76. No push was performed; CI workflow and commitlint policy were unchanged.

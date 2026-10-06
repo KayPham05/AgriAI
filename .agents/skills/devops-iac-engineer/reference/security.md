@@ -1,13 +1,13 @@
-# Security và secrets
+# Security and secrets
 
-Không commit secret, checkpoint, dataset hoặc browser profile. Ignore không làm sạch history; secret lộ cần thu hồi/rotate và xử lý history có phê duyệt.
+Do not commit secrets, checkpoints, datasets, or browser profiles. Ignore rules do not clean history; exposed secrets require revocation/rotation and authorized history remediation.
 
-- Helper scan-secrets gọi Gitleaks dir với --redact: scan directory contents, không Git history.
-- Cần Gitleaks có subcommand dir (CI baseline v8.24.2); không tự tải/cài tool. Tool thiếu là lỗi, findings giữ exit code.
-- CI dùng Gitleaks git với --log-opts=--all. Directory scan đạt không suy ra history sạch.
-- Không in secret, không allowlist broad để green CI. False positive cần chứng cứ và xử lý hẹp được duyệt.
-- Ownership/role và kiểm tra ảnh ở server; popup/client validation không thay bảo vệ API.
-- Terraform plan/state có thể nhạy cảm; Kubernetes Secret base64 không mặc nhiên an toàn.
-- Deploy/push/state mutation cần quyền rõ ràng.
+- The helper's scan-secrets command calls Gitleaks dir with --redact: it scans directory contents, not Git history.
+- Gitleaks must support the dir subcommand (CI baseline v8.24.2); do not automatically download/install tools. Missing tools are errors; findings preserve the tool's exit code.
+- CI uses Gitleaks git with --log-opts=--all. A passing directory scan does not imply clean history.
+- Do not print secrets or use broad allowlists to make CI pass. False positives require evidence and narrowly scoped, approved handling.
+- Enforce ownership/roles and image checks on the server; popups/client validation do not replace API protection.
+- Terraform plans/state may contain sensitive data; base64 encoding does not inherently secure Kubernetes Secrets.
+- Deployment, pushes, and state mutations require explicit authorization.
 
-Nguồn: [Gitleaks CLI](https://github.com/gitleaks/gitleaks).
+Source: [Gitleaks CLI](https://github.com/gitleaks/gitleaks).

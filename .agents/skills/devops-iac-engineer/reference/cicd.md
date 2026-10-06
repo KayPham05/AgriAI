@@ -1,13 +1,13 @@
-# CI/CD và GitOps
+# CI/CD and GitOps
 
-Nguồn thật: [CI workflow](../../../../.github/workflows/ci.yml), [commitlint](../../../../commitlint.config.cjs). Không tự sửa gate, coverage hoặc legacy baseline.
+Sources of truth: [CI workflow](../../../../.github/workflows/ci.yml), [commitlint](../../../../commitlint.config.cjs). Do not change gates, coverage, or the legacy baseline without authorization.
 
-- Commit mới cần Jira key thật liên quan: type(scope): AGRI-XXX description. Không gắn tooling không liên quan vào AGRI-76.
-- Thiếu key trượt jira-subject, rồi ci-gate trượt. Phê duyệt ngoại lệ bằng lời không thay cấu hình CI.
-- Không lách bằng --no-verify, ignore broad hay tăng baseline. Thay policy cần yêu cầu riêng.
-- Ghi đúng SHA/run; startup/mock/coverage/model inference là bằng chứng khác nhau.
-- CD chỉ thêm khi có môi trường thực; secret store, workflow permissions và deploy approval rõ ràng.
-- gitops init chỉ tạo Kustomize skeleton local. Không cài ArgoCD/Flux, nối repo hoặc bật auto-sync.
-- Rollback dựa artifact/DB policy; không tự reset branch hoặc xóa volume.
+- New commits require a real related Jira key: type(scope): AGRI-XXX description. Do not assign unrelated tooling work to AGRI-76.
+- Missing keys fail jira-subject, which then fails ci-gate. A verbal exception does not change CI configuration.
+- Do not bypass checks with --no-verify, broad ignores, or an advanced baseline. Policy changes require a separate request.
+- Record the exact SHA/run; startup, mocks, coverage, and model inference are separate evidence.
+- Add CD only for an actual environment with a clear secret store, workflow permissions, and deployment approval.
+- gitops init only creates a local Kustomize skeleton. It does not install ArgoCD/Flux, connect a repository, or enable auto-sync.
+- Base rollback on artifact/DB policy; do not automatically reset branches or delete volumes.
 
-[Workflow mẫu](../examples/pipelines/skill-check.yml) chỉ là example, không tự chạy trong CI repository.
+The [example workflow](../examples/pipelines/skill-check.yml) is only an example and does not run automatically in repository CI.
