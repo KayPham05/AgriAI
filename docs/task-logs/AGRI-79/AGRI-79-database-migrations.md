@@ -106,3 +106,12 @@ backup/review → build → PostgreSQL healthy → migration riêng → startup 
 Sau đó chạy [unit/integration/live smoke](../../../.agents/commands/backend.md) độc lập.
 Live script tự dọn fixture; lệnh expire-images là thao tác xóa ảnh hết hạn thật,
 không chạy kèm như một bước kiểm thử mặc định.
+
+## 6. Hướng dẫn repo, skill và phương án VPS — 07/10/2026
+
+- Theo yêu cầu người dùng, phần cập nhật hướng dẫn/skill/phương án VPS được gắn `AGRI-79`; tài liệu skill vẫn giữ thông tin lịch sử về lần bổ sung ban đầu thuộc AGRI-76.
+- Rút gọn `AGENTS.md`, cập nhật trạng thái DB/FastAPI và gate coverage; `.gitignore` giữ User Story/biên bản local, backup DB và credential ngoài Git, vẫn cho phép cấu hình mẫu và migration/schema SQL.
+- Chuyển các tài liệu hỗ trợ skill DevOps sang tiếng Anh; giữ Compose/CI và giới hạn quyền thao tác, không thay helper, cài công cụ hoặc deploy.
+- Ghi [phương án VPS demo](../../vps_deployment.md): Compose một máy, Caddy/GHCR, Cloudinary mặc định hoặc GCS, migration riêng, backup/rollback và checklist nghiệm thu. Sửa đường dẫn liên kết theo vị trí `docs/vps_deployment.md`.
+- Kiểm tra ignore, liên kết tài liệu, whitespace, commitlint và quét nội dung staged bằng Gitleaks; không chạy lại test ứng dụng vì chỉ thay tài liệu/ignore. Kết quả backend tại phần 3 thuộc lần kiểm tra trước.
+- Các commit liên quan xem lịch sử nhánh AGRI-79. Chưa push, tạo PR, chạy CI HEAD, thuê VPS hoặc triển khai; không commit tài liệu User Story hay các thay đổi/xóa tài liệu ngoài phạm vi.
