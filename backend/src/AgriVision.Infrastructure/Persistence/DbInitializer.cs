@@ -15,16 +15,11 @@ public static class DbInitializer
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var environment = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
         var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-        if (context.Database.IsNpgsql())
-        {
-            await context.Database.MigrateAsync();
-        }
-
         if (environment.IsDevelopment())
         {
             await SeedUsersAsync(context, configuration);
+            await SeedMasterDataAsync(context);
         }
-        await SeedMasterDataAsync(context);
     }
 
     private static async Task SeedUsersAsync(AppDbContext context, IConfiguration configuration)

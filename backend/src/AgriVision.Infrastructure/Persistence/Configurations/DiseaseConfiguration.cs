@@ -8,7 +8,11 @@ public class DiseaseConfiguration : IEntityTypeConfiguration<Disease>
 {
     public void Configure(EntityTypeBuilder<Disease> builder)
     {
-        builder.ToTable("diseases");
+        builder.ToTable("diseases", table => table.HasCheckConstraint("ck_diseases_condition_type",
+            "condition_type IN ('Unknown', 'Healthy', 'NutrientDeficiency', 'Disease')"));
+        builder.Property(d => d.ConditionType).HasColumnName("condition_type").HasMaxLength(30).HasDefaultValue("Unknown");
+        builder.Property(d => d.IsContentApproved).HasColumnName("is_content_approved").HasDefaultValue(false);
+        builder.Property(d => d.Medication).HasColumnName("medication");
 
         builder.HasKey(d => d.Id);
         builder.Property(d => d.Id).HasColumnName("id");

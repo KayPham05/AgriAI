@@ -90,17 +90,19 @@ public class CloudinaryImageStorage : IImageStorage
         {
             var deletionParams = new DeletionParams(publicId);
             var result = await _cloudinary.DestroyAsync(deletionParams);
-            return result.Result == "ok";
+            return result.Result is "ok" or "not found";
         }
 
         if (publicId.StartsWith("local_"))
         {
+            if (Path.GetFileName(publicId) != publicId)
+                throw new ArgumentException("Invalid local image identifier.");
             var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "predictions", publicId);
             if (File.Exists(filePath))
             {
                 File.Delete(filePath);
-                return true;
             }
+            return true;
         }
 
         return false;

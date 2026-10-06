@@ -29,8 +29,8 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasDatabaseName("ix_users_email");
 
         builder.Property(u => u.PasswordHash)
-            .HasColumnName("password_hash")
-            .IsRequired();
+            .HasColumnName("password_hash");
+        builder.Property(u => u.EmailVerifiedAt).HasColumnName("email_verified_at");
 
         builder.Property(u => u.Role)
             .HasColumnName("role")

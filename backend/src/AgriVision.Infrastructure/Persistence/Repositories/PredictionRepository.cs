@@ -16,6 +16,7 @@ public class PredictionRepository : IPredictionRepository
     public async Task<Prediction?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _context.Predictions
+            .Include(p => p.Images)
             .Include(p => p.User)
             .Include(p => p.PredictedPlantDisease)
                 .ThenInclude(pd => pd.Plant)
@@ -33,6 +34,7 @@ public class PredictionRepository : IPredictionRepository
     public async Task<IEnumerable<Prediction>> GetByUserIdAsync(Guid userId, int pageNumber = 1, int pageSize = 10, CancellationToken cancellationToken = default)
     {
         return await _context.Predictions
+            .Include(p => p.Images)
             .Include(p => p.PredictedPlantDisease)
                 .ThenInclude(pd => pd.Plant)
             .Include(p => p.PredictedPlantDisease)

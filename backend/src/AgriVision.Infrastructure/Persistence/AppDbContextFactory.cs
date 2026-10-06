@@ -11,7 +11,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
 
         var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development";
-        var basePath = Path.Combine(Directory.GetCurrentDirectory(), "../AgriVision.API");
+        var basePath = Path.GetDirectoryName(typeof(AppDbContextFactory).Assembly.Location)!;
 
         var builder = new ConfigurationBuilder()
             .SetBasePath(basePath)

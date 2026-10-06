@@ -9,6 +9,7 @@ public class PredictionConfiguration : IEntityTypeConfiguration<Prediction>
     public void Configure(EntityTypeBuilder<Prediction> builder)
     {
         builder.ToTable("predictions");
+        builder.Property(p => p.ResultSnapshotJson).HasColumnName("result_snapshot").HasColumnType("jsonb");
 
         builder.HasKey(p => p.Id);
         builder.Property(p => p.Id).HasColumnName("id");
