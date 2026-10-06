@@ -39,7 +39,7 @@ experiments/                    Versioned experiment records under EXP-XXX
 ## Verification
 
 - CI runs Compose smoke, Python tests, .NET unit and integration tests, and frontend lint/tests/build. See `.github/workflows/ci.yml` and `docs/reports/AGRI-75/README.md` for the current scope and evidence.
-- Target **80% branch coverage separately** for backend, frontend, and Python. Until the test suites reach that target, CI enforces measured interim floors of backend 35%, frontend 25%, and Python 40%; raise them as coverage improves. Backend coverage merges unit and integration runs before applying the gate; see `.github/workflows/ci.yml` and `docs/reports/AGRI-75/ci_branch_coverage.md`.
+- Target **80% branch coverage separately** for backend, frontend, and Python. Until the test suites reach that target, CI enforces measured interim floors of backend 50%, frontend 25%, and Python 40%; raise them as coverage improves. Backend coverage merges unit and integration runs before applying the gate; see `.github/workflows/ci.yml` and `docs/reports/AGRI-75/ci_branch_coverage.md`.
 - Run the smallest relevant local checks after a change. Backend integration tests require Docker; AI tests in CI use CPU dependencies and do not validate a real checkpoint.
 
 ## Important rules

@@ -1,5 +1,7 @@
 # AGRI-75 — CI, Docker và branch coverage
 
+**Cập nhật gate ngày 07/10/2026:** backend tăng từ 35% lên **50%** theo yêu cầu người dùng. Coverage local gộp unit/integration hiện tại là **213/364 = 58,52%**, đạt gate mới; 33 unit và 13 integration tests pass. Artifact: `.cache/coverage/backend/agri79-review/merged/Cobertura.xml`. Frontend giữ 25%, Python giữ 40%; mục tiêu vẫn 80% riêng từng phần. Các kết quả ngày 29/09 bên dưới là bằng chứng lịch sử, không xác nhận code hiện tại hoặc GitHub Actions HEAD.
+
 Ngày xác minh: **2026-09-29**. Nhánh: `AGRI-75-ci-testing-setup`.
 Phạm vi: thay đổi chưa commit trên base `8650f48`.
 
@@ -30,7 +32,7 @@ suy giảm, không phải tuyên bố đã đạt mục tiêu 80%.
 
 | Phần | Phạm vi đo | Loại trừ | Gate |
 |---|---|---|---|
-| Backend | API, Application, Domain, Infrastructure; gộp unit + integration | Test assemblies và EF migrations sinh tự động | Sàn 35%, mục tiêu 80% |
+| Backend | API, Application, Domain, Infrastructure; gộp unit + integration | Test assemblies và EF migrations sinh tự động | Sàn 50%, mục tiêu 80% |
 | Frontend | Toàn bộ `frontend/src/**/*.ts,tsx`, kể cả file chưa có test | Test files, test setup, khai báo `.d.ts` | Sàn 25%, mục tiêu 80% |
 | Python | Toàn bộ package `ai`, kể cả module chưa có test | Test files, `test_gpu.py` chẩn đoán phần cứng, stub cũ `ai/scripts/` vốn bị Git ignore | Sàn 40%, mục tiêu 80% |
 
@@ -99,7 +101,7 @@ python .github/scripts/check_dotnet_test_results.py .cache/local-unit
 python .github/scripts/check_dotnet_test_results.py .cache/local-integration
 dotnet tool install dotnet-reportgenerator-globaltool --tool-path .cache/dotnet-tools --version 5.5.4
 .cache/dotnet-tools/reportgenerator '-reports:.cache/local-unit/**/coverage.cobertura.xml;.cache/local-integration/**/coverage.cobertura.xml' '-targetdir:.cache/local-merged' '-reporttypes:Html;Cobertura'
-python .github/scripts/check_coverage.py .cache/local-merged/Cobertura.xml --minimum-branches 35 --label Backend
+python .github/scripts/check_coverage.py .cache/local-merged/Cobertura.xml --minimum-branches 50 --label Backend
 
 pnpm --dir frontend test:coverage
 
@@ -112,7 +114,7 @@ python .github/scripts/check_coverage.py .cache/coverage/python/coverage.xml --m
 
 ## Còn lại
 
-1. Nâng từng mức sàn khi test mới được đo: backend 35 → 50 → 65 → 80%, frontend
+1. Nâng từng mức sàn khi test mới được đo: backend 50 → 65 → 80%, frontend
    25 → 40 → 60 → 80%, Python 40 → 55 → 70 → 80%. Ưu tiên mapping nhãn,
    quyền truy cập/lịch sử, lỗi upload, UI error state và runtime AI. Không hạ
    phạm vi đo hoặc tính health stub là inference để đạt số phần trăm.

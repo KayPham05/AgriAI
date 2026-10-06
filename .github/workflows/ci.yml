@@ -168,7 +168,7 @@ jobs:
           python3 .github/scripts/check_dotnet_test_results.py .cache/coverage/backend/integration
           dotnet tool install dotnet-reportgenerator-globaltool --tool-path .cache/dotnet-tools --version 5.5.4
           .cache/dotnet-tools/reportgenerator '-reports:.cache/coverage/backend/**/coverage.cobertura.xml' '-targetdir:.cache/coverage/backend/merged' '-reporttypes:Html;Cobertura'
-          python3 .github/scripts/check_coverage.py .cache/coverage/backend/merged/Cobertura.xml --minimum-branches 35 --label Backend
+          python3 .github/scripts/check_coverage.py .cache/coverage/backend/merged/Cobertura.xml --minimum-branches 50 --label Backend
       - uses: actions/upload-artifact@v7
         if: always()
         with:
