@@ -21,7 +21,7 @@ sẽ build frontend và backend. Lần build đầu cần mạng để tải ima
 Mở terminal tại thư mục chứa `docker-compose.yml`:
 
 ```powershell
-Set-Location "D:\coding for Future\Agent Skills\AgriAI"
+Set-Location "D:\coding for Future\Project 1\AgriAI"
 ```
 
 Thay đường dẫn trên nếu clone repository ở nơi khác.
@@ -64,7 +64,10 @@ thay URL tương ứng.
 
 ```powershell
 docker compose config --quiet
-docker compose up --build --detach --wait --wait-timeout 180
+docker compose build
+docker compose up -d --wait postgres
+docker compose run --rm --no-deps backend --migrate
+docker compose up --detach --wait --wait-timeout 180
 docker compose ps
 ```
 
@@ -72,11 +75,14 @@ Chỉ chạy lệnh `up` khi kiểm tra cấu hình thành công. `--build` buil
 dụng; `--detach` chạy nền; `--wait` chờ dịch vụ running/healthy. Thời gian chờ
 health không bao gồm toàn bộ thời gian build lần đầu.
 
-Backend chờ PostgreSQL healthy, áp dụng EF Core migration để tạo schema;
-frontend chờ backend healthy. API chạy ở `Production`, không seed tài khoản
-demo có mật khẩu cố định.
-Khi chạy backend riêng ở `Development`, chỉ seed tài khoản demo trên DB trống
-nếu cấu hình cả `DemoUsers__AdminPassword` và `DemoUsers__UserPassword`.
+Chỉ tiếp tục bước sau khi bước trước thành công. Migration chạy bằng lệnh riêng,
+không mở HTTP server. Backend startup chỉ kiểm tra migration còn thiếu; nếu thiếu
+thì thoát và hướng dẫn chạy `--migrate`. Frontend chờ backend healthy.
+API chạy ở `Production`; migration không seed tài khoản hoặc danh mục demo cũ.
+Database ứng dụng mới cần import danh mục theo mapping đã chốt trước khi dự đoán.
+Ở `Development`, lệnh migration riêng mới seed danh mục minh họa và tài khoản
+demo nếu có đủ cấu hình mật khẩu. Bộ seed này chưa phải mapping 59 lớp.
+Sao lưu database đang có trước migration mới; xem [quy trình chi tiết](database_migrations.md).
 
 | Dịch vụ | Địa chỉ mặc định |
 |---|---|
@@ -160,7 +166,15 @@ Các lệnh sau áp dụng cho stack Compose gốc:
 docker compose up --detach --wait --wait-timeout 180
 
 # Build và chạy lại sau khi đổi code frontend/backend
-docker compose up --build --detach --wait --wait-timeout 180
+docker compose build
+docker compose run --rm --no-deps backend --migrate
+docker compose up --detach --wait --wait-timeout 180
+
+# Kiểm thử API/database thật và tự dọn dữ liệu thử
+powershell -NoProfile -File .agents/commands/verify_database.ps1
+
+# Dọn ảnh hết hạn, giữ lịch sử và snapshot; lịch chạy tự động chưa cấu hình
+docker compose run --rm --no-deps backend --expire-images
 
 # Xem log gần nhất
 docker compose logs --tail 100 backend frontend postgres

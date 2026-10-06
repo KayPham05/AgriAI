@@ -24,6 +24,9 @@ chiếu; v1.4 thay toàn bộ ảnh Ớt và dùng hợp đồng 59 lớp. Xem
 
 ## Điểm vào chính
 
+- [Database, migration riêng trong Docker và kiểm thử đọc/ghi](notes/database_migrations.md)
+- [Giải thích Entities, quan hệ và ảnh hưởng đến ERD](notes/database_entities.md)
+- [Task log AGRI-79: schema/migration và kiểm thử backend–PostgreSQL](task-logs/AGRI-79/AGRI-79-database-migrations.md)
 - [Tech stack và trạng thái](tech_stack.md)
 - [Yêu cầu hệ thống](system_requirements.md)
 - [Sơ đồ thiết kế](system_design_diagrams.md)
