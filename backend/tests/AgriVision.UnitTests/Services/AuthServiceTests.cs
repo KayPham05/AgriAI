@@ -115,4 +115,15 @@ public class AuthServiceTests
         await act.Should().ThrowAsync<UnauthorizedAccessException>()
             .WithMessage("*Invalid email or password*");
     }
+
+    [Fact]
+    public async Task LoginAsync_ShouldRejectPasswordLogin_ForProviderOnlyAccount()
+    {
+        var request = new LoginRequest("google@example.com", "Password123!");
+        _userRepositoryMock.Setup(repository => repository.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Email = request.Email, PasswordHash = null });
+        var act = () => _authService.LoginAsync(request);
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+        _jwtTokenGeneratorMock.Verify(generator => generator.GenerateToken(It.IsAny<User>()), Times.Never);
+    }
 }

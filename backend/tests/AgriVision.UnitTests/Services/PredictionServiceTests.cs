@@ -71,10 +71,13 @@ public class PredictionServiceTests
             ClassName = "Tomato___Bacterial_spot"
         };
 
-        _plantDiseaseRepository.PlantDiseases = [plantDisease];
+        _plantDiseaseRepository.PlantDiseases = [plantDisease, new PlantDisease
+        {
+            Id = Guid.NewGuid(), ClassIndex = 6, ClassName = "Tomato___Early_blight", Plant = plant, Disease = disease
+        }];
 
         // Act
-        var result = await _predictionService.PredictAsync(formFile, userId: null);
+        var result = await _predictionService.PredictAsync(formFile, userId: Guid.NewGuid());
 
         // Assert
         result.Should().NotBeNull();
@@ -90,6 +93,8 @@ public class PredictionServiceTests
         _predictionRepository.AddedPredictions.Should().ContainSingle();
         _imageStorage.UploadCount.Should().Be(1);
         _diseasePredictor.PredictCount.Should().Be(1);
+        result.Images.Should().ContainSingle();
+        result.HasHistoricalSnapshot.Should().BeTrue();
     }
 
     [Fact]
@@ -135,6 +140,140 @@ public class PredictionServiceTests
 
         await act.Should().ThrowAsync<AiServiceException>();
         _predictionRepository.AddedPredictions.Should().BeEmpty();
+        _imageStorage.UploadCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Guests_ShouldNotStoreImagesOrHistory()
+    {
+        ConfigureHealthyClass();
+        var result = await _predictionService.PredictAsync(CreateFile(), null);
+        result.PredictedPlantDisease.ClassName.Should().Be("Tomato___Healthy");
+        result.HasHistoricalSnapshot.Should().BeFalse();
+        _predictionRepository.AddedPredictions.Should().BeEmpty();
+        _imageStorage.UploadCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task MappingMismatch_ShouldFailBeforeStorage()
+    {
+        ConfigureHealthyClass();
+        _diseasePredictor.Result = new(0, "WrongClass", 1, []);
+        var act = () => _predictionService.PredictAsync(CreateFile(), Guid.NewGuid());
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*does not match*");
+        _predictionRepository.AddedPredictions.Should().BeEmpty();
+        _imageStorage.UploadCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task TopKMappingMismatch_ShouldFailBeforeStorage()
+    {
+        ConfigureHealthyClass();
+        _diseasePredictor.Result = new(0, "Tomato___Healthy", 1, [new(99, "WrongClass", 0.1f)]);
+        var act = () => _predictionService.PredictAsync(CreateFile(), Guid.NewGuid());
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*top-k*");
+        _predictionRepository.AddedPredictions.Should().BeEmpty();
+        _imageStorage.UploadCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task DatabaseWriteFailure_ShouldCleanUploadedImage()
+    {
+        ConfigureHealthyClass();
+        _predictionRepository.WriteError = new InvalidOperationException("Database write failed.");
+        var act = () => _predictionService.PredictAsync(CreateFile(), Guid.NewGuid());
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Database write failed.");
+        _imageStorage.DeletedPublicIds.Should().ContainSingle().Which.Should().Be(_imageStorage.UploadResult.PublicId);
+    }
+
+    [Fact]
+    public async Task DatabaseWriteFailure_ShouldPreserveOriginalError_WhenCleanupAlsoFails()
+    {
+        ConfigureHealthyClass();
+        _predictionRepository.WriteError = new InvalidOperationException("Database write failed.");
+        _imageStorage.DeleteError = new IOException("Storage unavailable.");
+        var act = () => _predictionService.PredictAsync(CreateFile(), Guid.NewGuid());
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Database write failed.");
+    }
+
+    [Fact]
+    public async Task DeletePrediction_ShouldRejectOtherOwner_BeforeDeletingImages()
+    {
+        ConfigureHealthyClass();
+        var result = await _predictionService.PredictAsync(CreateFile(), Guid.NewGuid());
+        var act = () => _predictionService.DeletePredictionAsync(result.Id, Guid.NewGuid());
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+        _imageStorage.DeletedPublicIds.Should().BeEmpty();
+        _predictionRepository.AddedPredictions.Should().ContainSingle();
+    }
+
+    [Theory]
+    [InlineData(0, 10)]
+    [InlineData(1, 0)]
+    public async Task History_ShouldRejectInvalidPagination(int page, int size)
+    {
+        var act = () => _predictionService.GetPredictionHistoryAsync(Guid.NewGuid(), page, size);
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData("Healthy", true)]
+    [InlineData("NutrientDeficiency", true)]
+    [InlineData("Disease", false)]
+    public async Task Medication_ShouldBeHidden_ForHealthyNutrientOrUnapprovedContent(string condition, bool approved)
+    {
+        ConfigureHealthyClass();
+        var disease = _plantDiseaseRepository.PlantDiseases.Single().Disease;
+        disease.ConditionType = condition;
+        disease.IsContentApproved = approved;
+        disease.Medication = "Medication must not be shown";
+        var result = await _predictionService.PredictAsync(CreateFile(), null);
+        result.Medication.Should().BeNull();
+        if (!approved) result.PredictedPlantDisease.Disease.Description.Should().Be("Thông tin đang được cập nhật");
+    }
+
+    [Fact]
+    public async Task Snapshot_ShouldKeepOriginalLabelsAndHideExpiredImages()
+    {
+        ConfigureHealthyClass();
+        var owner = Guid.NewGuid();
+        var result = await _predictionService.PredictAsync(CreateFile(), owner);
+        var entity = _predictionRepository.AddedPredictions.Single();
+        _plantDiseaseRepository.PlantDiseases.Single().Plant.Name = "Changed later";
+        entity.Images.Single().ExpiresAt = DateTime.UtcNow.AddSeconds(-1);
+
+        var stored = await _predictionService.GetPredictionByIdAsync(result.Id, userId: owner);
+        stored!.PredictedPlantDisease.Plant.Name.Should().Be("Tomato");
+        stored.ImagePath.Should().BeEmpty();
+        stored.Images.Single().IsExpired.Should().BeTrue();
+        stored.Images.Single().ImagePath.Should().BeNull();
+        entity.ResultSnapshotJson.Should().NotBeNull();
+        (await _predictionService.GetPredictionByIdAsync(result.Id, userId: Guid.NewGuid())).Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(0.8f, true)]
+    [InlineData(0.81f, false)]
+    public async Task ConfidenceBoundary_ShouldControlWarningAndMedication(float confidence, bool warning)
+    {
+        ConfigureHealthyClass();
+        var disease = _plantDiseaseRepository.PlantDiseases.Single().Disease;
+        disease.ConditionType = "Disease";
+        disease.IsContentApproved = true;
+        disease.Medication = "Reviewed medication";
+        _diseasePredictor.Result = new(0, "Tomato___Healthy", confidence, []);
+        var result = await _predictionService.PredictAsync(CreateFile(), null);
+        (result.Warning != null).Should().Be(warning);
+        (result.Medication != null).Should().Be(!warning);
+    }
+
+    private void ConfigureHealthyClass() => _plantDiseaseRepository.PlantDiseases =
+    [new PlantDisease { ClassIndex = 0, ClassName = "Tomato___Healthy", Plant = new Plant { Name = "Tomato" }, Disease = new Disease { Name = "Healthy" } }];
+
+    private static FormFile CreateFile()
+    {
+        var bytes = Encoding.UTF8.GetBytes("test bytes");
+        return new FormFile(new MemoryStream(bytes), 0, bytes.Length, "file", "leaf.jpg");
     }
 
     private static byte[] ReadAllBytes(Stream stream)
@@ -146,6 +285,7 @@ public class PredictionServiceTests
 
     private sealed class RecordingPredictionRepository : IPredictionRepository
     {
+        public Exception? WriteError { get; set; }
         public List<Prediction> AddedPredictions { get; } = [];
 
         public Task<Prediction?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
@@ -163,6 +303,7 @@ public class PredictionServiceTests
 
         public Task AddAsync(Prediction prediction, CancellationToken cancellationToken = default)
         {
+            if (WriteError != null) throw WriteError;
             AddedPredictions.Add(prediction);
             return Task.CompletedTask;
         }
@@ -213,6 +354,8 @@ public class PredictionServiceTests
 
     private sealed class RecordingImageStorage : IImageStorage
     {
+        public Exception? DeleteError { get; set; }
+        public List<string> DeletedPublicIds { get; } = [];
         public ImageUploadResult UploadResult { get; set; } =
             new("test/image", "https://images.test/leaf.jpg");
 
@@ -236,8 +379,12 @@ public class PredictionServiceTests
             return Task.FromResult(UploadResult);
         }
 
-        public Task<bool> DeleteImageAsync(string publicId, CancellationToken cancellationToken = default) =>
-            Task.FromResult(true);
+        public Task<bool> DeleteImageAsync(string publicId, CancellationToken cancellationToken = default)
+        {
+            if (DeleteError != null) throw DeleteError;
+            DeletedPublicIds.Add(publicId);
+            return Task.FromResult(true);
+        }
     }
 
     private sealed class RecordingPlantDiseasePredictor : IPlantDiseasePredictor
