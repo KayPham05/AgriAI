@@ -48,7 +48,8 @@ v1.4/
 └── reports/
 ```
 
-Khai báo thư mục dataset cho phiên làm việc hiện tại bằng biến môi trường:
+Mặc định code đọc `D:\AgriVisionAI_Data\v1.4`. Khi đặt dataset ở nơi khác,
+khai báo cả phiên bản và đường dẫn trong phiên làm việc hiện tại:
 
 ```powershell
 $env:AGRIVISION_DATASET_DIR = "<dataset_root>\v1.4"
@@ -60,8 +61,19 @@ trình huấn luyện và thứ tự batch.
 
 ## Chạy module AI
 
+Chạy các lệnh PowerShell từ thư mục gốc repository. Tạo môi trường trong chính
+repo này (script `ai/setup_env.bat` dùng thư mục làm việc hiện tại, nên không
+gọi trực tiếp từ root):
+
 ```powershell
-.\ai\setup_env.bat
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+.\.venv\Scripts\python.exe -m pip install -r ai\requirements.txt
+```
+
+Các lệnh train, evaluate và dự đoán CLI chạy riêng khi cần:
+
+```powershell
 .\.venv\Scripts\python.exe -m ai.train
 .\.venv\Scripts\python.exe -m ai.evaluate
 .\.venv\Scripts\python.exe -m ai.predict --help
