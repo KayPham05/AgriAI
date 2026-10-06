@@ -1,10 +1,15 @@
+import os
+import subprocess
+import sys
 import unittest
 
+from ai.configs import config
 from ai.configs.classification_tasks import get_task_config
 
 
 class ClassificationTaskConfigTests(unittest.TestCase):
     def test_plant_and_disease_tasks_have_expected_labels(self) -> None:
+        self.assertEqual(config.DATASET_VERSION, "v1.4")
         plant = get_task_config("plant")
         disease = get_task_config("disease")
 
@@ -26,6 +31,43 @@ class ClassificationTaskConfigTests(unittest.TestCase):
     def test_unknown_task_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "Task không hợp lệ"):
             get_task_config("unknown")
+
+    def test_v1_4_uses_manifest_class_counts(self) -> None:
+        environment = os.environ.copy()
+        environment["AGRIVISION_DATASET_VERSION"] = "v1.4"
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "from ai.configs import config; "
+                "from ai.configs.classification_tasks import get_task_config; "
+                "print(get_task_config('disease').expected_num_classes, "
+                "get_task_config('compound').expected_num_classes)",
+            ],
+            env=environment,
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        self.assertEqual(result.stdout.strip(), "44 59")
+
+    def test_v1_4_legacy_mapping_import_uses_current_version(self) -> None:
+        environment = os.environ.copy()
+        environment["AGRIVISION_DATASET_VERSION"] = "v1.4"
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "from ai.configs.plant_disease_mapping import PLANT_TO_DISEASES; "
+                "print('Phan_trang' in PLANT_TO_DISEASES['Ot'], "
+                "'Ruoi_trang' in PLANT_TO_DISEASES['Ot'])",
+            ],
+            env=environment,
+            text=True,
+            capture_output=True,
+            check=True,
+        )
+        self.assertEqual(result.stdout.strip(), "True False")
 
 
 if __name__ == "__main__":

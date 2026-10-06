@@ -63,6 +63,18 @@ def build_optimizer(
     )
 
 
+def advance_scheduler_for_next_epoch(
+    scheduler: Any,
+    *,
+    completed_epoch: int,
+    total_epochs: int,
+) -> None:
+    """Advance the LR schedule only when another epoch will run."""
+
+    if completed_epoch < total_epochs:
+        scheduler.step()
+
+
 def build_criterion(
     task: ClassificationTaskConfig,
     training_records: list[dict[str, Any]],
@@ -343,8 +355,11 @@ def run_training(args: argparse.Namespace) -> Path:
                 f"acc={val_metrics['accuracy']:.4f} "
                 f"f1={val_metrics['f1_macro']:.4f}"
             )
-            if epoch < epochs:
-                scheduler.step()
+            advance_scheduler_for_next_epoch(
+                scheduler,
+                completed_epoch=epoch,
+                total_epochs=epochs,
+            )
             if patience_counter >= config.EARLY_STOPPING_PATIENCE:
                 print(
                     f"Dừng sớm sau {patience_counter} epoch không cải thiện val F1."
