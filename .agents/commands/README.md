@@ -2,6 +2,8 @@
 
 Run from the repository root in PowerShell with the existing .env and locked dependencies.
 
+For the shared Vietnamese migration workflow, see [Docker and database guide](../../docs/docker_database_guide.md).
+
 | Area | Guide |
 |---|---|
 | Docker startup, status and health | [Docker](docker.md) |

@@ -1,8 +1,11 @@
-# AgriVision — Database PostgreSQL theo ERD
+# AgriVision — SQL database và catalog
 
 **Database backend dùng là `agrivision_db`.** Schema ứng dụng hiện được quản lý bằng
 EF migrations, gồm migration bổ sung `20261006161042_ConfirmedRequirementsSchema`.
 Chạy migration bằng lệnh riêng trong Docker; xem [quy trình và kiểm thử](../docs/notes/database_migrations.md).
+Hướng dẫn từ khởi tạo Docker đến build, xem/thêm/xóa migration, backup và cập
+nhật DB: [Docker và database](../docs/docker_database_guide.md).
+Migration schema là C# trong backend; SQL ở đây gồm catalog ứng dụng và ERD baseline.
 SQL sáu bảng bên dưới vẫn là snapshot ERD baseline dành cho `agrivision_erd`, không
 thay thế lịch sử migration hoặc toàn bộ schema ứng dụng sau khi nâng cấp.
 
@@ -12,10 +15,12 @@ Nguồn: [ERD](../docs/reports/AGRI-76/diagrams/erd.svg), [source ERD](../docs/r
 
 ## File và phạm vi
 
-- [postgres_schema.sql](postgres_schema.sql): sáu bảng nghiệp vụ, đủ kiểu/độ dài/nullability/default, PK/FK, CHECK và các index theo schema hiện tại. Áp dụng vào database trống trong một transaction; lỗi sẽ rollback.
+- [import_dataset_v1_4_catalog.sql](import_dataset_v1_4_catalog.sql): tùy chọn đồng bộ SQL riêng; mặc định dùng [migration DatasetV14Catalog](../backend/src/AgriVision.Infrastructure/Persistence/Migrations/20261007032722_DatasetV14Catalog.cs) để tạo 59 lớp active trong `agrivision_db`. Giữ legacy inactive và ID/history/snapshot. Không chạy tự động khi mở API.
+- [postgres_schema.sql](postgres_schema.sql): sáu bảng nghiệp vụ, đủ kiểu/độ dài/nullability/default, PK/FK, CHECK và các index theo ERD baseline. Áp dụng vào database ERD trống trong một transaction; lỗi sẽ rollback.
 - [verify_schema.sql](verify_schema.sql): truy vấn metadata để đối chiếu, không xuất dữ liệu tài khoản hoặc prediction.
+- `generated/`: SQL EF xuất để đọc/review trên máy local, được Git ignore; không thay thế C# migration source.
 
-Schema không có seed, ảnh, tài khoản, checkpoint, bảng status/model version hoặc `__EFMigrationsHistory`. Đây không phải database đã được EF migrate/seed để chạy ứng dụng. Không đổi cấu hình backend sang database này nếu chưa xử lý migration theo quy trình ứng dụng.
+SQL ERD baseline không có seed, ảnh, tài khoản, checkpoint, bảng status/model version hoặc `__EFMigrationsHistory`. Đây không phải database đã được EF migrate/seed để chạy ứng dụng. Không đổi cấu hình backend sang database này nếu chưa xử lý migration theo quy trình ứng dụng.
 
 Thư mục này lưu source SQL và hướng dẫn tái tạo. Dữ liệu PostgreSQL thực nằm trong Docker volume `postgres_data` của root Compose, không phải một file `.db` trong repository.
 
@@ -24,7 +29,7 @@ Thư mục này lưu source SQL và hướng dẫn tái tạo. Dữ liệu Postg
 | Trường | Giá trị |
 |---|---|
 | Host | `127.0.0.1` |
-| Port local đã xác minh | `55434` (giá trị `POSTGRES_HOST_PORT` của môi trường hiện tại) |
+| Port | Dùng cổng trả về từ `docker compose port postgres 5432`; lần kiểm tra ERD trước đây dùng `55434` |
 | Database | `agrivision_erd` |
 | Username | `agrivision_user` |
 | Password | Dùng `POSTGRES_PASSWORD` trong `.env` local; không đưa giá trị vào Git |

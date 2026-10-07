@@ -8,8 +8,9 @@ và snapshot sau khi ảnh hết hạn 30 ngày. Nguồn nghiệp vụ:
 ## Cấu hình và quy trình
 
 Backend trong Docker dùng `Host=postgres;Port=5432;Database=agrivision_db`, nhận
-mật khẩu qua `.env`. Từ Windows dùng `127.0.0.1` và `POSTGRES_HOST_PORT` (instance
-hiện tại là `55434`). `agrivision_erd` là database đối chiếu riêng, không chuyển
+mật khẩu qua `.env`. Từ Windows dùng `127.0.0.1` và cổng trả về từ
+`docker compose port postgres 5432` (cấu hình bằng `POSTGRES_HOST_PORT`).
+`agrivision_erd` là database đối chiếu riêng, không chuyển
 backend sang schema SQL đó. Giữ nguyên volume và dữ liệu đang có.
 
 PowerShell tại root repository; chỉ tiếp tục khi lệnh trước thành công:
@@ -26,9 +27,13 @@ docker compose up -d --wait --wait-timeout 180
 Normal startup không gọi `MigrateAsync()` hoặc seed. Nó đọc lịch sử EF và từ chối
 khởi động khi còn migration thiếu. `--migrate` dùng chính assembly đã publish
 trong image, chạy một lần rồi thoát; chạy lại chỉ áp dụng migration chưa có.
-Không cần .NET SDK/EF CLI trên máy triển khai. Production không seed bộ danh mục
-minh họa cũ; database mới cần import catalog từ mapping checkpoint đã được chốt.
-Danh mục hiện tại của máy này được giữ nguyên, chưa được coi là mapping 59 lớp.
+Không cần .NET SDK/EF CLI trên máy triển khai. Migration `DatasetV14Catalog`
+nạp 59 lớp active v1.4 trong mọi môi trường; DB mới không cần import riêng.
+[SQL import](../../database/import_dataset_v1_4_catalog.sql) là tùy chọn đồng bộ
+riêng. Nội dung catalog mới chưa được duyệt; demo seeding chỉ còn tài khoản
+Development khi có cấu hình password rõ.
+Xem [hướng dẫn migration dùng chung](../docker_database_guide.md) và
+[bằng chứng catalog](../reports/AGRI-79/dataset_v1_4_catalog.md).
 
 Compose CI có một service `migrations` riêng, chạy xong thành công mới cho backend
 khởi động trên database tạm. Đây không phải migration trong startup của API;
@@ -97,7 +102,7 @@ Migration test bắt đầu từ InitialCreate có dữ liệu cũ, nâng cấp 
 kiểm tra backfill, thiếu snapshot lịch sử, không lệch model snapshot, unique/CHECK
 và cascade tài khoản. Case expiry kiểm cả lỗi storage và khả năng chạy lại.
 
-## Kiểm chứng local ngày 2026-10-06
+## Lịch sử kiểm chứng local ngày 2026-10-06, trước migration catalog
 
 - Build image backend từ source mới; migration mới đã áp dụng vào `agrivision_db`.
   Chạy migration lần hai: không áp dụng lại; backend healthy sau khi khởi động.
@@ -116,10 +121,15 @@ và cascade tài khoản. Case expiry kiểm cả lỗi storage và khả năng 
   probe còn lại đều bằng 0. Container đang chạy và image vừa build cùng ID
   `sha256:872a84d85cc16d6ff0f55eda7ed51fb9e4a0c2965f491028014992825a0f5919`.
 
-Chưa chạy GitHub Actions ở HEAD này. Chưa nghiệm thu model thật, mapping 59 lớp,
+Tại thời điểm kiểm chứng trên, chưa chạy GitHub Actions hoặc nghiệm thu model thật, mapping 59 lớp,
 upload nhiều ảnh, giới hạn/validation nội dung ảnh, UI trạng thái hết hạn,
 email/Google/reset hoặc scheduler. Các phần dữ liệu hỗ trợ chức năng mới không
 đồng nghĩa chức năng đó đã được tích hợp đầy đủ.
+
+Ngày 07/10/2026, catalog v1.4 đã được bổ sung qua migration và kiểm tra đủ
+59 lớp; bộ backend đạt 33 unit + 30 integration tests. Xem
+[báo cáo migration catalog](../reports/AGRI-79/catalog_ef_migration.md).
+Kết quả này chưa xác nhận inference thật hoặc GitHub Actions.
 
 Phần tích hợp database hiện được ghi nhận tại Jira `AGRI-79` và nhánh `AGRI-79-database-integration`. Xem
 [task log AGRI-79](../task-logs/AGRI-79/AGRI-79-database-migrations.md). Giữ output local

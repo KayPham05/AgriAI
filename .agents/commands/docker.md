@@ -16,7 +16,7 @@ docker compose run --rm --no-deps backend --migrate
 docker compose up -d --wait --wait-timeout 180
 ~~~
 
-Startup does not migrate or seed. Production migration does not seed the demo catalog; a fresh database needs an agreed catalog import. Full Compose config output may expose secrets; use --quiet.
+Startup does not migrate or seed. Migration now includes the 59-class v1.4 catalog via DatasetV14Catalog, without demo users or automatic content approval. A fresh database does not need a separate SQL import. Full Compose config output may expose secrets; use --quiet.
 
 If images and schema are already current:
 

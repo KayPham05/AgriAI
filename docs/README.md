@@ -28,6 +28,7 @@ chiếu; v1.4 thay toàn bộ ảnh Ớt và dùng hợp đồng 59 lớp. Xem
 ## Điểm vào chính
 
 - [Database, migration riêng trong Docker và kiểm thử đọc/ghi](notes/database_migrations.md)
+- [Hướng dẫn migration dùng chung: pull code, áp dụng và tạo migration](docker_database_guide.md)
 - [Giải thích Entities, quan hệ và ảnh hưởng đến ERD](notes/database_entities.md)
 - [Task log AGRI-79: schema/migration và kiểm thử backend–PostgreSQL](task-logs/AGRI-79/AGRI-79-database-migrations.md)
 - [Tech stack và trạng thái](tech_stack.md)
@@ -76,7 +77,7 @@ docs/
 - [Kiểm tra tài liệu AGRI-76](reports/AGRI-76/verification.md).
 - [Hướng dẫn chạy Docker local và smoke test](notes/docker_run_guide.md)
 - [Docker và pipeline CI ngắn gọn](notes/docker_pipeline.md)
-- [Kế hoạch triển khai demo lên VPS](vps_deployment.md)
+- [Review triển khai VPS: hiện trạng, phần còn thiếu và lộ trình deploy](vps_deployment.md)
 - [Quy tắc commit và commitlint trong CI](notes/commitlint.md)
 - [Báo cáo unit và integration test AGRI-75](reports/AGRI-75/unit_integration_test_report.md)
 - [Chiến lược kiểm thử, test case và branch coverage](notes/testing_strategy.md)
@@ -106,5 +107,6 @@ docs/
 - Report không dùng thay cho task log bắt buộc của Jira.
 - Plan ghi rõ mục tiêu, phạm vi, đầu ra và tiêu chí hoàn thành; plan không thay thế quyết định đã được duyệt.
 - Journal ghi những gì đã thử, kết quả thực tế, lỗi gặp phải và bước tiếp theo.
+- User Story và ghi chú phỏng vấn được giữ local theo `.gitignore`, không đưa lên Git hoặc liên kết trong mục lục dùng chung.
 - Nếu bổ sung notebook thực thi (`.ipynb`), notebook phải chạy lại được; kết quả thực nghiệm được chốt tại `experiments/EXP-XXX/`.
 - Không dùng tên mơ hồ như `final.md`, `new_plan.md`, `test.ipynb` hoặc `note1.md`.
