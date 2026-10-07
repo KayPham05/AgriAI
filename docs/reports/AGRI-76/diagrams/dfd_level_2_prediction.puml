@@ -1,0 +1,72 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title DFD Level 2 — process 2 hiện tại — UC-05
+top to bottom direction
+rectangle "User web / Khách API" as Human
+rectangle "HTTP AI\nserver chưa nghiệm thu" as AI
+rectangle Cloudinary as Cloud
+rectangle "D2 | predictions / details / images / snapshot" as D2 <<datastore>>
+rectangle "D3 | plants / diseases / plant_diseases" as D3 <<datastore>>
+rectangle "D5 | Local images" as D5 <<datastore>>
+usecase "2.1\nChọn / preview\nnhận request" as P21
+usecase "2.2\nKiểm file\nbuffer bytes" as P22
+usecase "2.3\nUser: lưu ảnh\ncleanup lỗi DB" as P23
+usecase "2.4\nGọi HTTP AI\nkiểm response" as P24 #FBECE5
+usecase "2.5\nKiểm mapping\ntop-1 / top-k" as P25
+usecase "2.6\nUser: ghi DB\nảnh + snapshot" as P26
+usecase "2.7\nMap DTO\ntrả / hiển thị" as P27
+Human --> P21 : ảnh / JWT tùy chọn
+P21 --> Human : lỗi MIME / size / decode
+P21 --> P22 : multipart file / UserId nullable
+P22 --> Human : lỗi rỗng / đuôi
+P22 --> P24 : bytes / filename / owner
+P24 --> AI : POST /predict multipart file
+AI --> P24 : class_index / class_name / confidence / top_k
+P24 --> Human : lỗi HTTP / timeout / contract
+P24 --> P25 : AiPredictionResult / bytes / owner
+P25 --> D3 : class_index top-1 và top-k
+D3 --> P25 : mapping / tên lớp / null
+P25 --> Human : lỗi index/name thiếu hoặc không khớp
+P25 --> P27 : khách: Prediction + details trong bộ nhớ / mapping
+P25 --> P23 : User: bytes / filename / mapping / owner
+P23 --> Cloud : ảnh / public ID cleanup lỗi DB
+Cloud --> P23 : URL / public ID / cleanup bool / lỗi
+P23 --> D5 : ảnh fallback / local ID cleanup
+D5 --> P23 : URL / local ID / cleanup bool / lỗi
+P23 --> Human : lỗi storage
+P23 --> P26 : Prediction / details / image / snapshot
+P26 --> D2 : User: bản ghi / snapshot / metadata ảnh
+D2 --> P26 : kết quả ghi / lỗi DB
+P26 --> P23 : public ID cần cleanup khi lỗi DB
+P26 --> Human : lỗi persistence gốc (cleanup lỗi chỉ log)
+P26 --> P27 : User: prediction đã lưu / mapping
+P27 --> Human : DTO; khách 200 / User 201 + Location
+note bottom of P24
+DFD mô tả dữ liệu, thứ tự/nhánh ở Activity/Sequence.
+Không thêm preprocessing/model HTTP chưa có source.
+end note
+@enduml

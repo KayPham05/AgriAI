@@ -1,0 +1,50 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Sequence — Python inference riêng, chưa nối HTTP
+actor "CLI / Python caller" as Caller
+participant LeafDiseasePredictor as Predictor
+participant "PIL / transforms" as Transform
+participant ConvNeXtLeafClassifier as Model
+participant "torch / label mapping" as Torch
+Caller -> Predictor : __init__(checkpoint_path)
+Predictor -> Torch : torch.load / normalize_checkpoint_label_mapping
+Torch --> Predictor : weights / num_classes / idx_to_info
+Predictor -> Model : build_model(pretrained=False)\nload_state_dict / eval
+Model --> Predictor : model
+Caller -> Predictor : predict_image(image_path, top_k=3)
+Predictor -> Transform : Image.open / RGB / transform / batch
+Transform --> Predictor : tensor trên device
+Predictor -> Model : model(tensor) -> forward(x)
+Model --> Predictor : logits
+Predictor -> Torch : softmax / topk / idx_to_info
+Torch --> Predictor : top probabilities / labels
+Predictor --> Caller : plant, disease, confidence (%)\ntop_predictions, image_path
+note over Caller,Predictor
+HTTP client đòi class_index/class_name/top_k, confidence [0,1].
+Chưa có bridge FastAPI trong checkout; không vẽ thành E2E.
+end note
+@enduml

@@ -1,0 +1,50 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title MỤC TIÊU — Activity đăng nhập (FR-02) — UC-02
+|Người dùng|
+start
+:Nhập email và mật khẩu;
+|Frontend|
+:POST /api/auth/login;
+|ASP.NET Core|
+:Đọc users / kiểm hash mật khẩu;
+if (Thông tin hợp lệ?) then (có)
+ :Tạo JWT / trả AuthResponse;
+ |Frontend|
+ :Lưu phiên / mở ứng dụng;
+else (không)
+ |ASP.NET Core|
+ :Trả 401;
+ |Frontend|
+ :Hiển thị lỗi đăng nhập;
+endif
+stop
+legend bottom
+Mục tiêu cốt lõi, không phải kết quả kiểm thử.
+Tài khoản đã tồn tại; không mở rộng sang OTP/reset password.
+endlegend
+@enduml

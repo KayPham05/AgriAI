@@ -1,0 +1,59 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Sequence — UC-07 xóa prediction server
+actor "Owner / Admin" as User
+participant "App / predictionApi" as Web
+participant "PredictionsController + middleware" as API
+participant PredictionService as Service
+participant "IImageStorage" as Storage
+database "PredictionRepository / DB" as DB
+User -> Web : xác nhận xóa
+Web -> API : DELETE /api/predictions/{id} + JWT
+API -> Service : DeletePredictionAsync(id,userId,isAdmin)
+Service -> DB : GetByIdAsync
+DB --> Service : prediction hoặc null
+alt không có bản ghi
+ Service --> API : KeyNotFoundException
+ API --> Web : 404
+else có bản ghi
+ alt sai owner và không Admin
+  Service --> API : UnauthorizedAccessException
+  API --> Web : 401
+ else được phép
+  opt ImagePublicId không rỗng
+   Service -> Storage : DeleteImageAsync(publicId)
+   Storage --> Service : bool (chưa kiểm false) hoặc exception
+  end
+  note over Service,DB: Exception storage dừng trước DELETE DB.
+  Service -> DB : DeleteAsync / SaveChanges\nCASCADE details
+  DB --> Service : done
+  Service --> API : done
+  API --> Web : 204
+ end
+end
+Web --> User : cập nhật danh sách / báo lỗi
+@enduml

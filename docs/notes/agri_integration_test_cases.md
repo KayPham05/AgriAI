@@ -36,14 +36,19 @@ Not run `<n>`; lệnh `<...>`; số test thực chạy `<n>`; artifact `<TRX/log
 | ID | Ranh giới / viewpoint | Setup → thao tác | Kết quả mong đợi | Trạng thái thiết kế |
 |---|---|---|---|---|
 | INT-AUTH-01 | API + PostgreSQL, VP-API-03 | DB test sạch → đăng ký rồi đăng nhập. | User được lưu; token/response theo code; không rò mật khẩu. | Có test tương ứng; cần ghi kết quả chạy riêng. |
-| INT-HEALTH-01 | API + PostgreSQL + AI stub, NFR-03 | DB/AI health theo từng trạng thái → `GET /api/health`. | `Checks` và `Status` phản ánh dependency; ghi rõ HTTP status hiện tại theo controller. | Có test tương ứng; cần ghi kết quả chạy riêng. |
+| INT-HEALTH-01 | API + PostgreSQL; vận hành theo HealthController, không gắn NFR-03 | DB kết nối được/không được → `GET /api/health`. | HTTP 200/503; `status` Healthy/Degraded; `checks.database` Healthy/Unhealthy. Không kiểm tra AI ở endpoint này. | Có test health DB; chưa chạy lại trong lần sửa tài liệu. |
+| INT-HEALTH-02 | API + AI HTTP stub; vận hành theo HealthController, không phải inference | Stub `/health` trả thành công/lỗi/timeout → `GET /api/health/deps`. | HTTP 200/503; `status` Healthy/Degraded; `checks.aiService` Healthy/Unreachable. Không chứng minh model phân loại đúng. | Có test AI unavailable trong HealthControllerTests; các trạng thái khác cần đối chiếu/bổ sung. Chưa chạy lại. |
 | INT-HIST-01 | API + PostgreSQL, VP-API-03 | Seed prediction của A và B → A gọi history. | Chỉ trả prediction của A; phân trang và tổng số khớp DB. | Cần bổ sung. |
 | INT-HIST-02 | API + PostgreSQL + storage stub, VP-API-03 | Seed prediction của B → A gọi delete. | Bị từ chối; bản ghi và ảnh của B giữ nguyên. | Cần bổ sung. |
 | INT-PRED-01 | API + PostgreSQL + AI/storage stub, VP-API-02 | Ảnh hợp lệ, AI stub trả class canonical → `POST /api/predictions`. | Response, prediction và top-k nhất quán; chỉ một bản ghi được thêm. | Chờ contract/mapping được chốt. |
-| INT-PRED-02 | API + PostgreSQL + AI/storage stub, VP-API-02 | AI timeout hoặc class không tồn tại → post ảnh. | Không có response thành công, không thêm prediction; xử lý ảnh theo policy. | Cần bổ sung; code hiện có fallback. |
+| INT-PRED-02 | API + PostgreSQL + AI/storage stub, VP-API-02 | AI timeout hoặc class không tồn tại → post ảnh. | Không có response thành công, không thêm prediction; xử lý ảnh theo policy. | Cần bổ sung; mapping DB vẫn fallback. |
 | INT-DB-01 | EF migration + PostgreSQL, VP-DB-01 | DB test trống → migrate/seed. | Schema và ràng buộc hợp lệ; mapping seed đối chiếu checkpoint khi đã chốt. | Chờ mapping/checkpoint cho phần đối chiếu. |
-| INT-CONTRACT-01 | Web + API, VP-WEB-02 | API test theo contract → gửi ảnh từ web. | Tên field multipart, response và đơn vị confidence khớp. | Blocked: web đang gửi `image`, .NET đang nhận `File`. |
+| INT-CONTRACT-01 | Web + API, VP-WEB-02 | API test và AI/storage stub → gửi một ảnh từ web. | Web gửi multipart `file`, bind vào DTO `File`; response/đơn vị confidence khớp code, side effects đúng. | Not run; không còn blocker tên field. E2E model thật ghi riêng. |
 
 Các case dùng AI stub chỉ chứng minh hợp đồng và side effect. Khi có AI service
 thật, thêm ca E2E riêng để đối chiếu cùng ảnh giữa CLI, HTTP AI và API; không
 gộp kết quả stub với chất lượng phân loại.
+
+Nguồn health: [HealthController](../../backend/src/AgriVision.API/Controllers/HealthController.cs).
+`NFR-03` trong [đặc tả](../system_requirements.md) là vòng đời ảnh 30 ngày;
+hai ca health là kiểm tra vận hành hiện có, không tự tạo mã yêu cầu mới.

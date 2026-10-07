@@ -1,0 +1,52 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title MỤC TIÊU — Sequence đăng nhập — UC-02
+actor "Người dùng" as User
+participant "Next.js Frontend" as Web
+participant "ASP.NET Core / AuthService" as API
+database PostgreSQL as DB
+User -> Web : Submit email / password
+Web -> API : POST /api/auth/login
+activate API
+API -> DB : Đọc users theo email
+DB --> API : User / password hash hoặc không có
+API -> API : Kiểm BCrypt
+alt Thông tin hợp lệ
+ API -> API : Ký JWT
+ API --> Web : 200 AuthResponse
+ Web -> Web : Lưu phiên / mở ứng dụng
+ Web --> User : Đăng nhập thành công
+else Thông tin không hợp lệ
+ API --> Web : 401
+ Web --> User : Thông báo lỗi
+end
+deactivate API
+legend bottom
+Mục tiêu FR-02; dựa trên endpoint đang có.
+Không mô tả đăng ký, OTP, refresh token hay reset password.
+endlegend
+@enduml

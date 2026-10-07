@@ -1,0 +1,165 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title ERD — agrivision_db après migration AGRI-70 (2026-10-07)
+hide circle
+hide methods
+entity diseases {
+ * id: uuid <<PK>>
+ * name: varchar(150)
+ vietnamese_name: varchar(200)
+ description: text
+ symptoms: text
+ treatment: text
+ prevention: text
+ * is_active: boolean = true
+ * created_at: timestamptz
+ updated_at: timestamptz
+ * condition_type: varchar(30) = 'Unknown'::character varying
+ * is_content_approved: boolean = false
+ medication: text
+}
+note bottom of diseases
+CHECK (((condition_type)::text = ANY ((ARRAY['Unknown'::character varying, 'Healthy'::character varying, 'NutrientDeficiency'::character varying, 'Disease'::character varying])::text[])))
+UNIQUE (name)
+end note
+entity plant_diseases {
+ * id: uuid <<PK>>
+ * plant_id: uuid <<FK>>
+ * disease_id: uuid <<FK>>
+ * class_name: varchar(255)
+ * class_index: integer
+ * is_active: boolean = true
+}
+note bottom of plant_diseases
+CHECK ((class_index >= 0))
+UNIQUE (class_index)
+UNIQUE (plant_id, disease_id)
+end note
+entity plants {
+ * id: uuid <<PK>>
+ * name: varchar(100)
+ vietnamese_name: varchar(150)
+ scientific_name: varchar(200)
+ description: text
+ * is_active: boolean = true
+ * created_at: timestamptz
+ updated_at: timestamptz
+}
+note bottom of plants
+UNIQUE (name)
+end note
+entity prediction_details {
+ * id: uuid <<PK>>
+ * prediction_id: uuid <<FK>>
+ * plant_disease_id: uuid <<FK>>
+ * probability: double precision
+ * rank: integer
+}
+note bottom of prediction_details
+CHECK ((rank > 0))
+UNIQUE (prediction_id, rank)
+end note
+entity prediction_images {
+ * id: uuid <<PK>>
+ * prediction_id: uuid <<FK>>
+ * position: integer
+ image_path: text
+ image_public_id: text
+ * confidence: double precision
+ * uploaded_at: timestamptz
+ * expires_at: timestamptz
+ deleted_at: timestamptz
+}
+note bottom of prediction_images
+CHECK ((expires_at > uploaded_at))
+CHECK (("position" >= 0))
+UNIQUE (prediction_id, "position")
+end note
+entity predictions {
+ * id: uuid <<PK>>
+ user_id: uuid <<FK>>
+ * image_path: text
+ image_public_id: text
+ * predicted_plant_disease_id: uuid <<FK>>
+ * confidence: double precision
+ * created_at: timestamptz
+ result_snapshot: jsonb
+}
+entity user_action_tokens {
+ * id: uuid <<PK>>
+ * user_id: uuid <<FK>>
+ * purpose: varchar(30)
+ * token_hash: varchar(64)
+ * created_at: timestamptz
+ * expires_at: timestamptz
+ consumed_at: timestamptz
+}
+note bottom of user_action_tokens
+CHECK ((expires_at > created_at))
+CHECK (((token_hash)::text ~ '^[0-9a-f]{64}$'::text))
+CHECK (((purpose)::text = ANY ((ARRAY['EmailVerification'::character varying, 'PasswordReset'::character varying])::text[])))
+UNIQUE (token_hash)
+end note
+entity user_identities {
+ * id: uuid <<PK>>
+ * user_id: uuid <<FK>>
+ * provider: varchar(30)
+ * provider_subject: varchar(255)
+ * created_at: timestamptz
+}
+note bottom of user_identities
+UNIQUE (provider, provider_subject)
+end note
+entity users {
+ * id: uuid <<PK>>
+ * full_name: varchar(150)
+ * email: varchar(255)
+ password_hash: text
+ * role: varchar(30) = 'User'::character varying
+ * created_at: timestamptz
+ updated_at: timestamptz
+ email_verified_at: timestamptz
+}
+note bottom of users
+UNIQUE (email)
+end note
+users |o--o{ predictions : SET NULL
+plants ||--o{ plant_diseases : RESTRICT
+diseases ||--o{ plant_diseases : RESTRICT
+plant_diseases ||--o{ predictions : RESTRICT
+predictions ||--o{ prediction_details : CASCADE
+plant_diseases ||--o{ prediction_details : RESTRICT
+predictions ||--o{ prediction_images : CASCADE
+users ||--o{ user_identities : CASCADE
+users ||--o{ user_action_tokens : CASCADE
+legend bottom
+* = NOT NULL; dòng không * = nullable. 9 bảng / 69 cột nghiệp vụ.
+__EFMigrationsHistory là bảng kỹ thuật, snapshot metadata lưu riêng.
+Schema hỗ trợ Google/email/reset/nhiều ảnh không chứng minh endpoint đã hoàn thiện.
+ERD 6 bảng trong erd.puml giữ làm baseline 2026-10-05.
+endlegend
+@enduml

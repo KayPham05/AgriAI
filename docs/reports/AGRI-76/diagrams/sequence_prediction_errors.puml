@@ -1,0 +1,73 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Sequence — UC-05 lỗi và cleanup hiện tại
+actor User
+participant "Frontend / client API" as Web
+participant "PredictionService + middleware" as API
+participant "HTTP AI adapter" as AI
+participant IImageStorage as Storage
+database PostgreSQL as DB
+User -> Web : phân tích ảnh
+Web -> API : POST /api/predictions
+alt File rỗng / đuôi sai
+ API --> Web : 400; không AI / storage / ghi DB
+else File hợp lệ
+ API -> AI : PredictAsync(bytes, filename)
+ alt HTTP / timeout / JSON / contract lỗi
+  AI --> API : AiServiceException 503 / 502
+  API --> Web : 503 / 502; chưa lưu ảnh
+ else AI hợp lệ
+  AI --> API : AiPredictionResult
+  API -> DB : tra ClassIndex của top-1 và top-k
+  DB --> API : mapping hoặc null
+  alt Thiếu mapping hoặc ClassName khác
+   API --> Web : 400 InvalidOperationException;\nkhông fallback / không lưu ảnh
+  else Mapping khớp
+   alt Khách (không UserId)
+    API --> Web : 200; không upload / không ghi DB
+   else Có UserId
+    API -> Storage : UploadImageAsync
+    Storage --> API : tham chiếu ảnh hoặc exception
+    note over API,Storage: Storage exception dừng luồng; middleware trả lỗi theo loại.
+    API -> DB : AddAsync / SaveChanges
+    alt Ghi DB thất bại
+     DB --> API : exception
+     API -> Storage : DeleteImageAsync(PublicId, CancellationToken.None)
+     Storage --> API : true / false / exception
+     API -> API : log cleanup false/exception;\nrethrow lỗi persistence gốc
+     API --> Web : lỗi gốc; DB update error thường 500
+    else Ghi thành công
+     DB --> API : saved
+     API --> Web : 201
+    end
+   end
+  end
+ end
+end
+Web --> User : kết quả / lỗi
+note over Web: XHR timeout 60s, network và abort là luồng frontend riêng.
+@enduml

@@ -1,0 +1,63 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Activity — UC-06 xem kết quả hiện tại
+|Frontend / client|
+start
+if (Kết quả của POST hiện tại?) then (có)
+ :Hiển thị DTO vừa nhận;\nkhách API 200 / user 201;
+ stop
+else (GET theo ID)
+ :GET /api/predictions/{id} + JWT;
+endif
+|Backend|
+if (JWT và UserId hợp lệ?) then (có)
+else (không)
+ :401;
+ stop
+endif
+|Database|
+:GetByIdAsync;\nInclude images / catalog / details;
+|Backend|
+if (Có bản ghi và UserId khớp owner?) then (có)
+else (không)
+ :404;
+ stop
+endif
+if (Có ResultSnapshotJson?) then (có)
+ :Deserialize snapshot gốc;
+else (legacy)
+ :MapToResultDto từ navigation catalog;\nHasHistoricalSnapshot=false;
+endif
+:ProjectImages / ẩn URL hết hạn;\n200 DTO;
+|Frontend|
+:mapPredictionResult / hiển thị;
+note right
+UI chưa hiển thị đầy đủ mọi field DTO mới;
+ảnh storage public chưa có truy cập riêng tư.
+end note
+stop
+@enduml

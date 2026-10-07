@@ -1,0 +1,74 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title MỤC TIÊU — Activity nhánh một ảnh đã đăng nhập — UC-05
+|Người dùng|
+start
+:Chọn ảnh / yêu cầu phân loại;
+|Frontend|
+:Validation client / POST multipart file + JWT;
+|ASP.NET Core|
+if (Phiên của nhánh tài khoản hợp lệ?) then (có)
+else (không)
+ :Lỗi phiên; khách có nhánh POST riêng không lưu;
+ stop
+endif
+if (Validation đầy đủ cả lượt / nội dung hợp lệ?) then (có)
+else (không)
+ :Lỗi validation;
+ stop
+endif
+:POST /predict;
+|FastAPI AI Service|
+:Preprocess chuẩn / ConvNeXt-Tiny;\ntrả nhãn / confidence / top-k;
+|ASP.NET Core|
+if (Response và mapping index/name hợp lệ?) then (có)
+else (không)
+ :Trả lỗi; chưa lưu ảnh;
+ stop
+endif
+:Lưu ảnh / tham chiếu storage;
+if (Storage thành công?) then (có)
+else (không)
+ :Trả lỗi storage;
+ stop
+endif
+:Ghi Prediction / details / images / snapshot;
+if (DB thành công?) then (có)
+ :201 sau commit;
+ |Frontend|
+ :Hiển thị đầy đủ snapshot / warning / ảnh hết hạn;
+else (không)
+ |ASP.NET Core|
+ :Cố cleanup ảnh; trả lỗi gốc;
+endif
+stop
+legend bottom
+PLANNED: validation nội dung/tổng lượt, FastAPI thật và UI field mới.
+ĐÃ CÓ SOURCE: AI trước storage, mapping strict, snapshot, cleanup lỗi DB.
+Nhánh một ảnh tài khoản; không đổi POST công khai thành endpoint Authorize.
+endlegend
+@enduml

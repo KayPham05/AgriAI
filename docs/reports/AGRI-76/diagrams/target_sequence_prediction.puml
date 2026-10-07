@@ -1,0 +1,68 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title MỤC TIÊU — Sequence một ảnh đã đăng nhập — UC-05
+actor User
+participant NextJS as Web
+participant "ASP.NET Backend" as API
+participant "FastAPI (PLANNED)" as AI
+participant ConvNeXtTiny as Model
+participant "Image storage" as Storage
+database PostgreSQL as DB
+User -> Web : chọn ảnh / phân loại
+Web -> API : POST /api/predictions file + JWT (nhánh tài khoản)
+API -> API : validation đầy đủ cả lượt / nội dung (PLANNED)
+API -> AI : POST /predict multipart file
+AI -> AI : preprocess chuẩn (PLANNED bridge)
+AI -> Model : tensor
+Model --> AI : logits / probabilities
+AI --> API : class / confidence / top-k
+API -> DB : mapping theo ClassIndex
+DB --> API : PlantDisease / ClassName
+alt Contract/mapping sai hoặc AI lỗi
+ API --> Web : lỗi; chưa lưu ảnh
+else Contract/mapping hợp lệ
+ API -> Storage : UploadImageAsync
+ Storage --> API : URL / PublicId
+ note over API,Storage: Storage exception dừng trước ghi DB.
+ API -> DB : SaveChanges Prediction/details/images/snapshot
+ alt DB lỗi
+  DB --> API : exception
+  API -> Storage : cố cleanup PublicId
+  Storage --> API : kết quả / lỗi
+  API --> Web : lỗi persistence gốc
+ else DB thành công
+  DB --> API : commit
+  API --> Web : 201 PredictionResultDto + Location
+  Web --> User : đầy đủ kết quả / warning / ảnh (UI cần hoàn thiện)
+ end
+end
+legend bottom
+FastAPI/ConvNeXt HTTP là mục tiêu chưa nghiệm thu.
+POST khách vẫn công khai, 200 không storage/history; nhánh này chỉ tài khoản.
+Mapping strict / snapshot / cleanup DB đã có source, không gọi là Planned.
+endlegend
+@enduml

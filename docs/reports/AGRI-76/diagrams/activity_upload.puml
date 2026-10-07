@@ -1,0 +1,63 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Activity — F2.1 chọn ảnh / UC-05
+|User|
+start
+|Frontend|
+if (Đã vào app sau đăng nhập/restore?) then (yes)
+else (no)
+ :IntroPage / LoginModal;
+ stop
+endif
+|User|
+:Chọn hoặc kéo thả một ảnh;
+|Frontend|
+:clearImage / abort request cũ;
+:getImageFileError;
+if (JPEG hoặc PNG, 0 < size <= 15 MiB?) then (yes)
+ :Tạo object URL / new Image;
+ if (Decode ảnh thành công?) then (yes)
+  :Lưu File / preview / resolution;
+ else (no)
+  :Revoke URL / báo không đọc được ảnh;
+  stop
+ endif
+else (no)
+ :status = error / hiển thị lỗi;
+ stop
+endif
+|User|
+:Bấm phân tích;
+|Frontend|
+:status = uploading;
+:XHR multipart file / JWT nếu có;
+note right
+API còn kiểm file rỗng và đuôi ảnh.
+Không upload Cloudinary trực tiếp từ browser.
+end note
+stop
+@enduml

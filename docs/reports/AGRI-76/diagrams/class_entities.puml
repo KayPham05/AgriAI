@@ -1,0 +1,146 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Class — 9 Domain entities sau AGRI-70
+hide methods
+class Disease {
+ + Id: Guid
+ + Name: string
+ + VietnameseName: string?
+ + Description: string?
+ + Symptoms: string?
+ + Treatment: string?
+ + Prevention: string?
+ + ConditionType: string
+ + IsContentApproved: bool
+ + Medication: string?
+ + IsActive: bool
+ + CreatedAt: DateTime
+ + UpdatedAt: DateTime?
+ + PlantDiseases: ICollection<PlantDisease>
+}
+class Plant {
+ + Id: Guid
+ + Name: string
+ + VietnameseName: string?
+ + ScientificName: string?
+ + Description: string?
+ + IsActive: bool
+ + CreatedAt: DateTime
+ + UpdatedAt: DateTime?
+ + PlantDiseases: ICollection<PlantDisease>
+}
+class PlantDisease {
+ + Id: Guid
+ + PlantId: Guid
+ + DiseaseId: Guid
+ + ClassName: string
+ + ClassIndex: int
+ + IsActive: bool
+ + Plant: Plant
+ + Disease: Disease
+ + Predictions: ICollection<Prediction>
+ + PredictionDetails: ICollection<PredictionDetail>
+}
+class Prediction {
+ + Id: Guid
+ + UserId: Guid?
+ + ImagePath: string
+ + ImagePublicId: string?
+ + PredictedPlantDiseaseId: Guid
+ + Confidence: double
+ + CreatedAt: DateTime
+ + ResultSnapshotJson: string?
+ + User: User?
+ + PredictedPlantDisease: PlantDisease
+ + PredictionDetails: ICollection<PredictionDetail>
+ + Images: ICollection<PredictionImage>
+}
+class PredictionDetail {
+ + Id: Guid
+ + PredictionId: Guid
+ + PlantDiseaseId: Guid
+ + Probability: double
+ + Rank: int
+ + Prediction: Prediction
+ + PlantDisease: PlantDisease
+}
+class PredictionImage {
+ + Id: Guid
+ + PredictionId: Guid
+ + Position: int
+ + ImagePath: string?
+ + ImagePublicId: string?
+ + Confidence: double
+ + UploadedAt: DateTime
+ + ExpiresAt: DateTime
+ + DeletedAt: DateTime?
+ + Prediction: Prediction
+}
+class User {
+ + Id: Guid
+ + FullName: string
+ + Email: string
+ + PasswordHash: string?
+ + EmailVerifiedAt: DateTime?
+ + Role: string
+ + CreatedAt: DateTime
+ + UpdatedAt: DateTime?
+ + Predictions: ICollection<Prediction>
+}
+class UserActionToken {
+ + Id: Guid
+ + UserId: Guid
+ + Purpose: string
+ + TokenHash: string
+ + CreatedAt: DateTime
+ + ExpiresAt: DateTime
+ + ConsumedAt: DateTime?
+ + User: User
+}
+class UserIdentity {
+ + Id: Guid
+ + UserId: Guid
+ + Provider: string
+ + ProviderSubject: string
+ + CreatedAt: DateTime
+ + User: User
+}
+User "0..1" -- "0..*" Prediction
+Plant "1" -- "0..*" PlantDisease
+Disease "1" -- "0..*" PlantDisease
+PlantDisease "1" -- "0..*" Prediction
+Prediction "1" -- "0..*" PredictionDetail
+PlantDisease "1" -- "0..*" PredictionDetail
+Prediction "1" -- "0..*" PredictionImage
+User "1" -- "0..*" UserIdentity
+User "1" -- "0..*" UserActionToken
+note bottom of Prediction
+Public auto-properties / navigation theo source.
+ResultSnapshotJson là property; cột SQL tên result_snapshot.
+Không có Status hoặc model version; không suy ra composition từ cascade.
+end note
+@enduml

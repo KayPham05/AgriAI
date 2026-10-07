@@ -2,7 +2,7 @@
 
 > Dùng cấu trúc bảng ca kiểm thử của `Testing Document/`, áp dụng cho một hàm
 > hoặc service cô lập. Đây là **thiết kế**, không phải kết quả chạy test.
-> Liên kết yêu cầu và viewpoint tại [kế hoạch phát triển](../development_roadmap.md)
+> Liên kết yêu cầu và viewpoint tại [đặc tả yêu cầu](../system_requirements.md)
 > và [viewpoint](agri_test_viewpoints.md).
 
 ## Cách dùng
@@ -37,6 +37,6 @@ Not run `<n>`; lệnh `<...>`; số test thực chạy `<n>`; artifact `<TRX/cov
 | UNIT-PRED-03 | `PredictionService`, VP-API-02 | AI predictor ném timeout/lỗi → `PredictAsync`. | Không trả kết quả thành công và không thêm prediction; kiểm tra dọn ảnh theo policy khi được chốt. | Cần bổ sung; không suy ra policy đã triển khai. |
 | UNIT-PRED-04 | `PredictionService`, VP-API-02 | AI trả class không có trong DB → `PredictAsync`. | Từ chối mapping sai, không lưu dự đoán. | Mục tiêu; code hiện fallback sang lớp đầu tiên. |
 | UNIT-AI-01 | `ai/utils/label_mapping.py`, VP-DATA-01 | Mapping checkpoint thiếu/trùng index → chuẩn hóa mapping. | Lỗi rõ ràng, không âm thầm đổi thứ tự nhãn. | Đối chiếu với `test_label_mapping.py`. |
-| UNIT-WEB-01 | UI upload, VP-WEB-01 | File sai loại/quá giới hạn → validate. | UI không gửi API; thông báo phù hợp policy. | Chờ test runner và policy web/API thống nhất. |
+| UNIT-WEB-01 | UI upload, VP-WEB-01 | File sai loại/quá giới hạn → validate. | UI không gửi API; thông báo phù hợp policy. | Có Vitest; cần đối chiếu policy web/API. |
 
 Không dùng test có mock AI để khẳng định model phân loại đúng ảnh thật.

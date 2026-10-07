@@ -1,0 +1,61 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Sequence — UC-06 history có đăng nhập
+actor User
+participant "App / predictionApi" as Web
+participant "PredictionsController" as Controller
+participant PredictionService as Service
+database "PredictionRepository / PostgreSQL" as DB
+User -> Web : mở lịch sử
+Web -> Controller : GET /api/predictions?pageNumber=1&pageSize=100\nAuthorization: Bearer JWT
+alt JWT không hợp lệ
+ Controller --> Web : 401 (authentication pipeline)
+else JWT hợp lệ
+ Controller -> Service : GetPredictionHistoryAsync(userId, page, size)
+ Service -> DB : GetCountByUserIdAsync
+ DB --> Service : totalCount
+ Service -> DB : GetByUserIdAsync / sort / skip / take
+ DB --> Service : predictions
+ Service --> Controller : PagedResult<PredictionHistoryDto>
+ Controller --> Web : 200
+ Web --> User : danh sách
+ User -> Web : chọn một kết quả
+ Web -> Controller : GET /api/predictions/{id} + JWT
+ note over Controller: Endpoint không Authorize / chưa kiểm owner.
+ Controller -> Service : GetPredictionByIdAsync(id)
+ Service -> DB : GetByIdAsync / Includes
+ DB --> Service : prediction hoặc null
+ Service --> Controller : DTO hoặc null
+ Controller --> Web : 200 hoặc 404
+ Web --> User : chi tiết hoặc lỗi
+end
+note over Web
+Web yêu cầu đăng nhập/restore và hasEnteredApp=true.
+Nhánh guest localStorage/state còn trong code nhưng không có đường vào UI.
+Khách chỉ gọi GET detail công khai qua API trực tiếp.
+end note
+@enduml

@@ -1,0 +1,165 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title ERD — agrivision_db sau migration AGRI-70 (2026-10-07)
+hide circle
+hide methods
+entity diseases {
+ {field} * id: uuid <<PK>>
+ {field} * name: varchar(150)
+ {field} vietnamese_name: varchar(200)
+ {field} description: text
+ {field} symptoms: text
+ {field} treatment: text
+ {field} prevention: text
+ {field} * is_active: boolean = true
+ {field} * created_at: timestamptz
+ {field} updated_at: timestamptz
+ {field} * condition_type: varchar(30) = 'Unknown'::character varying
+ {field} * is_content_approved: boolean = false
+ {field} medication: text
+}
+note bottom of diseases
+CHECK (((condition_type)::text = ANY ((ARRAY['Unknown'::character varying, 'Healthy'::character varying, 'NutrientDeficiency'::character varying, 'Disease'::character varying])::text[])))
+UNIQUE (name)
+end note
+entity plant_diseases {
+ {field} * id: uuid <<PK>>
+ {field} * plant_id: uuid <<FK>>
+ {field} * disease_id: uuid <<FK>>
+ {field} * class_name: varchar(255)
+ {field} * class_index: integer
+ {field} * is_active: boolean = true
+}
+note bottom of plant_diseases
+CHECK ((class_index >= 0))
+UNIQUE (class_index)
+UNIQUE (plant_id, disease_id)
+end note
+entity plants {
+ {field} * id: uuid <<PK>>
+ {field} * name: varchar(100)
+ {field} vietnamese_name: varchar(150)
+ {field} scientific_name: varchar(200)
+ {field} description: text
+ {field} * is_active: boolean = true
+ {field} * created_at: timestamptz
+ {field} updated_at: timestamptz
+}
+note bottom of plants
+UNIQUE (name)
+end note
+entity prediction_details {
+ {field} * id: uuid <<PK>>
+ {field} * prediction_id: uuid <<FK>>
+ {field} * plant_disease_id: uuid <<FK>>
+ {field} * probability: double precision
+ {field} * rank: integer
+}
+note bottom of prediction_details
+CHECK ((rank > 0))
+UNIQUE (prediction_id, rank)
+end note
+entity prediction_images {
+ {field} * id: uuid <<PK>>
+ {field} * prediction_id: uuid <<FK>>
+ {field} * position: integer
+ {field} image_path: text
+ {field} image_public_id: text
+ {field} * confidence: double precision
+ {field} * uploaded_at: timestamptz
+ {field} * expires_at: timestamptz
+ {field} deleted_at: timestamptz
+}
+note bottom of prediction_images
+CHECK ((expires_at > uploaded_at))
+CHECK (("position" >= 0))
+UNIQUE (prediction_id, "position")
+end note
+entity predictions {
+ {field} * id: uuid <<PK>>
+ {field} user_id: uuid <<FK>>
+ {field} * image_path: text
+ {field} image_public_id: text
+ {field} * predicted_plant_disease_id: uuid <<FK>>
+ {field} * confidence: double precision
+ {field} * created_at: timestamptz
+ {field} result_snapshot: jsonb
+}
+entity user_action_tokens {
+ {field} * id: uuid <<PK>>
+ {field} * user_id: uuid <<FK>>
+ {field} * purpose: varchar(30)
+ {field} * token_hash: varchar(64)
+ {field} * created_at: timestamptz
+ {field} * expires_at: timestamptz
+ {field} consumed_at: timestamptz
+}
+note bottom of user_action_tokens
+CHECK ((expires_at > created_at))
+CHECK (((token_hash)::text ~ '^[0-9a-f]{64}$'::text))
+CHECK (((purpose)::text = ANY ((ARRAY['EmailVerification'::character varying, 'PasswordReset'::character varying])::text[])))
+UNIQUE (token_hash)
+end note
+entity user_identities {
+ {field} * id: uuid <<PK>>
+ {field} * user_id: uuid <<FK>>
+ {field} * provider: varchar(30)
+ {field} * provider_subject: varchar(255)
+ {field} * created_at: timestamptz
+}
+note bottom of user_identities
+UNIQUE (provider, provider_subject)
+end note
+entity users {
+ {field} * id: uuid <<PK>>
+ {field} * full_name: varchar(150)
+ {field} * email: varchar(255)
+ {field} password_hash: text
+ {field} * role: varchar(30) = 'User'::character varying
+ {field} * created_at: timestamptz
+ {field} updated_at: timestamptz
+ {field} email_verified_at: timestamptz
+}
+note bottom of users
+UNIQUE (email)
+end note
+users |o--o{ predictions : SET NULL
+plants ||--o{ plant_diseases : RESTRICT
+diseases ||--o{ plant_diseases : RESTRICT
+plant_diseases ||--o{ predictions : RESTRICT
+predictions ||--o{ prediction_details : CASCADE
+plant_diseases ||--o{ prediction_details : RESTRICT
+predictions ||--o{ prediction_images : CASCADE
+users ||--o{ user_identities : CASCADE
+users ||--o{ user_action_tokens : CASCADE
+legend bottom
+* = NOT NULL; dòng không * = nullable. 9 bảng / 69 cột nghiệp vụ.
+__EFMigrationsHistory là bảng kỹ thuật, snapshot metadata lưu riêng.
+Schema hỗ trợ Google/email/reset/nhiều ảnh không chứng minh endpoint đã hoàn thiện.
+ERD 6 bảng trong erd.puml giữ làm baseline 2026-10-05.
+endlegend
+@enduml

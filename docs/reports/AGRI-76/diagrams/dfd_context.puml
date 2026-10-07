@@ -1,0 +1,53 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title DFD Level 0 — Context (Yourdon/DeMarco)
+left to right direction
+rectangle "Khách" as Guest
+rectangle "Người dùng đã đăng nhập" as User
+rectangle Admin as Admin
+rectangle "Người vận hành" as Ops
+rectangle "HTTP AI\ncontract phía client" as AI
+rectangle Cloudinary as Cloud
+usecase "0\nAgriVision\nweb + API + DB\n+ local storage" as System #FBECE5
+Guest --> System : credentials trên web\nảnh / tra cứu qua API trực tiếp
+System --> Guest : JWT / kết quả / danh mục / lỗi
+User --> System : JWT / ảnh / yêu cầu hồ sơ / profile UI\nhistory / xóa / đăng xuất / tra cứu
+System --> User : hồ sơ / history / kết quả\nxác nhận / lỗi
+Admin --> System : JWT / dữ liệu cây-bệnh / ID xóa
+System --> Admin : danh mục / kết quả thao tác / lỗi
+Ops --> System : health DB / AI / --migrate / --expire-images
+System --> Ops : status / checks / exit code / kết quả vận hành
+System --> AI : multipart ảnh / yêu cầu health
+AI --> System : JSON prediction / HTTP status
+System --> Cloud : ảnh / public ID cần xóa
+Cloud --> System : URL / public ID / kết quả xóa
+note bottom of System
+Web chính chỉ mở sau đăng nhập/restore; khách gọi API công khai trực tiếp.
+DB / browser storage / local ảnh nằm bên trong boundary.
+AI server chưa xác minh; model không tự thêm thành external entity.
+end note
+@enduml

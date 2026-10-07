@@ -1,0 +1,57 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Activity — inference Python hiện có (chạy riêng)
+|CLI caller|
+start
+:Cung cấp checkpoint và image_path;
+|LeafDiseasePredictor|
+:Load checkpoint / normalize mapping;
+if (Checkpoint / mapping / weights hợp lệ?) then (yes)
+ :build_model / load_state_dict / eval;
+else (no)
+ :Raise exception;
+ |CLI caller|
+ :main in lỗi / exit 1;
+ stop
+endif
+|LeafDiseasePredictor|
+:Image.open / convert RGB;
+:get_inference_transforms\ntensor batch / device;
+|ConvNeXtLeafClassifier|
+:forward / backbone ConvNeXt-Tiny;
+|LeafDiseasePredictor|
+:softmax / torch.topk;
+:Tra idx_to_info / confidence * 100;
+:Trả plant, disease, confidence,\ntop_predictions, image_path;
+|CLI caller|
+:Hiển thị kết quả;
+note right
+Không phải FastAPI request workflow.
+Ảnh hỏng / file thiếu cũng raise và main exit 1.
+end note
+stop
+@enduml

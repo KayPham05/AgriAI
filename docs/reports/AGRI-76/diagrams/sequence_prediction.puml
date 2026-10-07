@@ -1,0 +1,63 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Sequence — UC-05 hiện trạng sau AGRI-70
+autonumber
+actor "Khách API / User web" as User
+participant "Next.js / client API" as Web
+participant "Controller + PredictionService" as API
+participant "FastApiPlantDiseasePredictor\nHTTP adapter" as Client
+participant "HTTP AI /predict\nserver chưa nghiệm thu" as AI
+participant CloudinaryImageStorage as Storage
+database PostgreSQL as DB
+User -> Web : một ảnh / phân tích
+Web -> API : POST /api/predictions\nmultipart file; JWT tùy chọn
+API -> API : kiểm file rỗng / .jpg .jpeg .png; buffer
+API -> Client : PredictAsync(stream, filename)
+Client -> AI : POST /predict multipart file
+AI --> Client : class_index / class_name / confidence / top_k
+Client -> Client : kiểm JSON / contract / confidence
+Client --> API : AiPredictionResult
+API -> DB : GetByClassIndexAsync(top-1 và mỗi top-k)
+DB --> API : PlantDisease + Plant/Disease
+API -> API : kiểm index/name khớp chính xác;\ntạo Prediction + details trong bộ nhớ
+alt Không có UserId (khách)
+ API -> API : MapToResultDto; không upload / không AddAsync
+ API --> Web : 200 PredictionResultDto\nImages rỗng; HasHistoricalSnapshot=false
+else Có UserId
+ API -> Storage : UploadImageAsync(stream độc lập, filename)
+ Storage --> API : PublicId / SecureUrl\nCloudinary hoặc fallback local
+ API -> API : PredictionImage (hết hạn +30 ngày);\nMapToResultDto + serialize ResultSnapshotJson
+ API -> DB : AddAsync(Prediction + details + image + snapshot)
+ DB --> API : SaveChanges thành công
+ API --> Web : 201 PredictionResultDto + Location
+end
+Web --> User : cây / tình trạng / confidence / top-k
+note over AI
+HTTP client có source; không suy ra đã tích hợp ConvNeXt.
+Web hiện cần login/restore để mở DiagnosePage.
+end note
+@enduml

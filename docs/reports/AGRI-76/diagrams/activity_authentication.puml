@@ -1,0 +1,77 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Activity — UC-01 / UC-02 / UC-03
+|User|
+start
+:Nhập thông tin;
+|Frontend|
+:Chọn register hoặc login;
+:Gửi JSON qua authApi;
+|Backend|
+if (Register?) then (yes)
+ :ExistsByEmailAsync;
+ if (Email đã tồn tại?) then (yes)
+  :400 qua middleware;
+  |Frontend|
+  :Hiển thị lỗi email trùng;
+  stop
+ else (no)
+  |Backend|
+  :BCrypt hash / tạo User role User;
+  :AddAsync / SaveChangesAsync;
+ endif
+else (login)
+ :GetByEmailAsync;
+ if (User tồn tại / PasswordHash không NULL / BCrypt đúng?) then (yes)
+ else (no)
+  :401 Invalid email or password;
+  |Frontend|
+  :Hiển thị lỗi;
+  stop
+ endif
+endif
+|Backend|
+:GenerateToken / AuthResponse;
+|Frontend|
+:Lưu localStorage hoặc sessionStorage;
+:Hiển thị đăng nhập thành công;
+|User|
+:Chọn vào ứng dụng;
+|Frontend|
+:Đặt authSession / hasEnteredApp=true;
+:Khi reload, GET /api/auth/me với JWT;
+|Backend|
+if (JWT hợp lệ và user tồn tại?) then (yes)
+ :200 UserDto;
+ |Frontend|
+ :Khôi phục authSession / hasEnteredApp=true;
+else (no)
+ |Frontend|
+ :clearAuthSession / giữ hasEnteredApp=false;\nIntroPage / LoginModal;
+endif
+stop
+@enduml

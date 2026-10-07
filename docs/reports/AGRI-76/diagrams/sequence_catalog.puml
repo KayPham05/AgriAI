@@ -1,0 +1,73 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Sequence — UC-08 / UC-09 danh mục (Plant; Disease tương tự)
+actor "Khách / User / Admin" as User
+participant "Web catalogApi / API caller" as Web
+note over User,Web: Web: User đã đăng nhập/restore. Khách: chỉ gọi API trực tiếp.
+participant "PlantsController + authorization" as API
+participant PlantService as Service
+database "PlantRepository / PostgreSQL" as DB
+User -> Web : yêu cầu danh mục
+Web -> API : GET /api/plants?includeInactive=false\nhoặc GET /api/plants/{id}
+API -> Service : GetAllAsync / GetByIdAsync
+Service -> DB : query
+DB --> Service : entities
+Service --> API : PlantDto/list hoặc null
+API --> Web : 200 hoặc detail 404
+Web --> User : danh mục (web có dữ liệu tĩnh dự phòng)
+opt thao tác Admin qua API
+ Web -> API : POST /api/plants hoặc PUT/DELETE /{id}\nBearer JWT
+ alt JWT sai hoặc role không Admin
+  API --> Web : 401 / 403
+ else Admin hợp lệ
+  API -> Service : CreateAsync / UpdateAsync / DeleteAsync
+  Service -> DB : tải record khi update/delete
+  DB --> Service : entity hoặc null
+  alt ID không tồn tại ở update/delete
+   Service --> API : KeyNotFoundException
+   API --> Web : middleware 404
+  else tiếp tục tạo/sửa/xóa
+   Service -> DB : Add/Update; DELETE = IsActive=false / UpdatedAt; SaveChanges
+   alt unique hoặc DB update error
+    DB --> Service : DbUpdateException
+    Service --> API : exception
+    API --> Web : middleware thường 500
+   else thành công
+    DB --> Service : saved
+    Service --> API : DTO hoặc completed
+    API --> Web : POST 201 / PUT 200 / DELETE 204
+   end
+  end
+ end
+end
+note over API,DB
+DiseasesController/DiseaseService/DiseaseRepository
+có API /api/diseases tương ứng.
+Chưa thấy UI Admin; API caller không đồng nghĩa màn hình.
+DELETE catalog là soft-delete; không xóa plant_diseases/history.
+end note
+@enduml

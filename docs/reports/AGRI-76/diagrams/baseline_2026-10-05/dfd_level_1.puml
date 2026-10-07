@@ -1,0 +1,103 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title DFD Level 1 — phân rã process 0
+top to bottom direction
+rectangle "Khách / User / Admin\nquyền theo từng API" as Human
+rectangle "Người vận hành" as Ops
+rectangle "HTTP AI" as AI
+rectangle Cloudinary as Cloud
+usecase "1\nTài khoản\nvà phiên UI\nUC-01–04" as P1
+usecase "2\nPhân loại\nmột ảnh\nUC-05" as P2 #FBECE5
+usecase "3\nĐọc kết quả\nvà lịch sử\nUC-06" as P3
+usecase "4\nXóa\nkết quả\nUC-07" as P4
+usecase "5\nQuản lý\ncây-bệnh\nUC-09" as P5
+usecase "6\nĐọc\ndanh mục\nUC-08" as P6
+usecase "7\nKiểm tra\ndịch vụ\nUC-10" as P7
+rectangle "D1 | users" as D1 <<datastore>>
+rectangle "D2 | predictions / prediction_details" as D2 <<datastore>>
+rectangle "D3 | plants / diseases / plant_diseases" as D3 <<datastore>>
+rectangle "D4 | Browser session" as D4 <<datastore>>
+rectangle "D5 | Local images" as D5 <<datastore>>
+' Invisible edges constrain layout only; they are not data flows.
+P1 -[hidden]down-> P2
+P2 -[hidden]down-> P3
+P3 -[hidden]down-> P4
+P4 -[hidden]down-> P5
+P5 -[hidden]down-> P6
+P6 -[hidden]down-> P7
+Human --> P1 : credentials / JWT / profile UI / logout
+P1 --> Human : JWT / hồ sơ / profile UI / lỗi
+P1 --> D1 : User mới / ID hoặc email cần tìm
+D1 --> P1 : User / password hash / role
+P1 --> D4 : phiên JWT / yêu cầu xóa phiên
+D4 --> P1 : phiên lưu để restore
+Human --> P2 : một ảnh / JWT nếu có
+P2 --> Human : PredictionResultDto / lỗi
+P2 --> Cloud : ảnh
+Cloud --> P2 : URL / public ID / lỗi upload
+P2 --> D5 : ảnh fallback local
+D5 --> P2 : URL / local public ID
+P2 --> AI : multipart file
+AI --> P2 : class / confidence / top_k / lỗi
+P2 --> D3 : class_index / class_name / truy vấn fallback
+D3 --> P2 : mapping cây-bệnh
+P2 --> D2 : Prediction / PredictionDetail
+D2 --> P2 : kết quả ghi / lỗi DB
+Human --> P3 : ID / JWT / page (history cần JWT)
+P3 --> D2 : ID hoặc userId / pagination
+D2 --> P3 : kết quả / lịch sử
+P3 --> Human : DTO / history / lỗi
+Human --> P4 : ID / JWT / yêu cầu xóa server
+P4 --> D2 : ID cần tìm / yêu cầu xóa được phép
+D2 --> P4 : prediction / owner
+P4 --> Cloud : public ID cần xóa
+Cloud --> P4 : bool / lỗi xóa
+P4 --> D5 : local ID cần xóa
+D5 --> P4 : bool / lỗi xóa
+P4 --> Human : xác nhận / lỗi
+Human --> P5 : JWT Admin / dữ liệu cây-bệnh / ID
+P5 --> D3 : tạo / sửa / xóa cây hoặc bệnh
+D3 --> P5 : bản ghi / kết quả ghi / lỗi FK
+P5 --> Human : DTO / xác nhận / lỗi
+Human --> P6 : tiêu chí / ID / includeInactive
+P6 --> D3 : truy vấn danh mục
+D3 --> P6 : cây / bệnh
+P6 --> Human : danh mục / dữ liệu tĩnh dự phòng / lỗi
+Ops --> P7 : yêu cầu health DB / AI
+P7 --> AI : GET /health
+AI --> P7 : HTTP status / lỗi
+P7 --> Ops : status / checks
+note bottom of P7
+CanConnectAsync là kiểm tài nguyên DB nội bộ,
+không phải luồng đọc/ghi bảng users D1.
+end note
+legend bottom
+Web chính chỉ mở sau đăng nhập/restore thành công.
+Khách: đăng ký/login trên web; prediction/detail/catalog qua API trực tiếp.
+Profile UI, history và xóa cần User; guest browser chưa có đường vào UI.
+endlegend
+@enduml

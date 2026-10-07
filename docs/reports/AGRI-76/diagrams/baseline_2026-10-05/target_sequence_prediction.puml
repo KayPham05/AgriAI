@@ -1,0 +1,73 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title MỤC TIÊU — Sequence phân loại một ảnh — UC-05 / UC-06
+actor "Người dùng" as User
+participant "Next.js Frontend" as Web
+participant "ASP.NET Core Backend" as API
+participant "Cloud storage" as Cloud
+participant "FastAPI AI Service" as AI
+participant "ConvNeXt-Tiny" as Model
+database PostgreSQL as DB
+User -> Web : Chọn ảnh / phân loại (đã đăng nhập)
+Web -> API : POST /api/predictions\nmultipart file + Bearer JWT
+activate API
+API -> API : Kiểm JWT / dung lượng / định dạng / nội dung
+alt JWT hoặc ảnh không hợp lệ
+ API --> Web : 401 hoặc lỗi validation
+ Web --> User : Hiển thị lỗi
+else Request hợp lệ
+ API -> Cloud : Lưu ảnh
+ Cloud --> API : URL / public ID
+ note over API,Cloud: Storage lỗi: dừng trước AI, trả lỗi (xem Activity).
+ API -> AI : POST /predict multipart file
+ activate AI
+ AI -> AI : Preprocess theo checkpoint / mapping đã duyệt
+ AI -> Model : Tensor ảnh
+ Model --> AI : Logits / xác suất
+ AI --> API : Nhãn / confidence / top-k theo contract
+ deactivate AI
+ API -> DB : Tìm mapping plant_diseases / plants / diseases
+ DB --> API : Mapping hợp lệ hoặc không khớp
+ alt AI response và mapping hợp lệ
+  API -> DB : Transaction: ghi predictions / prediction_details
+  DB --> API : Commit thành công
+  note over API,DB: DB lỗi: rollback / cleanup ảnh / trả lỗi; không trả 201.
+  API --> Web : 201 PredictionResultDto (sau commit)
+  Web --> User : Cây / bệnh / confidence / ảnh
+ else AI lỗi hoặc response / mapping không hợp lệ
+  API -> Cloud : Yêu cầu cleanup ảnh đã upload
+  Cloud --> API : Kết quả cleanup
+  API --> Web : Lỗi dịch vụ / contract / mapping
+  Web --> User : Hiển thị lỗi, không có kết quả thành công
+ end
+end
+deactivate API
+legend bottom
+PLANNED: Authorize POST / validation server / FastAPI thật / mapping nghiêm ngặt / cleanup.
+Tên endpoint hiện có; payload AI chi tiết và policy cleanup còn cần chốt.
+endlegend
+@enduml

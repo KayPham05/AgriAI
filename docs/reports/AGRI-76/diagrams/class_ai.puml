@@ -1,0 +1,61 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Class — Python inference hiện có
+class LeafDiseasePredictor {
+ + checkpoint_path: Path
+ + num_classes: int
+ + idx_to_info: mapping
+ + model: ConvNeXtLeafClassifier
+ + transform: callable
+ + __init__(checkpoint_path)
+ + predict_image(image_path, top_k=3): Dict
+}
+class ConvNeXtLeafClassifier {
+ + num_classes: int
+ + backbone: nn.Module
+ + __init__(num_classes, pretrained, dropout_rate)
+ + forward(x: torch.Tensor): torch.Tensor
+ + freeze_backbone()
+ + unfreeze_all()
+}
+class "torch.nn.Module" as Module <<library>>
+class "ai.data.augmentations" as Transforms <<module>> {
+ + get_inference_transforms(image_size)
+}
+class "ai.networks.convnext" as Network <<module>> {
+ + build_model(num_classes, pretrained, device)
+}
+LeafDiseasePredictor "1" --> "1" ConvNeXtLeafClassifier : model
+LeafDiseasePredictor ..> Transforms : transform
+LeafDiseasePredictor ..> Network : build_model
+ConvNeXtLeafClassifier --|> Module
+note bottom of LeafDiseasePredictor
+Độc lập với HTTP client.
+Không có FastAPI controller/class tự thêm.
+Thuộc tính Python public theo quy ước không dấu _.
+end note
+@enduml

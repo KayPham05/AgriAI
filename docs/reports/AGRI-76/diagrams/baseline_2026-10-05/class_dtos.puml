@@ -1,0 +1,87 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Class — DTO và domain prediction
+hide empty methods
+class PredictRequest {
+ + File: IFormFile
+}
+class PredictionResultDto <<record>> {
+ + Id: Guid
+ + ImagePath: string
+ + ImagePublicId: string?
+ + PredictedPlantDisease: PlantDiseaseDto
+ + Confidence: double
+ + PredictionDetails: IEnumerable<PredictionDetailDto>
+ + CreatedAt: DateTime
+}
+class PredictionDetailDto <<record>> {
+ + ClassIndex: int
+ + ClassName: string
+ + Confidence: double
+ + PlantDisease: PlantDiseaseDto?
+}
+class PredictionHistoryDto <<record>> {
+ + Id: Guid
+ + ImagePath: string
+ + PlantName: string
+ + PlantVietnameseName: string
+ + DiseaseName: string
+ + DiseaseVietnameseName: string
+ + Confidence: double
+ + CreatedAt: DateTime
+}
+class PlantDiseaseDto <<record>> {
+ + Id: Guid
+ + PlantId: Guid
+ + DiseaseId: Guid
+ + ClassName: string
+ + ClassIndex: int
+ + IsActive: bool
+ + Plant: PlantDto
+ + Disease: DiseaseDto
+}
+class AiPredictionResult <<record>> {
+ + ClassIndex: int
+ + ClassName: string
+ + Confidence: float
+ + TopK: IEnumerable<AiPredictionTopKItem>
+}
+class AiPredictionTopKItem <<record>> {
+ + ClassIndex: int
+ + ClassName: string
+ + Confidence: float
+}
+PredictionResultDto "1" --> "0..*" PredictionDetailDto
+PredictionResultDto "1" --> "1" PlantDiseaseDto
+PredictionDetailDto "1" --> "0..1" PlantDiseaseDto
+AiPredictionResult "1" --> "0..*" AiPredictionTopKItem
+note bottom of AiPredictionResult
+HTTP validation đòi TopK không rỗng.
+Record không có invariant đó trong constructor.
+Không đưa DTO vào ERD như bảng.
+end note
+@enduml

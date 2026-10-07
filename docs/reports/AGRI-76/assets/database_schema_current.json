@@ -1,0 +1,944 @@
+{
+  "columns": [
+    {
+      "table_name": "__EFMigrationsHistory",
+      "column_name": "MigrationId",
+      "ordinal_position": 1,
+      "data_type": "character varying",
+      "is_nullable": "NO",
+      "character_maximum_length": 150,
+      "column_default": null
+    },
+    {
+      "table_name": "__EFMigrationsHistory",
+      "column_name": "ProductVersion",
+      "ordinal_position": 2,
+      "data_type": "character varying",
+      "is_nullable": "NO",
+      "character_maximum_length": 32,
+      "column_default": null
+    },
+    {
+      "table_name": "diseases",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "diseases",
+      "column_name": "name",
+      "ordinal_position": 2,
+      "data_type": "character varying",
+      "is_nullable": "NO",
+      "character_maximum_length": 150,
+      "column_default": null
+    },
+    {
+      "table_name": "diseases",
+      "column_name": "vietnamese_name",
+      "ordinal_position": 3,
+      "data_type": "character varying",
+      "is_nullable": "YES",
+      "character_maximum_length": 200,
+      "column_default": null
+    },
+    {
+      "table_name": "diseases",
+      "column_name": "description",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "is_nullable": "YES",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "diseases",
+      "column_name": "symptoms",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "is_nullable": "YES",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "diseases",
+      "column_name": "treatment",
+      "ordinal_position": 6,
+      "data_type": "text",
+      "is_nullable": "YES",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "diseases",
+      "column_name": "prevention",
+      "ordinal_position": 7,
+      "data_type": "text",
+      "is_nullable": "YES",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "diseases",
+      "column_name": "is_active",
+      "ordinal_position": 8,
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": "true"
+    },
+    {
+      "table_name": "diseases",
+      "column_name": "created_at",
+      "ordinal_position": 9,
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "diseases",
+      "column_name": "updated_at",
+      "ordinal_position": 10,
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "diseases",
+      "column_name": "condition_type",
+      "ordinal_position": 11,
+      "data_type": "character varying",
+      "is_nullable": "NO",
+      "character_maximum_length": 30,
+      "column_default": "'Unknown'::character varying"
+    },
+    {
+      "table_name": "diseases",
+      "column_name": "is_content_approved",
+      "ordinal_position": 12,
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": "false"
+    },
+    {
+      "table_name": "diseases",
+      "column_name": "medication",
+      "ordinal_position": 13,
+      "data_type": "text",
+      "is_nullable": "YES",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "plant_diseases",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "plant_diseases",
+      "column_name": "plant_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "plant_diseases",
+      "column_name": "disease_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "plant_diseases",
+      "column_name": "class_name",
+      "ordinal_position": 4,
+      "data_type": "character varying",
+      "is_nullable": "NO",
+      "character_maximum_length": 255,
+      "column_default": null
+    },
+    {
+      "table_name": "plant_diseases",
+      "column_name": "class_index",
+      "ordinal_position": 5,
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "plant_diseases",
+      "column_name": "is_active",
+      "ordinal_position": 6,
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": "true"
+    },
+    {
+      "table_name": "plants",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "plants",
+      "column_name": "name",
+      "ordinal_position": 2,
+      "data_type": "character varying",
+      "is_nullable": "NO",
+      "character_maximum_length": 100,
+      "column_default": null
+    },
+    {
+      "table_name": "plants",
+      "column_name": "vietnamese_name",
+      "ordinal_position": 3,
+      "data_type": "character varying",
+      "is_nullable": "YES",
+      "character_maximum_length": 150,
+      "column_default": null
+    },
+    {
+      "table_name": "plants",
+      "column_name": "scientific_name",
+      "ordinal_position": 4,
+      "data_type": "character varying",
+      "is_nullable": "YES",
+      "character_maximum_length": 200,
+      "column_default": null
+    },
+    {
+      "table_name": "plants",
+      "column_name": "description",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "is_nullable": "YES",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "plants",
+      "column_name": "is_active",
+      "ordinal_position": 6,
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": "true"
+    },
+    {
+      "table_name": "plants",
+      "column_name": "created_at",
+      "ordinal_position": 7,
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "plants",
+      "column_name": "updated_at",
+      "ordinal_position": 8,
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "prediction_details",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "prediction_details",
+      "column_name": "prediction_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "prediction_details",
+      "column_name": "plant_disease_id",
+      "ordinal_position": 3,
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "prediction_details",
+      "column_name": "probability",
+      "ordinal_position": 4,
+      "data_type": "double precision",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "prediction_details",
+      "column_name": "rank",
+      "ordinal_position": 5,
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "prediction_images",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "prediction_images",
+      "column_name": "prediction_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "prediction_images",
+      "column_name": "position",
+      "ordinal_position": 3,
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "prediction_images",
+      "column_name": "image_path",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "is_nullable": "YES",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "prediction_images",
+      "column_name": "image_public_id",
+      "ordinal_position": 5,
+      "data_type": "text",
+      "is_nullable": "YES",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "prediction_images",
+      "column_name": "confidence",
+      "ordinal_position": 6,
+      "data_type": "double precision",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "prediction_images",
+      "column_name": "uploaded_at",
+      "ordinal_position": 7,
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "prediction_images",
+      "column_name": "expires_at",
+      "ordinal_position": 8,
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "prediction_images",
+      "column_name": "deleted_at",
+      "ordinal_position": 9,
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "predictions",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "predictions",
+      "column_name": "user_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "predictions",
+      "column_name": "image_path",
+      "ordinal_position": 3,
+      "data_type": "text",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "predictions",
+      "column_name": "image_public_id",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "is_nullable": "YES",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "predictions",
+      "column_name": "predicted_plant_disease_id",
+      "ordinal_position": 5,
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "predictions",
+      "column_name": "confidence",
+      "ordinal_position": 6,
+      "data_type": "double precision",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "predictions",
+      "column_name": "created_at",
+      "ordinal_position": 7,
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "predictions",
+      "column_name": "result_snapshot",
+      "ordinal_position": 8,
+      "data_type": "jsonb",
+      "is_nullable": "YES",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "user_action_tokens",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "user_action_tokens",
+      "column_name": "user_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "user_action_tokens",
+      "column_name": "purpose",
+      "ordinal_position": 3,
+      "data_type": "character varying",
+      "is_nullable": "NO",
+      "character_maximum_length": 30,
+      "column_default": null
+    },
+    {
+      "table_name": "user_action_tokens",
+      "column_name": "token_hash",
+      "ordinal_position": 4,
+      "data_type": "character varying",
+      "is_nullable": "NO",
+      "character_maximum_length": 64,
+      "column_default": null
+    },
+    {
+      "table_name": "user_action_tokens",
+      "column_name": "created_at",
+      "ordinal_position": 5,
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "user_action_tokens",
+      "column_name": "expires_at",
+      "ordinal_position": 6,
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "user_action_tokens",
+      "column_name": "consumed_at",
+      "ordinal_position": 7,
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "user_identities",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "user_identities",
+      "column_name": "user_id",
+      "ordinal_position": 2,
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "user_identities",
+      "column_name": "provider",
+      "ordinal_position": 3,
+      "data_type": "character varying",
+      "is_nullable": "NO",
+      "character_maximum_length": 30,
+      "column_default": null
+    },
+    {
+      "table_name": "user_identities",
+      "column_name": "provider_subject",
+      "ordinal_position": 4,
+      "data_type": "character varying",
+      "is_nullable": "NO",
+      "character_maximum_length": 255,
+      "column_default": null
+    },
+    {
+      "table_name": "user_identities",
+      "column_name": "created_at",
+      "ordinal_position": 5,
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "users",
+      "column_name": "id",
+      "ordinal_position": 1,
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "users",
+      "column_name": "full_name",
+      "ordinal_position": 2,
+      "data_type": "character varying",
+      "is_nullable": "NO",
+      "character_maximum_length": 150,
+      "column_default": null
+    },
+    {
+      "table_name": "users",
+      "column_name": "email",
+      "ordinal_position": 3,
+      "data_type": "character varying",
+      "is_nullable": "NO",
+      "character_maximum_length": 255,
+      "column_default": null
+    },
+    {
+      "table_name": "users",
+      "column_name": "password_hash",
+      "ordinal_position": 4,
+      "data_type": "text",
+      "is_nullable": "YES",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "users",
+      "column_name": "role",
+      "ordinal_position": 5,
+      "data_type": "character varying",
+      "is_nullable": "NO",
+      "character_maximum_length": 30,
+      "column_default": "'User'::character varying"
+    },
+    {
+      "table_name": "users",
+      "column_name": "created_at",
+      "ordinal_position": 6,
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "users",
+      "column_name": "updated_at",
+      "ordinal_position": 7,
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "character_maximum_length": null,
+      "column_default": null
+    },
+    {
+      "table_name": "users",
+      "column_name": "email_verified_at",
+      "ordinal_position": 8,
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "character_maximum_length": null,
+      "column_default": null
+    }
+  ],
+  "constraints": [
+    {
+      "table_name": "\"__EFMigrationsHistory\"",
+      "name": "PK___EFMigrationsHistory",
+      "definition": "PRIMARY KEY (\"MigrationId\")"
+    },
+    {
+      "table_name": "diseases",
+      "name": "PK_diseases",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "diseases",
+      "name": "ck_diseases_condition_type",
+      "definition": "CHECK (((condition_type)::text = ANY ((ARRAY['Unknown'::character varying, 'Healthy'::character varying, 'NutrientDeficiency'::character varying, 'Disease'::character varying])::text[])))"
+    },
+    {
+      "table_name": "plant_diseases",
+      "name": "FK_plant_diseases_diseases_disease_id",
+      "definition": "FOREIGN KEY (disease_id) REFERENCES diseases(id) ON DELETE RESTRICT"
+    },
+    {
+      "table_name": "plant_diseases",
+      "name": "FK_plant_diseases_plants_plant_id",
+      "definition": "FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE RESTRICT"
+    },
+    {
+      "table_name": "plant_diseases",
+      "name": "PK_plant_diseases",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "plant_diseases",
+      "name": "ck_plant_diseases_class_index",
+      "definition": "CHECK ((class_index >= 0))"
+    },
+    {
+      "table_name": "plants",
+      "name": "PK_plants",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "prediction_details",
+      "name": "FK_prediction_details_plant_diseases_plant_disease_id",
+      "definition": "FOREIGN KEY (plant_disease_id) REFERENCES plant_diseases(id) ON DELETE RESTRICT"
+    },
+    {
+      "table_name": "prediction_details",
+      "name": "FK_prediction_details_predictions_prediction_id",
+      "definition": "FOREIGN KEY (prediction_id) REFERENCES predictions(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "prediction_details",
+      "name": "PK_prediction_details",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "prediction_details",
+      "name": "ck_prediction_details_rank",
+      "definition": "CHECK ((rank > 0))"
+    },
+    {
+      "table_name": "prediction_images",
+      "name": "FK_prediction_images_predictions_prediction_id",
+      "definition": "FOREIGN KEY (prediction_id) REFERENCES predictions(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "prediction_images",
+      "name": "PK_prediction_images",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "prediction_images",
+      "name": "ck_prediction_images_expiry",
+      "definition": "CHECK ((expires_at > uploaded_at))"
+    },
+    {
+      "table_name": "prediction_images",
+      "name": "ck_prediction_images_position",
+      "definition": "CHECK ((\"position\" >= 0))"
+    },
+    {
+      "table_name": "predictions",
+      "name": "FK_predictions_plant_diseases_predicted_plant_disease_id",
+      "definition": "FOREIGN KEY (predicted_plant_disease_id) REFERENCES plant_diseases(id) ON DELETE RESTRICT"
+    },
+    {
+      "table_name": "predictions",
+      "name": "FK_predictions_users_user_id",
+      "definition": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL"
+    },
+    {
+      "table_name": "predictions",
+      "name": "PK_predictions",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "user_action_tokens",
+      "name": "FK_user_action_tokens_users_user_id",
+      "definition": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "user_action_tokens",
+      "name": "PK_user_action_tokens",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "user_action_tokens",
+      "name": "ck_user_action_tokens_expiry",
+      "definition": "CHECK ((expires_at > created_at))"
+    },
+    {
+      "table_name": "user_action_tokens",
+      "name": "ck_user_action_tokens_hash",
+      "definition": "CHECK (((token_hash)::text ~ '^[0-9a-f]{64}$'::text))"
+    },
+    {
+      "table_name": "user_action_tokens",
+      "name": "ck_user_action_tokens_purpose",
+      "definition": "CHECK (((purpose)::text = ANY ((ARRAY['EmailVerification'::character varying, 'PasswordReset'::character varying])::text[])))"
+    },
+    {
+      "table_name": "user_identities",
+      "name": "FK_user_identities_users_user_id",
+      "definition": "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
+    },
+    {
+      "table_name": "user_identities",
+      "name": "PK_user_identities",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "users",
+      "name": "PK_users",
+      "definition": "PRIMARY KEY (id)"
+    }
+  ],
+  "indexes": [
+    {
+      "tablename": "__EFMigrationsHistory",
+      "indexname": "PK___EFMigrationsHistory",
+      "indexdef": "CREATE UNIQUE INDEX \"PK___EFMigrationsHistory\" ON public.\"__EFMigrationsHistory\" USING btree (\"MigrationId\")"
+    },
+    {
+      "tablename": "diseases",
+      "indexname": "PK_diseases",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_diseases\" ON public.diseases USING btree (id)"
+    },
+    {
+      "tablename": "diseases",
+      "indexname": "ix_diseases_name",
+      "indexdef": "CREATE UNIQUE INDEX ix_diseases_name ON public.diseases USING btree (name)"
+    },
+    {
+      "tablename": "plant_diseases",
+      "indexname": "PK_plant_diseases",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_plant_diseases\" ON public.plant_diseases USING btree (id)"
+    },
+    {
+      "tablename": "plant_diseases",
+      "indexname": "ix_plant_diseases_class_index",
+      "indexdef": "CREATE UNIQUE INDEX ix_plant_diseases_class_index ON public.plant_diseases USING btree (class_index)"
+    },
+    {
+      "tablename": "plant_diseases",
+      "indexname": "ix_plant_diseases_disease_id",
+      "indexdef": "CREATE INDEX ix_plant_diseases_disease_id ON public.plant_diseases USING btree (disease_id)"
+    },
+    {
+      "tablename": "plant_diseases",
+      "indexname": "ix_plant_diseases_plant_id",
+      "indexdef": "CREATE INDEX ix_plant_diseases_plant_id ON public.plant_diseases USING btree (plant_id)"
+    },
+    {
+      "tablename": "plant_diseases",
+      "indexname": "ix_plant_diseases_plant_id_disease_id",
+      "indexdef": "CREATE UNIQUE INDEX ix_plant_diseases_plant_id_disease_id ON public.plant_diseases USING btree (plant_id, disease_id)"
+    },
+    {
+      "tablename": "plants",
+      "indexname": "PK_plants",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_plants\" ON public.plants USING btree (id)"
+    },
+    {
+      "tablename": "plants",
+      "indexname": "ix_plants_name",
+      "indexdef": "CREATE UNIQUE INDEX ix_plants_name ON public.plants USING btree (name)"
+    },
+    {
+      "tablename": "prediction_details",
+      "indexname": "IX_prediction_details_plant_disease_id",
+      "indexdef": "CREATE INDEX \"IX_prediction_details_plant_disease_id\" ON public.prediction_details USING btree (plant_disease_id)"
+    },
+    {
+      "tablename": "prediction_details",
+      "indexname": "PK_prediction_details",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_prediction_details\" ON public.prediction_details USING btree (id)"
+    },
+    {
+      "tablename": "prediction_details",
+      "indexname": "ix_prediction_details_prediction_id",
+      "indexdef": "CREATE INDEX ix_prediction_details_prediction_id ON public.prediction_details USING btree (prediction_id)"
+    },
+    {
+      "tablename": "prediction_details",
+      "indexname": "ix_prediction_details_prediction_id_rank",
+      "indexdef": "CREATE UNIQUE INDEX ix_prediction_details_prediction_id_rank ON public.prediction_details USING btree (prediction_id, rank)"
+    },
+    {
+      "tablename": "prediction_images",
+      "indexname": "IX_prediction_images_expires_at",
+      "indexdef": "CREATE INDEX \"IX_prediction_images_expires_at\" ON public.prediction_images USING btree (expires_at)"
+    },
+    {
+      "tablename": "prediction_images",
+      "indexname": "IX_prediction_images_prediction_id_position",
+      "indexdef": "CREATE UNIQUE INDEX \"IX_prediction_images_prediction_id_position\" ON public.prediction_images USING btree (prediction_id, \"position\")"
+    },
+    {
+      "tablename": "prediction_images",
+      "indexname": "PK_prediction_images",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_prediction_images\" ON public.prediction_images USING btree (id)"
+    },
+    {
+      "tablename": "predictions",
+      "indexname": "IX_predictions_predicted_plant_disease_id",
+      "indexdef": "CREATE INDEX \"IX_predictions_predicted_plant_disease_id\" ON public.predictions USING btree (predicted_plant_disease_id)"
+    },
+    {
+      "tablename": "predictions",
+      "indexname": "PK_predictions",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_predictions\" ON public.predictions USING btree (id)"
+    },
+    {
+      "tablename": "predictions",
+      "indexname": "ix_predictions_created_at",
+      "indexdef": "CREATE INDEX ix_predictions_created_at ON public.predictions USING btree (created_at)"
+    },
+    {
+      "tablename": "predictions",
+      "indexname": "ix_predictions_user_id",
+      "indexdef": "CREATE INDEX ix_predictions_user_id ON public.predictions USING btree (user_id)"
+    },
+    {
+      "tablename": "user_action_tokens",
+      "indexname": "IX_user_action_tokens_expires_at",
+      "indexdef": "CREATE INDEX \"IX_user_action_tokens_expires_at\" ON public.user_action_tokens USING btree (expires_at)"
+    },
+    {
+      "tablename": "user_action_tokens",
+      "indexname": "IX_user_action_tokens_token_hash",
+      "indexdef": "CREATE UNIQUE INDEX \"IX_user_action_tokens_token_hash\" ON public.user_action_tokens USING btree (token_hash)"
+    },
+    {
+      "tablename": "user_action_tokens",
+      "indexname": "IX_user_action_tokens_user_id",
+      "indexdef": "CREATE INDEX \"IX_user_action_tokens_user_id\" ON public.user_action_tokens USING btree (user_id)"
+    },
+    {
+      "tablename": "user_action_tokens",
+      "indexname": "PK_user_action_tokens",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_user_action_tokens\" ON public.user_action_tokens USING btree (id)"
+    },
+    {
+      "tablename": "user_identities",
+      "indexname": "IX_user_identities_provider_provider_subject",
+      "indexdef": "CREATE UNIQUE INDEX \"IX_user_identities_provider_provider_subject\" ON public.user_identities USING btree (provider, provider_subject)"
+    },
+    {
+      "tablename": "user_identities",
+      "indexname": "IX_user_identities_user_id",
+      "indexdef": "CREATE INDEX \"IX_user_identities_user_id\" ON public.user_identities USING btree (user_id)"
+    },
+    {
+      "tablename": "user_identities",
+      "indexname": "PK_user_identities",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_user_identities\" ON public.user_identities USING btree (id)"
+    },
+    {
+      "tablename": "users",
+      "indexname": "PK_users",
+      "indexdef": "CREATE UNIQUE INDEX \"PK_users\" ON public.users USING btree (id)"
+    },
+    {
+      "tablename": "users",
+      "indexname": "ix_users_email",
+      "indexdef": "CREATE UNIQUE INDEX ix_users_email ON public.users USING btree (email)"
+    }
+  ],
+  "migrations": [
+    {
+      "MigrationId": "20260925161222_InitialCreate",
+      "ProductVersion": "9.0.2"
+    },
+    {
+      "MigrationId": "20261006161042_ConfirmedRequirementsSchema",
+      "ProductVersion": "9.0.2"
+    }
+  ],
+  "inspected_at": "2026-10-07T00:40:28+07:00",
+  "database": "agrivision_db"
+}

@@ -1,0 +1,70 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title DFD Level 2 — process 2: phân loại một ảnh — UC-05
+top to bottom direction
+rectangle "User: web sau đăng nhập\nKhách / User: API trực tiếp" as Human
+rectangle "HTTP AI\nchưa xác minh server" as AI
+rectangle Cloudinary as Cloud
+rectangle "D2 | predictions / prediction_details" as D2 <<datastore>>
+rectangle "D3 | plants / diseases / plant_diseases" as D3 <<datastore>>
+rectangle "D5 | Local images" as D5 <<datastore>>
+usecase "2.1\nChọn / preview\nnhận request" as P21
+usecase "2.2\nKiểm file\nbuffer bytes" as P22
+usecase "2.3\nLưu ảnh" as P23
+usecase "2.4\nGọi HTTP AI\nkiểm response" as P24 #FBECE5
+usecase "2.5\nMapping\ntop-1 / top-k" as P25
+usecase "2.6\nLưu\nprediction" as P26
+usecase "2.7\nMap DTO\nhiển thị" as P27
+Human --> P21 : một ảnh / JWT nếu có
+P21 --> Human : lỗi MIME / size / decode
+P21 --> P22 : multipart file / UserId nullable
+P22 --> Human : lỗi file rỗng / đuôi
+P22 --> P23 : bytes / filename / owner
+P23 --> Cloud : ảnh
+Cloud --> P23 : URL / public ID / lỗi upload
+P23 --> D5 : ảnh fallback
+D5 --> P23 : local URL / public ID
+P23 --> P24 : bytes / filename / tham chiếu ảnh / owner
+P24 --> AI : POST /predict multipart file
+AI --> P24 : class_index / class_name / confidence / top_k
+P24 --> Human : lỗi AI HTTP / timeout / response
+P24 --> P25 : AiPredictionResult / tham chiếu ảnh / owner
+P25 --> D3 : class index / class name / truy vấn fallback
+D3 --> P25 : PlantDisease / danh mục trống
+P25 --> Human : lỗi không có mapping nào
+P25 --> P26 : Prediction + details / owner / image reference
+P26 --> D2 : Prediction / PredictionDetail
+D2 --> P26 : kết quả ghi / lỗi DB
+P26 --> Human : lỗi lưu DB
+P26 --> P27 : prediction đã lưu / mapping
+P27 --> Human : PredictionResultDto / kết quả hiển thị
+note bottom of P24
+Preprocessing và model HTTP không có implementation
+server trong checkout: không thêm process giả.
+DFD mô tả dữ liệu; thứ tự/nhánh nằm ở activity/sequence.
+end note
+@enduml

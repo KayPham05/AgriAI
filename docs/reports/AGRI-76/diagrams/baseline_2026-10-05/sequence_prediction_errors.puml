@@ -1,0 +1,67 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Sequence — UC-05 các điểm dừng lỗi
+actor User
+participant Frontend as Web
+participant "API + GlobalExceptionMiddleware" as API
+participant "ImageStorage" as Storage
+participant "HTTP AI client" as Client
+database PostgreSQL as DB
+User -> Web : phân tích ảnh
+Web -> API : POST /api/predictions
+alt file rỗng / đuôi không hợp lệ
+ API --> Web : 400 / không lưu ảnh, không gọi AI
+else file hợp lệ
+ API -> Storage : UploadImageAsync
+ Storage --> API : public ID / URL
+ API -> Client : PredictAsync
+ alt HTTP failure / timeout hoặc JSON sai
+  Client --> API : AiServiceException\n503 hoặc 502
+  API --> Web : 503 / 502\nkhông ghi prediction
+  note over API,Storage: Chưa có cleanup ảnh đã lưu.
+ else AI trả contract hợp lệ
+  Client --> API : AiPredictionResult
+  API -> DB : mapping index / name / fallback
+  alt không còn bản ghi mapping
+   DB --> API : danh mục trống
+   API --> Web : 400 InvalidOperationException
+  else mapping có
+   DB --> API : PlantDisease
+   API -> DB : SaveChanges
+   alt DB exception
+    DB --> API : exception
+    API --> Web : middleware; DB update error thường 500
+   else thành công
+    DB --> API : saved
+    API --> Web : 201
+   end
+  end
+ end
+end
+Web --> User : kết quả hoặc thông báo lỗi
+note over Web: XHR network/timeout 60s/abort là lỗi frontend riêng.
+@enduml

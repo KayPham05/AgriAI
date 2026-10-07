@@ -1,0 +1,91 @@
+@startuml
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 14
+skinparam defaultFontColor #2d3142
+skinparam ArrowColor #4f5d75
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam monochrome false
+skinparam NoteBackgroundColor #ececec
+skinparam NoteBorderColor #bfc0c0
+skinparam sequenceParticipantBackgroundColor #ffffff
+skinparam sequenceParticipantBorderColor #2d3142
+skinparam activityBackgroundColor #ffffff
+skinparam activityBorderColor #2d3142
+skinparam stateBackgroundColor #ffffff
+skinparam stateBorderColor #2d3142
+skinparam classBackgroundColor #ffffff
+skinparam classBorderColor #2d3142
+skinparam usecaseBackgroundColor #ffffff
+skinparam usecaseBorderColor #2d3142
+skinparam rectangleBackgroundColor #ffffff
+skinparam rectangleBorderColor #2d3142
+skinparam circleBackgroundColor #ffffff
+skinparam circleBorderColor #2d3142
+title Class — authentication và danh mục
+hide empty members
+class AuthController {
+ - _authService: IAuthService
+ + Register(request, cancellationToken)
+ + Login(request, cancellationToken)
+ + GetMe(cancellationToken)
+}
+interface IAuthService
+class AuthService {
+ - _userRepository: IUserRepository
+ - _jwtTokenGenerator: IJwtTokenGenerator
+ + RegisterAsync(request, cancellationToken)
+ + LoginAsync(request, cancellationToken)
+ + GetCurrentUserAsync(userId, cancellationToken)
+}
+interface IUserRepository
+class UserRepository
+interface IJwtTokenGenerator
+class JwtTokenGenerator {
+ - _configuration: IConfiguration
+ + GenerateToken(user): string
+}
+class PlantsController {
+ + GetAll(includeInactive, cancellationToken)
+ + GetById(id, cancellationToken)
+ + Create(request, cancellationToken)
+ + Update(id, request, cancellationToken)
+ + Delete(id, cancellationToken)
+}
+interface IPlantService
+class PlantService {
+ - _plantRepository: IPlantRepository
+ + GetAllAsync(includeInactive, cancellationToken)
+ + GetByIdAsync(id, cancellationToken)
+ + CreateAsync(request, cancellationToken)
+ + UpdateAsync(id, request, cancellationToken)
+ + DeleteAsync(id, cancellationToken)
+}
+interface IPlantRepository
+class PlantRepository
+class DiseasesController
+interface IDiseaseService
+class DiseaseService
+interface IDiseaseRepository
+class DiseaseRepository
+AuthController --> IAuthService
+AuthService ..|> IAuthService
+AuthService --> IUserRepository
+AuthService --> IJwtTokenGenerator
+UserRepository ..|> IUserRepository
+JwtTokenGenerator ..|> IJwtTokenGenerator
+PlantsController --> IPlantService
+PlantService ..|> IPlantService
+PlantService --> IPlantRepository
+PlantRepository ..|> IPlantRepository
+DiseasesController --> IDiseaseService
+DiseaseService ..|> IDiseaseService
+DiseaseService --> IDiseaseRepository
+DiseaseRepository ..|> IDiseaseRepository
+note bottom of DiseaseService
+CRUD tương tự PlantService;
+tên lớp tồn tại, thành viên lược để dễ đọc.
+end note
+@enduml

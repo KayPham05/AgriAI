@@ -1,0 +1,40 @@
+@startwbs
+title BFD — AgriVision hiện trạng (F0)
+skinparam backgroundColor #f5f5f5
+skinparam defaultFontName Arial
+skinparam defaultFontSize 14
+skinparam shadowing false
+* F0 AgriVision AI
+** F1 Tài khoản và phiên
+*** F1.1 Đăng ký [UC-01]
+**** Kiểm email / hash / lưu User / tạo JWT
+*** F1.2 Đăng nhập [UC-02]
+**** Tìm email / kiểm BCrypt / tạo JWT
+*** F1.3 Đọc hồ sơ và khôi phục phiên [UC-03]
+*** F1.4 Đăng xuất trên trình duyệt [UC-04]
+*** F1.5 User sửa hồ sơ UI (chỉ state) [UC-03]
+** F2 Phân loại một ảnh [UC-05]
+*** F2.1 Web sau đăng nhập: chọn ảnh / preview
+*** F2.2 Kiểm file tại API
+*** F2.3 User: lưu Cloudinary hoặc local sau AI/mapping
+*** F2.4 Gọi HTTP AI /predict
+*** F2.5 Kiểm response / index-name chính xác (không fallback)
+*** F2.6 User: lưu Prediction / details / image / snapshot
+*** F2.7 Khách 200 không lưu; User 201 sau ghi DB
+** F3 Kết quả và lịch sử
+*** F3.1 Xem chi tiết theo ID: JWT và owner [UC-06]
+*** F3.2 Đọc lịch sử [UC-06]
+**** Server theo user / phân trang API
+*** F3.3 Xóa kết quả [UC-07]
+**** Owner hoặc Admin: ảnh và DB
+** F4 Danh mục cây và bệnh
+*** F4.1 Tra cứu: web sau đăng nhập / API công khai [UC-08]
+*** F4.2 Admin tạo qua API [UC-09]
+*** F4.3 Admin sửa / IsActive qua API [UC-09]
+*** F4.4 Admin xóa qua API [UC-09]
+** F5 Vận hành [UC-10]
+*** F5.1 Health kết nối DB
+*** F5.2 Health HTTP AI (không inference)
+*** F5.3 Migration riêng --migrate (không startup tự động)
+*** F5.4 Cleanup ảnh hết hạn --expire-images (giữ history/snapshot)
+@endwbs
