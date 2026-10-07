@@ -1,14 +1,14 @@
-# Mẫu và helper
+# Templates and helper
 
-Các phần hỗ trợ được tự biên soạn trong repo, không phục hồi upstream và không chứng minh infrastructure đã triển khai.
+Supporting resources were authored locally in the repository; they were not recovered from upstream and do not demonstrate deployed infrastructure.
 
-- [Terraform](../examples/terraform/main.tf): local, không provider/resource.
-- [Deployment](../examples/kubernetes/complete-app.yaml): schema example; image example/app:1.0 minh họa, chưa xác nhận tồn tại, thiếu probes/Service/Ingress.
-- [Workflow](../examples/pipelines/skill-check.yml): unittest helper, không tự thêm gate repo.
-- [Helper](../scripts/devops_utils.py): Python 3.10+, stdlib, không overwrite/deploy.
-- [Tests](../tests/test_devops_utils.py): native tools mock, không chứng minh scan/validate thật.
+- [Terraform](../examples/terraform/main.tf): local example, no providers/resources.
+- [Deployment](../examples/kubernetes/complete-app.yaml): schema example; example/app:1.0 is illustrative and its existence is unverified; probes/Service/Ingress are missing.
+- [Workflow](../examples/pipelines/skill-check.yml): helper unit tests; does not automatically add a repository gate.
+- [Helper](../scripts/devops_utils.py): Python 3.10+, standard library, no overwriting/deployment.
+- [Tests](../tests/test_devops_utils.py): mocked native tools; do not demonstrate real scanning/validation.
 
-Từ root repo, output vào .cache đã tồn tại:
+From the repository root, write output to an existing .cache directory:
 
 ```powershell
 $tool = '.agents/skills/devops-iac-engineer/scripts/devops_utils.py'
@@ -17,4 +17,4 @@ $tool = '.agents/skills/devops-iac-engineer/scripts/devops_utils.py'
 .\.venv\Scripts\python.exe $tool gitops init --name demo-gitops --tool argocd --output .cache
 ```
 
-Output tồn tại bị từ chối; không tự xóa/ghi đè. Xem [implementation guide](../IMPLEMENTATION_GUIDE.md) về prerequisite, exit codes và kiểm chứng.
+Existing outputs are rejected; do not automatically delete/overwrite them. See the [implementation guide](../IMPLEMENTATION_GUIDE.md) for prerequisites, exit codes, and verification.

@@ -9,8 +9,11 @@ public class Prediction
     public Guid PredictedPlantDiseaseId { get; set; }
     public double Confidence { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    // Null for legacy records whose original displayed result was not captured.
+    public string? ResultSnapshotJson { get; set; }
 
     public User? User { get; set; }
     public PlantDisease PredictedPlantDisease { get; set; } = null!;
     public ICollection<PredictionDetail> PredictionDetails { get; set; } = new List<PredictionDetail>();
+    public ICollection<PredictionImage> Images { get; set; } = new List<PredictionImage>();
 }

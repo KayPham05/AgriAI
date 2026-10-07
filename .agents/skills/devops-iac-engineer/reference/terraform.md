@@ -1,12 +1,12 @@
-# Terraform và IaC
+# Terraform and IaC
 
-Chỉ dùng khi có yêu cầu provisioning được duyệt. AgriAI hiện dùng Compose; thêm skill không thay stack.
+Use only for an approved provisioning request. AgriAI currently uses Compose; adding the skill does not change the stack.
 
-- Xác nhận account, vùng, chi phí, quyền và tài nguyên trước khi viết provider/resource.
-- Helper init-project tạo starter local không provider/resource/credential; cloud và region chỉ là metadata.
-- Chạy terraform init -backend=false riêng khi cần chuẩn bị validate; lệnh có thể tải module/provider. Helper không auto-init.
-- terraform validate kiểm tra cả directory, không xác nhận cloud API/state hoặc deploy. --file nhận directory hoặc lấy directory cha.
-- Plan/apply/destroy/state mutation cần phê duyệt riêng. Không dùng auto-approve mặc định.
-- Không commit state, plan và tfvars chứa secret. Chọn backend/locking theo phiên bản được duyệt; không áp công thức cũ cho mọi môi trường.
+- Confirm account, region, cost, permissions, and resources before writing providers/resources.
+- The helper's init-project command creates a local starter without providers/resources/credentials; cloud and region are metadata only.
+- Run terraform init -backend=false separately when preparation for validation is needed; it may download modules/providers. The helper does not initialize automatically.
+- terraform validate checks the entire directory; it does not validate cloud APIs/state or deploy. --file accepts a directory or uses the file's parent directory.
+- Plan/apply/destroy/state mutations require separate approval. Do not use auto-approve by default.
+- Do not commit state, plans, or tfvars containing secrets. Choose backend/locking according to the approved version; do not apply outdated recipes to every environment.
 
-[Mẫu local](../examples/terraform/main.tf). Nguồn: [Terraform validate](https://developer.hashicorp.com/terraform/cli/commands/validate).
+[Local example](../examples/terraform/main.tf). Source: [Terraform validate](https://developer.hashicorp.com/terraform/cli/commands/validate).

@@ -9,6 +9,9 @@ public class Disease
     public string? Symptoms { get; set; }
     public string? Treatment { get; set; }
     public string? Prevention { get; set; }
+    public string ConditionType { get; set; } = "Unknown";
+    public bool IsContentApproved { get; set; }
+    public string? Medication { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }

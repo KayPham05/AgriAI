@@ -17,7 +17,7 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.20")
+                .HasAnnotation("ProductVersion", "9.0.2")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -28,6 +28,14 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<string>("ConditionType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("Unknown")
+                        .HasColumnName("condition_type");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -42,6 +50,16 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
+
+                    b.Property<bool>("IsContentApproved")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_content_approved");
+
+                    b.Property<string>("Medication")
+                        .HasColumnType("text")
+                        .HasColumnName("medication");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -76,7 +94,10 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_diseases_name");
 
-                    b.ToTable("diseases", (string)null);
+                    b.ToTable("diseases", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_diseases_condition_type", "condition_type IN ('Unknown', 'Healthy', 'NutrientDeficiency', 'Disease')");
+                        });
                 });
 
             modelBuilder.Entity("AgriVision.Domain.Entities.Plant", b =>
@@ -210,6 +231,10 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("predicted_plant_disease_id");
 
+                    b.Property<string>("ResultSnapshotJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("result_snapshot");
+
                     b.Property<Guid?>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
@@ -267,6 +292,60 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("AgriVision.Domain.Entities.PredictionImage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<double>("Confidence")
+                        .HasColumnType("double precision")
+                        .HasColumnName("confidence");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("ImagePath")
+                        .HasColumnType("text")
+                        .HasColumnName("image_path");
+
+                    b.Property<string>("ImagePublicId")
+                        .HasColumnType("text")
+                        .HasColumnName("image_public_id");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer")
+                        .HasColumnName("position");
+
+                    b.Property<Guid>("PredictionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("prediction_id");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("uploaded_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("PredictionId", "Position")
+                        .IsUnique();
+
+                    b.ToTable("prediction_images", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_prediction_images_expiry", "expires_at > uploaded_at");
+
+                            t.HasCheckConstraint("ck_prediction_images_position", "position >= 0");
+                        });
+                });
+
             modelBuilder.Entity("AgriVision.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -284,6 +363,10 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("email");
 
+                    b.Property<DateTime?>("EmailVerifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("email_verified_at");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -291,7 +374,6 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
                         .HasColumnName("full_name");
 
                     b.Property<string>("PasswordHash")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
 
@@ -314,6 +396,97 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_users_email");
 
                     b.ToTable("users", (string)null);
+                });
+
+            modelBuilder.Entity("AgriVision.Domain.Entities.UserActionToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("ConsumedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("consumed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("purpose");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("user_action_tokens", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_user_action_tokens_expiry", "expires_at > created_at");
+
+                            t.HasCheckConstraint("ck_user_action_tokens_hash", "token_hash ~ '^[0-9a-f]{64}$'");
+
+                            t.HasCheckConstraint("ck_user_action_tokens_purpose", "purpose IN ('EmailVerification', 'PasswordReset')");
+                        });
+                });
+
+            modelBuilder.Entity("AgriVision.Domain.Entities.UserIdentity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("ProviderSubject")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("provider_subject");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("Provider", "ProviderSubject")
+                        .IsUnique();
+
+                    b.ToTable("user_identities", (string)null);
                 });
 
             modelBuilder.Entity("AgriVision.Domain.Entities.PlantDisease", b =>
@@ -372,6 +545,39 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
                     b.Navigation("Prediction");
                 });
 
+            modelBuilder.Entity("AgriVision.Domain.Entities.PredictionImage", b =>
+                {
+                    b.HasOne("AgriVision.Domain.Entities.Prediction", "Prediction")
+                        .WithMany("Images")
+                        .HasForeignKey("PredictionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Prediction");
+                });
+
+            modelBuilder.Entity("AgriVision.Domain.Entities.UserActionToken", b =>
+                {
+                    b.HasOne("AgriVision.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("AgriVision.Domain.Entities.UserIdentity", b =>
+                {
+                    b.HasOne("AgriVision.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("AgriVision.Domain.Entities.Disease", b =>
                 {
                     b.Navigation("PlantDiseases");
@@ -391,6 +597,8 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("AgriVision.Domain.Entities.Prediction", b =>
                 {
+                    b.Navigation("Images");
+
                     b.Navigation("PredictionDetails");
                 });
 

@@ -23,7 +23,16 @@ public record PredictionResultDto(
     double Confidence,
     IEnumerable<PredictionDetailDto> PredictionDetails,
     DateTime CreatedAt
-);
+)
+{
+    public IReadOnlyList<PredictionImageDto> Images { get; init; } = [];
+    public bool HasHistoricalSnapshot { get; init; }
+    public string? Warning { get; init; }
+    public bool InformationPending { get; init; }
+    public string? Medication { get; init; }
+}
+
+public record PredictionImageDto(Guid Id, string? ImagePath, double Confidence, DateTime ExpiresAt, bool IsExpired);
 
 public record PredictionHistoryDto(
     Guid Id,
@@ -34,4 +43,8 @@ public record PredictionHistoryDto(
     string DiseaseVietnameseName,
     double Confidence,
     DateTime CreatedAt
-);
+)
+{
+    public bool HasHistoricalSnapshot { get; init; }
+    public IReadOnlyList<PredictionImageDto> Images { get; init; } = [];
+}

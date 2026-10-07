@@ -1,12 +1,12 @@
-# Health, logs và quan sát
+# Health, logs, and observability
 
-AgriAI có /api/health kiểm tra DB và /api/health/deps kiểm tra AI HTTP health. Không xác nhận checkpoint/mapping hoặc phân loại đúng.
+AgriAI has /api/health for DB checks and /api/health/deps for AI HTTP health checks. These do not validate checkpoint/mapping correctness or classification accuracy.
 
-- Phân biệt startup/liveness/readiness, availability và chất lượng dự đoán. Health mock không phải inference.
-- Log request ID, latency, lỗi upload/AI/DB và version có nguồn; không log bearer token, secret, bytes ảnh hoặc dữ liệu cá nhân.
-- Latency percentiles/SLO cần điều kiện đo được duyệt; không tự đặt ngưỡng/số liệu.
-- Theo dõi DB connection, volume, upload, AI timeout và mapping rejection; không biến unknown mapping thành success.
-- Alert cần action, owner, runbook; owner chưa có ghi chờ.
-- Backup restore/drill chỉ ở môi trường được phép, không phá production.
+- Distinguish startup/liveness/readiness, availability, and prediction quality. A health mock is not inference.
+- Log request IDs, latency, upload/AI/DB errors, and versions supported by evidence; do not log bearer tokens, secrets, image bytes, or personal data.
+- Latency percentiles/SLOs require approved measurement conditions; do not invent thresholds or figures.
+- Monitor DB connections, volumes, uploads, AI timeouts, and mapping rejection; do not turn unknown mappings into success.
+- Alerts need an action, owner, and runbook; record an unassigned owner as pending.
+- Run backup restores/drills only in authorized environments; do not disrupt production.
 
-[Mã health](../../../../backend/src/AgriVision.API/Controllers/HealthController.cs), [phạm vi kiểm thử AGRI-75](../../../../docs/reports/AGRI-75/README.md).
+[Health code](../../../../backend/src/AgriVision.API/Controllers/HealthController.cs), [AGRI-75 testing scope](../../../../docs/reports/AGRI-75/README.md).

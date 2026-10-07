@@ -2,9 +2,11 @@
 
 > Cập nhật cấu hình 2026-10-01 trên nhánh `AGRI-75-ci-testing-setup`. Các số coverage bên dưới là kết quả cục bộ ngày 2026-09-29; chưa có kết quả GitHub Actions được xác nhận.
 
+Gate backend cập nhật ngày 07/10/2026 lên 50%; kết quả backend trong bảng được đo lại cùng ngày. Các kết quả frontend/Python và Docker cũ giữ để tra cứu lịch sử. Xem [coverage report](../reports/AGRI-75/ci_branch_coverage.md).
+
 ## Mục tiêu
 
-CI build và kiểm tra Next.js, ASP.NET Core và Python; chạy unit test, integration test và hướng tới **branch coverage ít nhất 80% cho từng phần** backend, frontend, Python. Do tỷ lệ hiện có thấp hơn, gate tạm thời giữ mức sàn theo artifact đo: backend 35%, frontend 25%, Python 40%. Docker Compose kiểm tra khởi động và health. Chưa cấu hình CD staging vì chưa dùng đến; suy luận thật vẫn cần dịch vụ AI và checkpoint đã được kiểm chứng.
+CI build và kiểm tra Next.js, ASP.NET Core và Python; chạy unit test, integration test và hướng tới **branch coverage ít nhất 80% cho từng phần** backend, frontend, Python. Do tỷ lệ hiện có thấp hơn, gate tạm thời giữ mức sàn theo artifact đo: backend 50%, frontend 25%, Python 40%. Docker Compose kiểm tra khởi động và health. Chưa cấu hình CD staging vì chưa dùng đến; suy luận thật vẫn cần dịch vụ AI và checkpoint đã được kiểm chứng.
 
 ## Đã triển khai
 
@@ -12,7 +14,7 @@ CI build và kiểm tra Next.js, ASP.NET Core và Python; chạy unit test, inte
 |---|---|---|
 | CI | [Workflow](../../.github/workflows/ci.yml) chạy trên PR, push `main` và thủ công. Job `secret-scan` dùng Gitleaks; các job `compose-smoke`, `python-tests`, `backend-tests`, `frontend` độc lập; `ci-gate` tổng hợp. | Chưa kiểm chứng trên GitHub Actions. |
 | Docker | [Compose gốc](../../docker-compose.yml) dựng PostgreSQL, API, Next.js; [Compose CI](../../docker-compose.ci.yml) thêm AI health mock. | Bốn service trong Compose CI healthy ở lần đo trước; mock chỉ kiểm tra health. |
-| Backend | Unit và integration dùng PostgreSQL Testcontainers; xuất TRX/Cobertura, gộp bằng ReportGenerator; sàn 35%, mục tiêu 80%. | Unit 16/16, integration 4/4; branch gộp 100/246 = 40,65%. |
+| Backend | Unit và integration dùng PostgreSQL Testcontainers; xuất TRX/Cobertura, gộp bằng ReportGenerator; sàn 50%, mục tiêu 80%. | Ngày 07/10: unit 33/33, integration 13/13; branch gộp 213/364 = 58,52%. |
 | Frontend | Node 24, pnpm 10.34.5; lint, Vitest coverage, Next.js build; sàn 25%, mục tiêu 80%. | 31/31 test; branch 255/954 = 26,72%. |
 | Python | Python 3.12, dependency CPU; chạy suite AGRI-21 và coverage.py; sàn 40%, mục tiêu 80%. | 43/43 test trên Linux ở lần đo trước; branch 458/1024 = 44,73%. |
 
@@ -56,7 +58,7 @@ Sau khi tách health và bổ sung kiểm thử HTTP contract (2026-10-01):
 
 ## Việc tiếp theo cho CI
 
-1. Thêm test theo các nhánh nghiệp vụ còn thiếu: auth, validation/upload, lịch sử, lỗi DB/AI và UI/API contract. Nâng các sàn backend 35 → 50 → 65 → 80%, frontend 25 → 40 → 60 → 80%, Python 40 → 55 → 70 → 80%. Test cần xác nhận hành vi, không chỉ tăng tỷ lệ coverage.
+1. Thêm test theo các nhánh nghiệp vụ còn thiếu: auth, validation/upload, lịch sử, lỗi DB/AI và UI/API contract. Nâng các sàn backend 50 → 65 → 80%, frontend 25 → 40 → 60 → 80%, Python 40 → 55 → 70 → 80%. Test cần xác nhận hành vi, không chỉ tăng tỷ lệ coverage.
 2. Chạy workflow trên PR, kiểm tra từng job và artifact TRX/Cobertura. Sau khi pipeline xanh, cấu hình `ci-gate` làm required check theo quy tắc nhánh của nhóm.
 3. Khi checkpoint, mapping nhãn và schema inference được chốt, thêm contract/E2E với AI thật: cùng ảnh phải cho kết quả nhất quán từ API tới UI, kể cả nhánh AI lỗi.
 

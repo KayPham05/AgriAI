@@ -1,5 +1,18 @@
 # Health-only AI stub for container smoke tests. No model inference is tested.
 services:
+  # CI uses a separate, one-shot migration job for its empty database.
+  migrations:
+    build: ./backend
+    command: ["--migrate"]
+    restart: "no"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=agrivision_db;Username=agrivision_user;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      JwtSettings__Secret: ${JWT_SECRET:?Set JWT_SECRET in .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   ai-health:
     image: python:3.12-alpine
     command: ["python", "/app/mock_ai_health.py"]
@@ -14,5 +27,8 @@ services:
       retries: 5
 
   backend:
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
     environment:
       AiService__BaseUrl: http://ai-health:8000

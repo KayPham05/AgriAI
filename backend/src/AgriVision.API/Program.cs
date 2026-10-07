@@ -3,11 +3,14 @@ using AgriVision.API.Middleware;
 using AgriVision.Application;
 using AgriVision.Infrastructure;
 using AgriVision.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
-var builder = WebApplication.CreateBuilder(args);
+var migrateOnly = args.SequenceEqual(new[] { "--migrate" });
+var expireImagesOnly = args.SequenceEqual(new[] { "--expire-images" });
+var builder = WebApplication.CreateBuilder(migrateOnly || expireImagesOnly ? Array.Empty<string>() : args);
 
 // The Windows Event Log provider can require elevated permissions and must not
 // turn ordinary application warnings into request failures during local runs.
@@ -100,6 +103,25 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+// The same published image applies migrations only when explicitly requested.
+if (migrateOnly)
+{
+    await using var migrationScope = app.Services.CreateAsyncScope();
+    var database = migrationScope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await database.Database.MigrateAsync();
+    await DbInitializer.SeedAsync(migrationScope.ServiceProvider);
+    app.Logger.LogInformation("Database migrations completed. No HTTP server was started.");
+    await app.DisposeAsync();
+    return;
+}
+
+if (expireImagesOnly)
+{
+    Environment.ExitCode = await ImageExpiryCleanup.RunAsync(app.Services);
+    await app.DisposeAsync();
+    return;
+}
+
 // 5. Global Exception Middleware
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
@@ -122,10 +144,15 @@ app.MapGet("/", () => Results.Redirect("/swagger"));
 
 app.MapControllers();
 
-// 7. Migrate and seed database before accepting requests.
+// Normal startup checks schema readiness without changing schema or seeding data.
 using (var scope = app.Services.CreateScope())
 {
-    await DbInitializer.SeedAsync(scope.ServiceProvider);
+    var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    if ((await database.Database.GetPendingMigrationsAsync()).Any())
+    {
+        throw new InvalidOperationException(
+            "Database migrations are pending. Run 'docker compose run --rm --no-deps backend --migrate' before starting the backend.");
+    }
 }
 
 app.Run();

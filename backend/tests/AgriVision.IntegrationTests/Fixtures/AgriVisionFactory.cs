@@ -26,6 +26,7 @@ public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseEnvironment("Development");
         builder.UseSetting("ConnectionStrings:DefaultConnection", _dbContainer.GetConnectionString());
         builder.UseSetting("JwtSettings:Secret", new string('x', 32));
         builder.UseSetting("AiService:BaseUrl", "http://127.0.0.1:1");
@@ -54,6 +55,7 @@ public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
             using var scope = sp.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             db.Database.Migrate();
+            DbInitializer.SeedAsync(scope.ServiceProvider).GetAwaiter().GetResult();
         });
     }
 
@@ -107,13 +109,13 @@ public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
     private sealed class FakePlantDiseasePredictor : IPlantDiseasePredictor
     {
         private static readonly AiPredictionResult Result = new(
-            ClassIndex: 1,
-            ClassName: "Tomato___Early_blight",
+            ClassIndex: 0,
+            ClassName: "Ca_chua___Chay_la_som",
             Confidence: 0.94f,
             TopK:
             [
-                new AiPredictionTopKItem(1, "Tomato___Early_blight", 0.94f),
-                new AiPredictionTopKItem(0, "Tomato___Healthy", 0.06f)
+                new AiPredictionTopKItem(0, "Ca_chua___Chay_la_som", 0.94f),
+                new AiPredictionTopKItem(4, "Ca_chua___Khoe_manh", 0.06f)
             ]);
 
         public Task<AiPredictionResult> PredictAsync(

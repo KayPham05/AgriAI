@@ -22,7 +22,7 @@ bổ sung vận hành migration/expiry riêng và sửa catalog DELETE soft-dele
 - [Verification và DoD](verification.md): kết quả render/validation/review và các mục nghiệm thu còn chờ.
 - [Review resolution 07/10](review_resolution_2026-10-07.md): các finding đã sửa, subagent review vòng 2 PASS và giới hạn nghiệm thu.
 - [Task log AGRI-76](../../task-logs/AGRI-76/AGRI-76-documentation.md).
-- [Task log AGRI-70](../../task-logs/AGRI-70-database-migrations.md): code/schema/migration và kiểm thử runtime; không gán phần code đó vào AGRI-76.
+- [Task log AGRI-79](../../task-logs/AGRI-79/AGRI-79-database-migrations.md): code/schema/migration và kiểm thử runtime; không gán phần code đó vào AGRI-76.
 - [Yêu cầu mục tiêu](../../system_requirements.md), [tài liệu sơ đồ tổng quan](../../system_design_diagrams.md), [quy trình mục tiêu cốt lõi](core_target_workflows.md).
 
 ## Nguồn và giới hạn

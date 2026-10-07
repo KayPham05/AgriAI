@@ -1,5 +1,7 @@
 # AGRI-75 — Báo cáo thiết lập CI và kiểm thử
 
+**Gate cập nhật ngày 07/10/2026:** backend 50%, frontend 25%, Python 40%; mục tiêu vẫn 80% từng phần. Backend local hiện đạt 213/364 = 58,52%. Các mục có ngày bên dưới giữ bằng chứng lịch sử; xem [coverage report](ci_branch_coverage.md) cho gate đang áp dụng.
+
 Tài liệu hiện tại: [kế hoạch CI/CD](../../plans/ci_cd_plan.md) và [báo cáo unit/integration test](unit_integration_test_report.md).
 
 ## Cập nhật ngày 2026-10-02 — Dependency và commit gate

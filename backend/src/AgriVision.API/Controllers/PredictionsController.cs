@@ -31,6 +31,7 @@ public class PredictionsController : ControllerBase
         }
 
         var result = await _predictionService.PredictAsync(request.File, userId, cancellationToken);
+        if (!userId.HasValue) return Ok(result);
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
@@ -51,10 +52,13 @@ public class PredictionsController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize]
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<PredictionResultDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
-        var result = await _predictionService.GetPredictionByIdAsync(id, cancellationToken);
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (!Guid.TryParse(userIdClaim, out var userId)) return Unauthorized();
+        var result = await _predictionService.GetPredictionByIdAsync(id, cancellationToken, userId);
         if (result == null)
         {
             return NotFound();

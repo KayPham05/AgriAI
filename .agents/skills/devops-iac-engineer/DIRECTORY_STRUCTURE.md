@@ -1,4 +1,4 @@
-# Cấu trúc skill thực tế
+# Actual skill structure
 
 ```text
 devops-iac-engineer/
@@ -22,6 +22,6 @@ devops-iac-engineer/
     └── pipelines/skill-check.yml
 ```
 
-[SKILL.md](SKILL.md) là điểm vào; chỉ đọc [reference](reference/) liên quan. [Helper](scripts/devops_utils.py) không deploy; [tests](tests/test_devops_utils.py) kiểm tra local/mocked CLI; [examples](examples/) không phải dịch vụ đang chạy.
+[SKILL.md](SKILL.md) is the entry point; read only the relevant [references](reference/). The [helper](scripts/devops_utils.py) does not deploy; [tests](tests/test_devops_utils.py) exercise local behavior and mocked CLIs; [examples](examples/) are not running services.
 
-Output/cache/credential không thuộc skill và không vào Git. Native executable là prerequisite, không đóng gói hoặc tự cài.
+Outputs, caches, and credentials are outside the skill and must stay out of Git. Native executables are prerequisites; they are neither bundled nor installed automatically.

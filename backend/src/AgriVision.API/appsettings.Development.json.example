@@ -1,0 +1,27 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning",
+      "Microsoft.EntityFrameworkCore.Database.Command": "Warning"
+    }
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5432;Database=agrivision_db;Username=agrivision_user;Password=your_postgres_password_here"
+  },
+  "JwtSettings": {
+    "Issuer": "AgriVisionAPI",
+    "Audience": "AgriVisionApp",
+    "Secret": "your_at_least_32_bytes_long_jwt_secret_key_here",
+    "ExpiryMinutes": 1440
+  },
+  "AiService": {
+    "BaseUrl": "http://localhost:8000",
+    "TimeoutSeconds": 15
+  },
+  "Cloudinary": {
+    "CloudName": "",
+    "ApiKey": "",
+    "ApiSecret": ""
+  }
+}

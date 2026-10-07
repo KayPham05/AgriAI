@@ -1,13 +1,13 @@
-# Lựa chọn cloud
+# Choosing a cloud platform
 
-Không chọn AWS/Azure/GCP chỉ vì skill liệt kê. AgriAI chưa có cloud staging được xác nhận.
+Do not choose AWS/Azure/GCP merely because the skill lists them. AgriAI has no confirmed cloud staging environment.
 
-- Ghi tải, ngân sách, vùng dữ liệu, GPU/CPU inference, availability và người vận hành.
-- So sánh VM + Compose với managed services theo nhu cầu; không tự thêm Kubernetes/multi-cloud.
-- Người dùng xác nhận account/project/subscription và region trước provisioning.
-- Identity quyền tối thiểu, credential ngắn hạn khi hỗ trợ; không nhúng key vào Git.
-- DB không public mặc định; chốt network, TLS, registry, backup/restore và lifecycle ảnh.
-- Budget alert, tags và egress cost phải kiểm tra theo cloud được chọn.
-- Tra tài liệu chính thức khi cần giá/quota/spec hiện tại; không đưa số chưa đo hoặc claim compliance.
+- Record workload, budget, data region, GPU/CPU inference needs, availability, and operator.
+- Compare VM + Compose with managed services according to actual needs; do not automatically add Kubernetes or multi-cloud.
+- The user must confirm the account/project/subscription and region before provisioning.
+- Use least-privilege identities and short-lived credentials where supported; do not embed keys in Git.
+- Keep the DB private by default; finalize networking, TLS, registry, backup/restore, and image lifecycle.
+- Check budget alerts, tags, and egress costs for the selected cloud.
+- Consult official documentation for current pricing, quotas, or specifications; do not provide unmeasured figures or claim compliance.
 
-Helper --cloud chỉ ghi metadata, không gọi cloud API hoặc kiểm chứng quota/chi phí/region.
+The helper's --cloud option only records metadata; it does not call cloud APIs or verify quotas, costs, or regions.
