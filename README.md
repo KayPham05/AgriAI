@@ -330,6 +330,25 @@ Chạy kiểm thử bằng lệnh riêng sau khi chuẩn bị môi trường tư
 Integration backend cần Docker. Kiểm tra đọc/ghi trên backend image thật có bước
 dọn dữ liệu thử nghiệm; xem [hướng dẫn database](.agents/commands/database.md).
 
+### Chạy AI service thật trong Docker
+
+Đặt hai checkpoint tại `ai/checkpoints/plant/best_convnext_tiny.pth` và
+`ai/checkpoints/disease/best_convnext_tiny.pth`. Checkpoint được mount read-only
+vào container, không được đóng gói vào image.
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.ai.yml config --quiet
+docker compose -f docker-compose.yml -f docker-compose.ai.yml up --build --detach --wait
+Invoke-RestMethod http://localhost:8000/health
+docker compose -f docker-compose.yml -f docker-compose.ai.yml ps
+```
+
+Backend trong Docker gọi AI qua `http://ai-service:8000`. Dừng stack:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.ai.yml down
+```
+
 Workflow [CI](.github/workflows/ci.yml) quét secret bằng Gitleaks và chạy độc lập Compose smoke, backend
 unit/integration, frontend và toàn bộ Python unit suite trên CPU. Backend gộp
 coverage của hai suite. Mục tiêu riêng cho backend, frontend và Python là **80%

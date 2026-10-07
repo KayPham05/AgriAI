@@ -1,0 +1,27 @@
+services:
+  ai-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.ai
+    environment:
+      AGRIVISION_DATASET_VERSION: ${AGRIVISION_DATASET_VERSION:-v1.4}
+      AGRIVISION_MODEL_VERSION: ${AGRIVISION_MODEL_VERSION:-convnext-tiny-v1.4}
+      AGRIVISION_PLANT_CHECKPOINT: /app/ai/checkpoints/plant/best_convnext_tiny.pth
+      AGRIVISION_DISEASE_CHECKPOINT: /app/ai/checkpoints/disease/best_convnext_tiny.pth
+    ports:
+      - "${AI_HOST_PORT:-8000}:8000"
+    volumes:
+      - ./ai/checkpoints:/app/ai/checkpoints:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
+      interval: 10s
+      timeout: 8s
+      retries: 12
+      start_period: 45s
+
+  backend:
+    environment:
+      AiService__BaseUrl: http://ai-service:8000
+    depends_on:
+      ai-service:
+        condition: service_healthy
