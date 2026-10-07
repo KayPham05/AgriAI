@@ -77,6 +77,8 @@ dist/
 # Local PostgreSQL backups; migration and schema SQL remain tracked
 *.dump
 *.backup
+# SQL exported by EF for local review; C# migrations and source SQL remain tracked.
+/database/generated/
 
 # Local User Story drafts and interview notes (excluded from commits)
 /docs/notebooks/user_stor*.md
