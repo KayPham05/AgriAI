@@ -44,9 +44,9 @@ public class PredictionsControllerTests : IClassFixture<AgriVisionFactory>
         result.Should().NotBeNull();
         result!.ImagePath.Should().Be("https://images.test/leaf.jpg");
         result.Confidence.Should().BeApproximately(0.94, 0.0001);
-        result.PredictedPlantDisease.ClassName.Should().Be("Tomato___Early_blight");
-        result.PredictedPlantDisease.Plant.Name.Should().Be("Tomato");
-        result.PredictedPlantDisease.Disease.Name.Should().Be("Early Blight");
+        result.PredictedPlantDisease.ClassName.Should().Be("Ca_chua___Chay_la_som");
+        result.PredictedPlantDisease.Plant.Name.Should().Be("Ca_chua");
+        result.PredictedPlantDisease.Disease.Name.Should().Be("Chay_la_som");
         result.PredictionDetails.Should().HaveCount(2);
 
         await using var scope = _factory.Services.CreateAsyncScope();

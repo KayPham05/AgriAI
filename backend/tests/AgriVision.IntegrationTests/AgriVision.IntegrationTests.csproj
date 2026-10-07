@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <EmbeddedResource Include="../../../database/import_dataset_v1_4_catalog.sql" LogicalName="dataset-v1.4-catalog.sql" />
   </ItemGroup>
 
   <ItemGroup>

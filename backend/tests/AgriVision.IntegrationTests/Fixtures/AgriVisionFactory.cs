@@ -109,13 +109,13 @@ public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
     private sealed class FakePlantDiseasePredictor : IPlantDiseasePredictor
     {
         private static readonly AiPredictionResult Result = new(
-            ClassIndex: 1,
-            ClassName: "Tomato___Early_blight",
+            ClassIndex: 0,
+            ClassName: "Ca_chua___Chay_la_som",
             Confidence: 0.94f,
             TopK:
             [
-                new AiPredictionTopKItem(1, "Tomato___Early_blight", 0.94f),
-                new AiPredictionTopKItem(0, "Tomato___Healthy", 0.06f)
+                new AiPredictionTopKItem(0, "Ca_chua___Chay_la_som", 0.94f),
+                new AiPredictionTopKItem(4, "Ca_chua___Khoe_manh", 0.06f)
             ]);
 
         public Task<AiPredictionResult> PredictAsync(
