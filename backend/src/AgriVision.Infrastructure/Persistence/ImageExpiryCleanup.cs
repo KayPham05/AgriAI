@@ -21,7 +21,9 @@ public static class ImageExpiryCleanup
         {
             try
             {
-                if (image.ImagePublicId != null && !await storage.DeleteImageAsync(image.ImagePublicId, cancellationToken))
+                if (string.IsNullOrWhiteSpace(image.ImagePublicId))
+                    throw new InvalidOperationException("Image public ID is missing; deletion cannot be confirmed.");
+                if (!await storage.DeleteImageAsync(image.ImagePublicId, cancellationToken))
                     throw new InvalidOperationException("Storage did not confirm image deletion.");
                 if (image.Prediction.ImagePath == image.ImagePath)
                 {

@@ -163,6 +163,69 @@ public class PredictionsControllerTests : IClassFixture<AgriVisionFactory>
         (await owner.DeleteAsync($"/api/predictions/{result.Id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public async Task ExpiryCleanup_ShouldRetainMissingPublicIdMetadata_AndRetryAfterRepair(string? missingPublicId)
+    {
+        using var owner = _factory.CreateClient();
+        await LoginAsync(owner);
+        using var request = CreateImageRequest("missing-public-id.jpg", "image/jpeg");
+        var created = await owner.PostAsync("/api/predictions", request);
+        created.EnsureSuccessStatusCode();
+        var result = (await created.Content.ReadFromJsonAsync<PredictionResultDto>())!;
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var prediction = await db.Predictions.Include(item => item.Images).SingleAsync(item => item.Id == result.Id);
+        var image = prediction.Images.Single();
+        var snapshot = prediction.ResultSnapshotJson;
+        image.UploadedAt = DateTime.UtcNow.AddDays(-31);
+        image.ExpiresAt = image.UploadedAt.AddDays(30);
+        image.ImagePublicId = missingPublicId;
+        prediction.ImagePublicId = missingPublicId;
+        await db.SaveChangesAsync();
+
+        try
+        {
+            // Repeated runs must keep the unresolved image available for repair/retry.
+            for (var attempt = 0; attempt < 2; attempt++)
+            {
+                (await ImageExpiryCleanup.RunAsync(_factory.Services)).Should().Be(1);
+                await db.Entry(image).ReloadAsync();
+                await db.Entry(prediction).ReloadAsync();
+                image.DeletedAt.Should().BeNull();
+                image.ImagePath.Should().Be(result.ImagePath);
+                image.ImagePublicId.Should().Be(missingPublicId);
+                prediction.ImagePath.Should().Be(result.ImagePath);
+                prediction.ImagePublicId.Should().Be(missingPublicId);
+                prediction.ResultSnapshotJson.Should().Be(snapshot);
+            }
+            var stored = (await owner.GetFromJsonAsync<PredictionResultDto>($"/api/predictions/{result.Id}"))!;
+            stored.ImagePath.Should().BeEmpty();
+            stored.Images.Single().ImagePath.Should().BeNull();
+            stored.Images.Single().IsExpired.Should().BeTrue();
+
+            image.ImagePublicId = result.ImagePublicId;
+            prediction.ImagePublicId = result.ImagePublicId;
+            await db.SaveChangesAsync();
+            (await ImageExpiryCleanup.RunAsync(_factory.Services)).Should().Be(0);
+            await db.Entry(image).ReloadAsync();
+            await db.Entry(prediction).ReloadAsync();
+            image.DeletedAt.Should().NotBeNull();
+            image.ImagePath.Should().BeNull();
+            image.ImagePublicId.Should().BeNull();
+            prediction.ImagePath.Should().BeEmpty();
+            prediction.ImagePublicId.Should().BeNull();
+            prediction.ResultSnapshotJson.Should().Be(snapshot);
+        }
+        finally
+        {
+            // Remove only this test's fake-storage fixture, even if an assertion fails.
+            await db.Predictions.Where(item => item.Id == result.Id).ExecuteDeleteAsync();
+        }
+    }
+
     private sealed class FailingDeletionStorage : IImageStorage
     {
         public Task<ImageUploadResult> UploadImageAsync(Microsoft.AspNetCore.Http.IFormFile file, CancellationToken cancellationToken = default) => throw new NotSupportedException();
