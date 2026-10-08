@@ -1,0 +1,21 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    AGRIVISION_DATASET_VERSION=v1.4 \
+    AGRIVISION_PLANT_CHECKPOINT=/app/ai/checkpoints/plant/best_convnext_tiny.pth \
+    AGRIVISION_DISEASE_CHECKPOINT=/app/ai/checkpoints/disease/best_convnext_tiny.pth
+
+COPY ai/requirements.txt /app/ai/requirements.txt
+RUN python -m pip install --upgrade pip \
+    && python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu \
+    && python -m pip install -r /app/ai/requirements.txt
+
+COPY ai /app/ai
+
+EXPOSE 8000
+
+CMD ["python", "-m", "uvicorn", "ai.service.app:app", "--host", "0.0.0.0", "--port", "8000"]
