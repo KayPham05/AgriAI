@@ -10,9 +10,9 @@ MVP tập trung **phân loại bệnh lá** bằng ConvNeXt-Tiny. Web Next.js g�
 
 | Phần | Đã có trong repository | Chưa được xác nhận hoàn chỉnh |
 |---|---|---|
-| Dữ liệu và AI | Dataset v1.4 có 88.000 ảnh, 59 lớp, ba split cố định; mã train/evaluate/CLI và checkpoint v1.4 có báo cáo đánh giá nội bộ. | Chưa có FastAPI thật hoặc kiểm tra đồng nhất CLI–HTTP–API–web. Kết quả test nội bộ không thay cho kiểm chứng triển khai. |
+| Dữ liệu và AI | Dataset v1.4 có 88.000 ảnh, 59 lớp, ba split cố định; mã train/evaluate/CLI và checkpoint v1.4 có báo cáo đánh giá nội bộ. FastAPI thật đã chạy trong Compose và được kiểm chứng local qua CLI–HTTP–API–web cho tài khoản đăng nhập. | Cần run CI mới và nghiệm thu đầy đủ yêu cầu; smoke local không thay cho đánh giá độ chính xác. Xem [kiểm chứng AGRI-82](reports/AGRI-82/docker_ai_verification.md). |
 | Web/API/DB | Next.js, ASP.NET Core 9, PostgreSQL và migration; API có auth, danh mục, dự đoán, lịch sử. | Cần đối chiếu từng luồng với [yêu cầu](system_requirements.md), nhất là quyền, upload, nhãn và chính sách ảnh. Khi AI không sẵn sàng, không ghi kết quả dự đoán giả. |
-| CI/Docker | CI kiểm tra Compose, Python, backend, frontend; Compose gốc chạy DB/API/web. Đã có [CI run 36992608938](https://github.com/KayPham05/AgriAI/actions/runs/36992608938) thành công cho commit `727aa59f5b1ded338df09ba338ca13b45c12a864`, theo bằng chứng run đã lưu. | Không suy rộng kết quả run này cho HEAD `094ec6e` hoặc working tree AGRI-76. AI health mock chỉ kiểm tra startup; chưa xác nhận VPS staging hoặc inference thật. Xem [kế hoạch CI/CD](plans/ci_cd_plan.md). |
+| CI/Docker | CI kiểm tra Compose, Python, backend, frontend; Compose gốc và CI được cấu hình chạy DB/API/web/AI CPU thật. CI tải checkpoint từ Drive, kiểm checksum và gọi `/predict`. Đã có [CI run 36992608938](https://github.com/KayPham05/AgriAI/actions/runs/36992608938) thành công cho commit `727aa59f5b1ded338df09ba338ca13b45c12a864`, theo bằng chứng run đã lưu. | Không suy rộng kết quả run cũ dùng health mock cho cấu hình hoặc HEAD hiện tại. Cần run mới để xác nhận CI inference thật; chưa nghiệm thu VPS staging hoặc E2E. Xem [kế hoạch CI/CD](plans/ci_cd_plan.md). |
 
 Bằng chứng dataset và checkpoint: [AGRI-21](reports/AGRI-21/README.md). Sơ đồ hiện trạng, thiết kế mục tiêu tách riêng và schema hiện có: [BFD, DFD, ERD](system_design_diagrams.md).
 

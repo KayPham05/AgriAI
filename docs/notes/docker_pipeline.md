@@ -8,13 +8,15 @@ Docker đóng gói ứng dụng để chạy nhất quán; GitHub Actions tự �
 |---|---|
 | [Dockerfile backend](../../backend/Dockerfile) | Build ASP.NET Core API, sau đó chạy trên image runtime bằng user thường. |
 | [Dockerfile frontend](../../frontend/Dockerfile) | Build Next.js và chạy bản standalone bằng user thường. |
-| [Compose gốc](../../docker-compose.yml) | Chạy PostgreSQL, backend và frontend; cấu hình cổng, biến môi trường và thứ tự khởi động. |
+| [Dockerfile AI](../../ai/Dockerfile) | Build FastAPI inference với PyTorch CPU; checkpoint nằm ngoài image. |
+| [Compose gốc](../../docker-compose.yml) | Chạy PostgreSQL, backend, frontend và AI; cấu hình cổng, biến môi trường và thứ tự khởi động. |
 | PostgreSQL | Lưu dữ liệu; migration chạy riêng bằng `docker compose run --rm --no-deps backend --migrate`, startup API không đổi schema. |
 | Volumes | `postgres_data` giữ dữ liệu DB; `uploads` giữ ảnh lưu cục bộ khi dùng fallback. |
-| Health checks | Backend chờ DB healthy, frontend chờ backend healthy. `/api/health` chỉ kiểm tra DB; `/api/health/deps` giám sát AI riêng. |
-| [Compose CI](../../docker-compose.ci.yml) | Bổ sung job migration riêng trước backend và AI health mock. Mock chỉ có `/health`, không có `/predict`; không chạy model thật. |
+| Health checks | Backend chờ DB và AI healthy, frontend chờ backend healthy. `/api/health` chỉ kiểm tra DB; `/api/health/deps` giám sát AI riêng. |
+| [Compose CI](../../docker-compose.ci.yml) | Bổ sung job migration riêng; giữ AI thật và checkpoint mount read-only của Compose gốc. Workflow tải model từ Drive và kiểm tra SHA-256 trước khi chạy. |
 
-Luồng ứng dụng: **Trình duyệt → Next.js → ASP.NET Core → PostgreSQL / AI service**. AI thật chạy riêng, được cấu hình qua `AI_SERVICE_URL`.
+Luồng ứng dụng: **Trình duyệt → Next.js → ASP.NET Core → PostgreSQL / AI service**.
+AI thật chạy trong Compose tại `http://ai-service:8000`, checkpoint mount read-only.
 
 ## Sơ đồ Docker local và CI
 
@@ -34,8 +36,8 @@ LOCAL: docker-compose.yml
             v
   +-------------------+         +----------------------+
   | ASP.NET Core API  |-------->| Real FastAPI         |
-  | container :8080   |         | AI_SERVICE_URL       |
-  +---------+---------+         | outside Compose      |
+  | container :8080   |         | ai-service:8000      |
+  +---------+---------+         | CPU, checkpoints:ro  |
             |                   +----------------------+
             |
             v
@@ -53,21 +55,22 @@ LOCAL: docker-compose.yml
 CI SMOKE: docker-compose.yml + docker-compose.ci.yml
 
   +------------------+     health only      +-------------------+
-  | AI health mock   |<---------------------| ASP.NET Core API  |
+  | Real AI service  |<---------------------| ASP.NET Core API  |
   | GET /health      |                      +---------+---------+
-  | no /predict      |                                |
+  | POST /predict    |                                |
   +------------------+                                v
                                              +-------------------+
                                              | Frontend Next.js  |
                                              +-------------------+
 
-  PostgreSQL -> healthy -> API -> healthy -> Frontend
+  PostgreSQL + real AI -> healthy -> API -> healthy -> Frontend
 
   API readiness: GET /api/health -> DB only
   AI monitoring: GET /api/health/deps -> AI GET /health
-  AI unavailable: deps 503; API/web can still start
+  AI lost after startup: deps 503; API/web keep serving
 
-  NOTE: AI mock pass = health/startup only; model inference is not tested.
+  CI: download + SHA-256 -> checkpoints:ro -> real /predict smoke.
+  Smoke verifies execution/schema, not model accuracy or full web E2E.
 ```
 
 ## Pipeline GitHub Actions
@@ -77,19 +80,19 @@ CI SMOKE: docker-compose.yml + docker-compose.ci.yml
 | Job | Chức năng |
 |---|---|
 | `secret-scan` | Checkout toàn bộ lịch sử và dùng Gitleaks quét Git history (`--all`), che giá trị secret trong log. |
-| `compose-smoke` | Build và chạy Compose gốc + CI; kiểm tra DB, AI health, quyền ghi uploads; tắt AI mock rồi kiểm tra API, trang web và proxy vẫn hoạt động; lưu log và dọn stack. |
+| `compose-smoke` | Tải và kiểm checksum model; build/chạy Compose gốc + CI; kiểm tra DB, AI health, inference thật và quyền ghi uploads; tắt AI rồi kiểm tra API/web/proxy vẫn hoạt động; lưu log và dọn stack thử nghiệm. |
 | `python-tests` | Chạy unit test Python bằng dependency CPU và kiểm tra branch coverage tối thiểu 40%. |
 | `backend-tests` | Build .NET, chạy unit/integration với PostgreSQL Testcontainers; gộp coverage và kiểm tra mức tối thiểu 50%. |
 | `frontend` | Chạy lint, test, build Next.js và kiểm tra branch coverage tối thiểu 25%. |
 | `ci-gate` | Chỉ pass khi tất cả job phía trên thành công. |
 
-Mục tiêu branch coverage là **80% riêng cho từng phần**; các mức trên là ngưỡng tạm thời. CI lưu log, kết quả test và coverage để xem lại. **Smoke test với AI mock không xác nhận suy luận ConvNeXt-Tiny hoặc độ chính xác model.**
+Mục tiêu branch coverage là **80% riêng cho từng phần**; các mức trên là ngưỡng tạm thời. CI lưu log, kết quả test và coverage để xem lại. **Smoke inference thật kiểm tra khả năng chạy và hợp đồng HTTP, không xác nhận độ chính xác model hoặc toàn bộ luồng web.**
 
 ## Phạm vi setup
 
 - Backend gọi `/predict` với timeout mặc định 15 giây, cấu hình qua `AI_TIMEOUT_SECONDS` trong Compose. Lỗi mạng, timeout và HTTP lỗi trả 503; response sai schema trả 502.
-- Integration test dùng HTTP stub riêng để kiểm tra multipart `file`, JSON `class_index`, `class_name`, `confidence`, `top_k` và lỗi timeout/5xx. Compose vẫn dùng mock chỉ có health; cả hai đều không kiểm chứng model thật.
-- `extra_hosts` hỗ trợ backend gọi AI trên host Linux. PostgreSQL giữ cổng bind `127.0.0.1`; chưa cần thêm Compose override chỉ để di chuyển một cổng local.
+- Integration test dùng HTTP stub riêng để kiểm tra multipart `file`, JSON `class_index`, `class_name`, `confidence`, `top_k` và lỗi timeout/5xx. Compose smoke dùng model thật từ Drive; các kết quả này được báo cáo tách biệt.
+- Backend gọi AI bằng DNS service nội bộ; PostgreSQL và AI giữ cổng bind `127.0.0.1`.
 - Repo hiện không có `.github/dependabot.yml` để tạo PR cập nhật phiên bản định kỳ. Các job CI vẫn được cấu hình trong workflow riêng; việc bỏ cấu hình cập nhật phiên bản không tắt CI.
 - Giữ `ci-gate`, timeout các job, quyền `contents: read`, concurrency và cache npm/pip hiện có. Required check `ci-gate` cần cấu hình riêng trên GitHub.
 - Chưa thêm retry tự động cho POST upload, Trivy/hadolint/audit gate, coverage ratchet, NuGet/buildx cache hoặc pin SHA action. Bổ sung khi CI có baseline ổn định và có nhu cầu vận hành; Dependabot không thay thế vulnerability scan.

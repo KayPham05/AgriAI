@@ -15,8 +15,8 @@ MANIFEST_DIR = DATASET_DIR / "manifests"
 TRAIN_MANIFEST_PATH = MANIFEST_DIR / "train.csv"
 VAL_MANIFEST_PATH = MANIFEST_DIR / "val.csv"
 TEST_MANIFEST_PATH = MANIFEST_DIR / "test.csv"
-CHECKPOINT_DIR = BASE_DIR / "checkpoints"
-OUTPUT_DIR = BASE_DIR / "outputs"
+CHECKPOINT_DIR = BASE_DIR / "models" / "checkpoints"
+OUTPUT_DIR = BASE_DIR / "models" / "outputs"
 LABEL_MAP_PATH = BASE_DIR / "class_to_idx.json"
 
 # Make sure output directories exist
