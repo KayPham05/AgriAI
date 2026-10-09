@@ -16,6 +16,24 @@ services:
       timeout: 5s
       retries: 5
 
+  ai-service:
+    build: ./ai
+    environment:
+      AGRIVISION_DATASET_VERSION: ${AGRIVISION_DATASET_VERSION:-v1.4}
+      AGRIVISION_MODEL_VERSION: ${AGRIVISION_MODEL_VERSION:-convnext-tiny-v1.4}
+      AGRIVISION_PLANT_CHECKPOINT: /app/ai/models/checkpoints/plant/best_convnext_tiny.pth
+      AGRIVISION_DISEASE_CHECKPOINT: /app/ai/models/checkpoints/disease/best_convnext_tiny.pth
+    ports:
+      - "127.0.0.1:${AI_HOST_PORT:-8000}:8000"
+    volumes:
+      - ./ai/models/checkpoints:/app/ai/models/checkpoints:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
+      interval: 10s
+      timeout: 8s
+      retries: 12
+      start_period: 45s
+
   backend:
     build: ./backend
     environment:
@@ -23,19 +41,19 @@ services:
       Swagger__Enabled: "true"
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=agrivision_db;Username=agrivision_user;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       JwtSettings__Secret: ${JWT_SECRET:?Set JWT_SECRET in .env}
-      AiService__BaseUrl: ${AI_SERVICE_URL:-http://host.docker.internal:8000}
+      AiService__BaseUrl: http://ai-service:8000
       AiService__TimeoutSeconds: ${AI_TIMEOUT_SECONDS:-15}
       Cloudinary__CloudName: ${CLOUDINARY_CLOUD_NAME:-}
       Cloudinary__ApiKey: ${CLOUDINARY_API_KEY:-}
       Cloudinary__ApiSecret: ${CLOUDINARY_API_SECRET:-}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     ports:
       - "${API_HOST_PORT:-5080}:8080"
     volumes:
       - uploads:/app/wwwroot/uploads
     depends_on:
       postgres:
+        condition: service_healthy
+      ai-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/api/health | grep -q '\"status\":\"Healthy\"'"]
