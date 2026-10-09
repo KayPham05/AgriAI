@@ -40,7 +40,7 @@ Next.js → ASP.NET Core Web API → PostgreSQL
 | PostgreSQL | Lưu dữ liệu và quản lý phiên bản schema | Đã tích hợp với backend; migration chạy riêng |
 | AI | Huấn luyện, đánh giá và phân loại ảnh lá cây | Có pipeline và báo cáo checkpoint; chưa nghiệm thu suy luận thật xuyên suốt web–API–AI |
 
-> **Trạng thái tích hợp:** kiểm thử, health check và AI mock không xác nhận chất lượng
+> **Trạng thái tích hợp:** kiểm thử và health check không xác nhận chất lượng
 > mô hình hay luồng suy luận thật. Xem [lộ trình](docs/development_roadmap.md) và
 > [báo cáo mô hình](docs/reports/AGRI-21/README.md) để theo dõi phần còn lại.
 
@@ -48,9 +48,8 @@ Next.js → ASP.NET Core Web API → PostgreSQL
 
 ## Chạy nhanh
 
-Cần Docker với Compose. Chạy các lệnh PowerShell từ thư mục gốc repository.
-Compose mặc định khởi động web, API và PostgreSQL; AI service chạy riêng tại
-`AI_SERVICE_URL`.
+Cần Docker với Compose hỗ trợ `--wait`. Chạy các lệnh PowerShell từ thư mục gốc repository.
+Compose mặc định khởi động web, API, PostgreSQL và FastAPI inference trên CPU.
 
 ### 1. Chuẩn bị cấu hình
 
@@ -60,8 +59,18 @@ Nếu chưa có `.env`, tạo từ [.env.example](.env.example):
 Copy-Item .env.example .env
 ```
 
-Điền `POSTGRES_PASSWORD`, `JWT_SECRET` (ít nhất 32 byte UTF-8) và `AI_SERVICE_URL`.
+Điền `POSTGRES_PASSWORD` và `JWT_SECRET` (ít nhất 32 byte UTF-8).
 `CLOUDINARY_*` là tùy chọn; khi bỏ trống, API lưu ảnh vào volume local.
+
+Đặt checkpoint dataset v1.4 tại hai đường dẫn:
+
+- `ai/models/checkpoints/plant/best_convnext_tiny.pth`
+- `ai/models/checkpoints/disease/best_convnext_tiny.pth`
+
+Checkpoint được mount read-only và không đóng gói vào image. Khi thiếu hoặc không
+nạp được checkpoint, AI không healthy và backend chưa khởi động. Thư mục `ai/models/`
+chỉ chứa artifact local và được loại khỏi Git/build context. CI tải cùng model
+từ Google Drive và kiểm tra SHA-256 trước khi chạy.
 
 ### 2. Tạo schema và khởi động
 
@@ -70,10 +79,10 @@ trước khi áp dụng. Chỉ chuyển sang lệnh tiếp theo khi lệnh trư�
 
 ```powershell
 docker compose config --quiet
-docker compose build backend frontend
+docker compose build
 docker compose up -d --wait --wait-timeout 120 postgres
 docker compose run --rm --no-deps backend --migrate
-docker compose up -d --wait --wait-timeout 120 backend frontend
+docker compose up -d --wait --wait-timeout 180
 docker compose ps
 Invoke-RestMethod http://localhost:5080/api/health
 ```
@@ -89,9 +98,10 @@ không seed tài khoản hay danh mục demo.
 | Web | <http://localhost:3000> | Next.js chuyển `/api/` sang backend |
 | API health | <http://localhost:5080/api/health> | Kiểm tra kết nối DB |
 | AI dependency health | <http://localhost:5080/api/health/deps> | Trả 503 khi AI không truy cập được |
+| AI health | <http://localhost:8000/health> | Model đã nạp; chưa xác nhận inference thật |
 | PostgreSQL | `127.0.0.1:5432` | Chỉ mở cổng trên loopback của host |
 
-Đổi cổng qua `FRONTEND_HOST_PORT`, `API_HOST_PORT`, `POSTGRES_HOST_PORT` trong
+Đổi cổng qua `FRONTEND_HOST_PORT`, `API_HOST_PORT`, `POSTGRES_HOST_PORT`, `AI_HOST_PORT` trong
 `.env`. Để dừng stack và giữ dữ liệu:
 
 ```powershell
@@ -99,7 +109,7 @@ docker compose down
 ```
 
 Xem [hướng dẫn Docker](docs/notes/docker_run_guide.md) để xử lý lỗi cấu hình,
-volume có sẵn và smoke test với AI health mock.
+volume có sẵn và smoke test với model thật.
 
 <a name="documentation"></a>
 
@@ -222,7 +232,7 @@ Theo dõi từng task bằng TensorBoard:
 .\.venv\Scripts\tensorboard.exe --logdir runs
 ```
 
-Checkpoint và báo cáo nằm dưới `ai/checkpoints/v1.4/` và `ai/outputs/v1.4/`;
+Checkpoint và báo cáo nằm dưới `ai/models/checkpoints/` và `ai/models/outputs/`;
 `plant`/`disease` có thư mục con theo task. Artifact nằm ngoài Git.
 
 Script cũ sau chỉ chạy tuần tự hai baseline `plant` và `disease`:
@@ -253,26 +263,26 @@ Chạy toàn bộ kiểm thử dữ liệu từ root repository:
 ## Docker nâng cao
 
 <details>
-<summary><strong>Cấu hình backend, volume và smoke test với AI mock</strong></summary>
+<summary><strong>Cấu hình backend, volume và smoke test với AI thật</strong></summary>
 
 Xem [hướng dẫn chạy Docker từng bước](docs/notes/docker_run_guide.md) để chuẩn bị
-`.env`, khởi động, kiểm tra health, chạy smoke với mock và xử lý lỗi.
+`.env`, khởi động, kiểm tra health, chạy smoke với model thật và xử lý lỗi.
 
-`docker-compose.yml` dựng PostgreSQL, ASP.NET Core API và Next.js standalone.
-Backend gọi AI service thật tại `AI_SERVICE_URL`; service đó cần được chạy
-riêng. PostgreSQL tạo database/user theo `POSTGRES_*`; EF Core migration tạo
+`docker-compose.yml` dựng PostgreSQL, ASP.NET Core API, Next.js standalone và
+FastAPI inference trên CPU. Backend gọi `http://ai-service:8000` trong mạng Docker.
+PostgreSQL tạo database/user theo `POSTGRES_*`; EF Core migration tạo
 schema ứng dụng.
 
 Từ root repository, tạo `.env` từ [.env.example](.env.example), điền
-`POSTGRES_PASSWORD`, `JWT_SECRET` (ít nhất 32 byte UTF-8) và `AI_SERVICE_URL`,
-rồi chạy. `CLOUDINARY_*` là tùy chọn; khi bỏ trống API lưu ảnh vào volume local.
+`POSTGRES_PASSWORD`, `JWT_SECRET` (ít nhất 32 byte UTF-8), đặt hai checkpoint như
+phần Chạy nhanh rồi chạy. `CLOUDINARY_*` là tùy chọn; khi bỏ trống API lưu ảnh vào volume local.
 
 ```powershell
 docker compose config --quiet
-docker compose build backend frontend
+docker compose build
 docker compose up -d --wait --wait-timeout 120 postgres
 docker compose run --rm --no-deps backend --migrate
-docker compose up -d --wait --wait-timeout 120 backend frontend
+docker compose up -d --wait --wait-timeout 180
 docker compose ps
 Invoke-RestMethod http://localhost:5080/api/health
 docker compose down
@@ -296,19 +306,24 @@ ngoài Compose, phải cấp `ConnectionStrings__DefaultConnection` và
 `JwtSettings__Secret` qua biến môi trường hoặc user secrets; `appsettings` không
 chứa credential.
 
-`/api/health` chỉ kiểm tra DB, nên web/API vẫn khởi động khi chưa có AI.
+`/api/health` chỉ kiểm tra DB. Compose chờ DB và AI healthy trước khi khởi động
+backend; khi AI mất kết nối sau startup, API và web vẫn hoạt động.
 `/api/health/deps` kiểm tra AI để giám sát; trả 503 khi AI không truy cập được.
 API dự đoán trả 503 khi AI lỗi mạng, timeout hoặc HTTP lỗi. Timeout mặc định
 15 giây, chỉnh bằng `AI_TIMEOUT_SECONDS`; chưa tự retry upload POST.
 
-Để kiểm tra health AI bằng mock, dùng override dành riêng cho CI:
+Để chạy smoke với model thật và migration job dành riêng cho database thử nghiệm:
 
 ```powershell
 docker compose -p agrivision-smoke -f docker-compose.yml -f docker-compose.ci.yml up --build --detach --wait
 docker compose -p agrivision-smoke -f docker-compose.yml -f docker-compose.ci.yml down
 ```
 
-Override thêm AI **health stub**, chỉ có `/health`, không có `/predict`.
+Override chỉ bổ sung migration job; `ai-service` giữ nguyên AI thật trong Compose
+chính. Cần hai checkpoint trong `ai/models/checkpoints/`. Workflow CI tải gói RAR
+từ Google Drive đã cấu hình, kiểm tra checksum và gọi `/predict` bằng ảnh PNG
+để xác nhận model thực sự chạy. Đây là smoke test inference, chưa phải đánh giá
+độ chính xác hoặc nghiệm thu toàn bộ luồng web–API–AI.
 Chọn cổng host còn trống nếu đang chạy stack khác. Muốn chỉ chạy database,
 dùng `docker compose up -d postgres` tại root.
 
@@ -332,21 +347,24 @@ dọn dữ liệu thử nghiệm; xem [hướng dẫn database](.agents/commands
 
 ### Chạy AI service thật trong Docker
 
-Đặt hai checkpoint tại `ai/checkpoints/plant/best_convnext_tiny.pth` và
-`ai/checkpoints/disease/best_convnext_tiny.pth`. Checkpoint được mount read-only
+Đặt hai checkpoint tại `ai/models/checkpoints/plant/best_convnext_tiny.pth` và
+`ai/models/checkpoints/disease/best_convnext_tiny.pth`. Checkpoint được mount read-only
 vào container, không được đóng gói vào image.
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.ai.yml config --quiet
-docker compose -f docker-compose.yml -f docker-compose.ai.yml up --build --detach --wait
+docker compose config --quiet
+docker compose build ai-service
+docker compose up -d --wait --wait-timeout 180 ai-service
 Invoke-RestMethod http://localhost:8000/health
-docker compose -f docker-compose.yml -f docker-compose.ai.yml ps
+docker compose ps ai-service
 ```
 
-Backend trong Docker gọi AI qua `http://ai-service:8000`. Dừng stack:
+AI đã nằm trong Compose chính; không cần `docker-compose.ai.yml`. Backend trong
+Docker gọi AI qua `http://ai-service:8000`. Chạy cả stack theo phần Chạy nhanh để
+áp dụng migration riêng trước khi khởi động backend. Dừng stack:
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.ai.yml down
+docker compose down
 ```
 
 Workflow [CI](.github/workflows/ci.yml) quét secret bằng Gitleaks và chạy độc lập Compose smoke, backend
