@@ -25,3 +25,20 @@ Repository-wide guidance. Explicit user instructions take precedence.
 - Branch: `AGRI-XXX-<short-description>`. Commit: `<type>(<optional-scope>): AGRI-XXX <imperative description>`; one logical change per commit. Use the actual task key, not an unrelated key from branch history.
 - PRs follow the project template and require the relevant reviewer; no self-approval. Default base/target is `develop`, with releases targeting `main`, unless the user directs otherwise.
 - Include a task log before/with PR creation and before Jira Done. Summarize changes, verification and remaining limits concisely, using Vietnamese for conversation and English for this guide.
+## Conventions
+
+- Follow `.agents/rules/project_rules.md` for naming, Jira, commits, pull requests, reviewers, and task reports.
+- Use `snake_case.py` for Python, `EXP-XXX` for experiments, `v<major>.<minor>` for datasets, and `convnext-tiny-v<major>.<minor>` for models.
+- Prefer readable, typed, minimal code; reuse existing modules before adding abstractions or dependencies.
+- Preserve agreed labels, dataset splits, versions, experiment IDs, and metric semantics.
+
+## Important rules
+
+- Read every relevant file in `.agents/rules/` and the complete `SKILL.md` of each matching skill before acting.
+- Before using installed third-party skills, read `.agents/skills/README.md` for project-specific usage boundaries. Skill defaults do not authorize actions outside the user's request or override repository rules and `DESIGN.md`.
+- Always use `coding-standards` for code changes; use `git-commit` only when staging or committing is explicitly requested.
+- Make the smallest complete change, preserve unrelated work, and run the smallest relevant verification.
+- Before handing off any repository change, update the technical report and task log for the Jira key verified from the current branch, including changes, affected paths, actual checks and remaining work. Follow the ongoing-record rules in `.agents/rules/project_rules.md`; preserve historical entries and never present an earlier test run as fresh evidence.
+- Do not invent Jira keys, owners, reviewers, branches, metrics, or experiment results.
+- Do not commit, push, rewrite history, or perform destructive Git operations unless explicitly requested.
+- Explicit user instructions take precedence; report any necessary deviation from repository rules.

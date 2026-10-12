@@ -1,0 +1,189 @@
+{
+  "schema_version": 1,
+  "installed_on": "2026-10-07",
+  "last_updated_on": "2026-10-08",
+  "installer": "OpenAI skill-installer/scripts/install-skill-from-github.py",
+  "skills": [
+    {
+      "name": "design-taste-frontend",
+      "directory": "taste-skill",
+      "repository": "Leonxlnx/taste-skill",
+      "ref": "b482f7a970abb98c4108d4a9f761e458c64cefc8",
+      "path": "skills/taste-skill",
+      "method": "download",
+      "installed_on": "2026-10-08",
+      "additional_files": ["LICENSE from the repository root at the same ref"]
+    },
+    {
+      "name": "gsap-core",
+      "directory": "gsap-core",
+      "repository": "greensock/gsap-skills",
+      "ref": "aed9cfd3277740755f6bfc1155c7aa645403b760",
+      "path": "skills/gsap-core",
+      "method": "download",
+      "installed_on": "2026-10-08",
+      "additional_files": ["LICENSE from the repository root at the same ref"]
+    },
+    {
+      "name": "gsap-react",
+      "directory": "gsap-react",
+      "repository": "greensock/gsap-skills",
+      "ref": "aed9cfd3277740755f6bfc1155c7aa645403b760",
+      "path": "skills/gsap-react",
+      "method": "download",
+      "installed_on": "2026-10-08",
+      "additional_files": ["LICENSE from the repository root at the same ref"]
+    },
+    {
+      "name": "gsap-performance",
+      "directory": "gsap-performance",
+      "repository": "greensock/gsap-skills",
+      "ref": "aed9cfd3277740755f6bfc1155c7aa645403b760",
+      "path": "skills/gsap-performance",
+      "method": "download",
+      "installed_on": "2026-10-08",
+      "additional_files": ["LICENSE from the repository root at the same ref"]
+    },
+    {
+      "name": "gsap-scrolltrigger",
+      "directory": "gsap-scrolltrigger",
+      "repository": "greensock/gsap-skills",
+      "ref": "aed9cfd3277740755f6bfc1155c7aa645403b760",
+      "path": "skills/gsap-scrolltrigger",
+      "method": "download",
+      "installed_on": "2026-10-08",
+      "additional_files": ["LICENSE from the repository root at the same ref"]
+    },
+    {
+      "name": "vercel-react-best-practices",
+      "directory": "react-best-practices",
+      "repository": "vercel-labs/agent-skills",
+      "ref": "063bee94c3f4df8453406c830b0a7df0f2860278",
+      "path": "skills/react-best-practices",
+      "method": "download",
+      "installed_on": "2026-10-08",
+      "license_note": "MIT declared in upstream SKILL.md; no root LICENSE file provided in the inspected tree."
+    },
+    {
+      "name": "impeccable",
+      "directory": "impeccable",
+      "repository": "pbakaus/impeccable",
+      "ref": "778c8a7b71ccd5bfe3ca6ac68c15d9d872d0f87d",
+      "path": ".agents/skills/impeccable",
+      "method": "download",
+      "installed_on": "2026-10-08",
+      "additional_files": ["LICENSE and NOTICE.md from the repository root at the same ref"]
+    },
+    {
+      "name": "shadcn",
+      "directory": "shadcn",
+      "repository": "shadcn/ui",
+      "ref": "97ddbf4274ed09d02aa7fd34375f2cf1e48cbbf0",
+      "path": "skills/shadcn",
+      "method": "git",
+      "additional_files": ["LICENSE.md from the repository root at the same ref"]
+    },
+    {
+      "name": "vercel-composition-patterns",
+      "directory": "vercel-composition-patterns",
+      "repository": "vercel-labs/agent-skills",
+      "ref": "063bee94c3f4df8453406c830b0a7df0f2860278",
+      "path": "skills/composition-patterns",
+      "method": "download"
+    },
+    {
+      "name": "webapp-testing",
+      "directory": "webapp-testing",
+      "repository": "anthropics/skills",
+      "ref": "683bc88e56f3e09ba94f7055977f3d3aa499f202",
+      "path": "skills/webapp-testing",
+      "method": "download"
+    },
+    {
+      "name": "aspnet-core",
+      "directory": "aspnet-core",
+      "repository": "openai/skills",
+      "ref": "49f948faa9258a0c61caceaf225e179651397431",
+      "path": "skills/.curated/aspnet-core",
+      "method": "download"
+    },
+    {
+      "name": "security-best-practices",
+      "directory": "security-best-practices",
+      "repository": "openai/skills",
+      "ref": "49f948faa9258a0c61caceaf225e179651397431",
+      "path": "skills/.curated/security-best-practices",
+      "method": "download"
+    },
+    {
+      "name": "systematic-debugging",
+      "directory": "systematic-debugging",
+      "repository": "obra/superpowers",
+      "ref": "8ca22dba9a94f28898bbce59f2537ff4d87c747d",
+      "path": "skills/systematic-debugging",
+      "method": "download",
+      "additional_files": ["LICENSE from the repository root at the same ref"]
+    },
+    {
+      "name": "test-driven-development",
+      "directory": "test-driven-development",
+      "repository": "obra/superpowers",
+      "ref": "8ca22dba9a94f28898bbce59f2537ff4d87c747d",
+      "path": "skills/test-driven-development",
+      "method": "download",
+      "additional_files": ["LICENSE from the repository root at the same ref"]
+    },
+    {
+      "name": "verification-before-completion",
+      "directory": "verification-before-completion",
+      "repository": "obra/superpowers",
+      "ref": "8ca22dba9a94f28898bbce59f2537ff4d87c747d",
+      "path": "skills/verification-before-completion",
+      "method": "download",
+      "additional_files": ["LICENSE from the repository root at the same ref"]
+    },
+    {
+      "name": "gh-fix-ci",
+      "directory": "gh-fix-ci",
+      "repository": "openai/skills",
+      "ref": "49f948faa9258a0c61caceaf225e179651397431",
+      "path": "skills/.curated/gh-fix-ci",
+      "method": "download"
+    },
+    {
+      "name": "security-threat-model",
+      "directory": "security-threat-model",
+      "repository": "openai/skills",
+      "ref": "49f948faa9258a0c61caceaf225e179651397431",
+      "path": "skills/.curated/security-threat-model",
+      "method": "download"
+    },
+    {
+      "name": "docker-patterns",
+      "directory": "docker-patterns",
+      "repository": "affaan-m/ECC",
+      "ref": "ef648e01899ba3e8dc6371642deaaf64b4477775",
+      "path": "skills/docker-patterns",
+      "method": "download",
+      "additional_files": ["LICENSE from the repository root at the same ref"]
+    },
+    {
+      "name": "api-design",
+      "directory": "api-design",
+      "repository": "affaan-m/ECC",
+      "ref": "ef648e01899ba3e8dc6371642deaaf64b4477775",
+      "path": "skills/api-design",
+      "method": "download",
+      "additional_files": ["LICENSE from the repository root at the same ref"]
+    },
+    {
+      "name": "pytorch-patterns",
+      "directory": "pytorch-patterns",
+      "repository": "affaan-m/ECC",
+      "ref": "ef648e01899ba3e8dc6371642deaaf64b4477775",
+      "path": "skills/pytorch-patterns",
+      "method": "download",
+      "additional_files": ["LICENSE from the repository root at the same ref"]
+    }
+  ]
+}
