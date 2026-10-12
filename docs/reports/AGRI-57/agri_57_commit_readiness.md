@@ -45,3 +45,35 @@ Source: commands executed in this preparation turn, frontend/package.json, front
 - Existing history secret scan and staged-diff scan are local evidence, not a successful GitHub secret-scan job. No deployment or CD action was performed.
 - No source/licensing/expert image certification, real inference E2E, browser/device/FPS/Lighthouse or new UI review in this commit-only turn.
 - Explicit user decision takes precedence over a green preflight: commits are requested with these failures recorded, not as a claim of CI/CD readiness. Push/PR remains a separate action; default PR target remains develop under project rules.
+
+## Follow-up local CI remediation 2026-10-12
+
+User subsequently authorized fixing these blockers, explicitly without affecting main. All changes remain uncommitted on AGRI-57-frontend-summary. No checkout/main modification, staging, commit, push, merge, PR, deployment, DB or volume operation was performed. Historical failures above are not erased or represented as the current local result.
+
+### Changes and boundaries
+
+- Frontend: safe type-only import corrections (20 files), removal of unused dark-pixel counting, equivalent template literals and a typed prediction completion tuple instead of a non-null assertion. Existing prediction success/error/abort semantics retained.
+- Raw image elements replaced by Next Image in splash, reference image, GradCam, camera capture, login/history/report modals, intro/diagnose/history/profile views. Dynamic/API/blob/data images use unoptimized delivery, preserving source URLs, fallback handlers and classes. Diagnose uses NextImage alias to preserve the browser Image constructor used for file metadata. Local logos use Next optimization; two logo tests now verify the exact underlying asset query instead of the old raw src.
+- Print rules in frontend/src/index.css remain unlayered and retain declarations without redundant important flags. Actual Chromium print-media regression confirms static/block dialog, unrestricted sizing/overflow, no transform/shadow/border, hidden close control and hidden background app.
+- Biome mechanical formatting fixed62 files; no dependency/lockfile upgrades, coverage exclusions/floors or lint severity changes. The broader formatter diff is presentation-only; code remediation remains scoped to the warnings above.
+- .github/workflows/ci.yml changes only the rendered frontend brand expectation from LeafAI to AgriAI. No obsolete brand insertion, job removal or gate weakening. This is a feature-branch working-tree edit, not a main workflow update.
+- Coding Standards, systematic debugging, TDD, React Best Practices and verification guidance shaped the correction; no UI redesign. Temporary QA scripts/artifacts remain ignored in tmp/ui-review.
+
+### Fresh verification
+
+| Check | Actual result in this follow-up |
+| --- | --- |
+| Strict frontend lint | PASS, corepack pnpm run lint,140 files/no diagnostics; error-on-warnings retained. |
+| Format and post-build types | PASS, corepack pnpm run format:check (140 files) and corepack pnpm run typecheck. Existing next-env dev imports restored after build. |
+| Production build | PASS,27.3s compile; TypeScript,10 static pages/two dynamic routes successful. |
+| Full test:coverage | PASS,160/160 tests25 files,10.08s. First run158/160 exposed two raw-logo URL assertions; corrected tests verify the exact optimized asset, then reran all tests. |
+| CI coverage validator | PASS,654/1195=54.73%, floor25% unchanged. Vitest prints54.72% by its own rounding. Removal of unused counting changes instrumentation denominator from1197; no exclusions removed or added. Target80% per component is not established. |
+| Smoke brand regression | RED against LeafAI expectation with built HTML, GREEN with AgriAI; rerun GREEN against fresh production root HTML. This is not full Compose smoke. |
+| Chromium production QA | PASS print-media report and original/history image direct src plus successful decoding. API/auth fixtures only, not real backend/model E2E. PASS map4/4 at1900 normal motion and375/768/1280 reduced motion: zero vertical overflow in125/132/131/135 entrance samples, equal desktop columns, larger canvas, targets and Escape; phone keyboard pan retained. |
+| Local secret scan | PASS Gitleaks8.24.2 current code diff171.60KB/no leaks; network-none container. Earlier full-history scan remains historical. |
+
+Own QA server3100 stopped after verification. Backend/Python/full Compose/GitHub Actions/CD, real inference, source/license/expert image verification and broader physical-device/browser checks remain unrun. Passing these local checks does not certify the full CI/CD pipeline. The new fixes require a separate requested commit/push before remote checks can run.
+
+## Follow-up requested delivery 2026-10-12
+
+User authorized commit, feature-branch push and a PR targeting develop, explicitly without affecting main. Fresh strict lint/format/typecheck passed again. GitHub CLI reports no authenticated host. Remote head inspection finds AGRI-57-frontend-summary at a437e8653c93a863a686340b7fb6af7b537d6674 (an ancestor of local HEAD), but no develop branch. Therefore the requested PR target is unavailable; do not create develop or substitute main without user direction. Frontend reviewer remains Nguyen Pham Bao Khanh per rules; no GitHub identity is guessed. Local fixes are grouped as frontend remediation, smoke-brand alignment and delivery evidence commits. Push outcome and commit IDs are reported at handoff. No PR, merge or main change is claimed.

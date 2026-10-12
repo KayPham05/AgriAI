@@ -8,6 +8,8 @@ Nhánh đã đối chiếu: `AGRI-57-frontend-summary`. Cập nhật tài liệu
 
 ## Trạng thái Definition of Done
 
+- **Sửa blockers local ngày2026-10-12, sau mục commit-only:** user cho phép sửa trên feature branch, không tác động main. Strict lint/format/typecheck/build PASS; test:coverage160/160 PASS, branch654/1195=54.73% vượt floor25% giữ nguyên. Smoke expectation đổi sang AgriAI, đối chiếu HTML build PASS; Chromium print/direct image delivery và map4/4 PASS. Chưa chạy full Compose/GitHub CI/CD, chưa commit/push các sửa mới. [Follow-up](agri_57_commit_readiness.md#follow-up-local-ci-remediation-2026-10-12).
+
 - **Chuẩn bị commit ngày2026-10-12:** user chọn commit cả frontend/docs/skills/rules và không sửa lỗi CI. Fresh160/160tests, branch coverage654/1197=54.64% vượt floor25%, build/typecheck/commitlint và local secrets scans PASS. Lint49warnings và format62errors vẫn FAIL; Compose smoke còn tìm LeafAI. Không xác nhận GitHub CI/CD pass. [Preflight và giới hạn](agri_57_commit_readiness.md).
 
 - **Scroll và kích thước map ngày2026-10-12:** bỏ thanh cuộn dọc tạm lúc entrance, tăng canvas hero lên512px từ640px màn hình; giữ hai cột cân và pan ngang trên điện thoại. Fresh build/typecheck,160/160tests và Chromium4/4 PASS, gồm lấy mẫu lúc entrance1900px normal motion. [Bằng chứng](agri_57_map_balance.md#follow-up-map-entrance-scrollbar-and-larger-canvas-2026-10-12).

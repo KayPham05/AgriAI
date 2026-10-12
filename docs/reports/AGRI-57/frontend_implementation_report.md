@@ -2,6 +2,8 @@
 
 ## Tổng hợp hiện trạng ngày 2026-10-12
 
+**Follow-up sau chuẩn bị commit:** user đổi quyết định, yêu cầu sửa blockers nhưng không ảnh hưởng main. Strict lint/format/typecheck/build và160/160tests đã PASS trong lượt mới; coverage654/1195=54.73% vượt floor25%, không chứng nhận target80% per component. Đã đồng bộ smoke brand AgriAI và kiểm tra HTML build, print/image delivery/map. Chưa chạy full Compose/GitHub CI/CD, chưa commit/push sửa mới. Xem [bằng chứng follow-up](agri_57_commit_readiness.md#follow-up-local-ci-remediation-2026-10-12); đoạn chuẩn bị commit bên dưới được giữ như lịch sử.
+
 **Cập nhật chuẩn bị commit:** người dùng chọn commit không sửa các lỗi CI. Lượt mới test:coverage160/160 và branch coverage54.64% PASS, build/typecheck/commitlint/local secret scan PASS; lint49warnings và format62errors còn FAIL. Xem [preflight](agri_57_commit_readiness.md); không coi thông điệp commit chuẩn là CI/CD đã pass.
 
 Nhánh đã đối chiếu: `AGRI-57-frontend-summary`. Phần này tổng hợp công việc đã ghi nhận trong task log mục 6–63 và các report liên kết; không phải một lần kiểm thử lại toàn hệ thống. Website hiện dùng tên **AgriAI**. Các mục đánh số 1–8 phía dưới là baseline lịch sử, không phải kiến trúc hoặc kết luận nghiệm thu hiện tại.
