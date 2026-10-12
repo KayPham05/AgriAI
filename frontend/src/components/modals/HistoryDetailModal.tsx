@@ -1,177 +1,118 @@
-import React, { useState } from 'react';
-import { 
-  X, 
-  Sparkles, 
-  Download
-} from 'lucide-react';
-import { DiagnosisResult } from '../../types';
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import type { DiagnosisResult } from '../../types';
 import { GradCamViewer } from '../features/GradCamViewer';
 import { ConfidenceBar } from '../common/ConfidenceBar';
 import { ReportModal } from './ReportModal';
-
 interface HistoryDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   result: DiagnosisResult | null;
   onAnalyzeNew: () => void;
 }
-
-export const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({
+export function HistoryDetailModal({
   isOpen,
   onClose,
   result,
   onAnalyzeNew,
-}) => {
+}: HistoryDetailModalProps) {
   const [isReportOpen, setIsReportOpen] = useState(false);
-
-  if (!isOpen || !result) return null;
-
+  if (!result) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-2 backdrop-blur-xs animate-in fade-in duration-200 sm:p-6">
-      
-      <div className="bg-white w-full max-w-4xl rounded-3xl border border-[#E2E8E4] shadow-2xl overflow-hidden my-auto flex flex-col max-h-[90vh]">
-        
-        {/* Modal Top Header */}
-        <div className="p-5 border-b border-[#E2E8E4] flex items-center justify-between bg-[#F8FAF9]">
-          <div className="flex items-center gap-3">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
-            <div>
-              <h2 className="font-display font-bold text-base sm:text-lg text-[#17211B]">
-                Chi tiết kết quả chẩn đoán
-              </h2>
-              <p className="text-xs text-[#647067]">
-                Thời điểm ghi nhận: {result.timestamp}
+    <>
+      <Dialog
+        open={isOpen}
+        onOpenChange={(open) => {
+          if (!open) onClose();
+        }}
+      >
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Chi tiết kết quả phân loại</DialogTitle>
+            <DialogDescription>Thời điểm ghi nhận: {result.timestamp}</DialogDescription>
+          </DialogHeader>
+          {result.isDemo && (
+            <p className="rounded-xl bg-secondary p-3 text-sm">
+              Dữ liệu này được lưu cục bộ từ phiên dùng thử.
+            </p>
+          )}
+          <div className="grid items-start gap-6 md:grid-cols-2">
+            {result.gradcam_url ? (
+              <GradCamViewer
+                originalUrl={result.originalImageUrl}
+                heatmapUrl={result.gradcam_url}
+                overlayUrl={result.gradcam_url}
+                segmentationUrl={null}
+                detectionBoxes={null}
+                diseaseLabel={result.prediction}
+                isDemo={result.isDemo ?? false}
+              />
+            ) : (
+              <img
+                src={result.originalImageUrl}
+                alt="Ảnh lá đã phân tích"
+                className="aspect-[4/3] w-full rounded-xl bg-surface-muted object-contain"
+              />
+            )}
+            <div className="space-y-5">
+              <div>
+                <p className="text-sm text-muted-foreground">{result.plant}</p>
+                <h2 className="mt-1 text-2xl font-semibold">{result.prediction}</h2>
+                {result.scientificName && (
+                  <p className="mt-1 text-sm italic text-muted-foreground">
+                    {result.scientificName}
+                  </p>
+                )}
+              </div>
+              <ConfidenceBar confidence={result.confidence} category={result.confidenceCategory} />
+              {result.top_predictions.length > 1 && (
+                <div className="space-y-3 border-t border-border pt-4">
+                  <h3 className="font-medium">Các lớp dự đoán khác</h3>
+                  {result.top_predictions.slice(1).map((item) => (
+                    <p
+                      key={item.className ?? item.label}
+                      className="flex justify-between gap-3 text-sm"
+                    >
+                      <span>{item.label}</span>
+                      <span className="tabular-nums">
+                        {Math.round(item.confidence * 1000) / 10}%
+                      </span>
+                    </p>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {result.isDemo ? 'Lưu trên trình duyệt' : 'Lưu trong tài khoản'}
               </p>
             </div>
           </div>
-
-          <button
-            onClick={onClose}
-            className="p-2 text-[#647067] hover:text-[#17211B] rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
-            aria-label="Đóng"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Modal Body */}
-        <div className="flex-1 space-y-6 overflow-y-auto p-4 sm:p-6">
-          {result.isDemo && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">Dữ liệu này được lưu cục bộ từ phiên dùng thử.</p>}
-          
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-            
-            {/* Left: Grad-CAM Viewer */}
-            <div className="md:col-span-7">
-              {result.gradcam_url ? (
-                <GradCamViewer
-                  originalUrl={result.originalImageUrl}
-                  heatmapUrl={result.gradcam_url}
-                  overlayUrl={result.gradcam_url}
-                  segmentationUrl={null}
-                  detectionBoxes={null}
-                  diseaseLabel={result.prediction}
-                />
-              ) : (
-                <div className="overflow-hidden rounded-2xl border border-[#E2E8E4] bg-[#0A100D]"><img src={result.originalImageUrl} alt="Ảnh lá đã chẩn đoán" className="aspect-4/3 h-full w-full object-contain" /></div>
-              )}
-            </div>
-
-            {/* Right: Metrics & Details */}
-            <div className="md:col-span-5 space-y-5">
-              
-              <div className="bg-[#F8FAF9] p-5 rounded-2xl border border-[#E2E8E4] space-y-4">
-                <div>
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-800">
-                    Cây chủ: {result.plant}
-                  </span>
-                  <h3 className="font-display font-bold text-xl text-[#17211B] mt-0.5">
-                    {result.prediction}
-                  </h3>
-                  {result.scientificName && (
-                    <p className="text-xs italic text-[#647067]">{result.scientificName}</p>
-                  )}
-                </div>
-
-                {/* Confidence Bar */}
-                <ConfidenceBar
-                  confidence={result.confidence}
-                  category={result.confidenceCategory}
-                />
-
-                {/* Alternative predictions */}
-                {result.top_predictions.length > 1 && (
-                  <div className="space-y-2 pt-2 border-t border-[#E2E8E4]">
-                    <span className="text-xs font-semibold text-[#17211B] block">Các lớp mẫu khác:</span>
-                    <div className="space-y-1.5">
-                      {result.top_predictions.slice(1).map((item, idx) => (
-                        <div key={idx} className="flex justify-between text-xs">
-                          <span className="text-[#647067]">{item.label}</span>
-                          <span className="font-mono text-[#17211B]">{Math.round(item.confidence * 100)}%</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Severity */}
-
-                {/* Meta info */}
-                <div className="pt-2 border-t border-[#E2E8E4] text-[11px] text-[#647067] space-y-1 font-mono">
-                  <div className="flex justify-between">
-                    <span>Trạng thái:</span>
-                    <span className="text-[#17211B]">{result.isDemo ? 'Lưu trên trình duyệt' : 'Đồng bộ backend'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Mã hồ sơ:</span>
-                    <span className="break-all text-right text-[#17211B]">{result.id}</span>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-
-        {/* Modal Bottom Footer Actions */}
-        <div className="flex flex-col gap-3 border-t border-[#E2E8E4] bg-[#F8FAF9] p-4 min-[480px]:flex-row min-[480px]:flex-wrap min-[480px]:items-center min-[480px]:justify-between sm:p-5">
-          <button
-            onClick={() => setIsReportOpen(true)}
-            className="px-4 py-2.5 bg-white border border-[#E2E8E4] hover:bg-[#F8FAF9] text-[#17211B] rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5 text-[#647067]" />
-            <span>In / lưu PDF</span>
-          </button>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onClose}
-              className="px-4 py-2.5 text-xs font-semibold text-[#647067] hover:text-[#17211B] cursor-pointer"
-            >
-              Đóng
-            </button>
-            <button
+          <div className="flex flex-wrap justify-between gap-3 border-t border-border pt-4">
+            <Button variant="outline" onClick={() => setIsReportOpen(true)}>
+              In / lưu PDF
+            </Button>
+            <Button
               onClick={() => {
                 onClose();
                 onAnalyzeNew();
               }}
-              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs cursor-pointer"
             >
-              <Sparkles className="w-4 h-4 text-emerald-200" />
-              <span>Chẩn đoán ảnh mới</span>
-            </button>
+              Kiểm tra lá mới
+            </Button>
           </div>
-        </div>
-
-      </div>
-
-      <ReportModal
-        isOpen={isReportOpen}
-        onClose={() => setIsReportOpen(false)}
-        result={result}
-      />
-
-    </div>
+          <ReportModal
+            isOpen={isReportOpen}
+            onClose={() => setIsReportOpen(false)}
+            result={result}
+          />
+        </DialogContent>
+      </Dialog>
+    </>
   );
-};
+}

@@ -1,5 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPrediction, deletePrediction, getPredictionById, getPredictionHistory } from './predictionApi';
+import { afterEach, assert, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  createPrediction,
+  deletePrediction,
+  getPredictionById,
+  getPredictionHistory,
+  mapPredictionResult,
+} from './predictionApi';
 
 class MockXMLHttpRequest {
   static latest: MockXMLHttpRequest | null = null;
@@ -91,22 +97,64 @@ describe('createPrediction', () => {
     vi.unstubAllGlobals();
   });
 
+  it('preserves class identity when different crops share the same translated disease label', () => {
+    const diagnosis = mapPredictionResult({
+      ...successfulResponse,
+      predictedPlantDisease: {
+        ...successfulResponse.predictedPlantDisease,
+        plant: { ...successfulResponse.predictedPlantDisease.plant, isActive: true },
+        disease: {
+          ...successfulResponse.predictedPlantDisease.disease,
+          prevention: null,
+          isActive: true,
+          createdAt: '2026-09-27T10:00:00Z',
+        },
+      },
+      predictionDetails: [
+        { classIndex: 2, className: 'Tomato___healthy', confidence: 0.6, plantDisease: null },
+        { classIndex: 3, className: 'Potato___healthy', confidence: 0.3, plantDisease: null },
+      ].map((detail) => ({
+        ...detail,
+        plantDisease: {
+          ...successfulResponse.predictedPlantDisease,
+          id: detail.className,
+          classIndex: detail.classIndex,
+          className: detail.className,
+          plant: { ...successfulResponse.predictedPlantDisease.plant, isActive: true },
+          disease: {
+            ...successfulResponse.predictedPlantDisease.disease,
+            vietnameseName: 'Khỏe mạnh',
+            prevention: null,
+            isActive: true,
+            createdAt: '2026-09-27T10:00:00Z',
+          },
+        },
+      })),
+    });
+
+    expect(diagnosis.top_predictions).toMatchObject([
+      { className: 'Tomato___healthy', label: 'Khỏe mạnh', confidence: 0.6 },
+      { className: 'Potato___healthy', label: 'Khỏe mạnh', confidence: 0.3 },
+    ]);
+  });
+
   it('uploads the image with the backend field name and maps a successful response', async () => {
     const onUploadComplete = vi.fn();
     const image = new File(['leaf-image'], 'leaf.jpg', { type: 'image/jpeg' });
     const request = createPrediction(image, { token: 'jwt-token', onUploadComplete });
     const xhr = MockXMLHttpRequest.latest;
 
-    expect(xhr).not.toBeNull();
-    expect(xhr?.open).toHaveBeenCalledWith('POST', '/api/predictions');
-    expect(xhr?.requestHeaders.get('Authorization')).toBe('Bearer jwt-token');
-    expect(xhr?.sentBody).toBeInstanceOf(FormData);
-    const uploadedFile = (xhr?.sentBody as FormData).get('file') as File;
+    assert(xhr, 'The request should create an XMLHttpRequest');
+    expect(xhr.open).toHaveBeenCalledWith('POST', '/api/predictions');
+    expect(xhr.requestHeaders.get('Authorization')).toBe('Bearer jwt-token');
+    assert(xhr.sentBody instanceof FormData, 'The request body should be FormData');
+    const uploadedFile = xhr.sentBody.get('file');
+    assert(uploadedFile instanceof File, 'The file field should contain an image');
     expect(uploadedFile.name).toBe(image.name);
     expect(uploadedFile.type).toBe(image.type);
     expect(uploadedFile.size).toBe(image.size);
 
-    xhr?.respond(201, successfulResponse);
+    xhr.respond(201, successfulResponse);
     const result = await request;
 
     expect(onUploadComplete).toHaveBeenCalledOnce();

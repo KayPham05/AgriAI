@@ -1,5 +1,6 @@
-import React from 'react';
-import { CheckCircle2, AlertTriangle, AlertCircle, Info, X } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { toast } from 'sonner';
+import { Toaster } from '@/components/ui/sonner';
 import { Toast } from '../../types';
 
 interface ToastContainerProps {
@@ -7,50 +8,37 @@ interface ToastContainerProps {
   onDismiss: (id: string) => void;
 }
 
-export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismiss }) => {
-  if (toasts.length === 0) return null;
+export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
+  const shownIds = useRef(new Set<string>());
 
-  return (
-    <div className="fixed bottom-20 md:bottom-6 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
-      {toasts.map((toast) => {
-        let bg = 'bg-white border-[#E2E8E4] text-[#17211B]';
-        let Icon = Info;
-        let iconColor = 'text-blue-600';
+  useEffect(() => {
+    const currentIds = new Set(toasts.map(item => item.id));
+    for (const id of shownIds.current) {
+      if (!currentIds.has(id)) {
+        toast.dismiss(id);
+        shownIds.current.delete(id);
+      }
+    }
+    for (const item of toasts) {
+      if (shownIds.current.has(item.id)) continue;
+      shownIds.current.add(item.id);
+      toast[item.type](item.title || item.message, {
+        id: item.id,
+        description: item.title ? item.message : undefined,
+        onDismiss: () => onDismiss(item.id),
+        onAutoClose: () => onDismiss(item.id),
+        action: { label: 'Đóng', onClick: () => onDismiss(item.id) },
+      });
+    }
+  }, [toasts, onDismiss]);
 
-        if (toast.type === 'success') {
-          bg = 'bg-emerald-50 border-emerald-200 text-emerald-950';
-          Icon = CheckCircle2;
-          iconColor = 'text-emerald-600';
-        } else if (toast.type === 'error') {
-          bg = 'bg-red-50 border-red-200 text-red-950';
-          Icon = AlertCircle;
-          iconColor = 'text-red-600';
-        } else if (toast.type === 'warning') {
-          bg = 'bg-amber-50 border-amber-200 text-amber-950';
-          Icon = AlertTriangle;
-          iconColor = 'text-amber-600';
-        }
+  useEffect(() => {
+    const ids = shownIds.current;
+    return () => {
+      for (const id of ids) toast.dismiss(id);
+      ids.clear();
+    };
+  }, []);
 
-        return (
-          <div
-            key={toast.id}
-            className={`pointer-events-auto flex items-start gap-3 p-3.5 rounded-xl border shadow-lg transition-all animate-in fade-in slide-in-from-bottom-2 ${bg}`}
-          >
-            <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${iconColor}`} />
-            <div className="flex-1 text-xs">
-              {toast.title && <p className="font-semibold mb-0.5 text-sm">{toast.title}</p>}
-              <p className="leading-relaxed opacity-90">{toast.message}</p>
-            </div>
-            <button
-              onClick={() => onDismiss(toast.id)}
-              className="p-1 text-[#647067] hover:text-[#17211B] rounded-md transition-colors"
-              aria-label="Dismiss toast"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        );
-      })}
-    </div>
-  );
-};
+  return <Toaster theme="light" position="bottom-right" offset={24} mobileOffset={{ bottom: 96, left: 20, right: 20 }} toastOptions={{ classNames: { actionButton: 'min-h-11 min-w-11' } }} />;
+}
