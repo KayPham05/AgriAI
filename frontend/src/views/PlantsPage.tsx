@@ -99,7 +99,7 @@ export function PlantsPage({ plants, onSelectPlant, onDiagnosePlant }: PlantsVie
                   variant="ghost"
                   onClick={() => onSelectPlant(plant)}
                   className="catalog-media h-auto w-full overflow-hidden rounded-media bg-surface-muted p-0"
-                  aria-label={'Xem chi tiết ' + plant.name}
+                  aria-label={`Xem chi tiết ${plant.name}`}
                 >
                   <Image
                     src={plant.imageUrl}

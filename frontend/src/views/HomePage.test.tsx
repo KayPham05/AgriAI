@@ -13,7 +13,9 @@ describe('HomePage', () => {
   it('keeps the primary tasks reachable', async () => {
     const onNavigate = vi.fn();
     render(<HomePage onNavigate={onNavigate} onSelectPlant={vi.fn()} />);
-    expect(screen.getByRole('heading', { name: 'Hiểu từng chiếc lá. Giữ trọn mùa xanh.' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Hiểu từng chiếc lá. Giữ trọn mùa xanh.' }),
+    ).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Kiểm tra lá' }));
     await userEvent.click(screen.getByRole('button', { name: 'Tra cứu bệnh' }));
     expect(onNavigate.mock.calls).toEqual([['diagnose'], ['diseases']]);

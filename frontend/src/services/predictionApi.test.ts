@@ -207,14 +207,20 @@ describe('createPrediction', () => {
       ...successfulResponse,
       predictedPlantDisease: {
         ...successfulResponse.predictedPlantDisease,
-        disease: { ...successfulResponse.predictedPlantDisease.disease, name: 'Healthy', vietnameseName: null },
+        disease: {
+          ...successfulResponse.predictedPlantDisease.disease,
+          name: 'Healthy',
+          vietnameseName: null,
+        },
       },
-      predictionDetails: [{
-        classIndex: 0,
-        className: 'Tomato___Healthy',
-        confidence: 0.94,
-        plantDisease: null,
-      }],
+      predictionDetails: [
+        {
+          classIndex: 0,
+          className: 'Tomato___Healthy',
+          confidence: 0.94,
+          plantDisease: null,
+        },
+      ],
     });
 
     const result = await request;
@@ -233,40 +239,66 @@ describe('prediction history requests', () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        items: [{
-          id: 'one', imagePath: '/leaf.jpg', plantName: 'Tomato', plantVietnameseName: 'Cà chua',
-          diseaseName: 'Early Blight', diseaseVietnameseName: 'Cháy lá sớm', confidence: 0.8,
-          createdAt: '2026-09-27T10:00:00Z',
-        }],
+        items: [
+          {
+            id: 'one',
+            imagePath: '/leaf.jpg',
+            plantName: 'Tomato',
+            plantVietnameseName: 'Cà chua',
+            diseaseName: 'Early Blight',
+            diseaseVietnameseName: 'Cháy lá sớm',
+            confidence: 0.8,
+            createdAt: '2026-09-27T10:00:00Z',
+          },
+        ],
       }),
     });
     vi.stubGlobal('fetch', fetchMock);
 
     const items = await getPredictionHistory('jwt-token');
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/predictions?pageNumber=1&pageSize=100',
-      expect.objectContaining({ headers: { Authorization: 'Bearer jwt-token' } }));
-    expect(items[0]).toMatchObject({ plant: 'Cà chua', prediction: 'Cháy lá sớm', confidence: 0.8 });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/predictions?pageNumber=1&pageSize=100',
+      expect.objectContaining({ headers: { Authorization: 'Bearer jwt-token' } }),
+    );
+    expect(items[0]).toMatchObject({
+      plant: 'Cà chua',
+      prediction: 'Cháy lá sớm',
+      confidence: 0.8,
+    });
   });
 
   it('surfaces backend errors when loading a prediction', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: false, status: 503, json: async () => ({ message: 'AI service is unavailable.' }),
-    }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        json: async () => ({ message: 'AI service is unavailable.' }),
+      }),
+    );
 
-    await expect(getPredictionById('one', 'jwt-token')).rejects.toThrow('AI service is unavailable.');
+    await expect(getPredictionById('one', 'jwt-token')).rejects.toThrow(
+      'AI service is unavailable.',
+    );
   });
 
   it('deletes a prediction with authorization and reports failure', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true }).mockResolvedValueOnce({
-      ok: false, status: 403, json: async () => ({ detail: 'Forbidden' }),
-    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        json: async () => ({ detail: 'Forbidden' }),
+      });
     vi.stubGlobal('fetch', fetchMock);
 
     await deletePrediction('one', 'jwt-token');
     await expect(deletePrediction('two', 'jwt-token')).rejects.toThrow('Forbidden');
     expect(fetchMock).toHaveBeenCalledWith('/api/predictions/one', {
-      method: 'DELETE', headers: { Authorization: 'Bearer jwt-token' },
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer jwt-token' },
     });
   });
 });

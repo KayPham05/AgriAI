@@ -1,6 +1,6 @@
-import React from 'react';
+import type React from 'react';
 import { Activity } from 'lucide-react';
-import { SeverityInfo } from '../../types';
+import type { SeverityInfo } from '../../types';
 
 interface SeverityModuleProps {
   severity: SeverityInfo | null | undefined;
@@ -33,7 +33,9 @@ export const SeverityModule: React.FC<SeverityModuleProps> = ({ severity }) => {
             Mức độ nhiễm bệnh ước lượng
           </h4>
         </div>
-        <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${levelBadgeColor}`}>
+        <span
+          className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${levelBadgeColor}`}
+        >
           Mức độ: {viLevel}
         </span>
       </div>
@@ -64,7 +66,8 @@ export const SeverityModule: React.FC<SeverityModuleProps> = ({ severity }) => {
       </div>
 
       <p className="text-[11px] text-[#647067] leading-normal">
-        Được ước tính qua phân đoạn pixel vết hoại tử bề mặt phiến lá. Chỉ số này độc lập với độ tin cậy phân loại.
+        Được ước tính qua phân đoạn pixel vết hoại tử bề mặt phiến lá. Chỉ số này độc lập với độ tin
+        cậy phân loại.
       </p>
     </div>
   );

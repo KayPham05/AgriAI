@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Image from 'next/image';
 import { Edit2, LogOut, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,7 +63,8 @@ export function ProfilePage({
       <section className="rounded-card border border-border bg-surface p-6 sm:p-8">
         <div className="flex flex-col items-start gap-5 sm:flex-row">
           {profile.avatarUrl ? (
-            <img
+            <Image
+              unoptimized
               src={profile.avatarUrl}
               alt={profile.name}
               width={80}

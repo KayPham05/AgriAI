@@ -1,4 +1,5 @@
 import type React from 'react';
+import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
@@ -235,7 +236,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             className="auth-form-panel relative min-w-0 space-y-5 bg-surface p-6 sm:p-8 md:w-1/2"
           >
             <DialogHeader>
-              <img
+              <Image
                 src="/images/logo.png"
                 alt="Logo AgriAI"
                 width={40}
@@ -468,7 +469,7 @@ function FormField({ id, label, error, children }: FormFieldProps) {
       <Label htmlFor={id}>{label}</Label>
       {children}
       {error && (
-        <p id={id + '-error'} role="alert" className="text-sm text-destructive">
+        <p id={`${id}-error`} role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}

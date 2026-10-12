@@ -150,9 +150,12 @@ export function HistoryPage({
                     : 'size-20 shrink-0 overflow-hidden rounded-xl p-0'
                 }
                 onClick={() => onSelectResult(item)}
-                aria-label={'Xem kết quả ' + item.prediction}
+                aria-label={`Xem kết quả ${item.prediction}`}
               >
-                <img
+                <Image
+                  unoptimized
+                  width={640}
+                  height={480}
                   src={item.originalImageUrl}
                   alt={item.prediction}
                   loading="lazy"
@@ -189,7 +192,7 @@ export function HistoryPage({
                   variant="ghost"
                   size="icon"
                   className="text-destructive"
-                  aria-label={'Xóa kết quả ' + item.prediction}
+                  aria-label={`Xóa kết quả ${item.prediction}`}
                   onClick={() => setPendingDeleteId(item.id)}
                 >
                   <Trash2 />

@@ -194,12 +194,15 @@ export function createPrediction(
     const xhr = new XMLHttpRequest();
     let settled = false;
 
-    const finish = (error?: Error, result?: PredictionResponse) => {
+    const finish = (
+      ...outcome: [error: Error] | [error: undefined, result: PredictionResponse]
+    ) => {
+      const [error, result] = outcome;
       if (settled) return;
       settled = true;
       options.signal?.removeEventListener('abort', abortRequest);
       if (error) reject(error);
-      else resolve(result!);
+      else resolve(result);
     };
     const abortRequest = () => xhr.abort();
 

@@ -1,4 +1,5 @@
 import type React from 'react';
+import NextImage from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
@@ -289,7 +290,10 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({ authToken, onPredict
           <div className="p-5 sm:p-6">
             {previewUrl ? (
               <div>
-                <img
+                <NextImage
+                  unoptimized
+                  width={640}
+                  height={480}
                   data-preview-enter
                   src={previewUrl}
                   alt={`Ảnh xem trước: ${selectedFile?.name ?? 'lá cây'}`}
@@ -388,7 +392,9 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({ authToken, onPredict
                   </p>
                   <p className="mt-5 flex items-center gap-3 text-sm font-medium">
                     <BrainCircuit className="size-5 shrink-0 text-primary" aria-hidden="true" />
-                    {status === 'uploading' ? 'Phân loại sau khi tải xong' : 'Đang đối chiếu lớp dự đoán'}
+                    {status === 'uploading'
+                      ? 'Phân loại sau khi tải xong'
+                      : 'Đang đối chiếu lớp dự đoán'}
                   </p>
                 </div>
               </div>

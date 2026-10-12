@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { Camera, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -106,7 +107,14 @@ export function CameraCaptureModal({ isOpen, onClose, onCapture }: CameraCapture
               </Button>
             </div>
           ) : capturedImage ? (
-            <img src={capturedImage} alt="Ảnh lá đã chụp" className="size-full object-contain" />
+            <Image
+              unoptimized
+              width={640}
+              height={480}
+              src={capturedImage}
+              alt="Ảnh lá đã chụp"
+              className="size-full object-contain"
+            />
           ) : (
             <>
               <video

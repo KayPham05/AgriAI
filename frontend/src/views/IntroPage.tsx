@@ -114,7 +114,7 @@ export function IntroPage({ onLogin, onRegister }: IntroPageProps) {
             className="flex shrink-0 items-center gap-3 rounded-lg"
             aria-label="AgriAI - Trang giới thiệu"
           >
-            <img
+            <Image
               src="/images/logo.png"
               alt="Logo AgriAI"
               width={44}

@@ -84,8 +84,9 @@ describe('IntroPage', () => {
 
     // Assert
     expect(screen.getByRole('heading', { name: /Nhìn kỹ chiếc lá/i })).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'Logo AgriAI' })).toHaveAttribute(
-      'src',
+    const logoSource = screen.getByRole('img', { name: 'Logo AgriAI' }).getAttribute('src');
+    expect(logoSource).not.toBeNull();
+    expect(new URL(logoSource ?? '', 'http://localhost').searchParams.get('url')).toBe(
       '/images/logo.png',
     );
     expect(screen.getAllByText('ConvNeXt-Tiny').length).toBeGreaterThan(0);

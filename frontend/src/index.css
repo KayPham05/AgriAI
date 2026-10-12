@@ -457,21 +457,21 @@
 
 @media print {
   body:has(.report-dialog) > :not(.report-dialog) {
-    display: none !important;
+    display: none;
   }
   .report-dialog {
-    position: static !important;
-    display: block !important;
-    width: 100% !important;
-    max-width: none !important;
-    max-height: none !important;
-    overflow: visible !important;
-    transform: none !important;
-    box-shadow: none !important;
-    border: none !important;
+    position: static;
+    display: block;
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    overflow: visible;
+    transform: none;
+    box-shadow: none;
+    border: none;
   }
   .report-dialog [data-slot="dialog-close"] {
-    display: none !important;
+    display: none;
   }
   .printable-area {
     margin-top: 1.5rem;

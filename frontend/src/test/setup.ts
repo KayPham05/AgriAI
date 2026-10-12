@@ -4,11 +4,14 @@ import { afterEach, beforeEach, vi } from 'vitest';
 
 // Radix measures checkbox controls; jsdom does not implement layout observers.
 beforeEach(() => {
-  vi.stubGlobal('ResizeObserver', class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  });
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
 });
 
 Object.defineProperty(URL, 'createObjectURL', {

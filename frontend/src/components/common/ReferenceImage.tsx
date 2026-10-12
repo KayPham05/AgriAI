@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Image from 'next/image';
 import { ImageOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -27,7 +28,8 @@ export function ReferenceImage({ src, alt, className }: ReferenceImageProps) {
   }
 
   return (
-    <img
+    <Image
+      unoptimized
       src={src}
       alt={alt}
       width={640}

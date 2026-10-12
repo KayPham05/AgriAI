@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
-import { Toast } from '../../types';
+import type { Toast } from '../../types';
 
 interface ToastContainerProps {
   toasts: Toast[];
@@ -12,7 +12,7 @@ export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
   const shownIds = useRef(new Set<string>());
 
   useEffect(() => {
-    const currentIds = new Set(toasts.map(item => item.id));
+    const currentIds = new Set(toasts.map((item) => item.id));
     for (const id of shownIds.current) {
       if (!currentIds.has(id)) {
         toast.dismiss(id);
@@ -40,5 +40,13 @@ export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
     };
   }, []);
 
-  return <Toaster theme="light" position="bottom-right" offset={24} mobileOffset={{ bottom: 96, left: 20, right: 20 }} toastOptions={{ classNames: { actionButton: 'min-h-11 min-w-11' } }} />;
+  return (
+    <Toaster
+      theme="light"
+      position="bottom-right"
+      offset={24}
+      mobileOffset={{ bottom: 96, left: 20, right: 20 }}
+      toastOptions={{ classNames: { actionButton: 'min-h-11 min-w-11' } }}
+    />
+  );
 }

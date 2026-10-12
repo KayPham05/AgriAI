@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import Image from 'next/image';
 import {
   Dialog,
   DialogContent,
@@ -38,7 +39,7 @@ export function ReportModal({ isOpen, onClose, result }: ReportModalProps) {
             {[
               ['Cây trồng', result.plant],
               ['Lớp dự đoán', result.prediction],
-              ['Độ tin cậy', Math.round(result.confidence * 1000) / 10 + '%'],
+              ['Độ tin cậy', `${Math.round(result.confidence * 1000) / 10}%`],
               ['Thời điểm kiểm tra', result.timestamp],
             ].map(([label, value]) => (
               <div key={label}>
@@ -47,14 +48,20 @@ export function ReportModal({ isOpen, onClose, result }: ReportModalProps) {
               </div>
             ))}
           </dl>
-          <img
+          <Image
+            unoptimized
+            width={640}
+            height={480}
             src={result.originalImageUrl}
             alt="Ảnh lá gốc"
             className="aspect-[4/3] max-h-80 w-full rounded-xl bg-surface-muted object-contain"
           />
           {result.gradcam_url && (
             <figure>
-              <img
+              <Image
+                unoptimized
+                width={640}
+                height={480}
                 src={result.gradcam_url}
                 alt="Bản đồ nhiệt được lưu cùng kết quả"
                 className="aspect-[4/3] max-h-80 w-full rounded-xl object-contain"

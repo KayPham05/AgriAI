@@ -122,7 +122,7 @@ export function DiseasesPage({
                   variant="ghost"
                   onClick={() => onSelectDisease(item)}
                   className="catalog-media h-auto w-full overflow-hidden rounded-media bg-surface-muted p-0"
-                  aria-label={'Xem chi tiết ' + item.name}
+                  aria-label={`Xem chi tiết ${item.name}`}
                 >
                   <ReferenceImage src={item.heroImage} alt={item.name} />
                 </Button>

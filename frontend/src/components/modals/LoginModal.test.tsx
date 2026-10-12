@@ -15,8 +15,9 @@ describe('LoginModal entry mode', () => {
     render(<LoginModal isOpen initialMode="register" onClose={vi.fn()} onAuthSuccess={vi.fn()} />);
 
     expect(screen.getByRole('tab', { name: 'Đăng ký' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('img', { name: 'Logo AgriAI' })).toHaveAttribute(
-      'src',
+    const logoSource = screen.getByRole('img', { name: 'Logo AgriAI' }).getAttribute('src');
+    expect(logoSource).not.toBeNull();
+    expect(new URL(logoSource ?? '', 'http://localhost').searchParams.get('url')).toBe(
       '/images/logo.png',
     );
     expect(screen.getByRole('heading', { name: /Tạo tài khoản AgriAI/i })).toBeInTheDocument();
