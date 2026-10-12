@@ -1,7 +1,8 @@
-FROM node:24-alpine AS build
+# pnpm's managed Node runtime requires glibc, not Alpine's musl.
+FROM node:24.15.0-bookworm-slim AS build
 WORKDIR /app
 RUN npm install -g pnpm@10.34.5
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . .
 ARG API_PROXY_TARGET=http://backend:8080
@@ -9,7 +10,7 @@ ENV API_PROXY_TARGET=$API_PROXY_TARGET
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm run build
 
-FROM node:24-alpine AS runtime
+FROM node:24.15.0-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
