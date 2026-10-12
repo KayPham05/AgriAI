@@ -95,7 +95,7 @@ jobs:
           curl --fail --silent --show-error --max-time 15 http://127.0.0.1:5080/api/health > .cache/compose/api-without-ai.json
           python3 -c 'import json,sys; assert json.load(sys.stdin)["status"] == "Healthy"' < .cache/compose/api-without-ai.json
           curl --fail --silent --show-error --max-time 15 http://127.0.0.1:3000/ > .cache/compose/frontend.html
-          grep -q 'LeafAI' .cache/compose/frontend.html
+          grep -q 'AgriAI' .cache/compose/frontend.html
           curl --fail --silent --show-error --max-time 15 http://127.0.0.1:3000/api/health > .cache/compose/proxy-health.json
           python3 -c 'import json,sys; assert json.load(sys.stdin)["status"] == "Healthy"' < .cache/compose/proxy-health.json
       - uses: actions/upload-artifact@v7
