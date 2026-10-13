@@ -113,3 +113,42 @@ This request completes a local merge; it does not push or merge the remote PR.
 - Guest API returns empty imagePath, rejected by `createPrediction`; current
   application entry requires authentication. Guest UI support is a follow-up.
 - Review account/DB fixtures exist only in retained isolated review volumes.
+
+## Quick review and ignore policy follow-up — 2026-10-13
+
+User requested another quick review and a gitignore update. Verified the same
+branch and HEAD `699328c`; the worktree was clean before this follow-up. No new
+application, backend, AI or workflow source changes were present. The workflow
+upload fixture still exists and is tracked. The earlier component tests and
+build results above were not rerun or presented as fresh results here.
+
+Added only `/v1.4/` and `/v1.4.zip` to the root `.gitignore`, completing the
+existing dataset-version exclusions for the agreed v1.4. Both paths were
+unignored before this update. Existing checkpoint/output/secret/cache exclusions
+already cover the current local artifacts; no broad image/archive/source
+exclusion was added and no tracked path was removed.
+
+Fresh `git check-ignore --no-index` verification passed for 17 artifact paths
+and nine paths that must remain visible: environment examples, the .NET tool
+manifest, CI image fixture, schema SQL, migration/test source, project rules
+and the technical report. Evidence is local at
+`.cache/agri57-main-review/ignore_policy_review.json`.
+
+Fresh gh inspection still reports PR #29 at `7c8685a`, `BLOCKED` and
+`REVIEW_REQUIRED`, with the old compose-smoke/ci-gate failures. Fresh Compose
+status still shows the old AI unhealthy and backend/frontend/PostgreSQL healthy.
+Release conditions therefore remain open. Changes are kept local and unstaged;
+no commit, push, PR mutation or container recreation is performed in this follow-up.
+
+## Requested commit and feature push — 2026-10-13
+
+User subsequently authorized committing all remaining changes and pushing the
+feature branch. Inspected exactly three changed files: `.gitignore`, this report
+and the AGRI-57 task log. Remote feature HEAD was already `699328c`, matching
+local HEAD before this commit. The delivery uses a normal fast-forward push to
+`AGRI-57-frontend-summary`; main and PR merge/review actions are outside this step.
+
+The ignore-policy cases, staged whitespace and commit subject are checked again
+before committing. Application source is unchanged, so component tests/build are
+not rerun for this ignore/documentation change. Push/ref equality and PR/CI status
+are checked after delivery; earlier local-only decisions remain historical above.
