@@ -8,9 +8,15 @@
 - [Skill và cấu hình shadcn](../../reports/AGRI-57/agri_57_skills_shadcn_setup.md)
 - [Nền tảng frontend và quality gate](../../reports/AGRI-57/agri_57_frontend_quality_setup.md)
 
-Nhánh: `AGRI-57-frontend-summary`. Cập nhật tài liệu: 2026-10-12.
+Nhánh: `AGRI-57-frontend-summary`. Cập nhật tài liệu: 2026-10-13.
 
 ## Hiện trạng tổng hợp
+
+Lượt68 ngày2026-10-13 ghi merge remote main, sửa fixture CI và kiểm chứng mới:
+160frontend/66backend/65Python tests, lint/format/build/types, coverage floors và
+Docker inference/proxy/storage/history/failure-mode PASS. PR#29 cần CI trên commit
+cập nhật và reviewer approval trước merge main; xem [report mới](../../reports/AGRI-57/agri_57_main_merge_review_2026_10_13.md).
+Các đoạn bên dưới mô tả những giai đoạn trước.
 
 Task log đã ghi các lượt triển khai đến mục63 và tổng hợp tài liệu ở mục64. Xem [report tổng hợp ngày2026-10-12](../../reports/AGRI-57/frontend_implementation_report.md#tổng-hợp-hiện-trạng-ngày-2026-10-12) cho toàn bộ nhóm công việc, mã nguồn/report liên quan, kiểm chứng gần nhất và việc còn lại.
 

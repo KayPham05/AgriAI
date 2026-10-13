@@ -14,9 +14,9 @@ docker version
 docker compose version
 ```
 
-`docker version` cần hiển thị cả Client và Server. Compose cần hỗ trợ tùy chọn
-`--wait`. Máy không cần cài Node.js hoặc .NET SDK để chạy stack này; Dockerfile
-sẽ build frontend và backend. Lần build đầu cần mạng để tải image và dependency.
+`docker version` cần hiển thị cả Client và Server. Compose cần hỗ trợ `--wait`.
+Máy không cần cài Node.js, .NET SDK
+hoặc Python; Dockerfile sẽ build frontend, backend và AI. Lần build đầu cần mạng.
 
 Mở terminal tại thư mục chứa `docker-compose.yml`:
 
@@ -53,14 +53,24 @@ $jwtRng.Dispose()
 | `POSTGRES_HOST_PORT` | Cổng DB trên máy, mặc định `5432`. |
 | `API_HOST_PORT` | Cổng API trên máy, mặc định `5080`. |
 | `FRONTEND_HOST_PORT` | Cổng web trên máy, mặc định `3000`. |
-| `AI_SERVICE_URL` | Mặc định `http://host.docker.internal:8000`, trỏ từ container đến AI chạy trên máy. |
+| `AI_HOST_PORT` | Cổng AI trên loopback của máy, mặc định `8000`; backend luôn gọi `ai-service:8000`. |
 | `AI_TIMEOUT_SECONDS` | Timeout gọi dự đoán, mặc định `15` giây. |
 | `CLOUDINARY_*` | Tùy chọn; bỏ trống để dùng lưu ảnh local trong volume `uploads`. |
 
 Không commit `.env`. Các lệnh kiểm tra bên dưới dùng cổng mặc định; nếu đổi cổng,
 thay URL tương ứng.
 
-## 3. Khởi động web, API và PostgreSQL
+## 3. Khởi động web, API, PostgreSQL và AI
+
+Chuẩn bị hai checkpoint dataset v1.4 trước khi chạy stack:
+
+- `ai/models/checkpoints/plant/best_convnext_tiny.pth`
+- `ai/models/checkpoints/disease/best_convnext_tiny.pth`
+
+AI chạy CPU, checkpoint được mount read-only. Nếu thiếu hoặc nạp checkpoint lỗi,
+AI không healthy và backend chưa khởi động. Giữ `ai/models/` ngoài Git và loại khỏi
+build context bằng `ai/.dockerignore`. Compose dùng context `ai/` và mount
+`ai/models/checkpoints/` read-only vào container.
 
 ```powershell
 docker compose config --quiet
@@ -77,17 +87,19 @@ health không bao gồm toàn bộ thời gian build lần đầu.
 
 Chỉ tiếp tục bước sau khi bước trước thành công. Migration chạy bằng lệnh riêng,
 không mở HTTP server. Backend startup chỉ kiểm tra migration còn thiếu; nếu thiếu
-thì thoát và hướng dẫn chạy `--migrate`. Frontend chờ backend healthy.
+thì thoát và hướng dẫn chạy `--migrate`. Backend chờ DB và AI healthy; frontend
+chờ backend healthy.
 API chạy ở `Production`; migration không seed tài khoản hoặc danh mục demo cũ.
-Database ứng dụng mới cần import danh mục theo mapping đã chốt trước khi dự đoán.
-Ở `Development`, lệnh migration riêng mới seed danh mục minh họa và tài khoản
-demo nếu có đủ cấu hình mật khẩu. Bộ seed này chưa phải mapping 59 lớp.
+Migration `DatasetV14Catalog` nhập danh mục 59 lớp v1.4 cho database mới; không
+cần import SQL riêng. Ở `Development`, lệnh migration chỉ tạo tài khoản demo
+khi có đủ cấu hình mật khẩu.
 Sao lưu database đang có trước migration mới; xem [quy trình chi tiết](database_migrations.md).
 
 | Dịch vụ | Địa chỉ mặc định |
 |---|---|
 | Web | <http://localhost:3000> |
 | API | <http://localhost:5080> |
+| AI | <http://localhost:8000/health>, chỉ mở trên loopback |
 | PostgreSQL | `127.0.0.1:5432`, database `agrivision_db`, user `agrivision_user` |
 
 Swagger UI có tại `http://localhost:5080/swagger`. Nếu `.env` đổi `FRONTEND_HOST_PORT` hoặc
@@ -104,6 +116,7 @@ docker compose ps
 Invoke-RestMethod http://localhost:5080/api/health
 (Invoke-WebRequest http://localhost:3000 -UseBasicParsing).StatusCode
 Invoke-RestMethod http://localhost:5080/api/health/deps
+Invoke-RestMethod http://localhost:8000/health
 ```
 
 - Các container cần có trạng thái `healthy`.
@@ -111,21 +124,21 @@ Invoke-RestMethod http://localhost:5080/api/health/deps
 - Trang web cần trả HTTP `200`.
 - `/api/health/deps` kiểm tra AI riêng; trả HTTP `503` nếu AI chưa chạy hoặc không truy cập được.
 
-**Compose gốc không khởi động FastAPI hoặc nạp checkpoint.** Web/API/DB vẫn
-khởi động khi chưa có AI vì health của API chỉ kiểm tra DB. Muốn dự đoán thật,
-cần chạy inference service riêng, cung cấp `/health` và `/predict`, rồi đặt
-`AI_SERVICE_URL` phù hợp. AI trên host cần lắng nghe ở địa chỉ container truy
-cập được, thường là `0.0.0.0:8000`. Repository hiện chưa có entrypoint FastAPI
-để hướng dẫn một lệnh khởi động inference hoàn chỉnh.
+Compose gốc khởi động FastAPI qua `ai/Dockerfile`, nạp hai checkpoint một lần khi
+startup và phục vụ `/health`, `/predict`. Backend gọi `http://ai-service:8000`
+trong mạng Docker, không phụ thuộc AI chạy trên host. Sau khi bổ sung hoặc thay
+checkpoint, chạy `docker compose restart ai-service` để nạp lại model.
 
-Health AI thành công chỉ xác nhận endpoint phản hồi; cần kiểm tra ảnh qua
+Health AI thành công xác nhận model đã nạp; cần kiểm tra ảnh qua
 model thật để xác nhận inference. Khi AI không khả dụng, endpoint dự đoán trả
 503; response AI sai hợp đồng trả 502.
 
-## 5. Chạy Docker smoke với AI mock
+## 5. Chạy Docker smoke với AI thật
 
-Smoke kiểm tra container khởi động, web/API/DB và đường gọi health AI. Mock
-chỉ cung cấp `/health`, không có `/predict` và không chạy ConvNeXt-Tiny.
+Compose CI bổ sung migration job cho database thử nghiệm; AI vẫn dùng image
+CPU và hai checkpoint thật như Compose chính. Chuẩn bị checkpoint ở bước 3
+trước khi chạy smoke local. GitHub Actions tải gói RAR từ nguồn Drive trong
+workflow, kiểm tra SHA-256 của archive và hai checkpoint rồi mới khởi động.
 
 Nếu stack ở bước 3 đang chạy, dừng stack đó trước để giải phóng cổng:
 
@@ -144,8 +157,36 @@ Invoke-RestMethod http://localhost:5080/api/health/deps
 (Invoke-WebRequest http://localhost:3000 -UseBasicParsing).StatusCode
 ```
 
-Cả hai endpoint health cần trả `Healthy`, trang web trả HTTP `200`. Kết quả
-này xác nhận smoke, không xác nhận độ chính xác hoặc inference của model.
+Cả hai endpoint health cần trả `Healthy`, trang web trả HTTP `200`. Kiểm tra
+inference thật bằng ảnh PNG có sẵn trong repository:
+
+```powershell
+curl.exe --fail --max-time 60 --form 'file=@frontend/public/images/rice-leaf-cutout.png;type=image/png' http://localhost:8000/predict
+```
+
+Workflow CI kiểm tra compound label thuộc mapping 59 lớp, confidence trong
+`[0,1]` và ba nhóm cây dự đoán. Ảnh này chỉ kiểm tra model chạy và hợp đồng HTTP;
+không phải dữ liệu test để đánh giá độ chính xác hoặc nghiệm thu E2E.
+
+Nguồn artifact CI là [gói model trên Google Drive](https://drive.usercontent.google.com/download?id=1G7xkhJE-ZXVIXHoBn11wbSZayQk1Cm6V&export=download&authuser=0&confirm=t).
+Gói RAR có prefix `ai/checkpoints/`; workflow giải nén riêng checkpoint và mapping
+vào `ai/models/checkpoints/`, không đưa báo cáo training vào image.
+
+Kiểm tra artifact local ngày 2026-10-09:
+
+| Artifact | SHA-256 |
+|---|---|
+| Gói RAR | `a55ee86d1f57a44c93a3a0b09f91cd6493490c4edf0c88c3d9b300d0bb171e72` |
+| Plant checkpoint | `d071c13d14ef573430b38674647e5ebfce0b5d3f4bd7099d7e815549073178ea` |
+| Disease checkpoint | `d21d8d6efd3c66e36ce166bfdb03bf0f017a0452ee07508df82e49ca42d429b9` |
+
+Archive tải được và hai checkpoint giải nén khớp bản local. Mapping gồm 10 cây,
+44 nhãn bệnh và 59 cặp cây–bệnh v1.4. Sau khi khởi động lại Docker Desktop,
+ba image đã build thành công. Stack thử riêng đã chạy inference thật qua CLI,
+FastAPI, backend và upload từ Chromium; ảnh và lịch sử được lưu/đọc/xóa trong
+database thử. Thiếu checkpoint hoặc dừng AI trả 503, không fallback mock.
+Đây là kiểm chứng vận hành local với một ảnh smoke, chưa đánh giá độ chính xác
+trên test set. Kết quả GitHub Actions phải được xác nhận bằng run mới.
 
 Xem log và dừng bằng đúng project cùng các file Compose đã dùng:
 
@@ -204,10 +245,11 @@ vẫn cần `.env` hợp lệ vì Compose đọc cấu hình toàn stack.
 | Không kết nối Docker Engine, lỗi named pipe | Mở Docker Desktop; kiểm tra `docker version` có Server. Nếu báo `Access is denied`, kiểm tra quyền truy cập Docker của tài khoản Windows. |
 | `Set POSTGRES_PASSWORD` / `Set JWT_SECRET` | Điền giá trị trong `.env` tại root, chạy lại `docker compose config --quiet`. |
 | Cổng đã được sử dụng | Dừng stack chiếm cổng hoặc đổi biến `*_HOST_PORT` trong `.env`, rồi chạy lại `up`. |
+| AI unhealthy, backend chưa khởi động | Kiểm tra hai checkpoint và `docker compose logs --tail 100 ai-service`; sau khi sửa artifact, chạy `docker compose restart ai-service` rồi chạy lại `up --wait`. |
 | Backend unhealthy hoặc thoát | Xem `docker compose logs --tail 100 backend postgres`; kiểm tra secret JWT, kết nối DB và migration. |
 | Đổi mật khẩu `.env` nhưng DB từ chối | PostgreSQL sẽ `unhealthy` vì health check thử đăng nhập TCP bằng mật khẩu từ `.env`. Volume cũ giữ mật khẩu cũ; `POSTGRES_PASSWORD` chỉ khởi tạo DB khi volume mới. Dùng cấu hình đúng của DB hiện có hoặc đổi mật khẩu trong DB có chủ đích; không xóa volume để sửa lỗi nếu cần giữ dữ liệu. |
-| `/api/health` tốt nhưng `/api/health/deps` trả 503 | Kiểm tra AI service, `/health` và `AI_SERVICE_URL`; `localhost` trong backend container trỏ về chính container đó. |
-| Smoke healthy nhưng dự đoán lỗi | AI mock không hỗ trợ dự đoán. Chạy stack gốc và kết nối inference service thật. |
+| `/api/health` tốt nhưng `/api/health/deps` trả 503 | Kiểm tra `docker compose logs --tail 100 ai-service`, checkpoint và `/health`; backend gọi `ai-service:8000`. |
+| Smoke healthy nhưng dự đoán lỗi | Xem log `ai-service`, mapping trong checkpoint và response `/predict`; health chỉ xác nhận model đã nạp. |
 | `up --wait` hết thời gian | Xem `docker compose ps` và log của dịch vụ chưa healthy trước khi tăng thời gian chờ. |
 
 Xem thêm [Docker và pipeline CI](docker_pipeline.md) để hiểu phạm vi kiểm tra
