@@ -53,7 +53,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error('Không thể kết nối máy chủ. Vui lòng kiểm tra kết nối và thử lại.');
   }
 
-  const body = await response.json().catch(() => null) as unknown;
+  const body = (await response.json().catch(() => null)) as unknown;
   if (!response.ok) {
     throw new Error(getErrorMessage(body, 'Yêu cầu chưa thể hoàn tất. Vui lòng thử lại.'));
   }
@@ -87,7 +87,8 @@ export function clearAuthSession(): void {
 }
 
 export async function restoreAuthSession(): Promise<AuthSession | null> {
-  const serialized = localStorage.getItem(AUTH_STORAGE_KEY) ?? sessionStorage.getItem(AUTH_STORAGE_KEY);
+  const serialized =
+    localStorage.getItem(AUTH_STORAGE_KEY) ?? sessionStorage.getItem(AUTH_STORAGE_KEY);
   if (!serialized) return null;
 
   try {

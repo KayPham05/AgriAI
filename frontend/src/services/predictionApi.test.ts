@@ -1,5 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPrediction, deletePrediction, getPredictionById, getPredictionHistory } from './predictionApi';
+import { afterEach, assert, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  createPrediction,
+  deletePrediction,
+  getPredictionById,
+  getPredictionHistory,
+  mapPredictionResult,
+} from './predictionApi';
 
 class MockXMLHttpRequest {
   static latest: MockXMLHttpRequest | null = null;
@@ -91,22 +97,64 @@ describe('createPrediction', () => {
     vi.unstubAllGlobals();
   });
 
+  it('preserves class identity when different crops share the same translated disease label', () => {
+    const diagnosis = mapPredictionResult({
+      ...successfulResponse,
+      predictedPlantDisease: {
+        ...successfulResponse.predictedPlantDisease,
+        plant: { ...successfulResponse.predictedPlantDisease.plant, isActive: true },
+        disease: {
+          ...successfulResponse.predictedPlantDisease.disease,
+          prevention: null,
+          isActive: true,
+          createdAt: '2026-09-27T10:00:00Z',
+        },
+      },
+      predictionDetails: [
+        { classIndex: 2, className: 'Tomato___healthy', confidence: 0.6, plantDisease: null },
+        { classIndex: 3, className: 'Potato___healthy', confidence: 0.3, plantDisease: null },
+      ].map((detail) => ({
+        ...detail,
+        plantDisease: {
+          ...successfulResponse.predictedPlantDisease,
+          id: detail.className,
+          classIndex: detail.classIndex,
+          className: detail.className,
+          plant: { ...successfulResponse.predictedPlantDisease.plant, isActive: true },
+          disease: {
+            ...successfulResponse.predictedPlantDisease.disease,
+            vietnameseName: 'Khỏe mạnh',
+            prevention: null,
+            isActive: true,
+            createdAt: '2026-09-27T10:00:00Z',
+          },
+        },
+      })),
+    });
+
+    expect(diagnosis.top_predictions).toMatchObject([
+      { className: 'Tomato___healthy', label: 'Khỏe mạnh', confidence: 0.6 },
+      { className: 'Potato___healthy', label: 'Khỏe mạnh', confidence: 0.3 },
+    ]);
+  });
+
   it('uploads the image with the backend field name and maps a successful response', async () => {
     const onUploadComplete = vi.fn();
     const image = new File(['leaf-image'], 'leaf.jpg', { type: 'image/jpeg' });
     const request = createPrediction(image, { token: 'jwt-token', onUploadComplete });
     const xhr = MockXMLHttpRequest.latest;
 
-    expect(xhr).not.toBeNull();
-    expect(xhr?.open).toHaveBeenCalledWith('POST', '/api/predictions');
-    expect(xhr?.requestHeaders.get('Authorization')).toBe('Bearer jwt-token');
-    expect(xhr?.sentBody).toBeInstanceOf(FormData);
-    const uploadedFile = (xhr?.sentBody as FormData).get('file') as File;
+    assert(xhr, 'The request should create an XMLHttpRequest');
+    expect(xhr.open).toHaveBeenCalledWith('POST', '/api/predictions');
+    expect(xhr.requestHeaders.get('Authorization')).toBe('Bearer jwt-token');
+    assert(xhr.sentBody instanceof FormData, 'The request body should be FormData');
+    const uploadedFile = xhr.sentBody.get('file');
+    assert(uploadedFile instanceof File, 'The file field should contain an image');
     expect(uploadedFile.name).toBe(image.name);
     expect(uploadedFile.type).toBe(image.type);
     expect(uploadedFile.size).toBe(image.size);
 
-    xhr?.respond(201, successfulResponse);
+    xhr.respond(201, successfulResponse);
     const result = await request;
 
     expect(onUploadComplete).toHaveBeenCalledOnce();
@@ -159,14 +207,20 @@ describe('createPrediction', () => {
       ...successfulResponse,
       predictedPlantDisease: {
         ...successfulResponse.predictedPlantDisease,
-        disease: { ...successfulResponse.predictedPlantDisease.disease, name: 'Healthy', vietnameseName: null },
+        disease: {
+          ...successfulResponse.predictedPlantDisease.disease,
+          name: 'Healthy',
+          vietnameseName: null,
+        },
       },
-      predictionDetails: [{
-        classIndex: 0,
-        className: 'Tomato___Healthy',
-        confidence: 0.94,
-        plantDisease: null,
-      }],
+      predictionDetails: [
+        {
+          classIndex: 0,
+          className: 'Tomato___Healthy',
+          confidence: 0.94,
+          plantDisease: null,
+        },
+      ],
     });
 
     const result = await request;
@@ -185,40 +239,66 @@ describe('prediction history requests', () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        items: [{
-          id: 'one', imagePath: '/leaf.jpg', plantName: 'Tomato', plantVietnameseName: 'Cà chua',
-          diseaseName: 'Early Blight', diseaseVietnameseName: 'Cháy lá sớm', confidence: 0.8,
-          createdAt: '2026-09-27T10:00:00Z',
-        }],
+        items: [
+          {
+            id: 'one',
+            imagePath: '/leaf.jpg',
+            plantName: 'Tomato',
+            plantVietnameseName: 'Cà chua',
+            diseaseName: 'Early Blight',
+            diseaseVietnameseName: 'Cháy lá sớm',
+            confidence: 0.8,
+            createdAt: '2026-09-27T10:00:00Z',
+          },
+        ],
       }),
     });
     vi.stubGlobal('fetch', fetchMock);
 
     const items = await getPredictionHistory('jwt-token');
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/predictions?pageNumber=1&pageSize=100',
-      expect.objectContaining({ headers: { Authorization: 'Bearer jwt-token' } }));
-    expect(items[0]).toMatchObject({ plant: 'Cà chua', prediction: 'Cháy lá sớm', confidence: 0.8 });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/predictions?pageNumber=1&pageSize=100',
+      expect.objectContaining({ headers: { Authorization: 'Bearer jwt-token' } }),
+    );
+    expect(items[0]).toMatchObject({
+      plant: 'Cà chua',
+      prediction: 'Cháy lá sớm',
+      confidence: 0.8,
+    });
   });
 
   it('surfaces backend errors when loading a prediction', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: false, status: 503, json: async () => ({ message: 'AI service is unavailable.' }),
-    }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        json: async () => ({ message: 'AI service is unavailable.' }),
+      }),
+    );
 
-    await expect(getPredictionById('one', 'jwt-token')).rejects.toThrow('AI service is unavailable.');
+    await expect(getPredictionById('one', 'jwt-token')).rejects.toThrow(
+      'AI service is unavailable.',
+    );
   });
 
   it('deletes a prediction with authorization and reports failure', async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true }).mockResolvedValueOnce({
-      ok: false, status: 403, json: async () => ({ detail: 'Forbidden' }),
-    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        json: async () => ({ detail: 'Forbidden' }),
+      });
     vi.stubGlobal('fetch', fetchMock);
 
     await deletePrediction('one', 'jwt-token');
     await expect(deletePrediction('two', 'jwt-token')).rejects.toThrow('Forbidden');
     expect(fetchMock).toHaveBeenCalledWith('/api/predictions/one', {
-      method: 'DELETE', headers: { Authorization: 'Bearer jwt-token' },
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer jwt-token' },
     });
   });
 });

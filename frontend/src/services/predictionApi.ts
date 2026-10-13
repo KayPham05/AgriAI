@@ -1,5 +1,5 @@
-import { DiagnosisResult, TopPrediction } from '../types';
-import { DiseaseDto, PlantDto } from './catalogApi';
+import type { DiagnosisResult, TopPrediction } from '../types';
+import type { DiseaseDto, PlantDto } from './catalogApi';
 
 interface PlantDiseaseDto {
   id: string;
@@ -89,15 +89,31 @@ function formatTimestamp(value: string): string {
   }).format(new Date(value));
 }
 
-function mapTopPredictions(details: PredictionDetailDto[], fallbackLabel: string, fallbackConfidence: number): TopPrediction[] {
+function mapTopPredictions(
+  details: PredictionDetailDto[],
+  fallbackLabel: string,
+  fallbackConfidence: number,
+): TopPrediction[] {
   if (details.length === 0) {
-    return [{ label: fallbackLabel, confidence: fallbackConfidence, isHealthy: isHealthyLabel(fallbackLabel) }];
+    return [
+      {
+        label: fallbackLabel,
+        confidence: fallbackConfidence,
+        isHealthy: isHealthyLabel(fallbackLabel),
+      },
+    ];
   }
   return details.map((detail) => {
-    const label = detail.plantDisease?.disease.vietnameseName
-      ?? detail.plantDisease?.disease.name
-      ?? detail.className;
-    return { label, confidence: detail.confidence, isHealthy: isHealthyLabel(label) };
+    const label =
+      detail.plantDisease?.disease.vietnameseName ??
+      detail.plantDisease?.disease.name ??
+      detail.className;
+    return {
+      className: detail.className,
+      label,
+      confidence: detail.confidence,
+      isHealthy: isHealthyLabel(label),
+    };
   });
 }
 
@@ -135,7 +151,9 @@ function mapHistoryItem(item: PredictionHistoryDto): DiagnosisResult {
     prediction: diseaseLabel,
     confidence: item.confidence,
     confidenceCategory: getConfidenceCategory(item.confidence),
-    top_predictions: [{ label: diseaseLabel, confidence: item.confidence, isHealthy: isHealthyLabel(diseaseLabel) }],
+    top_predictions: [
+      { label: diseaseLabel, confidence: item.confidence, isHealthy: isHealthyLabel(diseaseLabel) },
+    ],
     originalImageUrl: item.imagePath,
     gradcam_url: '',
     severity: null,
@@ -146,34 +164,45 @@ function mapHistoryItem(item: PredictionHistoryDto): DiagnosisResult {
 
 function getBackendError(body: unknown, status: number): string {
   if (body && typeof body === 'object') {
-    const message = (body as { message?: unknown; detail?: unknown }).message
-      ?? (body as { detail?: unknown }).detail;
+    const message =
+      (body as { message?: unknown; detail?: unknown }).message ??
+      (body as { detail?: unknown }).detail;
     if (typeof message === 'string') return message;
   }
   return `Backend trả về lỗi ${status}.`;
 }
 
-async function authenticatedRequest<T>(path: string, token: string, init?: RequestInit): Promise<T> {
+async function authenticatedRequest<T>(
+  path: string,
+  token: string,
+  init?: RequestInit,
+): Promise<T> {
   const response = await fetch(`${predictionUrl}${path}`, {
     ...init,
     headers: { Authorization: `Bearer ${token}`, ...init?.headers },
   });
-  const body = await response.json().catch(() => null) as unknown;
+  const body = (await response.json().catch(() => null)) as unknown;
   if (!response.ok) throw new Error(getBackendError(body, response.status));
   return body as T;
 }
 
-export function createPrediction(image: File, options: PredictionOptions = {}): Promise<PredictionResponse> {
+export function createPrediction(
+  image: File,
+  options: PredictionOptions = {},
+): Promise<PredictionResponse> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     let settled = false;
 
-    const finish = (error?: Error, result?: PredictionResponse) => {
+    const finish = (
+      ...outcome: [error: Error] | [error: undefined, result: PredictionResponse]
+    ) => {
+      const [error, result] = outcome;
       if (settled) return;
       settled = true;
       options.signal?.removeEventListener('abort', abortRequest);
       if (error) reject(error);
-      else resolve(result!);
+      else resolve(result);
     };
     const abortRequest = () => xhr.abort();
 
@@ -182,10 +211,12 @@ export function createPrediction(image: File, options: PredictionOptions = {}): 
     xhr.timeout = 60000;
     if (options.token) xhr.setRequestHeader('Authorization', `Bearer ${options.token}`);
     xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) options.onUploadProgress?.(Math.round(event.loaded / event.total * 100));
+      if (event.lengthComputable)
+        options.onUploadProgress?.(Math.round((event.loaded / event.total) * 100));
     };
     xhr.upload.onload = () => options.onUploadComplete?.();
-    xhr.onerror = () => finish(new Error('Không thể kết nối backend. Hãy kiểm tra máy chủ và thử lại.'));
+    xhr.onerror = () =>
+      finish(new Error('Không thể kết nối backend. Hãy kiểm tra máy chủ và thử lại.'));
     xhr.ontimeout = () => finish(new Error('Yêu cầu quá thời gian chờ. Vui lòng thử lại.'));
     xhr.onabort = () => finish(new Error('Yêu cầu đã được hủy.'));
     xhr.onload = () => {
@@ -195,7 +226,13 @@ export function createPrediction(image: File, options: PredictionOptions = {}): 
         return;
       }
       const dto = body as PredictionResultDto;
-      if (!dto?.id || !dto.imagePath || !dto.predictedPlantDisease?.plant || !dto.predictedPlantDisease?.disease || !Number.isFinite(dto.confidence)) {
+      if (
+        !dto?.id ||
+        !dto.imagePath ||
+        !dto.predictedPlantDisease?.plant ||
+        !dto.predictedPlantDisease?.disease ||
+        !Number.isFinite(dto.confidence)
+      ) {
         finish(new Error('Phản hồi từ backend không đúng contract PredictionResultDto.'));
         return;
       }
@@ -221,7 +258,10 @@ export function createPrediction(image: File, options: PredictionOptions = {}): 
 }
 
 export async function getPredictionHistory(token: string): Promise<DiagnosisResult[]> {
-  const result = await authenticatedRequest<PagedResult<PredictionHistoryDto>>('?pageNumber=1&pageSize=100', token);
+  const result = await authenticatedRequest<PagedResult<PredictionHistoryDto>>(
+    '?pageNumber=1&pageSize=100',
+    token,
+  );
   return result.items.map(mapHistoryItem);
 }
 
@@ -236,7 +276,7 @@ export async function deletePrediction(id: string, token: string): Promise<void>
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!response.ok) {
-    const body = await response.json().catch(() => null) as unknown;
+    const body = (await response.json().catch(() => null)) as unknown;
     throw new Error(getBackendError(body, response.status));
   }
 }

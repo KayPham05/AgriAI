@@ -1,0 +1,5 @@
+# A single frontend package; backend and AI remain outside this workspace.
+useNodeVersion: 24.15.0
+nodeVersion: 24.15.0
+engineStrict: true
+savePrefix: ''

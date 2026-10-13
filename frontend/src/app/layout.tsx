@@ -1,12 +1,20 @@
 import type { Metadata } from 'next';
+import { Manrope } from 'next/font/google';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import '../index.css';
 
+const manrope = Manrope({
+  subsets: ['latin', 'vietnamese'],
+  display: 'swap',
+  variable: '--font-manrope',
+});
+
 export const metadata: Metadata = {
-  title: 'LeafAI - Chẩn đoán bệnh cây trồng',
-  description: 'LeafAI hỗ trợ người Việt quan sát lá và tìm hiểu bệnh cây trồng bằng trí tuệ nhân tạo.',
+  title: 'AgriAI - Phân loại bệnh lá cây',
+  description: 'AgriAI hỗ trợ người Việt phân loại bệnh lá cây từ hình ảnh bằng trí tuệ nhân tạo.',
   openGraph: {
-    title: 'LeafAI - Chẩn đoán bệnh cây trồng',
-    description: 'Cùng người Việt chăm sóc cây trồng với trải nghiệm chẩn đoán trực quan và thân thiện.',
+    title: 'AgriAI - Phân loại bệnh lá cây',
+    description: 'Phân loại bệnh lá cây với kết quả rõ ràng và độ tin cậy minh bạch.',
     type: 'website',
   },
   twitter: {
@@ -16,13 +24,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="vi">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-      </head>
-      <body>{children}</body>
+    <html lang="vi" className={manrope.variable}>
+      <body>
+        <TooltipProvider>{children}</TooltipProvider>
+      </body>
     </html>
   );
 }

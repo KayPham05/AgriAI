@@ -1,30 +1,44 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 import { LoginSuccessScreen } from './LoginSuccessScreen';
 
 describe('LoginSuccessScreen', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
+  it('shows only the brand and account greeting while connecting', () => {
+    const onAnimationComplete = vi.fn();
+    render(
+      <LoginSuccessScreen
+        userName="Nguyễn Văn An"
+        onAnimationComplete={onAnimationComplete}
+        onRetry={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('status', { name: 'Đang kết nối AgriAI' })).toHaveAttribute(
+      'aria-busy',
+      'true',
+    );
+    expect(screen.getByRole('heading', { name: 'Chào Nguyễn Văn An.' })).toBeVisible();
+    expect(screen.queryByRole('button')).toBeNull();
+    expect(onAnimationComplete).toHaveBeenCalledOnce();
   });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('splits the logo before entering the main application', () => {
-    const onEnterApp = vi.fn();
-    render(<LoginSuccessScreen userName="Nguyễn Văn An" onEnterApp={onEnterApp} />);
-
-    act(() => vi.advanceTimersByTime(800));
-    const logoButton = screen.getByRole('button', { name: /vào ứng dụng LeafAI/i });
-    fireEvent.click(logoButton);
-
-    expect(logoButton).toHaveClass('login-success-logo-btn--spinning');
-    act(() => vi.advanceTimersByTime(650));
-    expect(logoButton).toHaveClass('login-success-logo-btn--splitting');
-    expect(onEnterApp).not.toHaveBeenCalled();
-
-    act(() => vi.advanceTimersByTime(900));
-    expect(onEnterApp).toHaveBeenCalledOnce();
+  it('offers recovery actions only when startup fails', async () => {
+    const onRetry = vi.fn();
+    const onCancel = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <LoginSuccessScreen
+        userName="Nguyễn Văn An"
+        onAnimationComplete={vi.fn()}
+        onRetry={onRetry}
+        onCancel={onCancel}
+        error="Không thể kết nối."
+      />,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('Không thể kết nối.');
+    await user.click(screen.getByRole('button', { name: 'Thử lại' }));
+    await user.click(screen.getByRole('button', { name: 'Về trang giới thiệu' }));
+    expect(onRetry).toHaveBeenCalledOnce();
+    expect(onCancel).toHaveBeenCalledOnce();
   });
 });

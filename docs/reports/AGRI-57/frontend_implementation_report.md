@@ -1,5 +1,50 @@
 # AGRI-57 — Báo cáo triển khai frontend LeafAI
 
+## Tổng hợp hiện trạng ngày 2026-10-12
+
+**Follow-up sau chuẩn bị commit:** user đổi quyết định, yêu cầu sửa blockers nhưng không ảnh hưởng main. Strict lint/format/typecheck/build và160/160tests đã PASS trong lượt mới; coverage654/1195=54.73% vượt floor25%, không chứng nhận target80% per component. Đã đồng bộ smoke brand AgriAI và kiểm tra HTML build, print/image delivery/map. Chưa chạy full Compose/GitHub CI/CD, chưa commit/push sửa mới. Xem [bằng chứng follow-up](agri_57_commit_readiness.md#follow-up-local-ci-remediation-2026-10-12); đoạn chuẩn bị commit bên dưới được giữ như lịch sử.
+
+**Cập nhật chuẩn bị commit:** người dùng chọn commit không sửa các lỗi CI. Lượt mới test:coverage160/160 và branch coverage54.64% PASS, build/typecheck/commitlint/local secret scan PASS; lint49warnings và format62errors còn FAIL. Xem [preflight](agri_57_commit_readiness.md); không coi thông điệp commit chuẩn là CI/CD đã pass.
+
+Nhánh đã đối chiếu: `AGRI-57-frontend-summary`. Phần này tổng hợp công việc đã ghi nhận trong task log mục 6–63 và các report liên kết; không phải một lần kiểm thử lại toàn hệ thống. Website hiện dùng tên **AgriAI**. Các mục đánh số 1–8 phía dưới là baseline lịch sử, không phải kiến trúc hoặc kết luận nghiệm thu hiện tại.
+
+### Các nhóm công việc đã thực hiện
+
+| Nhóm | Kết quả hiện tại và đường dẫn liên quan | Bằng chứng chi tiết |
+| --- | --- | --- |
+| Prediction UI và API | Upload/kéo thả/camera, preview/thay/xóa ảnh, validation, progress/loading/error/retry, hiển thị cây/bệnh/confidence và mapping Backend DTO. Mã nguồn: `frontend/src/views/DiagnosePage.tsx`, `frontend/src/services/predictionApi.ts`. Demo baseline không thay thế nghiệm thu checkpoint thật. | Các mục 1–8 bên dưới; [README tổng hợp](README.md). |
+| Hệ thống thiết kế và auth | DESIGN.md, tokens xanh–kem, shadcn/Radix, navbar sticky, tinh chỉnh các màn hình; đăng nhập/đăng ký chuyển panel, ô nhập48px/focus/autofill; loading logo/tên/lời chào chờ startup requests thật, có retry khi lỗi. | [Rà soát UI](frontend_ui_refinement_audit.md), [auth fields](agri_57_auth_fields.md), [quality setup](agri_57_frontend_quality_setup.md). |
+| Routing | App Router cho intro/home/diagnose/plants/detail/diseases/detail/history/about/profile; page sở hữu nội dung, route groups, features, provider/context và AppShell dùng chung; Next Link, deep-link/Back/Forward, metadata/loading/error/not-found. Mã nguồn: `frontend/src/app/(website)/`, `frontend/src/features/`, `frontend/src/providers/`. | [Routing ban đầu](agri_57_app_routing.md), [kiến trúc mở rộng](agri_57_routing_architecture.md). |
+| Đồng bộ và Docker | Đã lấy upstream main và khôi phục WIP theo bản ghi riêng; sửa lỗi pnpm MUSL bằng Node24.15.0 Debian slim/glibc cho Docker frontend. Không đồng nghĩa các thay đổi UI mới đã được rebuild vào stack đang chạy. | [Main sync](agri_57_main_sync.md), [Docker runtime](agri_57_docker_node_runtime.md). |
+| Ảnh thật và tổ chức asset | Thay crop/banner AI bằng ảnh user cung cấp, giữ logo và canopy map theo yêu cầu.14 ảnh banner trong `frontend/src/assets/banner/`, artwork trang trí trong `assets/banner-leaves/` ngang hàng; dùng registry chung cho home/catalog/detail/map info/film. Sửa matching tên cây backend, bổ sung nho đúng các bề mặt. Không tuyên bố artwork trang trí là ảnh thật hoặc bằng chứng bệnh. | [Ảnh thật toàn UI](agri_57_real_catalog_photos.md), [asset folders](agri_57_banner_asset_folder.md), [aliases](agri_57_catalog_photo_aliases.md), [nho](agri_57_grape_surfaces.md). |
+| Banner và phim | Khung banner đồng nhất, cân hai mép, chỉnh focal/crop và crossfade; khôi phục một cụm lá/cành neo góc đúng cây, bông lúa và cụm ngô nhỏ hơn; nho có artwork trang trí riêng. Giữ pause theo visibility/offscreen, cleanup, reduced motion. Film có kéo/cuộn/bàn phím và loop chậm; nút pause thủ công bị bỏ theo user override. | [Banner consistency](agri_57_banner_consistency.md), [banner balance](agri_57_banner_balance.md), [anchored foliage](agri_57_banner_anchored_foliage.md), [nho](agri_57_grape_surfaces.md). |
+| Ảnh lá và danh mục |71 ảnh/14 cây:57 ảnh bệnh/hại và14 healthy, gồm ảnh đạo ôn lúa mới. Healthy chỉ ở điều kiện cây; ảnh được ánh xạ theo tên file, chưa xác minh chuyên môn/quyền sử dụng. Bốn cây tham khảo không thay đổi model labels. Cây/bệnh phân trang9 mục, lọc/tìm trước phân trang, reset/clamp và focus summary. | [Leaf illustrations và đạo ôn](agri_57_leaf_illustrations.md), [pagination](agri_57_catalog_pagination.md). |
+| Map và thông tin | Một map gốc ở cột phải; chọn ghim làm chữ/phim trái lùi để nhường bảng thông tin, đóng đảo chiều để trở lại. Ghim chọn phóng artwork, giữ target44px; mainland có bóng nổi, nhãn đảo nền trong suốt. Geometry Natural Earth1:10m dùng Web Mercator; lớp presentation riêng kéo Hoàng Sa/Trường Sa gần bờ theo yêu cầu, nên khoảng cách hiển thị không còn chính xác địa lý. Hai cột desktop bằng nhau; canvas hero512px từ640px màn hình,432px trên điện thoại/detail; chặn scrollbar dọc lúc entrance, giữ pan ngang khi hẹp. | [Map relief](agri_57_map_relief.md), [geographic source](agri_57_geographic_map.md), [map balance và scrollbar](agri_57_map_balance.md). |
+| Rules và công cụ | Project rules/directory rules, command guides, DESIGN và skill boundaries đã được sử dụng trong các lượt triển khai; Impeccable chỉ review, không tự commit/push hoặc đổi Jira Done. | [Skills/shadcn](agri_57_skills_shadcn_setup.md), `.agents/skills/README.md`, task log. |
+
+### Kiểm chứng gần nhất đã ghi nhận
+
+Lượt sửa kích thước/scroll map ngày2026-10-12, trước lượt tổng hợp tài liệu này:
+
+- `corepack pnpm exec vitest run --maxWorkers=1 --testTimeout=20000`: **160/160 tests,25 files PASS**,54.09s.
+- `corepack pnpm run build`: **PASS**,76s compile,10 static pages và hai dynamic routes. Khôi phục Next dev-type imports sau build.
+- `corepack pnpm run typecheck`: **PASS** sau khi khôi phục imports.
+- Scoped Biome `CropMapCanvas.tsx`, whitespace và scoped Impeccable detector: **PASS/exit0**. Không suy diễn toàn-repo lint đã sạch.
+- Chromium **4/4 PASS**:1900px normal motion và375/768/1280px reduced motion. Bắt mẫu ngay trong entrance, không còn frame tạo scrollbar dọc; kiểm tra canvas lớn hơn, equal columns,44px targets/non-overlap, không document overflow, mở/đóng/Escape/focus và pan bàn phím375px. Chi tiết ở [map follow-up](agri_57_map_balance.md#follow-up-map-entrance-scrollbar-and-larger-canvas-2026-10-12).
+
+### Giới hạn và việc còn lại
+
+- Chưa nghiệm thu inference checkpoint thật xuyên CLI–HTTP–API–web, Cloudinary private access và E2E toàn hệ thống; test fixtures/health checks không thay thế những việc này.
+- Còn xác minh nguồn/quyền dùng ảnh và nhãn bệnh với chuyên môn; các mục mới chưa đủ nội dung bệnh học. Đồ họa lá trang trí có nguồn/generated history ghi riêng, không phải ảnh đối chiếu bệnh.
+- Map hiện là minh họa compact, không bản đồ đo đạc/ranh giới hay đầy đủ mọi đảo. Geometry gốc và presentation offsets phải được phân biệt.
+- Pagination là client-side/local state; SSR auth/cookie/BFF, HTTP404 cho ID catalog thiếu và URL persistence của trang danh mục chưa triển khai trong phạm vi đã ghi.
+- Chưa có chứng nhận CI/coverage mới, toàn-repo lint, Lighthouse/FPS, physical touch, screen reader hoặc Safari/Firefox. Việc bỏ pause thủ công ở banner/film vẫn là đánh đổi accessibility theo yêu cầu.
+- Lượt hiện tại chỉ cập nhật tài liệu, **không chạy lại application tests/build/browser**, không Docker rebuild/deploy, DB/volume operation, stage/commit/push/PR hay đổi trạng thái Jira. Các kết quả trên có thời điểm và nguồn riêng; DoD production/toàn hệ thống vẫn chưa được xác nhận.
+
+---
+
+> Bản ghi baseline ngày 2026-09-28, giữ lại để theo dõi lịch sử. Không dùng mô tả hiệu ứng logo/scan hoặc kết quả responsive bên dưới để nghiệm thu bản UI hiện tại. Các thay đổi thay thế nằm trong [báo cáo UI ngày 2026-10-07](frontend_ui_refinement_audit.md); cài skill và cấu hình shadcn nằm trong [báo cáo công cụ](agri_57_skills_shadcn_setup.md). Trạng thái tổng hợp hiện tại ở [README AGRI-57](README.md).
+
 ## 1. Phạm vi
 
 AGRI-57 hoàn thiện frontend demo cho hệ thống chẩn đoán bệnh lá cây và mapping với Backend ASP.NET Core. Phạm vi bao gồm nền tảng Next.js, UI/UX, xác thực tài khoản, upload ảnh, prediction flow, lịch sử, danh mục cây/bệnh, responsive và kiểm thử tự động.

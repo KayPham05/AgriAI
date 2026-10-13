@@ -1,7 +1,7 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPrediction, PredictionResponse } from '../services/predictionApi';
+import { createPrediction, type PredictionResponse } from '../services/predictionApi';
 import { MAX_IMAGE_BYTES } from '../utils/imageFileValidation';
 import { DiagnosePage } from './DiagnosePage';
 
@@ -99,6 +99,31 @@ describe('DiagnosePage prediction flow', () => {
     vi.mocked(createPrediction).mockReset();
   });
 
+  it('provides a named drop zone with a keyboard alternative and accepts a dropped image', async () => {
+    const { fileInput } = renderDiagnosePage();
+    const user = userEvent.setup();
+    const zone = screen.getByRole('group', { name: 'Chọn hoặc thả ảnh lá' });
+    expect(
+      screen
+        .getByRole('list', { name: 'Tiến trình phân tích' })
+        .querySelector('[aria-current="step"]'),
+    ).toHaveTextContent('Chọn ảnh');
+    const openPicker = vi.spyOn(fileInput, 'click');
+
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Chọn ảnh' })).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(openPicker).toHaveBeenCalledOnce();
+
+    fireEvent.drop(zone, {
+      dataTransfer: { files: [new File(['leaf'], 'dropped.jpg', { type: 'image/jpeg' })] },
+    });
+    expect(
+      await screen.findByRole('img', { name: 'Ảnh xem trước: dropped.jpg' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Phân tích$/i })).toBeEnabled();
+  });
+
   it('shows an image preview, supports replacing it, and returns to idle after removal', async () => {
     // Arrange
     const { fileInput } = renderDiagnosePage();
@@ -128,9 +153,17 @@ describe('DiagnosePage prediction flow', () => {
   });
 
   it.each([
-    ['unsupported type', new File(['not-an-image'], 'leaf.pdf', { type: 'application/pdf' }), /JPG hoặc PNG/i],
+    [
+      'unsupported type',
+      new File(['not-an-image'], 'leaf.pdf', { type: 'application/pdf' }),
+      /JPG hoặc PNG/i,
+    ],
     ['empty image', new File([], 'empty.jpg', { type: 'image/jpeg' }), /Tệp ảnh trống/i],
-    ['oversized image', { name: 'huge.png', type: 'image/png', size: MAX_IMAGE_BYTES + 1 } as File, /15 MB/i],
+    [
+      'oversized image',
+      { name: 'huge.png', type: 'image/png', size: MAX_IMAGE_BYTES + 1 } as File,
+      /15 MB/i,
+    ],
   ])('shows a safe validation error for an %s', async (_caseName, file, expectedMessage) => {
     // Arrange
     const { fileInput } = renderDiagnosePage();
@@ -162,26 +195,50 @@ describe('DiagnosePage prediction flow', () => {
     await userEvent.click(screen.getByRole('button', { name: /^Phân tích$/i }));
 
     // Assert: uploading
-    expect(await screen.findByRole('status')).toHaveTextContent(/Đang tải ảnh lên Backend/i);
-    expect(createPrediction).toHaveBeenCalledWith(imageFile, expect.objectContaining({ token: 'jwt-token' }));
+    expect(await screen.findByRole('status')).toHaveTextContent(/Đang tải ảnh lên/i);
+    expect(
+      screen
+        .getByRole('list', { name: 'Tiến trình phân tích' })
+        .querySelector('[aria-current="step"]'),
+    ).toHaveTextContent('Phân tích AI');
+    expect(screen.getByRole('status')).toHaveTextContent('Ảnh đang được tải lên');
+    expect(createPrediction).toHaveBeenCalledWith(
+      imageFile,
+      expect.objectContaining({ token: 'jwt-token' }),
+    );
 
     // Act
     act(() => requestOptions?.onUploadProgress?.(64));
-    expect(document.querySelector('[style="width: 64%;"]')).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'Tiến độ tải ảnh' })).toHaveAttribute(
+      'aria-valuenow',
+      '64',
+    );
     act(() => requestOptions?.onUploadComplete?.());
 
     // Assert: analyzing
-    expect(screen.getByRole('status')).toHaveTextContent(/Backend đang xử lý phản hồi/i);
+    expect(screen.getByRole('status')).toHaveTextContent(/Đang phân loại ảnh lá/i);
+
+    expect(screen.getByRole('status')).toHaveTextContent('Đã tải ảnh lên');
+    expect(screen.getByRole('status')).toHaveTextContent('Đang đối chiếu lớp dự đoán');
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
 
     // Act
     await act(async () => resolvePrediction(successfulPrediction));
 
     // Assert: success
-    expect(await screen.findByText(/Đã nhận kết quả từ backend/i)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Bệnh cháy lá sớm' })).toBeInTheDocument();
     expect(screen.getByText('Cà chua')).toBeInTheDocument();
     expect(screen.getByText('Bệnh cháy lá sớm')).toBeInTheDocument();
     expect(screen.getByText('94.0%')).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: /Ảnh lá đã phân tích/i })).toHaveAttribute('src', 'blob:leaf-preview');
+    expect(
+      screen
+        .getByRole('list', { name: 'Tiến trình phân tích' })
+        .querySelector('[aria-current="step"]'),
+    ).toHaveTextContent('Kết quả');
+    expect(screen.getByRole('img', { name: /Ảnh xem trước: leaf.jpg/i })).toHaveAttribute(
+      'src',
+      'blob:leaf-preview',
+    );
     expect(onPredictionCreated).toHaveBeenCalledWith(successfulPrediction.diagnosis);
   });
 
@@ -205,7 +262,7 @@ describe('DiagnosePage prediction flow', () => {
     await userEvent.click(screen.getByRole('button', { name: /Thử lại/i }));
 
     // Assert
-    expect(await screen.findByText(/Đã nhận kết quả từ backend/i)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Bệnh cháy lá sớm' })).toBeInTheDocument();
     expect(createPrediction).toHaveBeenCalledTimes(2);
   });
 
