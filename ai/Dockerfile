@@ -6,15 +6,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     AGRIVISION_DATASET_VERSION=v1.4 \
-    AGRIVISION_PLANT_CHECKPOINT=/app/ai/checkpoints/plant/best_convnext_tiny.pth \
-    AGRIVISION_DISEASE_CHECKPOINT=/app/ai/checkpoints/disease/best_convnext_tiny.pth
+    AGRIVISION_PLANT_CHECKPOINT=/app/ai/models/checkpoints/plant/best_convnext_tiny.pth \
+    AGRIVISION_DISEASE_CHECKPOINT=/app/ai/models/checkpoints/disease/best_convnext_tiny.pth
 
-COPY ai/requirements.txt /app/ai/requirements.txt
+COPY requirements.txt /app/ai/requirements.txt
 RUN python -m pip install --upgrade pip \
-    && python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu \
+    && python -m pip install torch==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cpu \
     && python -m pip install -r /app/ai/requirements.txt
 
-COPY ai /app/ai
+COPY . /app/ai
 
 EXPOSE 8000
 

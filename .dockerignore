@@ -1,7 +1,11 @@
 .git
 .github
+.env*
+!.env.example
+**/appsettings.*.json
 .venv
 ai/.venv
+ai/models
 ai/checkpoints
 ai/outputs
 ai/kaggle
