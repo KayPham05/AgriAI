@@ -2,14 +2,13 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import App from './test/AppHarness';
-import { login, restoreAuthSession, clearAuthSession } from './services/authApi';
+import { login, restoreAuthSession } from './services/authApi';
 import { getPlants, getDiseases } from './services/catalogApi';
 import { getPredictionHistory } from './services/predictionApi';
 
 vi.mock('./services/authApi', () => ({
   restoreAuthSession: vi.fn(),
   clearAuthSession: vi.fn(),
-  logoutSession: vi.fn().mockResolvedValue(undefined),
   login: vi.fn(),
   saveAuthSession: vi.fn(),
 }));
@@ -34,53 +33,6 @@ const session = {
 };
 
 describe('authenticated app startup', () => {
-  it('loads persisted warnings and marks them read through the backend', async () => {
-    vi.mocked(restoreAuthSession).mockResolvedValue(session);
-    vi.mocked(getPlants).mockResolvedValue([]);
-    vi.mocked(getDiseases).mockResolvedValue([]);
-    vi.mocked(getPredictionHistory).mockResolvedValue([]);
-    let readAt: string | null = null;
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (_url: string, init?: RequestInit) => {
-        if (init?.method === 'POST') {
-          readAt = '2026-10-14T00:00:00Z';
-          return { ok: true, status: 204 };
-        }
-        return {
-          ok: true,
-          json: async () => [
-            {
-              id: 'notice',
-              title: 'Cảnh báo về tài khoản',
-              message: 'Please follow the rules',
-              createdAt: '2026-10-14T00:00:00Z',
-              readAt,
-              imageId: null,
-            },
-          ],
-        };
-      }),
-    );
-    render(<App />);
-    await userEvent.click(await screen.findByRole('button', { name: 'Thông báo, 1 chưa đọc' }));
-    expect(await screen.findByText('Please follow the rules')).toBeVisible();
-    await userEvent.click(screen.getByRole('button', { name: 'Đánh dấu đã đọc' }));
-    await waitFor(() => expect(screen.queryByText('Chưa đọc')).toBeNull());
-  });
-
-  it('returns to login when a background account check finds a revoked session', async () => {
-    vi.mocked(restoreAuthSession).mockResolvedValue(session);
-    vi.mocked(getPlants).mockResolvedValue([]);
-    vi.mocked(getDiseases).mockResolvedValue([]);
-    vi.mocked(getPredictionHistory).mockResolvedValue([]);
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 401 }));
-    render(<App />);
-    await waitFor(() => expect(clearAuthSession).toHaveBeenCalled());
-    expect(await screen.findByRole('button', { name: 'Đăng nhập' })).toBeVisible();
-    expect(router.replace).toHaveBeenCalledWith('/');
-  });
-
   it('opens admin after restoring an Admin session without waiting for the user catalog', async () => {
     vi.mocked(restoreAuthSession).mockResolvedValue({
       ...session,

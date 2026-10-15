@@ -1,22 +1,23 @@
-﻿# AGRI-80 - Icon rail default and expanded text (2026-10-15)
+# AGRI-80 - Thanh biểu tượng thu gọn và mở rộng hiện chữ (2026-10-15)
 
-Branch: AGRI-80-create-crm-admin-page. User clarified the intended interaction: compact means visible icons, expanded means icons with text. This supersedes the prior hide-entire-rail behavior; previous report remains historical.
+Nhánh: `AGRI-80-create-crm-admin-page`. Người dùng xác nhận thu gọn vẫn phải có biểu tượng dùng được, mở rộng hiện biểu tượng kèm chữ; thay hành vi ẩn cả thanh trước đó.
 
-## Changes
+## Thay đổi giao diện
 
-- Desktop defaults to72px icon-only rail. Expanding uses224px with full Vietnamese labels alongside icons, including brand/logout. Both states remain navigable; removed prior rail aria-hidden/inert. Buttons retain full aria-label names, collapsed title hints and44px targets.
-- Retained detached surface,20px gap, sticky rail, mobile Sheet, active view/filter, calendars/charts and backend logout. Header control now says Mở rộng / Thu gọn thanh điều hướng.
-- Scoped GSAP animates content translation and a separate background surface scale, with label translation/opacity on expansion. Labels/icons are not scaled. Width reflows once rather than tweening width. Finite320ms behavior, cleanup/revert, no inline motion left at rest and static reduced-motion.
-- Updated DESIGN.md to make this correction authoritative, keeping previous behavior as history. Tokens: expanded14rem, compact4.5rem, control height2.75rem, label offset-8px; gap/duration unchanged.
-- Paths: frontend/src/features/admin/AdminCrmPage.tsx, AdminCrmPage.test.tsx, useAdminRail.ts; frontend/src/index.css; DESIGN.md; report index/task log.
+- Máy tính mặc định thanh rộng 72px chỉ có biểu tượng; mở rộng 224px với nhãn tiếng Việt đầy đủ cạnh biểu tượng, gồm thương hiệu/đăng xuất. Cả hai trạng thái đều dùng được.
+- Bỏ aria-hidden/inert của toàn thanh; khi thu gọn chỉ ẩn nhãn hiển thị, giữ aria-label đầy đủ, gợi ý title và vùng bấm 44px.
+- Giữ bề mặt tách riêng, khoảng cách 20px, vị trí bám khi cuộn, Sheet di động, màn hình/bộ lọc, lịch và biểu đồ.
+- GSAP có phạm vi chuyển động nội dung và co giãn bề mặt nền riêng; nhãn dịch/đổi độ mờ. Không co giãn chữ/biểu tượng, chỉ tính lại bố cục một lần. Hiệu ứng hữu hạn 320ms, có dọn/hoàn nguyên; giảm chuyển động tĩnh.
+- Token tại mốc này: mở rộng 14rem, thu gọn 4.5rem, chiều cao điều khiển 2.75rem, độ lệch nhãn -8px; giữ khoảng cách/thời lượng.
 
-## Fresh verification
+Đường dẫn: `frontend/src/features/admin/AdminCrmPage.tsx`, `AdminCrmPage.test.tsx`, `useAdminRail.ts`; `frontend/src/index.css`.
 
-- Updated intended-behavior test RED first (missing expand control);16existing tests PASS. Then17/17admin tests PASS,9.67s. Test proves default compact labels, usable nav, expansion/full labels, current view preservation and usable compact logout.
-- Full frontend185/185tests27files PASS57.76s. Typecheck and lint159files PASS. Changed-file format and git diff --check PASS; earlier unrelated whole-project format findings not claimed fixed.
-- Docker frontend production build PASS; recreated local frontend with no-deps. No backend/schema/migration/dependency/palette change, no new backend/coverage/CI certification.
-- Live Chromium1280/1024/768/375 PASS: default72px/full224px measured,20px gap,152px content difference, transform/label motion observed, navigation/logout usable in compact state, keyboard activation and8rapid keyboard toggles preserve filter, reduced-motion static, mobile Sheet navigates normally, no overflow/page errors. Desktop compact/expanded captures visually reviewed.
-- Browser harness first used forced coordinate clicks while the header was moving and missed a subsequent target; changed the verification to rapid keyboard activation to exercise repeated state changes without bypassing hit-position stability. This is not a performance or rapid-mouse-click certification.
-- Ignored evidence: .cache/admin-verification/icon_rail_review.py and icon_rail_*.png. Only the harness's own login session created/ended; no moderation mutations.
+## Bằng chứng giao diện ở mốc này
 
-No commit/push. Physical devices, other browser engines, coverage, GitHub Actions and full inference/storage acceptance remain outside this local UI verification.
+- Kiểm thử hành vi mới RED; 16 ca cũ đạt. Sau sửa 17/17 admin đạt trong 9.67s.
+- Toàn bộ frontend 185/185 kiểm thử, 27 tệp đạt trong 57.76s. Typecheck/lint 159 tệp, định dạng tệp sửa, diff và frontend production build đạt.
+- Chromium 1280/1024/768/375 đo 72/224px, khoảng cách 20px, chênh lệch không gian nội dung 152px; chuyển động nhãn/transform, điều hướng biểu tượng/đăng xuất khi thu gọn, bàn phím, 8 lần bật/tắt nhanh, giảm chuyển động và Sheet di động đạt. Không tràn ngang/lỗi trang; đã xem ảnh thu gọn/mở rộng.
+- Công cụ ép nhấp ban đầu bỏ lỡ mục tiêu đang chuyển động; đổi sang kích hoạt bàn phím để kiểm tra trạng thái lặp mà không bỏ qua độ ổn định vị trí bấm. Không coi là đo hiệu năng hay nhấp chuột nhanh.
+- Bằng chứng bị Git bỏ qua: `.cache/admin-verification/icon_rail_review.py`, `icon_rail_*.png`.
+
+Nút bật/tắt ở mốc này đã được thay bằng [tương tác rê chuột/tiêu điểm](admin_hover_rail_2026_10_15.md). Không chạy lại các kiểm tra lịch sử khi chỉnh báo cáo. Chưa có số đo bao phủ/CI mới hay chứng nhận thiết bị thật/nhiều trình duyệt. Chưa commit/push.

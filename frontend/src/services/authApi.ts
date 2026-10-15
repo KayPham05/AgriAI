@@ -27,9 +27,6 @@ function getErrorMessage(body: unknown, fallback: string): string {
   if (!body || typeof body !== 'object') return fallback;
 
   const response = body as { message?: unknown; errors?: Array<{ error?: unknown }> };
-  if (response.message === 'This account is locked.') {
-    return 'Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.';
-  }
   if (response.message === 'Invalid email or password.') {
     return 'Email hoặc mật khẩu không chính xác.';
   }
@@ -75,13 +72,6 @@ export function register(credentials: RegisterCredentials): Promise<AuthSession>
   return request<AuthSession>('/api/auth/register', {
     method: 'POST',
     body: JSON.stringify(credentials),
-  });
-}
-
-export function logoutSession(token: string): Promise<void> {
-  return request<void>('/api/auth/logout', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
   });
 }
 

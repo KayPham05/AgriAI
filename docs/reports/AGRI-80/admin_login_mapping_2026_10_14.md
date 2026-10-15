@@ -1,36 +1,25 @@
-# AGRI-80 - Admin login and backend mapping - 2026-10-14
+# AGRI-80 - Luồng đăng nhập và đăng xuất trên giao diện
 
-## Follow-up: replace website link with logout
+Nhánh: `AGRI-80-create-crm-admin-page`. Khởi đầu: 2026-10-14; trạng thái hiện hành cập nhật 2026-10-15.
 
-User requested replacing the sidebar's `Về ứng dụng` action with `Đăng xuất`. Updated `AdminCrmPage.tsx` in desktop sidebar and mobile Sheet, reusing Button styling and a LogOut icon. Both call existing `POST /api/auth/logout`, disable while pending, clear local/session storage on success and replace the route with `/`. Failed logout keeps the session and shows a retryable error instead of claiming the server session ended. No backend/schema/credential changes.
+## Hành vi hiện tại
 
-Three regression cases (desktop, mobile, API failure/retry) failed before implementation because no logout button existed. Final full frontend suite: 173/173 tests, 26 files, 58.54s PASS; typecheck, strict lint150files and changed-file format PASS. Docker frontend production build PASS and deployed to localhost:3000. Whole-project format was not rerun; earlier unrelated formatting findings below remain outstanding.
+- Dùng biểu mẫu đăng nhập có sẵn, gồm email, mật khẩu, CAPTCHA và lựa chọn ghi nhớ.
+- Admin đăng nhập hoặc khôi phục phiên tại `/` hoàn tất màn hình logo/lời chào rồi tới `/admin`. User giữ luồng tới `/home` và các đường dẫn quay lại hiện có.
+- AdminAccess dùng cơ chế xác minh tài khoản có sẵn; tài khoản không đúng vai trò thấy thông báo không có quyền, chưa đăng nhập thấy liên kết về ứng dụng để đăng nhập.
+- Không chờ danh mục/lịch sử dành cho User khi Admin vào trang quản trị.
+- Nút Đăng xuất trên máy tính và Sheet di động xóa localStorage/sessionStorage rồi trở về `/`. Trang quản trị sau đăng nhập vẫn chỉ dùng dữ liệu mock.
 
-Live Chromium at1280/768/375: logout button visible, old website link absent, no horizontal overflow; API204, both browser auth stores cleared, returned to login, old token rejected by `/api/auth/me` with401, no page errors. Desktop/mobile captures inspected. Harness: ignored `.cache/admin-verification/admin_logout.py`; captures `admin_logout_<width>.png` in the same directory. Early harness runs raced page initialization or timed out on an additional hard navigation after logout; final harness waits for anonymous initialization and Sheet animation, and validates actual logout by login UI, empty storage and revoked token. Additional post-logout hard navigation is not certified by the final run. No timeout weakening or product workaround. No new coverage, backend-suite or GitHub CI claim. No staging/commit/push.
+## Đường dẫn frontend
 
-Branch: `AGRI-80-create-crm-admin-page`. User requested backend-connected admin pages and automatic entry after admin login. This login/read-only mapping scope is verified locally; full CRM management, full accessibility, model quality and GitHub CI acceptance are not established.
+`frontend/src/providers/AppProvider.tsx`, `frontend/src/features/admin/AdminAccess.tsx`, `AdminCrmPage.tsx`, `frontend/src/services/authApi.ts`, `frontend/src/App.startup.test.tsx`, `frontend/src/App.adminEntrance.test.tsx` và `frontend/src/features/admin/AdminCrmPage.test.tsx`.
 
-## Behavior and affected paths
+## Bằng chứng frontend theo thời điểm
 
-`frontend/src/providers/AppProvider.tsx` previously started catalog/history loading for every authenticated account, then defaulted to `/home`. It now checks the backend-provided role before those user startup requests: Admin login or restored Admin session at `/` redirects to `/admin`. User login remains `/home`; existing user deep links and Admin's explicit return to `/home` remain available. There is no frontend role promotion or authorization bypass.
+- Ngày 2026-10-14: hai ca Admin thất bại trước khi thêm chuyển trang theo vai trò; ca User và các ca khởi động cũ đạt. Lần toàn bộ tuần tự sau sửa: 170/170 kiểm thử, 26 tệp, 42.33s; typecheck, lint 150 tệp, định dạng hai tệp sửa và frontend production build đạt.
+- Một lần kiểm thử ranh giới lint cũ vượt 5000ms khi chạy đồng thời lint; chạy lại tuần tự đạt, không tăng timeout hay tắt quy tắc. Các phát hiện định dạng WIP ở thời điểm đó không được coi là kiểm thử thất bại.
+- Bổ sung nút đăng xuất ngày 2026-10-14: ba ca giao diện máy tính/di động/thử lại thất bại trước khi có điều khiển; toàn bộ frontend sau đó 173/173, 26 tệp, 58.54s đạt. Đây là bằng chứng giao diện ở mốc cũ; hành vi đăng xuất hiện tại chỉ là xóa phiên trình duyệt.
+- Ngày 2026-10-15: hồi quy cho đăng xuất cục bộ thất bại trước sửa rồi đạt trong toàn bộ bộ kiểm thử frontend 174/174, 28 tệp, 30.41s.
+- Chromium tại `http://localhost:3000`, 1280/768/375: đăng nhập Admin theo biểu mẫu có sẵn, trang mock, tải lại và đăng xuất cục bộ đạt; không tràn ngang/lỗi trang. Bằng chứng: `.cache/admin-original/browser-result.json`, `admin_{1280,768,375}.png` bị Git bỏ qua.
 
-The existing WIP already connected `frontend/src/features/admin/` through `frontend/src/services/adminApi.ts` to `/api/admin/summary`, `/users`, `/images` and `/sessions`, using the bearer token. `AdminAccess` restores the session against `/api/auth/me`; `backend/src/AgriVision.API/Controllers/AdminController.cs` enforces `CurrentAdmin`. Reused these paths without rewriting them. No backend/schema/password changes in this follow-up.
-
-`frontend/src/App.startup.test.tsx` adds regression coverage for restored Admin, fresh Admin and fresh User login, including skipping user catalog/history requests for the Admin landing. Tests use the actual form and CAPTCHA with authentication/network boundaries mocked.
-
-## Fresh verification
-
-- RED: two Admin cases failed before implementation because `/admin` was never requested; fresh User and existing startup cases passed.
-- GREEN: `corepack pnpm test --maxWorkers=1`: 170/170 tests, 26/26 files passed, 42.33 seconds. Includes existing admin records, denied role, paging, session and API-error tests.
-- `corepack pnpm typecheck` passed. `corepack pnpm lint` passed for 150 files. Biome format passed for both changed source/test files.
-- Whole-project format is not passing: 13 pre-existing WIP files have formatting/line-ending findings: `src/App.routing.test.tsx`, `src/app/(admin)/admin/page.tsx`, the nine admin feature/service paths listed below, and `src/services/authApi.test.ts`/`authApi.ts`. Exact admin paths: `AdminAccess.tsx`, `AdminCrmPage.test.tsx`, `AdminCrmPage.tsx`, `AdminImages.tsx`, `AdminOverview.tsx`, `AdminRecordList.tsx`, `AdminSessions.tsx`, `AdminUsers.tsx` under `src/features/admin/`, plus `src/services/adminApi.ts`. Left their existing contents intact.
-- Initial full-suite run had one existing lint-rule test exceed its 5000ms timeout during concurrent lint execution; the lint process also saw the test's transient probe file. Sequential full rerun passed without weakening timeouts/rules or editing the probe test. Own test lint findings (conditional hook naming/non-null assertion) were corrected before the final run.
-- `docker compose build frontend` passed (production compilation, TypeScript, 11 static pages and two dynamic routes). `docker compose up -d --no-deps frontend` deployed it to localhost:3000; all four services healthy. No local Next build changed `next-env.d.ts` in this follow-up.
-- Real headless Chromium against localhost:3000: form login with configured admin password redirected to `/admin`; summary and all three lists returned real backend data successfully; reload, explicit return to website and restored Admin landing passed. 375px CRM navigation passed without horizontal document overflow; no page errors. Anonymous API request returned 401.
-- A temporary User fixture registered through the real API, logged in through the real form and reached `/home`. Its admin API request returned 403; `/admin` displayed denied access. Logged out verification sessions and deleted only that newly created fixture by exact UUID/email; cleanup returned DELETE 1. Existing accounts/roles/passwords were preserved.
-- First browser run used a menu button hidden on desktop and timed out after the admin list/reload steps. Corrected only the harness to use visible desktop navigation; full rerun passed.
-- Ignored harness: `.cache/admin-verification/admin_login_mapping.py`; mobile capture: `.cache/admin-verification/admin_mapping_mobile.png`. No credentials/tokens were written to artifacts or output. No coverage measurement, backend suite rerun or CI result is claimed. `git diff --check` passed before handoff.
-
-## Remaining scope
-
-CRM currently reads accounts, uploaded-image metadata and login sessions; this work does not add account editing/deletion, image retention scheduling or extra management actions. Historical reports about the earlier public shell remain historical. No staging, commit or push.
+Các kết quả là lần chạy đã ghi nhận, không chạy lại trong đợt dọn tài liệu. Chưa có số đo bao phủ/CI mới; chưa chứng nhận thiết bị thật hay khả năng tiếp cận đầy đủ. Chưa commit/push. Xem [hiệu ứng đăng nhập](admin_login_entrance_2026_10_15.md) và [trạng thái mock](admin_mock_frontend_2026_10_15.md).

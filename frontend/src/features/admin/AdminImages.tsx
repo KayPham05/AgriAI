@@ -1,6 +1,7 @@
+import { useAdminMock } from './AdminMockProvider';
 import { useState } from 'react';
 import Image from 'next/image';
-import { moderateImage, type AdminImage } from '@/services/adminApi';
+import type { AdminImage } from './adminTypes';
 import { Button } from '@/components/ui/button';
 import { AdminActionDialog } from './AdminActionDialog';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +11,7 @@ function UploadedImage({ image }: { image: AdminImage }) {
   const [failed, setFailed] = useState(false);
   const safeUrl =
     image.imageUrl &&
-    (/^https?:\/\//i.test(image.imageUrl) || image.imageUrl.startsWith('/uploads/'))
+    (/^https?:\/\//i.test(image.imageUrl) || image.imageUrl.startsWith('/_next/static/media/'))
       ? image.imageUrl
       : null;
   return (
@@ -56,11 +57,11 @@ function UploadedImage({ image }: { image: AdminImage }) {
     </div>
   );
 }
-export function AdminImages({ token }: { token: string }) {
+export function AdminImages() {
+  const { images, moderateImage } = useAdminMock();
   const [action, setAction] = useState<{ image: AdminImage; kind: 'delete' | 'warnings' } | null>(
     null,
   );
-  const [revision, setRevision] = useState(0);
   const [notice, setNotice] = useState('');
   return (
     <div className="flex flex-col gap-4">
@@ -71,10 +72,9 @@ export function AdminImages({ token }: { token: string }) {
       )}
       <AdminRecordList<AdminImage>
         resource="images"
-        token={token}
+        items={images}
         title="Danh sách ảnh đã tải lên"
         empty="Chưa có dữ liệu ảnh đã tải lên"
-        revision={revision}
       >
         {(image) => (
           <div className="flex flex-col gap-4">
@@ -98,18 +98,17 @@ export function AdminImages({ token }: { token: string }) {
         <AdminActionDialog
           key={`${action.image.id}-${action.kind}`}
           title={action.kind === 'delete' ? 'Xóa ảnh' : 'Cảnh báo ảnh vi phạm'}
-          description={`${action.image.userEmail}. ${action.kind === 'delete' ? 'Xóa ảnh khỏi nơi lưu trữ; lịch sử dự đoán được giữ lại. Thao tác không thể hoàn tác.' : 'Gửi cảnh báo trong ứng dụng đến tài khoản đã đăng ảnh này.'}`}
+          description={`${action.image.userEmail}. ${action.kind === 'delete' ? 'Chỉ mô phỏng xóa ảnh trong giao diện; tải lại trang để đặt lại. Không xóa tệp thật.' : 'Chỉ mô phỏng cảnh báo chủ ảnh; không gửi thông báo thật.'}`}
           confirmText={action.kind === 'delete' ? 'Xác nhận xóa ảnh' : 'Gửi cảnh báo'}
           messageLabel={action.kind === 'warnings' ? 'Nội dung cảnh báo' : undefined}
           onClose={() => setAction(null)}
           onConfirm={async (message) => {
-            await moderateImage(token, action.image.id, action.kind, message);
+            moderateImage(action.image.id, action.kind, message);
             setNotice(
               action.kind === 'delete'
-                ? 'Đã xóa ảnh khỏi nơi lưu trữ.'
-                : 'Đã gửi cảnh báo tới chủ ảnh.',
+                ? 'Đã mô phỏng xóa ảnh. Không xóa tệp thật.'
+                : 'Đã mô phỏng cảnh báo. Không gửi thông báo thật.',
             );
-            setRevision((value) => value + 1);
           }}
         />
       )}

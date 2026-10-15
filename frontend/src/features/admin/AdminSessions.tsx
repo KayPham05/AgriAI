@@ -1,17 +1,18 @@
-import type { AdminSession } from '@/services/adminApi';
+import { useAdminMock } from './AdminMockProvider';
+import type { AdminSession } from './adminTypes';
 import { Badge } from '@/components/ui/badge';
 import { AdminRecordList, formatAdminDate } from './AdminRecordList';
 
-export function AdminSessions({ token }: { token: string }) {
+export function AdminSessions() {
+  const { sessions } = useAdminMock();
   return (
     <div className="flex flex-col gap-5">
       <p className="text-sm text-muted-foreground">
-        Chỉ ghi nhận phiên được cấp sau khi cập nhật backend. Còn hiệu lực không đồng nghĩa đang
-        online.
+        Các phiên bên dưới là dữ liệu minh họa, không phản ánh phiên đăng nhập thật.
       </p>
       <AdminRecordList<AdminSession>
         resource="sessions"
-        token={token}
+        items={sessions}
         title="Danh sách phiên đăng nhập"
         empty="Chưa có dữ liệu phiên đăng nhập"
       >

@@ -1,5 +1,6 @@
+import { useAdminMock } from './AdminMockProvider';
 import { useState } from 'react';
-import { moderateAccount, type AdminUser } from '@/services/adminApi';
+import type { AdminUser } from './adminTypes';
 import { Button } from '@/components/ui/button';
 import { AdminActionDialog } from './AdminActionDialog';
 import { Badge } from '@/components/ui/badge';
@@ -34,9 +35,9 @@ const ACTIONS = {
 };
 type Action = keyof typeof ACTIONS;
 
-export function AdminUsers({ token, initialQuery = '' }: { token: string; initialQuery?: string }) {
+export function AdminUsers({ initialQuery = '' }: { initialQuery?: string }) {
+  const { users, moderateAccount } = useAdminMock();
   const [action, setAction] = useState<{ user: AdminUser; kind: Action } | null>(null);
-  const [revision, setRevision] = useState(0);
   const [notice, setNotice] = useState('');
   const copy = action ? ACTIONS[action.kind] : null;
   return (
@@ -48,10 +49,9 @@ export function AdminUsers({ token, initialQuery = '' }: { token: string; initia
       )}
       <AdminRecordList<AdminUser>
         resource="users"
-        token={token}
+        items={users}
         title="Danh sách người dùng"
         empty="Chưa có dữ liệu người dùng"
-        revision={revision}
         initialQuery={initialQuery}
       >
         {(user) => (
@@ -102,15 +102,14 @@ export function AdminUsers({ token, initialQuery = '' }: { token: string; initia
         <AdminActionDialog
           key={`${action.user.id}-${action.kind}`}
           title={copy.title}
-          description={`${action.user.email}. ${copy.description}`}
+          description={`${action.user.email}. Mô phỏng: ${copy.description} Không tác động tài khoản thật.`}
           confirmText={copy.confirm}
           messageLabel={copy.messageLabel}
           maxLength={action.kind === 'lock' ? 500 : 1000}
           onClose={() => setAction(null)}
           onConfirm={async (message) => {
-            await moderateAccount(token, action.user.id, action.kind, message);
-            setNotice('Thao tác với tài khoản đã hoàn tất.');
-            setRevision((value) => value + 1);
+            moderateAccount(action.user.id, action.kind, message);
+            setNotice('Đã mô phỏng thao tác với tài khoản. Không thay đổi dữ liệu thật.');
           }}
         />
       )}

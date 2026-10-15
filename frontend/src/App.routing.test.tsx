@@ -11,7 +11,6 @@ import { getPredictionHistory } from './services/predictionApi';
 vi.mock('./services/authApi', () => ({
   restoreAuthSession: vi.fn(),
   clearAuthSession: vi.fn(),
-  logoutSession: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock('./services/catalogApi', () => ({ getPlants: vi.fn(), getDiseases: vi.fn() }));
 vi.mock('./services/predictionApi', () => ({

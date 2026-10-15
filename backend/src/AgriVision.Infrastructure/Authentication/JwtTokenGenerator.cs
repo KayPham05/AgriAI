@@ -18,12 +18,6 @@ public class JwtTokenGenerator : IJwtTokenGenerator
     }
 
     public string GenerateToken(User user)
-        => CreateToken(user, tracked: false).Token;
-
-    public GeneratedSessionToken GenerateSessionToken(User user)
-        => CreateToken(user, tracked: true);
-
-    private GeneratedSessionToken CreateToken(User user, bool tracked)
     {
         var secret = _configuration["JwtSettings:Secret"];
         if (string.IsNullOrWhiteSpace(secret) || Encoding.UTF8.GetByteCount(secret) < 32)
@@ -42,27 +36,23 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        var sessionId = Guid.NewGuid();
-        var createdAt = DateTime.UtcNow;
-        var expiresAt = createdAt.AddMinutes(expiryMinutes);
-        var claims = new List<Claim>
+        var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim(JwtRegisteredClaimNames.Name, user.FullName),
             new Claim(ClaimTypes.Role, user.Role),
-            new Claim(JwtRegisteredClaimNames.Jti, sessionId.ToString())
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
-        if (tracked) claims.Add(new Claim("sid", sessionId.ToString()));
 
         var token = new JwtSecurityToken(
             issuer: issuer,
             audience: audience,
             claims: claims,
-            expires: expiresAt,
+            expires: DateTime.UtcNow.AddMinutes(expiryMinutes),
             signingCredentials: credentials
         );
 
-        return new GeneratedSessionToken(new JwtSecurityTokenHandler().WriteToken(token), sessionId, createdAt, expiresAt);
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

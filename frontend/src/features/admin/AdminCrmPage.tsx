@@ -1,7 +1,7 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
-import { getAdminSummary, type AdminSummary } from '@/services/adminApi';
-import { clearAuthSession, logoutSession, type AuthSession } from '@/services/authApi';
+import { useRef, useState } from 'react';
+import { AdminMockProvider, useAdminMock } from './AdminMockProvider';
+import { clearAuthSession, type AuthSession } from '@/services/authApi';
 import { useRouter } from 'next/navigation';
 import { AdminAccess } from './AdminAccess';
 import Link from 'next/link';
@@ -84,7 +84,11 @@ function CrmNavigation({
 export function AdminCrmPage() {
   return (
     <AdminAccess>
-      {(session) => <AdminWorkspace key={session.token} session={session} />}
+      {(session) => (
+        <AdminMockProvider key={session.token}>
+          <AdminWorkspace session={session} />
+        </AdminMockProvider>
+      )}
     </AdminAccess>
   );
 }
@@ -92,41 +96,16 @@ export function AdminCrmPage() {
 function AdminWorkspace({ session }: { session: AuthSession }) {
   const router = useRouter();
   const { rootRef, railOpen, railHandlers } = useAdminRail();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [logoutError, setLogoutError] = useState('');
-  async function logout() {
-    setIsLoggingOut(true);
-    setLogoutError('');
-    try {
-      await logoutSession(session.token);
-      clearAuthSession();
-      router.replace('/');
-    } catch {
-      setLogoutError('Chưa thể đăng xuất. Vui lòng thử lại.');
-      setMenuOpen(false);
-    } finally {
-      setIsLoggingOut(false);
-    }
+  function logout() {
+    clearAuthSession();
+    router.replace('/');
   }
-  const [summary, setSummary] = useState<AdminSummary>();
-  const [summaryError, setSummaryError] = useState('');
-  const [summaryRequest, setSummaryRequest] = useState({ token: session.token });
-  useEffect(() => {
-    const controller = new AbortController();
-    setSummaryError('');
-    setSummary(undefined);
-    getAdminSummary(summaryRequest.token, controller.signal)
-      .then((result) => {
-        if (!controller.signal.aborted) setSummary(result);
-      })
-      .catch((error: unknown) => {
-        if (!controller.signal.aborted)
-          setSummaryError(
-            error instanceof Error ? error.message : 'Không thể tải dữ liệu quản trị.',
-          );
-      });
-    return () => controller.abort();
-  }, [summaryRequest]);
+  const data = useAdminMock();
+  const summary = {
+    userCount: data.users.length,
+    imageCount: data.images.length,
+    sessionCount: data.sessions.length,
+  };
   const [view, setView] = useState<CrmView>('overview');
   const [menuOpen, setMenuOpen] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -171,14 +150,13 @@ function AdminWorkspace({ session }: { session: AuthSession }) {
               <Button
                 variant="ghost"
                 className="admin-rail-button mt-auto w-full gap-3"
-                aria-label={isLoggingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}
+                aria-label="Đăng xuất"
                 title={!railOpen ? 'Đăng xuất' : undefined}
-                disabled={isLoggingOut}
                 onClick={logout}
               >
                 <LogOut aria-hidden="true" />
                 <span className="admin-rail-label" hidden={!railOpen}>
-                  {isLoggingOut ? 'Đang thoát...' : 'Đăng xuất'}
+                  Đăng xuất
                 </span>
               </Button>
             </div>
@@ -229,11 +207,6 @@ function AdminWorkspace({ session }: { session: AuthSession }) {
             </form>
           </header>
           <main id="admin-main" className="px-5 py-4 sm:px-6 sm:py-5">
-            {logoutError && (
-              <p role="alert" className="mb-6 text-destructive">
-                {logoutError}
-              </p>
-            )}
             <div className="mb-5 flex flex-col gap-2">
               <h1
                 ref={heading}
@@ -246,39 +219,27 @@ function AdminWorkspace({ session }: { session: AuthSession }) {
                 {VIEW_COPY[view].description}
               </p>
             </div>
-            {view === 'overview' && summaryError && (
-              <div className="mb-6 flex flex-col items-start gap-3">
-                <p role="alert" className="text-destructive">
-                  {summaryError}
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={() => setSummaryRequest({ token: session.token })}
-                >
-                  Thử lại
-                </Button>
-              </div>
-            )}
+            <p role="note" className="mb-4 text-sm text-muted-foreground">
+              Dữ liệu minh họa (mock). Thao tác chỉ mô phỏng trên giao diện, đặt lại khi tải lại
+              trang.
+            </p>
             <AdminMotion view={view}>
               {view === 'overview' && (
                 <AdminOverview
                   summary={summary}
-                  token={session.token}
                   user={session.user}
                   onUsers={() => navigate('users')}
                   onImages={() => navigate('images')}
                   onSessions={() => navigate('sessions')}
                 />
               )}
-              {view === 'users' && (
-                <AdminUsers key={userSearch} token={session.token} initialQuery={userSearch} />
-              )}
-              {view === 'images' && <AdminImages token={session.token} />}
-              {view === 'sessions' && <AdminSessions token={session.token} />}
+              {view === 'users' && <AdminUsers key={userSearch} initialQuery={userSearch} />}
+              {view === 'images' && <AdminImages />}
+              {view === 'sessions' && <AdminSessions />}
             </AdminMotion>
             <footer className="mt-10 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-5 text-xs text-muted-foreground">
               <p>AgriAI Quản trị / Giao diện quản trị người dùng</p>
-              <p>Nguồn dữ liệu: Backend API</p>
+              <p>Nguồn dữ liệu: Mock frontend</p>
             </footer>
           </main>
         </div>
@@ -290,8 +251,8 @@ function AdminWorkspace({ session }: { session: AuthSession }) {
             <SheetDescription>Điều hướng không gian quản trị.</SheetDescription>
           </SheetHeader>
           <CrmNavigation view={view} onChange={navigate} />
-          <Button variant="outline" className="mt-4" disabled={isLoggingOut} onClick={logout}>
-            {isLoggingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}
+          <Button variant="outline" className="mt-4" onClick={logout}>
+            Đăng xuất
             <LogOut data-icon="inline-end" />
           </Button>
         </SheetContent>

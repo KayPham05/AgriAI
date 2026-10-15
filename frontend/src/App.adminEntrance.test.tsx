@@ -13,7 +13,6 @@ vi.mock('./services/authApi', () => ({
   login: vi.fn(),
   saveAuthSession: vi.fn(),
   clearAuthSession: vi.fn(),
-  logoutSession: vi.fn(),
 }));
 vi.mock('./services/catalogApi', () => ({ getPlants: vi.fn(), getDiseases: vi.fn() }));
 vi.mock('./services/predictionApi', () => ({

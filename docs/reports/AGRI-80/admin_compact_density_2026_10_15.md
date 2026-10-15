@@ -1,23 +1,22 @@
-﻿# AGRI-80 - Compact admin overview density (2026-10-15)
+# AGRI-80 - Thu gọn mật độ bố cục tổng quan (2026-10-15)
 
-Branch: AGRI-80-create-crm-admin-page. User found the admin overview too large/tall. Applied a scoped density adjustment; preserved data, actions, palette, Manrope, hover navigation and reduced-motion behavior.
+Nhánh: `AGRI-80-create-crm-admin-page`. Người dùng thấy trang quá lớn/cao; điều chỉnh trong phạm vi giao diện admin, giữ chức năng, bảng màu, Manrope, thanh rê chuột và giảm chuyển động.
 
-## Changes
+## Thay đổi giao diện
 
-- Reduced header vertical padding20→12px, main heading30→24px, heading separation32→20px, main gutters32→24px, overview group gaps24→16px and panel inset20→16px.
-- Metrics use30px totals instead of36px, tighter margins and a shorter total caption. Chart bars80→40px; seven-day labels, exact expandable tables, zero/error/retry states retained. Details/other buttons remain at least44px.
-- Calendar combines month/icon in a single header row, retains44px previous/next/today, uses28px non-interactive day cells without extra row padding and compact footer padding/date line. Full month and UTC+7 semantics unchanged.
-- Account avatar56→40px, title20→18px, compact header/role spacing. Management/session row padding16→12px. No global font scaling, zoom, shared primitive edits, new dependency or backend changes.
-- DESIGN.md records the admin-specific density override and updates --admin-panel-inset to1rem / --admin-chart-height to2.5rem.
+- Đệm dọc đầu trang 20→12px; tiêu đề chính 30→24px; khoảng cách tiêu đề 32→20px; lề nội dung 32→24px; khoảng nhóm 24→16px; đệm bảng 20→16px.
+- Tổng số 36→30px, khoảng cách sát hơn và chú thích ngắn hơn. Biểu đồ 80→40px, giữ nhãn bảy ngày/bảng chi tiết và vùng bấm 44px.
+- Lịch gộp tháng/biểu tượng một hàng, giữ nút trước/sau/hôm nay 44px; ô ngày không tương tác 28px, bỏ đệm hàng dư và thu chân lịch. Giữ đầy đủ tháng/UTC+7.
+- Ảnh đại diện 56→40px; tiêu đề tài khoản 20→18px; đệm hàng quản lý/phiên 16→12px. Không zoom hay đổi font toàn cục/thành phần dùng chung/thư viện.
+- Token --admin-panel-inset đổi thành 1rem; --admin-chart-height thành 2.5rem. Các kích thước cũ trong báo cáo trước là lịch sử.
 
-Paths: frontend/src/features/admin/AdminCrmPage.tsx, AdminOverview.tsx, AdminOverviewPanels.tsx, AdminCalendar.tsx, AdminMetricChart.tsx; frontend/src/index.css; DESIGN.md; report index/task log.
+Đường dẫn: `frontend/src/features/admin/AdminCrmPage.tsx`, `AdminOverview.tsx`, `AdminOverviewPanels.tsx`, `AdminCalendar.tsx`, `AdminMetricChart.tsx`; `frontend/src/index.css`.
 
-## Fresh verification
+## Bằng chứng ở mốc thu gọn
 
-- Before/after live Chromium at1280x900, October2026 calendar: metric card388→276px (112px/28.9% shorter); calendar441→297px (144px/32.7%); header87→71px; account card240→192px. These are measured element heights for this viewport/content, not universal proportions.
-- Existing relevant admin/calendar suite20/20tests across2files PASS12.37s. No new tests for pure spacing changes. Typecheck PASS; strict lint159files PASS; changed-file format6files PASS; git diff --check PASS with existing line-ending notices.
-- Docker frontend production build PASS and local recreation via no-deps PASS.
-- Chromium1280/768/375 PASS: no horizontal overflow, visible calendar/month navigation/today, exact chart table retains7rows, all visible buttons at least44px, hover rail opens/closes and no page errors. Desktop/mobile screenshots reviewed.
-- Ignored evidence: .cache/admin-verification/density_before.json, density_review.py, compact_dashboard_{1280,768,375}.png. Harness uses and ends only its own admin session; no real moderation.
+- Chromium trước/sau tại 1280x900, lịch tháng 10/2026: thẻ 388→276px (giảm 112px/28.9%); lịch 441→297px (144px/32.7%); đầu trang 87→71px; thẻ tài khoản 240→192px. Đây là chiều cao đo tại cửa sổ/nội dung cụ thể, không phải tỉ lệ chung.
+- Bộ admin/lịch 20/20 kiểm thử trong 2 tệp đạt 12.37s. Không thêm kiểm thử cho đổi thuần khoảng cách. Typecheck/lint 159 tệp/định dạng 6 tệp sửa/diff và frontend production build đạt.
+- Chromium 1280/768/375 đạt: không tràn ngang/lỗi trang; lịch/tháng/hôm nay, bảng bảy hàng, nút tối thiểu 44px và thanh rê chuột dùng được. Đã xem ảnh máy tính/di động.
+- Bằng chứng bị Git bỏ qua: `.cache/admin-verification/density_before.json`, `density_review.py`, `compact_dashboard_{1280,768,375}.png`.
 
-Full frontend suite/backend suites/coverage/CI were not rerun for this visual-only follow-up. Earlier whole-project formatting findings not claimed fixed. Physical devices/cross-browser acceptance remain unverified. No database/model/storage changes, staging, commit or push.
+Không chạy lại toàn bộ frontend/bao phủ/CI cho lần sửa khoảng cách này. Các kết quả trên cũng không được chạy lại khi dọn tài liệu. Chưa chứng nhận thiết bị thật/nhiều trình duyệt. Xem [trạng thái mock hiện tại](admin_mock_frontend_2026_10_15.md). Chưa commit/push.

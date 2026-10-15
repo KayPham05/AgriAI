@@ -22,8 +22,7 @@ public class AuthServiceTests
 
         _authService = new AuthService(
             _userRepositoryMock.Object,
-            _jwtTokenGeneratorMock.Object,
-            Mock.Of<ILoginSessionRepository>()
+            _jwtTokenGeneratorMock.Object
         );
     }
 
@@ -35,8 +34,8 @@ public class AuthServiceTests
         _userRepositoryMock.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync((User?)null);
 
-        _jwtTokenGeneratorMock.Setup(g => g.GenerateSessionToken(It.IsAny<User>()))
-            .Returns(new GeneratedSessionToken("fake-jwt-token", Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow.AddHours(1)));
+        _jwtTokenGeneratorMock.Setup(g => g.GenerateToken(It.IsAny<User>()))
+            .Returns("fake-jwt-token");
 
         // Act
         var result = await _authService.RegisterAsync(request);
@@ -88,8 +87,8 @@ public class AuthServiceTests
         _userRepositoryMock.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
-        _jwtTokenGeneratorMock.Setup(g => g.GenerateSessionToken(user))
-            .Returns(new GeneratedSessionToken("valid-jwt-token", Guid.NewGuid(), DateTime.UtcNow, DateTime.UtcNow.AddHours(1)));
+        _jwtTokenGeneratorMock.Setup(g => g.GenerateToken(user))
+            .Returns("valid-jwt-token");
 
         // Act
         var result = await _authService.LoginAsync(request);
@@ -125,6 +124,6 @@ public class AuthServiceTests
             .ReturnsAsync(new User { Email = request.Email, PasswordHash = null });
         var act = () => _authService.LoginAsync(request);
         await act.Should().ThrowAsync<UnauthorizedAccessException>();
-        _jwtTokenGeneratorMock.Verify(generator => generator.GenerateSessionToken(It.IsAny<User>()), Times.Never);
+        _jwtTokenGeneratorMock.Verify(generator => generator.GenerateToken(It.IsAny<User>()), Times.Never);
     }
 }

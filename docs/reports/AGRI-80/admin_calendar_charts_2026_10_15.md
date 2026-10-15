@@ -1,43 +1,27 @@
-﻿# AGRI-80 - Visible calendar and daily metric charts (2026-10-15)
+# AGRI-80 - Lịch tháng và biểu đồ số liệu minh họa (2026-10-15)
 
-Branch: AGRI-80-create-crm-admin-page. The user requested an expanded calendar and charts for the three overview metrics. Implemented and deployed locally, preserving palette and typography. This entry supersedes the static-date/no-chart limitation of the preceding dashboard report for this scope.
+Nhánh: `AGRI-80-create-crm-admin-page`. Lịch và biểu đồ là thành phần của trang tổng quan mock hiện tại.
 
-## Behavior and contracts
+## Hành vi giao diện
 
-- The right context column now starts with an always-visible monthly calendar. Monday-first headings, complete month, leap-year/year-boundary handling, previous/next and today controls, politely announced month heading, and semantic today marker. Day cells are a read-only month reference. Removed the former date-only account footer; no appointment storage or activity-date filtering is implied.
-- The three cards retain lifetime totals and add seven-day column plots for new accounts, images uploaded by accounts and login sessions created. Each chart has a visible daily maximum, first/last date, independent zero-based scale, explicit no-activity state and an expandable keyboard-accessible table of all seven exact counts. No fake trends, percentages or minimum-height bars. Failed activity loading does not replace totals with zeros; a retry recovers the shared request.
-- GET /api/admin/activity uses the existing CurrentAdmin policy and no-store controller behavior. Returns timeZone=Asia/Ho_Chi_Minh and exactly seven ordered date/userCount/imageCount/sessionCount records: today plus six previous Vietnam days. UTC+7 boundaries are shared with the calendar regardless of browser timezone.
-- PostgreSQL aggregates bounded timestamp projections in three grouped queries, not paged directory responses or downloaded event rows. Retained deleted/expired account-owned images and ended sessions count as events; anonymous prediction images are excluded consistently with existing summary semantics. Missing days are filled with0. Totals and daily events are separate measures; sessions do not mean concurrent online users.
-- No database schema/migration, seed, AI/model, public route, dependency or palette change. Uses installed Card/Button primitives and native table/details display. Calendar dates are non-interactive; month controls retain44px targets. Chart bars are static; existing scoped entrance/reduced-motion behavior remains.
-- DESIGN.md records the calendar/chart contract and six chart tokens. Geometry from data is expressed as relative bar heights; fixed visual values live in the token layer.
+- Lịch tháng luôn hiển thị ở cột ngữ cảnh. Tuần bắt đầu Thứ Hai, đầy đủ ngày trong tháng, có nút tháng trước/sau và hôm nay, xử lý năm nhuận/chuyển năm.
+- Hôm nay theo UTC+7, không phụ thuộc múi giờ trình duyệt; đánh dấu bằng màu hiện có và aria-current=date. Tiêu đề tháng thay đổi được thông báo nhẹ cho trợ năng.
+- Ô ngày chỉ đọc, không phải nút; điều khiển tháng giữ vùng bấm 44px. Đây là lịch tham khảo, không trình sửa lịch hẹn hay bộ lọc biểu đồ.
+- Ba thẻ có tổng số mẫu và biểu đồ cột bảy ngày cho tài khoản, ảnh và phiên. Dữ liệu ngày được suy ra từ cùng tập bản ghi minh họa trong AdminMockProvider.
+- Mỗi biểu đồ dùng thang riêng bắt đầu 0, ghi mức tối đa/ngày và hai ngày đầu/cuối. Cột 0 có chiều cao 0; chuỗi toàn 0 có thông báo không phát sinh.
+- Có vùng biểu đồ đặt tên và bảng mở rộng bằng details/summary với đủ bảy số đếm chính xác, dùng được bằng bàn phím/cảm ứng. Giữ vòng tiêu điểm rõ ràng cả trên thẻ xanh.
+- Biểu đồ tĩnh, không thêm thư viện hay hoạt ảnh biểu đồ. Giữ Manrope, bảng màu và chế độ giảm chuyển động.
 
-## Affected paths
+## Đường dẫn frontend
 
-- backend/src/AgriVision.API/Controllers/AdminController.cs
-- backend/src/AgriVision.Application/Common/Interfaces/Persistence/IAdminRepository.cs
-- backend/src/AgriVision.Application/DTOs/Admin/AdminDtos.cs
-- backend/src/AgriVision.Infrastructure/Persistence/Repositories/AdminRepository.cs
-- backend/tests/AgriVision.IntegrationTests/Controllers/AdminControllerTests.cs
-- frontend/src/services/adminApi.ts
-- frontend/src/features/admin/AdminCalendar.tsx and AdminCalendar.test.tsx
-- frontend/src/features/admin/AdminMetricChart.tsx
-- frontend/src/features/admin/AdminOverview.tsx, AdminOverviewPanels.tsx, AdminCrmPage.test.tsx
-- frontend/src/index.css, DESIGN.md, report index and AGRI-80 task log.
+`frontend/src/features/admin/AdminCalendar.tsx`, `AdminCalendar.test.tsx`, `AdminMetricChart.tsx`, `AdminOverview.tsx`, `AdminOverviewPanels.tsx`, `AdminCrmPage.test.tsx`, `AdminMockProvider.tsx`; `frontend/src/index.css`.
 
-## Fresh checks and evidence
+## Kiểm chứng giao diện đã ghi nhận
 
-- Observed RED before adding the activity endpoint/three charts/calendar, followed by GREEN. New frontend checks cover full leap month, previous/next/year rollover/today, authenticated daily chart data and loading-error retry with lifetime totals retained.
-- A PostgreSQL fixture initially violated the existing expires_at > uploaded_at check; fixed fixture expiry and unique image positions, without weakening constraints or changing application behavior.
-- Filtered admin integration:7/7 PASS, including seven Vietnam-day boundaries, out-of-window timestamps,12 image events beyond one page, retained deleted images, anonymous exclusion, ended sessions and401/403 access checks.
-- Complete backend solution:33/33unit and40/40integration PASS,0skipped. TRX evidence: .cache/admin-verification/calendar-charts/GIGABYTE_THONGDZ_2026-10-15_00_40_47.trx (unit) and ..._00_40_46.trx (integration). Integration duration1m15s.
-- Complete frontend final run:184/184tests,27files PASS,59.19s. An earlier concurrent build/backend/frontend run had one existing notification startup wait timeout (183pass/1fail). The unchanged startup file then passed separately7/7 and the entire final suite passed; no timeout increase or unrelated test edit.
-- Final typecheck PASS; strict lint158files PASS; changed admin/API/CSS format16files PASS; git diff --check PASS (existing line-ending notices only). Whole-project format was not rerun here; prior two unrelated WIP formatting findings are not claimed fixed.
-- Docker backend/frontend production builds PASS. Recreated locally with no-deps; all four Compose services healthy after deployment. Database volumes/history preserved.
-- Chromium checks1280/768/375 PASS: visible complete calendar, month navigation/today via keyboard, exact seven-day chart tables matched live API, zero bars physically0px, no horizontal overflow/page errors. Browser timezone deliberately America/Los_Angeles while calendar/API remained Vietnam. Intercepted503 for the activity request verified totals remain and retry recovers; no database mutation for that simulation. Reduced-motion loaded without entry transform.
-- Visual desktop/tablet/mobile review completed. Ignored evidence: .cache/admin-verification/calendar_charts_review.py and calendar_charts_{1280,768,375}.png. Browser harness creates/ends only its own admin login session; no real account/image moderation was performed.
+- Kiểm thử ban đầu RED trước khi có lịch/biểu đồ; sau đó GREEN. Ca mới bao phủ tháng nhuận đầy đủ, trước/sau/chuyển năm/hôm nay và bảng số liệu.
+- Mốc triển khai lịch/biểu đồ: toàn bộ frontend 184/184 kiểm thử, 27 tệp đạt trong 59.19s. Typecheck, lint 158 tệp, định dạng 16 tệp đã sửa và kiểm tra diff đạt.
+- Một lần chạy đồng thời trước có ca chờ thông báo cũ timeout (183 đạt/1 lỗi); startup không đổi sau đó đạt riêng 7/7, toàn bộ lần cuối đạt mà không tăng timeout hay sửa ca ngoài phạm vi.
+- Chromium 1280/768/375 kiểm tra đầy đủ tháng, điều hướng bàn phím/hôm nay, bảng bảy ngày, cột 0px, giảm chuyển động, không tràn ngang/lỗi trang. Cố ý dùng múi giờ America/Los_Angeles trong khi lịch vẫn theo Việt Nam. Ảnh/công cụ: `.cache/admin-verification/calendar_charts_review.py`, `calendar_charts_{1280,768,375}.png` bị Git bỏ qua.
+- Các kích thước biểu đồ được thu gọn sau đó theo [báo cáo mật độ](admin_compact_density_2026_10_15.md). Độ cao cũ 5rem chỉ là lịch sử; giá trị mới 2.5rem.
 
-The server-side time-zone translation was checked against the [official Npgsql translation reference](https://www.npgsql.org/efcore/mapping/translations.html); actual PostgreSQL integration tests establish the implementation behavior here.
-
-## Remaining limits
-
-No new coverage measurement, GitHub Actions result, physical-device/cross-browser acceptance, model-quality or Cloudinary private-storage certification. Charts are seven-day summaries and the calendar is a monthly reference; no scheduler, date-linked query, appointments or real-time stream is added. Existing unrelated WIP is retained. No staging, commit or push.
+Các kết quả thuộc mốc triển khai trước, không phải lần chạy mới khi chỉnh báo cáo. Trạng thái mock và kiểm chứng frontend gần nhất ở [báo cáo hiện hành](admin_mock_frontend_2026_10_15.md). Không có số đo bao phủ hay CI mới; chưa chứng nhận thiết bị thật/nhiều trình duyệt. Chưa commit/push.

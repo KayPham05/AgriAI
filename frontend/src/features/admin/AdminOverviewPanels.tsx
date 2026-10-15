@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useAdminMock } from './AdminMockProvider';
+import { useState } from 'react';
 import Image from 'next/image';
 import { ArrowUpRight, ImageOff, ShieldCheck, Monitor } from 'lucide-react';
 import {
@@ -11,61 +12,15 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { getAdminPage, type AdminImage, type AdminSession } from '@/services/adminApi';
+import type { AdminImage } from './adminTypes';
 import type { AuthUser } from '@/services/authApi';
 import { formatAdminDate } from './AdminRecordList';
-
-function useRecentRecords<T>(resource: 'images' | 'sessions', token: string) {
-  const [attempt, setAttempt] = useState(0);
-  const request = useMemo(() => ({ resource, token, attempt }), [resource, token, attempt]);
-  const [state, setState] = useState<{ items?: T[]; error?: string }>({});
-  useEffect(() => {
-    const controller = new AbortController();
-    setState({});
-    getAdminPage<T>(request.resource, request.token, 1, '', controller.signal)
-      .then((page) => {
-        if (!controller.signal.aborted) setState({ items: page.items.slice(0, 3) });
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setState({ error: 'Chưa thể tải dữ liệu gần đây.' });
-      });
-    return () => controller.abort();
-  }, [request]);
-  return { ...state, retry: () => setAttempt((value) => value + 1) };
-}
-
-function RecentState({
-  items,
-  error,
-  retry,
-}: {
-  items?: unknown[];
-  error?: string;
-  retry: () => void;
-}) {
-  if (error)
-    return (
-      <div className="flex flex-col items-start gap-3">
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-        <Button variant="outline" onClick={retry}>
-          Thử tải lại
-        </Button>
-      </div>
-    );
-  return (
-    <p role="status" className="py-5 text-sm text-muted-foreground">
-      {items ? 'Chưa có bản ghi.' : 'Đang tải dữ liệu...'}
-    </p>
-  );
-}
 
 function RecentImage({ image }: { image: AdminImage }) {
   const [failed, setFailed] = useState(false);
   const url =
     image.imageUrl &&
-    (/^https?:\/\//i.test(image.imageUrl) || image.imageUrl.startsWith('/uploads/'))
+    (/^https?:\/\//i.test(image.imageUrl) || image.imageUrl.startsWith('/_next/static/media/'))
       ? image.imageUrl
       : null;
   return (
@@ -104,8 +59,9 @@ function RecentImage({ image }: { image: AdminImage }) {
   );
 }
 
-export function AdminRecentImages({ token, onImages }: { token: string; onImages: () => void }) {
-  const state = useRecentRecords<AdminImage>('images', token);
+export function AdminRecentImages({ onImages }: { onImages: () => void }) {
+  const { images } = useAdminMock();
+  const items = images.slice(0, 3);
   return (
     <section aria-label="Ảnh gần đây" data-admin-enter>
       <Card className="admin-panel h-full">
@@ -113,17 +69,17 @@ export function AdminRecentImages({ token, onImages }: { token: string; onImages
           <CardTitle>
             <h2>Ảnh gần đây</h2>
           </CardTitle>
-          <CardDescription>Những ảnh mới nhất trong hệ thống.</CardDescription>
+          <CardDescription>Ảnh minh họa cho bản xem trước giao diện.</CardDescription>
         </CardHeader>
         <CardContent>
-          {state.items?.length ? (
+          {items.length ? (
             <div className="grid gap-4 sm:grid-cols-3">
-              {state.items.map((image) => (
+              {items.map((image) => (
                 <RecentImage key={image.id} image={image} />
               ))}
             </div>
           ) : (
-            <RecentState {...state} />
+            <p className="py-5 text-sm text-muted-foreground">Chưa có bản ghi minh họa.</p>
           )}
         </CardContent>
         <CardFooter className="admin-panel-footer">
@@ -137,14 +93,9 @@ export function AdminRecentImages({ token, onImages }: { token: string; onImages
   );
 }
 
-export function AdminRecentSessions({
-  token,
-  onSessions,
-}: {
-  token: string;
-  onSessions: () => void;
-}) {
-  const state = useRecentRecords<AdminSession>('sessions', token);
+export function AdminRecentSessions({ onSessions }: { onSessions: () => void }) {
+  const { sessions } = useAdminMock();
+  const items = sessions.slice(0, 3);
   return (
     <section aria-label="Phiên gần đây" data-admin-enter>
       <Card className="admin-panel">
@@ -152,12 +103,12 @@ export function AdminRecentSessions({
           <CardTitle>
             <h2>Phiên gần đây</h2>
           </CardTitle>
-          <CardDescription>Ba phiên đăng nhập mới nhất.</CardDescription>
+          <CardDescription>Ba phiên đăng nhập minh họa.</CardDescription>
         </CardHeader>
         <CardContent>
-          {state.items?.length ? (
+          {items.length ? (
             <ul className="flex flex-col divide-y divide-border">
-              {state.items.map((session) => (
+              {items.map((session) => (
                 <li key={session.id} className="flex gap-3 py-3 first:pt-0 last:pb-0">
                   <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary">
                     <Monitor className="size-4" aria-hidden="true" />
@@ -184,7 +135,7 @@ export function AdminRecentSessions({
               ))}
             </ul>
           ) : (
-            <RecentState {...state} />
+            <p className="py-5 text-sm text-muted-foreground">Chưa có bản ghi minh họa.</p>
           )}
         </CardContent>
         <CardFooter className="admin-panel-footer">

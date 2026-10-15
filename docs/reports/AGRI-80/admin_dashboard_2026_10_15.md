@@ -1,25 +1,26 @@
-﻿# AGRI-80 - Admin dashboard layout and motion (2026-10-15)
+# AGRI-80 - Bố cục và chuyển động trang tổng quan (2026-10-15)
 
-Branch verified: AGRI-80-create-crm-admin-page. User requested the layout/effect direction of an attached dashboard screenshot while retaining the current design-system colors and documenting new rules. The reference is a static image; motion is an interpretation, not a verified reproduction of the original video.
+Nhánh: `AGRI-80-create-crm-admin-page`. Người dùng yêu cầu bố cục theo ảnh tham chiếu, giữ màu và Manrope. Tham chiếu là ảnh tĩnh; chuyển động là cách diễn giải, không phải bản sao đã đối chiếu với video.
 
-## Implementation
+## Triển khai giao diện
 
-- Reworked admin chrome into a rounded floating frame, compact112px desktop navigation rail, account search and existing mobile Sheet. Kept existing route/auth gate, server authorization, pending/error handling and logout.
-- Overview composes existing shadcn Card/Button/Badge primitives: three actual summary totals, management shortcuts, recent uploaded images, authenticated admin identity and recent login sessions. Existing authenticated paged APIs supply the previews; no backend contract or database migration changed for this UI follow-up. Preview requests run independently and are aborted on unmount, with loading/empty/error/retry states and safe image fallback.
-- Search opens the backend account directory with the entered query retained in its visible search input. Existing list search, pagination and confirmed account/image moderation remain available.
-- Added scoped AdminMotion using the installed GSAP/useGSAP stack. Finite transform/opacity entrance runs on view changes with up to eight staggered groups, context cleanup and cleared inline styles. CSS provides metric hover lift and action-arrow movement; reduced-motion stays static with working focus/navigation.
-- Preserved all palette and font tokens. DESIGN.md section11 records the user-authorized admin layout exception, responsive composition, data semantics, motion and fourteen new admin tokens. No dependency added.
-- Affected paths: frontend/src/features/admin/{AdminCrmPage,AdminOverview,AdminOverviewPanels,AdminMotion,AdminUsers,AdminRecordList,AdminCrmPage.test}.tsx; frontend/src/index.css; DESIGN.md; this report, report index and AGRI-80 task log.
+- Khung nổi bo góc, thanh điều hướng máy tính gọn, ô tìm tài khoản và Sheet di động. Mốc đầu dùng thanh 112px; các điều chỉnh thanh hiện hành được ghi ở báo cáo riêng.
+- Tổng quan ghép Card/Button/Badge có sẵn: ba thẻ số liệu, lối tắt quản lý, ảnh gần đây, danh tính tài khoản và phiên gần đây. Trong bản hiện tại, số liệu quản trị và các danh sách đều là mock.
+- Tìm kiếm ở đầu trang mở màn người dùng, giữ truy vấn trong ô tìm kiếm; danh sách vẫn có phân trang và hộp xác nhận thao tác mẫu.
+- AdminMotion dùng GSAP/useGSAP hiện có: hiệu ứng vào hữu hạn transform/opacity khi đổi màn hình, tối đa tám nhóm lệch nhịp, dọn context và xóa kiểu nội tuyến khi hoàn tất.
+- CSS tạo độ nâng 4px khi rê chuột lên thẻ số liệu, dịch mũi tên thao tác 2px và phản hồi tiêu điểm. Giảm chuyển động bỏ hiệu ứng nhưng giữ điều hướng.
+- Không thêm font/thư viện hay đổi màu/thành phần dùng chung.
 
-## Fresh verification
+## Đường dẫn frontend
 
-- TDD: two added behavior tests initially failed (missing recent regions and dashboard search), with12 existing tests passing; after implementation14/14 passed. Final selected rerun after mobile grouping adjustment:14/14 PASS,7.81s.
-- Full frontend suite:180/180 tests across26files PASS,57.29s. This run preceded only a CSS-grid class adjustment and changing the unavailable marker back to a hyphen; final selected suite and build cover those edits.
-- Final typecheck PASS; strict lint155files PASS; admin/CSS format12files PASS. Whole-project format still reports the same two unrelated WIP files: src/App.routing.test.tsx and src/services/authApi.test.ts. They were not reformatted.
-- Docker frontend production build PASS; frontend recreated locally. All four Compose services observed healthy. Backend unit/integration suites were not rerun for this frontend-only follow-up; earlier evidence belongs to the moderation report.
-- Chromium live browser checks at1280/768/375: real summary counts match API, no document horizontal overflow, no visible CRM text, account search opens filtered backend list, rapid desktop switching and mobile Sheet navigation work, no page errors. Hover computes the requested4px lift; reduced-motion returns no transform and skips view-entry styles. Screenshots stored under ignored .cache/admin-verification/dashboard_*.png and desktop/mobile visually reviewed.
-- Full live moderation regression against a newly created isolated account/image: warning delivery/read; open-user-tab force logout; lock/blocked login/restore; image warning persistence; physical local image deletion with prediction history retained; responsive management views; no page errors. Fixture account/history cleanup PASS. No real user's account/image was moderated.
+`frontend/src/features/admin/{AdminCrmPage,AdminOverview,AdminOverviewPanels,AdminMotion,AdminUsers,AdminRecordList,AdminCrmPage.test}.tsx`, `frontend/src/index.css`.
 
-## Limits
+## Kiểm chứng ở mốc triển khai
 
-Local Chromium viewport emulation is not a physical-device or cross-browser certification. No new coverage measurement, GitHub Actions result, real model-quality acceptance, Cloudinary private-delete acceptance or deployment beyond local Compose is claimed. Existing changes remain uncommitted; no commit/push performed.
+- Hai kiểm thử hành vi mới ban đầu thất bại vì thiếu vùng gần đây/tìm kiếm tổng quan; 12 ca cũ đạt. Sau triển khai 14/14 đạt; nhóm chọn cuối sau chỉnh di động đạt 14/14 trong 7.81s.
+- Toàn bộ frontend 180/180 kiểm thử, 26 tệp đạt trong 57.29s. Lần này trước chỉnh lớp CSS-grid/dấu gạch ngang cuối; nhóm chọn và build cuối bao phủ hai sửa đó.
+- Typecheck, lint nghiêm ngặt 155 tệp và định dạng admin/CSS 12 tệp đạt. Định dạng toàn dự án ở mốc này còn hai tệp WIP ngoài phạm vi; không ghi chúng đã được sửa trong đợt này.
+- Frontend production build đạt. Chromium 1280/768/375 kiểm tra không tràn ngang/lỗi trang, tìm kiếm, điều hướng máy tính/Sheet, độ nâng 4px và giảm chuyển động không transform.
+- Đã xem ảnh máy tính/di động trong `.cache/admin-verification/dashboard_*.png` bị Git bỏ qua.
+
+Các kết quả là lịch sử giao diện, không phải chạy lại khi chỉnh báo cáo. Xem [trạng thái mock hiện tại](admin_mock_frontend_2026_10_15.md). Chưa có số đo bao phủ/CI mới hay chứng nhận thiết bị thật/nhiều trình duyệt. Chưa commit/push.

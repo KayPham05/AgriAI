@@ -1,28 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { getAdminActivity, type AdminActivity, type AdminDailyActivity } from '@/services/adminApi';
-import { Button } from '@/components/ui/button';
-
-export function useAdminActivity(token: string) {
-  const [attempt, setAttempt] = useState(0);
-  const request = useMemo(() => ({ token, attempt }), [token, attempt]);
-  const [state, setState] = useState<{ data?: AdminActivity; error?: string }>({});
-  useEffect(() => {
-    const controller = new AbortController();
-    setState({});
-    getAdminActivity(request.token, controller.signal)
-      .then((data) => {
-        if (!controller.signal.aborted) setState({ data });
-      })
-      .catch((error: unknown) => {
-        if (!controller.signal.aborted)
-          setState({ error: error instanceof Error ? error.message : 'Chưa thể tải biểu đồ.' });
-      });
-    return () => controller.abort();
-  }, [request]);
-  return { ...state, retry: () => setAttempt((value) => value + 1) };
-}
+import type { AdminDailyActivity } from './adminTypes';
 
 function shortDate(date: string): string {
   return `${date.slice(8, 10)}/${date.slice(5, 7)}`;
@@ -105,21 +83,6 @@ export function AdminMetricChart({
           </tbody>
         </table>
       </details>
-    </div>
-  );
-}
-
-export function AdminChartState({ error, retry }: { error?: string; retry: () => void }) {
-  return (
-    <div className="mt-4 flex flex-col items-start gap-2 text-xs">
-      <p role={error ? 'alert' : 'status'}>
-        {error ? 'Chưa thể tải biểu đồ.' : 'Đang tải biểu đồ...'}
-      </p>
-      {error && (
-        <Button variant="outline" size="sm" onClick={retry}>
-          Tải lại biểu đồ
-        </Button>
-      )}
     </div>
   );
 }

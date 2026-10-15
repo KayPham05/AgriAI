@@ -43,9 +43,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasColumnType("timestamp with time zone")
             .IsRequired();
 
-        builder.Property(u => u.LockedAt).HasColumnName("locked_at");
-        builder.Property(u => u.LockReason).HasColumnName("lock_reason").HasMaxLength(500);
-        builder.Property(u => u.SessionsRevokedAt).HasColumnName("sessions_revoked_at");
         builder.Property(u => u.UpdatedAt)
             .HasColumnName("updated_at")
             .HasColumnType("timestamp with time zone");

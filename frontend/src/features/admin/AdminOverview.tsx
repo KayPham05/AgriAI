@@ -1,10 +1,11 @@
+import { useAdminMock } from './AdminMockProvider';
 import { ArrowUpRight, Users, Images, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import type { AdminSummary } from '@/services/adminApi';
+import type { AdminSummary } from './adminTypes';
 import type { AuthUser } from '@/services/authApi';
 import { AdminCalendar } from './AdminCalendar';
-import { AdminMetricChart, AdminChartState, useAdminActivity } from './AdminMetricChart';
+import { AdminMetricChart } from './AdminMetricChart';
 import { AdminAccountCard, AdminRecentImages, AdminRecentSessions } from './AdminOverviewPanels';
 
 const METRICS = [
@@ -15,20 +16,18 @@ const METRICS = [
 
 export function AdminOverview({
   summary,
-  token,
   user,
   onUsers,
   onImages,
   onSessions,
 }: {
   summary?: AdminSummary;
-  token: string;
   user: AuthUser;
   onUsers: () => void;
   onImages: () => void;
   onSessions: () => void;
 }) {
-  const activity = useAdminActivity(token);
+  const { activity } = useAdminMock();
   const areas = [
     {
       title: 'Người dùng',
@@ -88,11 +87,7 @@ export function AdminOverview({
                   <p className="mt-1 text-xs leading-4">
                     {summary ? 'Tổng bản ghi' : 'Chưa có số liệu'}
                   </p>
-                  {activity.data ? (
-                    <AdminMetricChart days={activity.data.days} field={field} title={trend} />
-                  ) : (
-                    <AdminChartState error={activity.error} retry={activity.retry} />
-                  )}
+                  <AdminMetricChart days={activity.days} field={field} title={trend} />
                 </CardContent>
               </Card>
             </section>
@@ -129,12 +124,12 @@ export function AdminOverview({
             </CardContent>
           </Card>
         </section>
-        <AdminRecentImages token={token} onImages={onImages} />
+        <AdminRecentImages onImages={onImages} />
       </div>
       <div className="grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-1">
         <AdminCalendar />
         <AdminAccountCard user={user} />
-        <AdminRecentSessions token={token} onSessions={onSessions} />
+        <AdminRecentSessions onSessions={onSessions} />
       </div>
     </div>
   );
