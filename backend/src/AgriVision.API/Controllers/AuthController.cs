@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using AgriVision.Application.DTOs.Auth;
+using AgriVision.Application.Common.Interfaces.Persistence;
 using AgriVision.Application.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -43,5 +44,16 @@ public class AuthController : ControllerBase
 
         var result = await _authService.GetCurrentUserAsync(userId, cancellationToken);
         return Ok(result);
+    }
+
+    [Authorize]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout([FromServices] ILoginSessionRepository sessions, CancellationToken cancellationToken)
+    {
+        var userClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (!Guid.TryParse(userClaim, out var userId)) return Unauthorized();
+        if (Guid.TryParse(User.FindFirstValue("sid"), out var sessionId))
+            await sessions.EndAsync(sessionId, userId, cancellationToken);
+        return NoContent();
     }
 }

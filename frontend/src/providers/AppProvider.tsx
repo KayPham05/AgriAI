@@ -2,16 +2,14 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import type {
-  Plant,
-  Disease,
-  UserProfile,
-  DiagnosisResult,
-  NotificationItem,
-  Toast,
-} from '@/types';
+import type { Plant, Disease, UserProfile, DiagnosisResult, Toast } from '@/types';
 import { SUPPORTED_PLANTS, ALL_DISEASES } from '@/data/plantData';
-import { type AuthSession, clearAuthSession, restoreAuthSession } from '@/services/authApi';
+import {
+  type AuthSession,
+  clearAuthSession,
+  restoreAuthSession,
+  logoutSession,
+} from '@/services/authApi';
 import { getPlants, getDiseases } from '@/services/catalogApi';
 import {
   getPredictionHistory,
@@ -26,6 +24,7 @@ import { AppSplashScreen } from '@/components/common/AppSplashScreen';
 import { LoginSuccessScreen } from '@/components/common/LoginSuccessScreen';
 import { AuthContext, CatalogContext, HistoryContext, FeedbackContext } from './AppContexts';
 import { guestProfile, createUserProfile, readGuestHistory } from './sessionProfile';
+import { useAccountNotifications } from './useAccountNotifications';
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -53,7 +52,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
 
   // Notifications
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
   // Diagnosis History with LocalStorage Persistence
   const [history, setHistory] = useState<DiagnosisResult[]>([]);
@@ -91,6 +89,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!loginPendingSession) return;
+    if (loginPendingSession.user.role === 'Admin' && pathname === '/') {
+      return;
+    }
     let isActive = true;
     setStartupData(null);
     setStartupError('');
@@ -113,7 +114,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isActive = false;
       clearTimeout(timeout);
     };
-  }, [loginPendingSession]);
+  }, [loginPendingSession, pathname]);
+
+  useEffect(() => {
+    if (loginPendingSession?.user.role === 'Admin' && pathname === '/' && entranceReady) {
+      router.replace('/admin');
+    }
+  }, [loginPendingSession, pathname, entranceReady, router]);
 
   useEffect(() => {
     if (!loginPendingSession || !startupData || !entranceReady) return;
@@ -147,6 +154,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isHistoryDetailOpen, setIsHistoryDetailOpen] = useState(false);
   const [historyDetailResult, setHistoryDetailResult] = useState<DiagnosisResult | null>(null);
+  const expireSession = useCallback(() => {
+    clearAuthSession();
+    setAuthSession(null);
+    setUserProfile(guestProfile);
+    setHistory(readGuestHistory());
+    setHasEnteredApp(false);
+    setIsNotificationsOpen(false);
+    returnPathRef.current = null;
+    router.replace('/');
+  }, [router]);
+  const accountNotifications = useAccountNotifications(
+    authSession?.token,
+    isNotificationsOpen,
+    expireSession,
+  );
+  const notifications = accountNotifications.notifications;
 
   const openAuthentication = useCallback((mode: 'login' | 'register') => {
     setAuthEntryMode(mode);
@@ -164,13 +187,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Notification actions
-  const markAllNotificationsRead = useCallback(() => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  }, []);
-
-  const clearAllNotifications = useCallback(() => {
-    setNotifications([]);
-  }, []);
 
   // History Actions
   const handleDeleteHistoryItem = useCallback(
@@ -228,6 +244,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    if (authSession) {
+      void logoutSession(authSession.token).catch(() => {
+        addToast({
+          type: 'error',
+          title: 'Chưa thể đóng phiên trên máy chủ',
+          message:
+            'Đã đăng xuất trên thiết bị này. Phiên trên máy chủ sẽ còn hiệu lực đến khi hết hạn.',
+        });
+      });
+    }
     clearAuthSession();
     setAuthSession(null);
     setUserProfile(guestProfile);
@@ -235,7 +261,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     returnPathRef.current = null;
     router.replace('/');
     setHasEnteredApp(false);
-  }, [router]);
+  }, [router, authSession, addToast]);
   const updateProfile = useCallback(
     (updated: UserProfile) => {
       setUserProfile(updated);
@@ -317,8 +343,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
               isOpen={isNotificationsOpen}
               onClose={() => setIsNotificationsOpen(false)}
               notifications={notifications}
-              onMarkAllRead={markAllNotificationsRead}
-              onClearAll={clearAllNotifications}
+              onMarkAllRead={accountNotifications.markAllRead}
+              onClearAll={accountNotifications.clearAll}
+              error={accountNotifications.error}
+              busy={accountNotifications.busy}
+              loading={accountNotifications.loading}
+              onRetry={accountNotifications.retry}
             />
             <HistoryDetailModal
               isOpen={isHistoryDetailOpen}

@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { clearAuthSession, login, register, restoreAuthSession, saveAuthSession } from './authApi';
+import {
+  clearAuthSession,
+  login,
+  register,
+  restoreAuthSession,
+  saveAuthSession,
+  logoutSession,
+} from './authApi';
 
 const user = {
   id: 'user-one',
@@ -11,6 +18,18 @@ const user = {
 const session = { token: 'jwt-token', user };
 
 describe('authentication API', () => {
+  it('ends the current backend session with authenticated POST', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 204, json: async () => null });
+    vi.stubGlobal('fetch', fetchMock);
+    await logoutSession('jwt-token');
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/auth/logout',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'Bearer jwt-token' }),
+      }),
+    );
+  });
   afterEach(() => {
     vi.unstubAllGlobals();
     clearAuthSession();

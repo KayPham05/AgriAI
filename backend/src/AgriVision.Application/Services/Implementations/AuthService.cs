@@ -11,11 +11,13 @@ public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepository;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
+    private readonly ILoginSessionRepository _sessions;
 
-    public AuthService(IUserRepository userRepository, IJwtTokenGenerator jwtTokenGenerator)
+    public AuthService(IUserRepository userRepository, IJwtTokenGenerator jwtTokenGenerator, ILoginSessionRepository sessions)
     {
         _userRepository = userRepository;
         _jwtTokenGenerator = jwtTokenGenerator;
+        _sessions = sessions;
     }
 
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
@@ -38,7 +40,7 @@ public class AuthService : IAuthService
 
         await _userRepository.AddAsync(user, cancellationToken);
 
-        var token = _jwtTokenGenerator.GenerateToken(user);
+        var token = await IssueTokenAsync(user, cancellationToken);
         var userDto = new UserDto(user.Id, user.FullName, user.Email, user.Role, user.CreatedAt);
 
         return new AuthResponse(token, userDto);
@@ -52,7 +54,9 @@ public class AuthService : IAuthService
             throw new UnauthorizedAccessException("Invalid email or password.");
         }
 
-        var token = _jwtTokenGenerator.GenerateToken(user);
+        if (user.LockedAt != null) throw new UnauthorizedAccessException("This account is locked.");
+
+        var token = await IssueTokenAsync(user, cancellationToken);
         var userDto = new UserDto(user.Id, user.FullName, user.Email, user.Role, user.CreatedAt);
 
         return new AuthResponse(token, userDto);
@@ -67,5 +71,15 @@ public class AuthService : IAuthService
         }
 
         return new UserDto(user.Id, user.FullName, user.Email, user.Role, user.CreatedAt);
+    }
+
+    private async Task<string> IssueTokenAsync(User user, CancellationToken cancellationToken)
+    {
+        var token = _jwtTokenGenerator.GenerateSessionToken(user);
+        await _sessions.AddAsync(new LoginSession
+        {
+            Id = token.SessionId, UserId = user.Id, CreatedAt = token.CreatedAt, ExpiresAt = token.ExpiresAt
+        }, cancellationToken);
+        return token.Token;
     }
 }

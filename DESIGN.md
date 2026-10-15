@@ -244,3 +244,106 @@ Use this prompt for future UI work:
 ## 10. Review boundary
 
 Impeccable may inspect screenshots and code, then return critique or audit findings. It must not run craft, polish, normalize, animate, or any command that edits UI. Findings return to the implementation pass governed by Taste and Vercel React Best Practices.
+
+## 11. AGRI-80 CRM admin surface (2026-10-12)
+
+### Admin login success entrance restored (2026-10-15)
+
+Admin login/restoration at the public entry route must complete the existing LoginSuccessScreen logo/brand/greeting entrance before redirecting to /admin. Do not let the role shortcut bypass its onAnimationComplete signal. Admin does not wait for the user catalog/history; keep that data-loading path separate from the animation gate. Reuse current GSAP tokens and reduced-motion immediate completion; no artificial timeout, extra animation or new palette/token. User startup data/error/retry and return-route behavior remain unchanged.
+### Compact admin overview density (user follow-up 2026-10-15)
+
+The user found the dashboard too tall. Prefer a compact operational overview, retaining all data/actions, palette, Manrope, hover navigation and reduced-motion behavior. This supersedes earlier roomy admin spacing and display sizes only.
+
+- Header vertical padding12px; main vertical padding16/20px; standard20/24px horizontal gutters. Admin h1 is24px, followed by8px copy gap and20px section separation. Do not reduce the global body/control font or apply CSS/browser zoom.
+- Overview column/group gaps16px. Metrics use30px totals with8px top gap, shorter total caption, tighter chart labels and40px bar plots. Exact seven-day tables, zero/error/retry states and44px summary targets remain.
+- Monthly calendar stays fully rendered. Combine calendar icon/month title in one header row with44px previous/next Buttons. Weekday bottom gap4px; non-interactive date markers28px with no extra row padding. Footer uses8px vertical padding and a short date/time-zone line beside the44px today action. Do not shrink interactive controls to match date cells.
+- Account avatar40px and title18px, without the former large avatar gap. Management rows use12px vertical spacing and36px supporting icons; buttons remain44px. Recent session rows use12px vertical spacing.
+- Token updates: --admin-panel-inset:1rem; --admin-chart-height:2.5rem. No new color, library, data query or functionality change. Existing raw-value tables below remain historical where superseded here.
+### Hover/focus expansion without a toggle button (user follow-up 2026-10-15)
+
+Remove the desktop header expand/collapse Button entirely. The72px icon rail expands to224px when a mouse/hovering pen enters the rail and returns to icons when it leaves. Keyboard focus anywhere inside the rail also expands it; keep labels visible while either pointer or focus remains inside, and collapse only when both leave. Moving between descendants must not collapse it. Touch pointer-enter does not synthesize hover; compact icons remain actionable and mobile continues to use its existing Sheet menu.
+
+This replaces the toggle-button interaction below while preserving detached20px gap, full accessible icon names, active state, logout, existing320ms transform/label effects and reduced-motion behavior. No new tokens, palette, persistence, library or hidden replacement toggle. Capture the current animated background width before interrupted transitions so repeated pointer entries can continue from the visible surface. Focus and hover intent are coordinated; same-state events do not restart animation.
+### Icon-only default and expanded labels (user correction 2026-10-15)
+
+This correction supersedes the hide-entire-rail behavior below. On desktop the detached rail remains visible and usable in both states. Default:72px wide, logo and navigation/logout icons only. Expanded:224px wide with each icon and its full Vietnamese text in a horizontal row. Preserve the20px gap, sticky positioning, colors, active-state feedback and mobile Sheet below1024px.
+
+The header Button is named Mở rộng thanh điều hướng / Thu gọn thanh điều hướng with aria-expanded and aria-controls. Collapsed buttons retain their full accessible names and native title hints; only visible text labels are hidden. Do not set aria-hidden/inert on the rail or disable navigation/logout when compact. Brand label follows the same reveal rule.
+
+Use existing scoped useGSAP: one layout reflow, transform-only main-content repositioning, a separate background surface scaled horizontally, and finite label translation/opacity on expansion. Keep text/icons outside the scaled surface. Clear completed inline motion, clean up interrupted transitions and skip all motion with reduced-motion. Both states retain the current view/search/data. No new persistence or dependency.
+
+Token changes: --admin-rail-width:14rem; --admin-rail-collapsed-width:4.5rem; --admin-rail-button-height:2.75rem; --admin-rail-label-offset:-8px. Retain --admin-rail-gap:1.25rem and --admin-rail-duration:0.32s. Use the existing frame shadow on the separate rail surface. The152px width difference is usable main-content space.
+### Detached, collapsible admin navigation (user follow-up 2026-10-15)
+
+The desktop navigation is now its own floating rounded surface, separated from the main rounded content frame by20px. This supersedes the earlier attached rail/right border. Preserve the existing112px rail width, surface/primary colors, logo, navigation labels and bottom logout. The rail stays sticky24px from the viewport top and scrolls internally on short windows.
+
+Add a44px icon Button at the start of the desktop header with explicit open/close accessible names, aria-expanded and aria-controls. Closing slides/fades the entire rail left and removes its layout slot; the content gains132px (112px rail plus20px gap). Opening restores the rail. Keep the control outside the hidden rail, so reopening is always reachable. Closed navigation is aria-hidden and inert immediately, preventing focus and pointer access while it fades. Keep the active view, search draft and backend data mounted through toggles. Initial desktop state is open; no new persisted preference.
+
+Animate only transform/opacity: the rail uses a finite CSS transition, while scoped useGSAP measures the previous content position, reflows once and animates its horizontal transform to the new position. Do not tween width, margin or grid tracks. Clear the content transform on completion, clean up on repeated toggles/unmount, and stop/revert motion when reduced-motion or the desktop breakpoint changes. Reduced-motion applies layout changes immediately with working controls and focus. Below1024px retain the existing Radix Sheet and its mobile menu control.
+
+Additional tokens in frontend/src/index.css: --admin-rail-width:7rem; --admin-rail-gap:1.25rem; --admin-rail-duration:0.32s. Reuse --admin-frame-shadow, --admin-rail-height and standard rounded-2xl for the detached rail. Do not change palette, typography or shared primitives.
+### Admin calendar and metric charts (user follow-up 2026-10-15)
+
+The date-only account footer is replaced by an always-rendered monthly calendar at the top of the overview context column. Show Monday-first weekday headings, all days in the displayed month, a primary-colored today marker with aria-current=date, and existing44px shadcn Buttons for previous/next month and return to today. Announce month heading changes politely. Today uses Vietnam UTC+7 independently of browser timezone. This is a month reference, not an appointment editor or a date filter for charts; do not imply saved events or selected-day activity.
+
+Each summary card retains its lifetime total and adds a small seven-day column chart: new accounts, uploaded images, and login sessions created per Vietnam calendar day (today plus six prior days). Use the authenticated server aggregate endpoint, never count a page of directory records. Include historical deleted/expired images and ended sessions as events, exclude anonymous prediction images consistently with the summary, and zero-fill missing days. Day counts and lifetime totals are different measures; login events are not concurrent/online users.
+
+Charts use independent zero-based scales with a visible maximum-per-day label, date endpoints, an explicit no-activity message for all-zero series, and zero-height bars for zero counts. Expose a named chart region and a native details/summary table with all seven exact daily counts for keyboard/touch/assistive-technology users. Keep details focus visible on the primary card as well as neutral cards. Loading and retry states are independent of lifetime totals; do not replace request failure with zero data. No new chart animation or library is required for these bounded column plots. Existing scoped entry/reduced-motion rules apply.
+
+Preserve all colors and Manrope. Chart surfaces use primary on surface, and primary-foreground on the primary metric. Additional token definitions in frontend/src/index.css:
+
+| Token | Value |
+| --- | --- |
+| --admin-chart-height | 5rem |
+| --admin-chart-gap | 0.5rem |
+| --admin-chart-baseline-width | 1px |
+| --admin-chart-bar-radius | 0.25rem |
+| --admin-chart-bar-color | existing primary (primary-foreground on primary card) |
+| --admin-chart-baseline | existing border (primary-foreground on primary card) |
+
+Calendar cells use standard spacing/size utilities; day cells are non-interactive. Month navigation and chart details remain usable without motion. These additions supersede the earlier static-date/no-chart overview description only; prior entries are preserved as history.
+### Current admin dashboard direction (user request 2026-10-15)
+
+The reference image authorizes a compact floating dashboard layout and restrained interactive effects while preserving the existing palette and Manrope. This supersedes earlier flat-summary/256px-sidebar/no-elevation directions for the admin workspace only. Earlier paragraphs remain historical. No new color, dependency, fake graph, revenue metric or inference claim is introduced.
+
+- Desktop: an outer rounded workspace on surface-muted, a 112px navigation rail with icons and short visible labels (full accessible names retained), a useful account search, three real summary cards, management actions and recent images, plus a secondary account/recent-session column from1280px. The rail is sticky within the page; below1024px use the existing Sheet. Standard20/32px content gutters remain.
+- Tablet: three summary columns from640px, followed by management/recent-image panels and a two-column account/session section from768px. Below640px the leading metric spans two columns, the remaining metrics share a row, and content stacks in reading order. Keep44px controls, semantic regions/headings, visible focus and no horizontal document overflow.
+- Panel Card compositions are allowed for these overview groups; do not nest cards or convert every management record into a raised card. Keep existing plain account/image/session rows and confirmed moderation dialogs. Retain backend logout in rail and mobile Sheet.
+- Search submits the real account query and opens the users view with that query preserved. Summary counts are real totals (including historical sessions), not live/online counts. Recent panels independently request existing authenticated paginated endpoints, show at most three records ordered newest first by the backend, and provide loading/empty/retry states. Expired/deleted/unavailable media has explicit fallback copy. Account identity comes from the authenticated session.
+- Motion uses scoped useGSAP/matchMedia: finite view-entry translation/opacity with at most eight staggered groups; clean up on view change/unmount and clear inline transform/opacity on completion. CSS adds a4px metric-card hover lift and a2px action-arrow shift, with keyboard focus feedback. No loops, tilt, parallax, animated charts or hidden-until-JavaScript content. Reduced-motion skips entrance, lift, arrow movement and their transitions while preserving navigation/focus.
+
+Admin token additions in frontend/src/index.css (raw values live only in the token layer):
+
+| Token | Value |
+| --- | --- |
+| --admin-frame-radius | 2rem |
+| --admin-frame-shadow | 0 16px 56px, primary-hover at8% |
+| --admin-panel-shadow | 0 4px 16px, primary-hover at3% |
+| --admin-hover-shadow | 0 12px 24px, primary-hover at9% |
+| --admin-panel-inset | 1.25rem |
+| --admin-hover-lift | -4px |
+| --admin-arrow-shift | 2px |
+| --admin-hover-duration | 0.2s |
+| --admin-enter-distance | 16px |
+| --admin-enter-duration | 0.5 (GSAP seconds) |
+| --admin-enter-stagger | 0.055 (GSAP seconds) |
+| --admin-enter-opacity | existing --selection-enter-opacity (0.65) |
+| --admin-rail-height | calc(100dvh - 3rem) |
+| --admin-rail-button-height | 4.5rem |
+
+Use background/surface/surface-muted/primary/primary-foreground/secondary/border/ring unchanged. The first metric uses primary with primary-foreground; the other cards use surface. New classes are scoped to admin chrome/panels, and do not change shared Card/Button defaults or public application styling.
+
+
+User-authorized management update2026-10-14, verified2026-10-15: retain the established tokens/plain list layout and add confirmed account lock/restore, warnings and forced logout; image deletion/owner warnings; persistent in-app user notices. Admin actions use existing Button/Badge/Dialog/Textarea, identify the target and show pending/error states. Wrap row actions on narrow screens. Use Quản trị for all visible labels/ARIA/metadata/footer in place of CRM. This supersedes earlier read-only/unconnected restrictions for the authorized scope; preserve those paragraphs as history. See `docs/reports/AGRI-80/admin_moderation_2026_10_15.md` for implemented behavior and actual checks.
+
+User-requested action update2026-10-14: replace the desktop sidebar and mobile Sheet `Về ứng dụng` link with `Đăng xuất`, retaining the outline Button and using the LogOut icon. End the current backend session, clear browser authentication and return to `/`; disable while pending and show a retryable error on failure. The authenticated API mapping and current behavior are recorded in `docs/reports/AGRI-80/admin_login_mapping_2026_10_14.md`; earlier unconnected-preview descriptions below are historical.
+
+User scope correction on 2026-10-13: remove the support-request navigation, inbox, queue, priority and crop-interest summaries. The admin scope is exclusively user accounts, user-uploaded images and account login sessions, plus an overview linking those three areas. Reuse the existing shell, mobile Sheet and tokens; use a three-column summary from640px and plain management rows, not a support dashboard. All three areas remain explicitly unconnected until authorized admin APIs are implemented. No seeded data, pretend image deletion or session revocation, client-side role bypass or automatic database population. This paragraph supersedes previous support-related instructions; they remain historical only.
+
+User correction on2026-10-13 supersedes the synthetic preview instructions below: remove all seeded users, requests, dates, crop tags and local-only save simulation. Retain the CRM shell/navigation and empty states. Until real CRM APIs are integrated, display unknown metrics as a hyphen with accessible unavailable text, not invented counts or authoritative zero values. Show that the source is not connected; do not imply the database has been queried or will populate automatically. No real account/database mutation or authorization change is included. Earlier paragraphs below preserve design history only.
+
+The requested `/admin` is currently an explicitly labelled public design preview containing synthetic user/support records only. Do not treat this route as authenticated administration or connect private data without implementing server-side identity/authorization and actual CRM contracts. No real account mutation controls, operational health claims, sales/revenue KPIs or prediction accuracy metrics belong in this preview.
+
+Preserve Manrope, forest-green/warm-canvas tokens, shadcn/Radix primitives and Lucide. Operate mode: standard256px desktop sidebar at1024px, compact breadcrumb header, main content with20/32/40px standard gutters, plain derived summary counts separated by hairlines, one request-list surface and a secondary priority/context column at1280px. Below1024px use Sheet navigation; below768px user rows become readable stacked list items instead of forcing a wide table. No marketing banner, foliage, gradients, nested cards, fake charts, new font/library or ambient motion. Existing control/dialog feedback suffices.
+
+Reuse Button, Input, Label, Select with SelectGroup, Badge, Dialog, Sheet and Textarea. Forms retain the project's existing visible Label/input composition; do not install a replacement form system just for this preview. Search/filter changes reset pagination; request edits use controlled drafts, explicit local-only save and cancellation. Reload resets synthetic changes. Preserve44px targets, semantic headings/regions, focus rings, Escape and Radix focus restoration. The synthetic-data notice remains visible on every CRM view. Page metadata is noindex/nofollow; this is not access control.

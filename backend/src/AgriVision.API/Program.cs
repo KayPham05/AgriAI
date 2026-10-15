@@ -1,4 +1,8 @@
 using System.Text;
+using System.Security.Claims;
+using AgriVision.API.Authentication;
+using AgriVision.Application.Common.Interfaces.Persistence;
+using Microsoft.AspNetCore.Authorization;
 using AgriVision.API.Middleware;
 using AgriVision.Application;
 using AgriVision.Infrastructure;
@@ -50,6 +54,24 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = async context =>
+        {
+            var sessionClaim = context.Principal?.FindFirstValue("sid");
+            var userClaim = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier) ?? context.Principal?.FindFirstValue("sub");
+            if (!Guid.TryParse(userClaim, out var userId)) { context.Fail("Invalid user."); return; }
+            var user = await context.HttpContext.RequestServices.GetRequiredService<IUserRepository>()
+                .GetByIdAsync(userId, context.HttpContext.RequestAborted);
+            if (user == null || user.LockedAt != null || (sessionClaim == null && user.SessionsRevokedAt != null))
+            { context.Fail("The account or session is no longer active."); return; }
+            if (sessionClaim == null) return;
+            if (!Guid.TryParse(sessionClaim, out var sessionId)
+                || !await context.HttpContext.RequestServices.GetRequiredService<ILoginSessionRepository>()
+                    .IsActiveAsync(sessionId, userId, context.HttpContext.RequestAborted))
+                context.Fail("The login session is no longer active.");
+        }
+    };
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
@@ -62,7 +84,9 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options => options.AddPolicy("CurrentAdmin", policy =>
+    policy.RequireAuthenticatedUser().AddRequirements(new CurrentAdminRequirement())));
+builder.Services.AddScoped<IAuthorizationHandler, CurrentAdminHandler>();
 
 // 4. Configure Swagger / OpenAPI with JWT Support
 builder.Services.AddEndpointsApiExplorer();

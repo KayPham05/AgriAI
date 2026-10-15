@@ -10,6 +10,8 @@ public class AppDbContext : DbContext
     }
 
     public DbSet<User> Users => Set<User>();
+    public DbSet<LoginSession> LoginSessions => Set<LoginSession>();
+    public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
     public DbSet<Plant> Plants => Set<Plant>();
     public DbSet<Disease> Diseases => Set<Disease>();
     public DbSet<PlantDisease> PlantDiseases => Set<PlantDisease>();

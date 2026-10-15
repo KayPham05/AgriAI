@@ -12,6 +12,9 @@ public class User
     public string Role { get; set; } = UserRole.User;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
+    public DateTime? LockedAt { get; set; }
+    public string? LockReason { get; set; }
+    public DateTime? SessionsRevokedAt { get; set; }
 
     public ICollection<Prediction> Predictions { get; set; } = new List<Prediction>();
 }
