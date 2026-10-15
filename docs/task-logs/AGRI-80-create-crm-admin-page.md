@@ -1,5 +1,12 @@
 # AGRI-80 - Create CRM Admin Page
 
+## Generated Next.js declaration commit - 2026-10-15
+
+- User explicitly authorized committing the remaining `frontend/next-env.d.ts` and requested an impact assessment. Branch verified as `AGRI-80-create-crm-admin-page`; initial status contained only this modified file.
+- Preserve the existing two-line change from `.next/dev/types/` to `.next/types/`. Inspected the installed Next.js declaration generator and existing tsconfig includes: both type output locations are supported; dev/build may rewrite the tracked file. No runtime/API/database change; collaborator impact is generated-file churn.
+- Fresh `corepack pnpm --dir frontend typecheck` and `git diff --check` passed. No fresh build, application tests, coverage or remote CI result claimed.
+- Affected paths: `frontend/next-env.d.ts`, this task log and [technical report index](../reports/AGRI-80/README.md). Earlier statements that the generated file was excluded describe earlier commits. No push or Jira change; existing AGRI-80 acceptance gaps remain.
+
 ## Bàn giao tổng hợp — cập nhật 15/10/2026
 
 **Đọc trước:** [report tổng hợp và bảng bằng chứng](../reports/AGRI-80/README.md). Đây là trạng thái cuối của đợt làm việc trên nhánh `AGRI-80-create-crm-admin-page`; các phần bên dưới là nhật ký lịch sử, không phải tất cả đều còn áp dụng.

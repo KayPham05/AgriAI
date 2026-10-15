@@ -1,5 +1,11 @@
 # AGRI-80 - Create CRM Admin Page
 
+## Generated Next.js type imports - 2026-10-15
+
+User explicitly requested committing the previously excluded `frontend/next-env.d.ts`. Its two generated imports now reference `.next/types/` instead of `.next/dev/types/`. The installed Next.js generator (`frontend/node_modules/next/dist/lib/typescript/writeAppTypeDeclarations.js`) derives these imports from `distDir`; `frontend/tsconfig.json` already includes both locations. No application runtime, API or database behavior changes. Next dev/build may regenerate this tracked file and create working-tree noise for collaborators.
+
+Fresh checks for this follow-up: `corepack pnpm --dir frontend typecheck` and `git diff --check` passed. No new build, application tests, coverage or GitHub Actions run; preceding evidence remains historical. Commit scope includes this file and the required report/task-log update. No push. Overall AGRI-80 DoD remains incomplete.
+
 ## Main synchronization — 2026-10-15
 
 Merged remote main `5eecebf` into local AGRI-80 without conflicts. Kept upstream CI smoke path fix and dataset v1.4 ignores; aligned the Docker command guide. Fresh Compose base/CI validation, actionlint, CI helper tests, real FastAPI smoke and existing-stack web/API/proxy/DB/AI checks pass. Application source is unchanged; broader mapping/CI acceptance remains incomplete. Generated next-env.d.ts preserved unstaged; no push. See [ongoing main merge report](main_merge_2026_10_13.md) and [sync task log](../../task-logs/AGRI-80-main-sync.md).
