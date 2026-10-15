@@ -86,7 +86,7 @@ docker compose -p agrivision-smoke -f docker-compose.yml -f docker-compose.ci.ym
 docker compose -p agrivision-smoke -f docker-compose.yml -f docker-compose.ci.yml logs --tail 100 migrations backend ai-service
 ~~~
 
-CI also calls real `/predict` with `frontend/public/images/rice-leaf-cutout.png`
+CI also calls real `/predict` with `frontend/src/assets/banner-leaves/rice-leaf-cutout.png`
 and validates the 59 compound labels and confidence scale. This checks inference
 execution, not model accuracy. Use the same -p and both -f options to stop/remove
 this smoke project's containers.

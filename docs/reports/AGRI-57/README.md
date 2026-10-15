@@ -2,11 +2,13 @@
 
 Đây là điểm vào chính cho toàn bộ bằng chứng kỹ thuật của task AGRI-57.
 
-Nhánh đã đối chiếu: `AGRI-57-frontend-summary`. Cập nhật tài liệu: 2026-10-12.
+Nhánh đã đối chiếu: `AGRI-57-frontend-summary`. Cập nhật tài liệu: 2026-10-13.
 
 [Tổng hợp toàn bộ công việc và hiện trạng ngày2026-10-12](frontend_implementation_report.md#tổng-hợp-hiện-trạng-ngày-2026-10-12): chức năng, routing, ảnh/banner/lá, map, phân trang, kiểm chứng gần nhất và phần chưa nghiệm thu. Lượt tổng hợp chỉ sửa tài liệu, không chạy lại các kết quả lịch sử.
 
 ## Trạng thái Definition of Done
+
+- **Merge remote main và review ngày2026-10-13:** merge `origin/main` tại `25075b4` không conflict; sửa đường dẫn fixture ảnh của CI. Fresh lint/format/build/typecheck,160frontend +66backend +65Python tests và ba coverage floors PASS; Docker với checkpoint thật, proxy upload/storage/history và AI-down503 PASS. Log GitHub xác nhận lỗi compose-smoke cũ là curl26/file thiếu. PR#29 vẫn `BLOCKED`/`REVIEW_REQUIRED`, cần CI trên commit cập nhật và reviewer duyệt trước merge main. [Bằng chứng mới và giới hạn](agri_57_main_merge_review_2026_10_13.md). Các mục dưới là lịch sử.
 
 - **Sửa blockers local ngày2026-10-12, sau mục commit-only:** user cho phép sửa trên feature branch, không tác động main. Strict lint/format/typecheck/build PASS; test:coverage160/160 PASS, branch654/1195=54.73% vượt floor25% giữ nguyên. Smoke expectation đổi sang AgriAI, đối chiếu HTML build PASS; Chromium print/direct image delivery và map4/4 PASS. Chưa chạy full Compose/GitHub CI/CD, chưa commit/push các sửa mới. [Follow-up](agri_57_commit_readiness.md#follow-up-local-ci-remediation-2026-10-12).
 

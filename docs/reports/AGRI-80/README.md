@@ -1,5 +1,10 @@
 # AGRI-80 - Create CRM Admin Page
 
+## Main synchronization — 2026-10-15
+
+Merged remote main `5eecebf` into local AGRI-80 without conflicts. Kept upstream CI smoke path fix and dataset v1.4 ignores; aligned the Docker command guide. Fresh Compose base/CI validation, actionlint, CI helper tests, real FastAPI smoke and existing-stack web/API/proxy/DB/AI checks pass. Application source is unchanged; broader mapping/CI acceptance remains incomplete. Generated next-env.d.ts preserved unstaged; no push. See [ongoing main merge report](main_merge_2026_10_13.md) and [sync task log](../../task-logs/AGRI-80-main-sync.md).
+
+
 ## Commit preparation — 2026-10-15
 
 Feature commit: `b9244c5` (`feat(admin): AGRI-80 add account and image administration`). Fresh pre-commit checks: frontend 188/188, backend 33 unit + 40 PostgreSQL integration; full frontend lint/format/typecheck pass. The two formatting failures below were resolved during commit preparation. Report and task log retain the earlier audit snapshots and remaining mapping/CI limits. Generated `frontend/next-env.d.ts` is intentionally excluded and preserved unstaged. No push or new remote CI result.

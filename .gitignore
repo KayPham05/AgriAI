@@ -24,6 +24,8 @@ __pycache__/
 v1.2/
 v1.3/
 v1.3.zip
+/v1.4/
+/v1.4.zip
 
 # Model checkpoints and exports
 /ai/models/
