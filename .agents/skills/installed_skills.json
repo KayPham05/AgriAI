@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "installed_on": "2026-10-07",
-  "last_updated_on": "2026-10-08",
+  "last_updated_on": "2026-10-13",
   "installer": "OpenAI skill-installer/scripts/install-skill-from-github.py",
   "skills": [
     {
       "name": "design-taste-frontend",
-      "directory": "taste-skill",
+      "directory": "design-taste-frontend",
       "repository": "Leonxlnx/taste-skill",
       "ref": "b482f7a970abb98c4108d4a9f761e458c64cefc8",
-      "path": "skills/taste-skill",
+      "path": "skills/design-taste-frontend",
       "method": "download",
       "installed_on": "2026-10-08",
       "additional_files": ["LICENSE from the repository root at the same ref"]
@@ -148,14 +148,6 @@
       "repository": "openai/skills",
       "ref": "49f948faa9258a0c61caceaf225e179651397431",
       "path": "skills/.curated/gh-fix-ci",
-      "method": "download"
-    },
-    {
-      "name": "security-threat-model",
-      "directory": "security-threat-model",
-      "repository": "openai/skills",
-      "ref": "49f948faa9258a0c61caceaf225e179651397431",
-      "path": "skills/.curated/security-threat-model",
       "method": "download"
     },
     {
