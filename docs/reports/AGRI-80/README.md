@@ -1,6 +1,14 @@
 # AGRI-80 - Giao diện quản trị frontend mock
 
-Nhánh: `AGRI-80-create-crm-admin-page`. Cập nhật: 2026-10-15.
+Nhánh: `AGRI-80-create-crm-admin-page`. Cập nhật: 2026-10-16.
+
+## Bổ sung kiểm thử — 2026-10-16
+
+Thêm 22 unit test và 4 integration test cho frontend admin; không đổi hành vi ứng dụng hay thêm thư viện. Bộ frontend hiện đạt **200/200 kiểm thử**, 32 tệp; coverage nhánh nhóm admin **80.79%**, toàn frontend **60.22%**. Typecheck, lint và định dạng đạt. Hai script unit/integration đã chọn cả test admin. [Phạm vi và bằng chứng kiểm thử mới](admin_frontend_tests_2026_10_16.md).
+
+Chưa chạy lại build/trình duyệt hoặc xác nhận CI cho đợt này. Chưa staging/commit/push. Các mục ngày 2026-10-15 bên dưới là lịch sử.
+
+Sau đó người dùng yêu cầu commit local, chưa push: kiểm tra lại 200/200 test (32 tệp, 31.08s), typecheck/lint/format và commitlint đều đạt. Chỉ đưa test, script chạy test và tài liệu vào commit `test(admin): AGRI-80 add frontend unit and integration tests`; không đưa thư viện, dependency/lockfile hoặc đầu ra sinh tự động vào commit. Chi tiết trong mục kiểm tra trước commit của báo cáo mới.
 
 ## Chuẩn bị commit theo yêu cầu — 2026-10-15
 
@@ -29,6 +37,7 @@ Giữ luồng đăng nhập Admin có sẵn, kiểm tra vai trò trước khi hi
 
 ## Báo cáo chi tiết
 
+- [Unit test và integration test frontend admin](admin_frontend_tests_2026_10_16.md).
 - [Trạng thái frontend mock và bằng chứng gần nhất](admin_mock_frontend_2026_10_15.md).
 - [Tiến trình giao diện CRM](admin_crm_ui.md).
 - [Luồng đăng nhập và đăng xuất trên giao diện](admin_login_mapping_2026_10_14.md).

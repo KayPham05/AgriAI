@@ -1,10 +1,24 @@
 # AGRI-80 - Giao diện quản trị frontend mock
 
 - Nhánh đã xác minh: `AGRI-80-create-crm-admin-page`.
-- Ngày cập nhật: 2026-10-15.
+- Ngày cập nhật: 2026-10-16.
 - Người phụ trách/người duyệt: không suy đoán từ hội thoại.
 - Pull request: chưa tạo cho đợt chỉnh sửa hiện tại.
 - [Mục lục báo cáo](../../reports/AGRI-80/README.md).
+
+## Bổ sung unit test và integration test — 2026-10-16
+
+- Thêm 26 ca kiểm thử cho hành vi frontend hiện có: 22 unit test cho provider/danh sách/hộp thoại, 4 integration test render toàn trang admin và kiểm tra trạng thái giữa các mục. Chỉ giả lập HTTP xác minh tài khoản và router; giữ provider, component và hộp thoại thật.
+- Đường dẫn: bốn tệp `AdminMockProvider.unit.test.tsx`, `AdminRecordList.unit.test.tsx`, `AdminActionDialog.unit.test.tsx`, `AdminCrmPage.integration.test.tsx` trong `frontend/src/features/admin/`. Cập nhật script unit/integration ở `frontend/package.json`; không thêm thư viện/đổi lockfile hay mã giao diện.
+- Kiểm tra mới: unit 60/60 (7 tệp), integration 12/12 (2 tệp), bộ frontend kèm coverage 200/200 (32 tệp, 96.30s). Typecheck/lint/format đạt, 163 tệp.
+- Coverage nhánh admin 80.79%; toàn frontend 898/1491 = 60.22%, vượt sàn 25% nhưng chưa đạt mục tiêu toàn frontend 80%. Nguồn: lần chạy V8 và `.cache/coverage/frontend/coverage-summary.json` bị Git bỏ qua.
+- [Báo cáo chi tiết](../../reports/AGRI-80/admin_frontend_tests_2026_10_16.md). Không chạy lại build/trình duyệt, chưa xác nhận CI; chưa staging/commit/push đợt test này. Các mục trước đó bên dưới là lịch sử; DoD tổng thể chưa xác nhận.
+
+## Chuẩn bị commit kiểm thử local — 2026-10-16
+
+- Người dùng yêu cầu commit chuẩn project, không commit thư viện và chưa push. Chọn đúng 8 tệp: bốn test mới, ba tài liệu AGRI-80 và `frontend/package.json` chỉ đổi scripts.
+- Kiểm tra mới trước commit: `corepack pnpm test --maxWorkers=2` đạt 200/200, 32 tệp trong 31.08s; typecheck/lint/format 163 tệp đạt. Không chạy lại coverage/build/trình duyệt trong bước commit này.
+- Thông điệp `test(admin): AGRI-80 add frontend unit and integration tests`; commitlint đạt 0 lỗi/0 cảnh báo, `git diff --check` đạt. Không đưa thư viện/skill, dependency/lockfile, cache, đầu ra build hoặc dữ liệu cục bộ vào commit. Các dòng chưa commit ở mục bổ sung kiểm thử phía trên là trạng thái trước yêu cầu commit.
 
 ## Chuẩn bị commit local — 2026-10-15
 
