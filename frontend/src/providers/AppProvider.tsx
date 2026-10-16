@@ -7,8 +7,8 @@ import type {
   Disease,
   UserProfile,
   DiagnosisResult,
-  NotificationItem,
   Toast,
+  NotificationItem,
 } from '@/types';
 import { SUPPORTED_PLANTS, ALL_DISEASES } from '@/data/plantData';
 import { type AuthSession, clearAuthSession, restoreAuthSession } from '@/services/authApi';
@@ -91,6 +91,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!loginPendingSession) return;
+    if (loginPendingSession.user.role === 'Admin' && pathname === '/') {
+      return;
+    }
     let isActive = true;
     setStartupData(null);
     setStartupError('');
@@ -113,7 +116,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isActive = false;
       clearTimeout(timeout);
     };
-  }, [loginPendingSession]);
+  }, [loginPendingSession, pathname]);
+
+  useEffect(() => {
+    if (loginPendingSession?.user.role === 'Admin' && pathname === '/' && entranceReady) {
+      router.replace('/admin');
+    }
+  }, [loginPendingSession, pathname, entranceReady, router]);
 
   useEffect(() => {
     if (!loginPendingSession || !startupData || !entranceReady) return;
@@ -164,13 +173,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Notification actions
-  const markAllNotificationsRead = useCallback(() => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  }, []);
-
-  const clearAllNotifications = useCallback(() => {
-    setNotifications([]);
-  }, []);
 
   // History Actions
   const handleDeleteHistoryItem = useCallback(
@@ -317,8 +319,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
               isOpen={isNotificationsOpen}
               onClose={() => setIsNotificationsOpen(false)}
               notifications={notifications}
-              onMarkAllRead={markAllNotificationsRead}
-              onClearAll={clearAllNotifications}
+              onMarkAllRead={() =>
+                setNotifications((items) => items.map((item) => ({ ...item, read: true })))
+              }
+              onClearAll={() => setNotifications([])}
             />
             <HistoryDetailModal
               isOpen={isHistoryDetailOpen}

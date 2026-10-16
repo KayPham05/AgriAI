@@ -8,7 +8,10 @@ import { restoreAuthSession } from './services/authApi';
 import { getPlants, getDiseases } from './services/catalogApi';
 import { getPredictionHistory } from './services/predictionApi';
 
-vi.mock('./services/authApi', () => ({ restoreAuthSession: vi.fn(), clearAuthSession: vi.fn() }));
+vi.mock('./services/authApi', () => ({
+  restoreAuthSession: vi.fn(),
+  clearAuthSession: vi.fn(),
+}));
 vi.mock('./services/catalogApi', () => ({ getPlants: vi.fn(), getDiseases: vi.fn() }));
 vi.mock('./services/predictionApi', () => ({
   getPredictionHistory: vi.fn(),

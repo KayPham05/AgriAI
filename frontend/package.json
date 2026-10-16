@@ -20,8 +20,8 @@
     "ui": "shadcn",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:unit": "vitest run src/utils src/services",
-    "test:integration": "vitest run src/views/DiagnosePage.integration.test.tsx"
+    "test:unit": "vitest run src/utils src/services .unit.test.tsx",
+    "test:integration": "vitest run .integration.test.tsx"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

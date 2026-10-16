@@ -13,6 +13,10 @@ interface NotificationsModalProps {
   notifications: NotificationItem[];
   onMarkAllRead: () => void;
   onClearAll: () => void;
+  error?: string;
+  busy?: boolean;
+  loading?: boolean;
+  onRetry?: () => void;
 }
 export function NotificationsModal({
   isOpen,
@@ -20,6 +24,10 @@ export function NotificationsModal({
   notifications,
   onMarkAllRead,
   onClearAll,
+  error,
+  busy,
+  loading,
+  onRetry,
 }: NotificationsModalProps) {
   return (
     <Dialog
@@ -35,7 +43,22 @@ export function NotificationsModal({
             {notifications.filter((item) => !item.read).length} thông báo chưa đọc
           </DialogDescription>
         </DialogHeader>
-        {notifications.length === 0 ? (
+        {error && (
+          <div className="flex flex-col items-start gap-2">
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+            <Button variant="outline" onClick={onRetry}>
+              Thử lại
+            </Button>
+          </div>
+        )}
+        {loading && (
+          <p role="status" className="text-sm text-muted-foreground">
+            Đang tải thông báo...
+          </p>
+        )}
+        {notifications.length === 0 && !loading && !error ? (
           <p className="py-10 text-center text-muted-foreground">Bạn chưa có thông báo nào.</p>
         ) : (
           <>
@@ -54,10 +77,10 @@ export function NotificationsModal({
               ))}
             </div>
             <div className="flex flex-wrap justify-between gap-2 border-t border-border pt-4">
-              <Button variant="outline" onClick={onMarkAllRead}>
+              <Button variant="outline" disabled={busy || loading} onClick={onMarkAllRead}>
                 Đánh dấu đã đọc
               </Button>
-              <Button variant="ghost" onClick={onClearAll}>
+              <Button variant="ghost" disabled={busy || loading} onClick={onClearAll}>
                 Xóa tất cả
               </Button>
             </div>
