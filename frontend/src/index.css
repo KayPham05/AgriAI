@@ -32,6 +32,31 @@
   --shape-card: 1rem;
   --shape-media: 1.25rem;
   --navigation-shadow: 0 4px 16px color-mix(in srgb, var(--primary-hover) 8%, transparent);
+  --admin-frame-radius: 2rem;
+  --admin-frame-shadow: 0 16px 56px color-mix(in srgb, var(--primary-hover) 8%, transparent);
+  --admin-panel-shadow: 0 4px 16px color-mix(in srgb, var(--primary-hover) 3%, transparent);
+  --admin-hover-shadow: 0 12px 24px color-mix(in srgb, var(--primary-hover) 9%, transparent);
+  --admin-panel-inset: 1rem;
+  --admin-hover-lift: -4px;
+  --admin-arrow-shift: 2px;
+  --admin-hover-duration: 0.2s;
+  --admin-enter-distance: 16px;
+  --admin-enter-duration: 0.5;
+  --admin-enter-stagger: 0.055;
+  --admin-enter-opacity: var(--selection-enter-opacity);
+  --admin-rail-height: calc(100dvh - 3rem);
+  --admin-rail-button-height: 2.75rem;
+  --admin-rail-width: 14rem;
+  --admin-rail-collapsed-width: 4.5rem;
+  --admin-rail-label-offset: -8px;
+  --admin-rail-gap: 1.25rem;
+  --admin-rail-duration: 0.32s;
+  --admin-chart-height: 2.5rem;
+  --admin-chart-gap: 0.5rem;
+  --admin-chart-baseline-width: 1px;
+  --admin-chart-bar-radius: 0.25rem;
+  --admin-chart-bar-color: var(--primary);
+  --admin-chart-baseline: var(--border);
   --view-enter-distance: 16px;
   --view-enter-duration: 0.55;
   --auth-brand-stagger: 0.08;
@@ -479,4 +504,127 @@
   .printable-area img {
     break-inside: avoid;
   }
+}
+
+/* Admin workspace: a contained frame using the existing product palette. */
+.admin-frame {
+  box-shadow: var(--admin-frame-shadow);
+}
+.admin-rail {
+  width: var(--admin-rail-width);
+  height: var(--admin-rail-height);
+}
+.admin-rail-slot {
+  width: calc(var(--admin-rail-width) + var(--admin-rail-gap));
+}
+.admin-workspace[data-rail-open="false"] .admin-rail-slot {
+  width: calc(var(--admin-rail-collapsed-width) + var(--admin-rail-gap));
+}
+.admin-workspace[data-rail-open="false"] .admin-rail {
+  width: var(--admin-rail-collapsed-width);
+}
+.admin-rail-button {
+  min-height: var(--admin-rail-button-height);
+  justify-content: flex-start;
+}
+.admin-panel {
+  --card-spacing: var(--admin-panel-inset);
+  border-radius: var(--shape-media);
+  box-shadow: var(--admin-panel-shadow);
+}
+.admin-panel-footer {
+  background: transparent;
+}
+.admin-stat {
+  transition:
+    transform var(--admin-hover-duration) ease,
+    box-shadow var(--admin-hover-duration) ease;
+}
+.admin-stat-primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.admin-action-row svg[data-icon="inline-end"] {
+  transition: transform var(--admin-hover-duration) ease;
+}
+.admin-action-row:focus-within svg[data-icon="inline-end"] {
+  transform: translateX(var(--admin-arrow-shift));
+}
+.admin-search {
+  border: 1px solid var(--border);
+}
+.admin-search:focus-within {
+  box-shadow: var(--auth-field-focus-shadow);
+  border-color: var(--ring);
+}
+@media (min-width: 640px) {
+  .admin-frame {
+    border-radius: var(--admin-frame-radius);
+    overflow: clip;
+  }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .admin-stat:hover {
+    transform: translateY(var(--admin-hover-lift));
+    box-shadow: var(--admin-hover-shadow);
+  }
+  .admin-action-row:hover svg[data-icon="inline-end"] {
+    transform: translateX(var(--admin-arrow-shift));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-rail,
+  .admin-stat,
+  .admin-action-row svg[data-icon="inline-end"] {
+    transition: none;
+    transform: none;
+  }
+}
+
+.admin-chart-bars {
+  display: flex;
+  height: var(--admin-chart-height);
+  gap: var(--admin-chart-gap);
+  border-bottom: var(--admin-chart-baseline-width) solid var(--admin-chart-baseline);
+}
+.admin-chart-bar {
+  display: block;
+  width: 100%;
+  border-radius: var(--admin-chart-bar-radius) var(--admin-chart-bar-radius) 0 0;
+  background: var(--admin-chart-bar-color);
+}
+.admin-stat-primary {
+  --admin-chart-bar-color: var(--primary-foreground);
+  --admin-chart-baseline: var(--primary-foreground);
+}
+.admin-stat-primary .admin-chart-details summary:focus-visible {
+  outline-color: var(--primary-foreground);
+}
+.admin-stat-primary [data-slot="button"] {
+  border-color: var(--primary-foreground);
+  color: var(--primary-foreground);
+}
+.admin-stat-primary [data-slot="button"]:hover {
+  background: var(--primary-hover);
+}
+
+.admin-rail-surface {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--surface);
+  transform-origin: left center;
+  box-shadow: var(--admin-frame-shadow);
+}
+.admin-workspace[data-rail-open="false"] .admin-rail-button {
+  justify-content: center;
+  padding-inline: 0;
+}
+.admin-rail-label[hidden] {
+  display: none;
+}
+
+.admin-workspace[data-rail-open="false"] .admin-rail-content > a {
+  justify-content: center;
 }
