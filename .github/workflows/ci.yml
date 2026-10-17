@@ -158,8 +158,10 @@ jobs:
           python -m pip install -r ai/requirements_ci.txt
       - name: Test CI coverage validation
         run: python -m unittest discover -s .github/scripts -p 'test_*.py'
-      - name: Run all dataset and runtime unit tests
-        run: python -m coverage run -m unittest discover -s ai/tasks/agri_21/tests -p 'test_*.py'
+      - name: Run AI unit and HTTP integration tests
+        run: |
+          python -m coverage run -m unittest discover -s ai/tests/unit -t . -p 'test_*.py'
+          python -m coverage run --append -m unittest discover -s ai/tests/integration -t . -p 'test_*.py'
       - name: Publish coverage and enforce current Python branch floor
         if: ${{ !cancelled() }}
         run: |
@@ -194,7 +196,7 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: |
           docker info --format '{{.ServerVersion}}'
-          dotnet test backend/tests/AgriVision.IntegrationTests/AgriVision.IntegrationTests.csproj --no-build --no-restore --settings backend/coverage.runsettings --collect:"XPlat Code Coverage" --logger "trx;LogFileName=integration.trx" --results-directory .cache/coverage/backend/integration --verbosity quiet
+          dotnet test backend/tests/AgriVision.IntegrationTests/AgriVision.IntegrationTests.csproj --no-build --no-restore --filter 'Category!=RealCheckpoint' --settings backend/coverage.runsettings --collect:"XPlat Code Coverage" --logger "trx;LogFileName=integration.trx" --results-directory .cache/coverage/backend/integration --verbosity quiet
       - name: Verify suites and merge backend coverage
         if: ${{ !cancelled() && steps.unit.outcome == 'success' && steps.integration.outcome == 'success' }}
         run: |
@@ -202,7 +204,7 @@ jobs:
           python3 .github/scripts/check_dotnet_test_results.py .cache/coverage/backend/integration
           dotnet tool install dotnet-reportgenerator-globaltool --tool-path .cache/dotnet-tools --version 5.5.4
           .cache/dotnet-tools/reportgenerator '-reports:.cache/coverage/backend/**/coverage.cobertura.xml' '-targetdir:.cache/coverage/backend/merged' '-reporttypes:Html;Cobertura'
-          python3 .github/scripts/check_coverage.py .cache/coverage/backend/merged/Cobertura.xml --minimum-branches 50 --label Backend
+          python3 .github/scripts/check_coverage.py .cache/coverage/backend/merged/Cobertura.xml --minimum-branches 60 --label Backend
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -237,7 +239,7 @@ jobs:
         run: pnpm run build
       - name: Summarize frontend branch coverage
         if: ${{ !cancelled() }}
-        run: python3 ../.github/scripts/check_coverage.py ../.cache/coverage/frontend/cobertura-coverage.xml --minimum-branches 25 --label Frontend
+        run: python3 ../.github/scripts/check_coverage.py ../.cache/coverage/frontend/cobertura-coverage.xml --minimum-branches 60 --label Frontend
       - uses: actions/upload-artifact@v7
         if: always()
         with:
