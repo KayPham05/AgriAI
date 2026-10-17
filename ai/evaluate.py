@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -16,6 +17,7 @@ from ai.configs import config
 from ai.configs.classification_tasks import get_task_config, task_names
 from ai.data.dataset import create_dataloaders
 from ai.networks.convnext import build_model
+from ai.utils.checkpoint_correction import inference_state_dict
 from ai.utils.metrics import (
     compute_metrics,
     get_confusion_matrix,
@@ -86,7 +88,11 @@ def evaluate_task(task_name: str, checkpoint_path: str | Path | None = None) -> 
         pretrained=False,
         device=config.DEVICE,
     )
-    model.load_state_dict(checkpoint["model_state_dict"])
+    checkpoint_sha = (
+        hashlib.sha256(resolved_checkpoint.read_bytes()).hexdigest()
+        if checkpoint_task == "disease" else ""
+    )
+    model.load_state_dict(inference_state_dict(checkpoint, checkpoint_sha))
     model.eval()
 
     all_predictions: list[int] = []
