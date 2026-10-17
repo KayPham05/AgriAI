@@ -10,6 +10,7 @@ public class User
     public string? PasswordHash { get; set; }
     public DateTime? EmailVerifiedAt { get; set; }
     public string Role { get; set; } = UserRole.User;
+    public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 

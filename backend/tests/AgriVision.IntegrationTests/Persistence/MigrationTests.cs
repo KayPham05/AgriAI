@@ -11,6 +11,35 @@ namespace AgriVision.IntegrationTests.Persistence;
 public class MigrationTests
 {
     [Fact]
+    public async Task Downgrade_ShouldBeRejected_WithoutLosingProfilesOrMigrationHistory()
+    {
+        await using var postgres = new PostgreSqlBuilder("postgres:16-alpine")
+            .WithDatabase("forward_only_test").WithUsername("testuser").WithPassword("testpassword").Build();
+        await postgres.StartAsync();
+        await using var database = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
+            .UseNpgsql(postgres.GetConnectionString()).Options);
+        await database.Database.MigrateAsync();
+        var owner = Guid.NewGuid();
+        var profile = Guid.NewGuid();
+        await database.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO users (id, full_name, email, created_at) VALUES ({owner}, 'Forward owner', 'forward@example.test', now());
+            INSERT INTO agricultural_profiles (id, user_id, name, created_at) VALUES ({profile}, {owner}, 'Keep this profile', now());
+            """);
+        var before = (await database.Database.GetAppliedMigrationsAsync()).ToArray();
+        Func<Task> downgrade = () => database.GetService<IMigrator>().MigrateAsync("20261017084014_DatabaseImprovement");
+        await downgrade.Should().ThrowAsync<NotSupportedException>().WithMessage("*forward-only*");
+        (await database.Database.GetAppliedMigrationsAsync()).Should().Equal(before);
+        (await database.AgriculturalProfiles.SingleAsync(item => item.Id == profile)).Name.Should().Be("Keep this profile");
+        (await database.Database.GetPendingMigrationsAsync()).Should().BeEmpty();
+        database.Database.HasPendingModelChanges().Should().BeFalse();
+        var indexes = await database.Database.SqlQueryRaw<string>("""
+            SELECT indexdef AS "Value" FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'predictions'
+            """).ToListAsync();
+        indexes.Should().Contain(item => item.Contains("(user_id, agricultural_profile_id, created_at, id)"));
+        indexes.Should().Contain(item => item.Contains("(user_id, created_at, id)"));
+    }
+
+    [Fact]
     public async Task Upgrade_ShouldPreserveLegacyRecords_BackfillImages_AndApplyOnlyOnce()
     {
         await using var postgres = new PostgreSqlBuilder("postgres:16-alpine")
@@ -24,20 +53,26 @@ public class MigrationTests
         var diseaseId = Guid.NewGuid();
         var classId = Guid.NewGuid();
         var predictionId = Guid.NewGuid();
+        var legacyUserId = Guid.NewGuid();
         await database.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO users (id, full_name, email, password_hash, created_at)
+                VALUES ({legacyUserId}, 'Legacy owner', 'legacy@example.test', 'legacy-hash', now());
             INSERT INTO plants (id, name, created_at) VALUES ({plantId}, 'Legacy Plant', now());
             INSERT INTO diseases (id, name, created_at) VALUES ({diseaseId}, 'Legacy Disease', now());
             INSERT INTO plant_diseases (id, plant_id, disease_id, class_name, class_index)
                 VALUES ({classId}, {plantId}, {diseaseId}, 'Legacy___Class', 0);
-            INSERT INTO predictions (id, image_path, image_public_id, predicted_plant_disease_id, confidence, created_at)
-                VALUES ({predictionId}, '/legacy.jpg', 'legacy/image', {classId}, 0.9, now());
+            INSERT INTO predictions (id, user_id, image_path, image_public_id, predicted_plant_disease_id, confidence, created_at)
+                VALUES ({predictionId}, {legacyUserId}, '/legacy.jpg', 'legacy/image', {classId}, 0.9, now());
             """);
         await database.Database.MigrateAsync();
         await database.Database.MigrateAsync();
-        (await database.Database.GetAppliedMigrationsAsync()).Should().HaveCount(3);
+        (await database.Database.GetAppliedMigrationsAsync()).Should().HaveCount(5);
         database.Database.HasPendingModelChanges().Should().BeFalse();
         var legacy = await database.Predictions.Include(prediction => prediction.Images).SingleAsync();
         legacy.Id.Should().Be(predictionId);
+        legacy.UserId.Should().Be(legacyUserId);
+        legacy.AgriculturalProfileId.Should().BeNull();
+        (await database.Users.SingleAsync(account => account.Id == legacyUserId)).IsActive.Should().BeTrue();
         legacy.ResultSnapshotJson.Should().BeNull();
         legacy.Images.Should().ContainSingle();
         legacy.Images.Single().ImagePath.Should().Be("/legacy.jpg");
