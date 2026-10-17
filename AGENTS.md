@@ -23,7 +23,7 @@ Repository-wide guidance. Explicit user instructions take precedence.
 
 - Commit, push, rewrite history or perform destructive Git operations only when requested. Inspect staged paths and diff before committing; exclude User Story drafts and unrelated work.
 - Branch: `AGRI-XXX-<short-description>`. Commit: `<type>(<optional-scope>): AGRI-XXX <imperative description>`; one logical change per commit. Use the actual task key, not an unrelated key from branch history.
-- PRs follow the project template and require the relevant reviewer; no self-approval. Default base/target is `develop`, with releases targeting `main`, unless the user directs otherwise.
+- PRs follow the project template and require the relevant reviewer; no self-approval. Default base/target is `main`, unless the user directs otherwise.
 - Include a task log before/with PR creation and before Jira Done. Summarize changes, verification and remaining limits concisely, using Vietnamese for conversation and English for this guide.
 ## Conventions
 
