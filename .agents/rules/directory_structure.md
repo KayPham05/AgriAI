@@ -1,6 +1,6 @@
 # Directory Structure Rules
 
-This document defines how to organize files and directories under `ai/` and `docs/`.
+This document defines how to organize files and directories under `ai/`, `frontend/` and `docs/`.
 Read it before creating any new file, directory, or report.
 
 ---
@@ -12,9 +12,9 @@ AgriAI/
 ├── ai/
 │   ├── data/              # Shared runtime: DataLoader, transforms, preprocessing
 │   ├── tasks/
-│   │   └── <agri_xx>/    # Task-specific offline scripts and tests
-│   │       ├── scripts/
-│   │       └── tests/
+│   │   └── <agri_xx>/    # Task-specific offline scripts
+│   │       └── scripts/
+│   ├── tests/             # All AI tests, grouped by test level and concern
 │   ├── configs/
 │   ├── networks/
 │   ├── utils/
@@ -37,76 +37,54 @@ AgriAI/
 
 ## 2. Rules for `ai/`
 
-### 2.1. Where to place a new Python file
+User-approved layout on 2026-10-17 supersedes task-local test directories.
 
-Answer each question in order until one applies:
+### 2.1. Runtime and offline source
 
-1. Is it imported by `train.py`, `evaluate.py`, or `predict.py`?
-   Place it in `ai/data/`, `ai/networks/`, `ai/utils/`, or `ai/configs/`.
+- Shared runtime imported by train/evaluate/predict belongs in `ai/data/`,
+  `ai/networks/`, `ai/utils/` or `ai/configs/`.
+- `ai/data/` contains only `dataset.py`, `augmentations.py` and
+  `image_preprocessing.py`; do not place scripts or tests there.
+- Task-specific offline dataset scripts remain in `ai/tasks/<agri_xx>/scripts/`,
+  with package markers in the task and scripts directories. Scripts use a main guard.
+- Experiment scripts belong in `experiments/EXP-XXX/`.
 
-2. Is it an offline script to build, audit, or clean a dataset for one Jira task?
-   Place it in `ai/tasks/<agri_xx>/scripts/`.
-
-3. Is it a unit test for scripts in `tasks/<agri_xx>/scripts/`?
-   Place it in `ai/tasks/<agri_xx>/tests/`.
-
-4. Is it an AI experiment script?
-   Place it in `experiments/EXP-XXX/`.
-
-### 2.2. `ai/data/` — Shared runtime only
-
-Contains exactly three modules: `dataset.py`, `augmentations.py`, `image_preprocessing.py`.
-Each must be importable by the training or inference entry points without pulling in any offline dependency.
-Do not add scripts, audit tools, or test files here.
-
-### 2.3. `ai/tasks/<agri_xx>/` — Task-specific scripts and tests
-
-Create this directory only when a task needs offline scripts or dedicated tests.
-The directory name must be lowercase with underscores to be a valid Python package (e.g., `agri_21`).
-Each task directory requires `__init__.py` at three levels: the task root, `scripts/`, and `tests/`.
+### 2.2. All AI tests in `ai/tests/`
 
 ```text
-ai/tasks/agri_21/
-├── __init__.py
-├── scripts/
-│   ├── __init__.py
-│   └── *.py             # Each script has if __name__ == "__main__"
-└── tests/
-    ├── __init__.py
-    └── test_*.py        # unittest.TestCase; no real dataset dependency
+ai/tests/
+├── unit/
+│   ├── data/
+│   ├── inference/
+│   ├── training/
+│   └── tasks/agri_21/
+├── integration/           # FastAPI with controlled model doubles
+├── checkpoint/            # Explicit real-artifact acceptance tests
+└── manual/                # Explicit hardware diagnostics
 ```
 
-### 2.4. Import rules
+- Use package markers in every test directory so unittest discovery can recurse.
+- Automated files use `test_*.py` and `unittest.TestCase`; the manual GPU diagnostic
+  is `check_gpu.py` and runs only on request.
+- Unit/HTTP integration tests use synthetic fixtures, not a real training dataset.
+- Checkpoint tests run separately with verified local artifacts. Missing or wrong
+  artifacts fail the explicit checkpoint run; do not label a skip as model acceptance.
+- Keep tests out of `ai/tasks/*/tests` and out of the `ai/` root.
 
-Allowed:
-- `ai.tasks.*.scripts.*` imports from `ai.data.*`
-- `ai.tasks.*.tests.*` imports from `ai.tasks.*.scripts.*`
-- `ai.tasks.*.tests.*` imports from `ai.data.*`
+### 2.3. Imports and execution
 
-Forbidden:
-- `ai.data.*` imports from `ai.tasks.*`
-- `ai.train`, `ai.evaluate`, `ai.predict` import from `ai.tasks.*`
+Tests may import runtime modules and `ai.tasks.*.scripts.*`; runtime modules and
+application entrypoints must never import test or offline task modules.
+Set `PYTHONPATH` to the repository root and run from there:
 
-Runtime modules must never depend on offline task scripts.
-
-### 2.5. Naming
-
-- All Python files use `snake_case.py`.
-- Scripts in `tasks/<agri_xx>/scripts/` must have `if __name__ == "__main__"`.
-- Test files must start with `test_` and subclass `unittest.TestCase`.
-- Do not use vague names such as `utils.py`, `helper.py`, `temp.py`.
-
-### 2.6. Running tests
-
-```bash
-# All tests for a task
-PYTHONPATH=<repo_root> python -m unittest discover -s ai/tasks/agri_21/tests -p "test_*.py"
-
-# Single test file
-PYTHONPATH=<repo_root> python -m unittest ai.tasks.agri_21.tests.test_build_resized_dataset
+```powershell
+python -m unittest discover -s ai/tests/unit -t . -p "test_*.py"
+python -m unittest discover -s ai/tests/integration -t . -p "test_*.py"
+python -m unittest ai.tests.checkpoint.test_real_checkpoint -v
 ```
 
-Always set `PYTHONPATH=<repo_root>` because all imports use the absolute `ai.*` form.
+See `ai/tests/README.md` for artifact-backed and coverage commands. Python files use
+snake_case; names must explain their purpose.
 
 ---
 
@@ -151,10 +129,28 @@ Every technical report must state the related source file and cite a concrete ev
 
 ---
 
-## 4. Pre-commit checklist
+## 4. Rules for `frontend/`
 
-1. New Python file: classified and placed in the correct directory per Section 2.1.
-2. New task directory: all three `__init__.py` files created.
+User-approved centralized layout on 2026-10-17 supersedes colocated test files.
+
+- Application source stays under `frontend/src/`; all Vitest files live under
+  `frontend/tests/{unit,component,integration,tooling}/`.
+- Shared setup is `tests/setup.ts`; test-only helpers live in `tests/helpers/`.
+- Use `@/` for application imports and relative paths for test helpers. Preserve
+  original asset locations under `src/assets/`; update filesystem paths after moves.
+- Unit covers services/data/utilities/metadata, component covers isolated rendered
+  UI, integration covers app/admin/diagnosis composition, tooling covers rule probes.
+- Full test/coverage commands discover all groups; directory-filter commands run
+  individual groups. Coverage includes production `src/**`, not test helpers.
+- These are Vitest/Testing Library tests, not browser E2E. See
+  `frontend/tests/README.md` for commands and environment boundaries.
+
+---
+
+## 5. Pre-commit checklist
+
+1. New Python file: classified under runtime/offline source or the centralized test layout in Section 2.
+2. New task/test directory: required package markers created; tests live under `ai/tests/`.
 3. New documentation file: directory chosen per Section 3.1, name follows Section 3.3.
 4. New task report: `docs/reports/AGRI-XXX/README.md` created before adding detail files.
 5. All tests pass: `unittest discover` runs clean with no failures.
