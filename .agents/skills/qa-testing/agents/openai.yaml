@@ -1,0 +1,5 @@
+interface:
+  display_name: "QA testing"
+  short_description: "Choose QA guidance for each testing task"
+policy:
+  allow_implicit_invocation: true

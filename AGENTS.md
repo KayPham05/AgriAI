@@ -15,7 +15,7 @@ Repository-wide guidance. Explicit user instructions take precedence.
 - Read relevant [project rules](.agents/rules/project_rules.md), [directory rules](.agents/rules/directory_structure.md) and applicable skills. Use `coding-standards` for code changes and `git-commit` for requested commits.
 - Use `rg` for searches. Batch independent reads; keep edits and dependent operations sequential. Ask only for missing decisions that affect scope; continue work already authorized.
 - Use the [command guides](.agents/commands/README.md). Backend integration requires Docker. Run relevant checks and report passed, unrun or blocked results; local results do not establish GitHub Actions success.
-- Branch coverage target: 80% per component; current CI floors: backend 50%, frontend 25%, Python 40%. See the [coverage report](docs/reports/AGRI-75/ci_branch_coverage.md).
+- Branch coverage target: 80% per component; current CI floors: backend 60%, frontend 60%, Python 40%. See the [current gate report](docs/reports/AGRI-127/README.md) and [historical coverage report](docs/reports/AGRI-75/ci_branch_coverage.md).
 - Keep secrets, datasets, checkpoints, uploads, backups and generated artifacts out of Git. Keep User Story drafts/interview notes local as specified in `.gitignore`; keep migrations, tests and task logs tracked.
 - Put evidence in `docs/reports/AGRI-XXX/` and completion logs in `docs/task-logs/`. Do not invent Jira keys, owners, reviewers or results.
 
@@ -23,7 +23,7 @@ Repository-wide guidance. Explicit user instructions take precedence.
 
 - Commit, push, rewrite history or perform destructive Git operations only when requested. Inspect staged paths and diff before committing; exclude User Story drafts and unrelated work.
 - Branch: `AGRI-XXX-<short-description>`. Commit: `<type>(<optional-scope>): AGRI-XXX <imperative description>`; one logical change per commit. Use the actual task key, not an unrelated key from branch history.
-- PRs follow the project template and require the relevant reviewer; no self-approval. Default base/target is `develop`, with releases targeting `main`, unless the user directs otherwise.
+- PRs follow the project template and require the relevant reviewer; no self-approval. Default base/target is `main`, unless the user directs otherwise.
 - Include a task log before/with PR creation and before Jira Done. Summarize changes, verification and remaining limits concisely, using Vietnamese for conversation and English for this guide.
 ## Conventions
 

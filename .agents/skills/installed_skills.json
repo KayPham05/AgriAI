@@ -1,18 +1,20 @@
 {
   "schema_version": 1,
   "installed_on": "2026-10-07",
-  "last_updated_on": "2026-10-08",
+  "last_updated_on": "2026-10-17",
   "installer": "OpenAI skill-installer/scripts/install-skill-from-github.py",
   "skills": [
     {
       "name": "design-taste-frontend",
-      "directory": "taste-skill",
+      "directory": "design-taste-frontend",
       "repository": "Leonxlnx/taste-skill",
       "ref": "b482f7a970abb98c4108d4a9f761e458c64cefc8",
-      "path": "skills/taste-skill",
+      "path": "skills/design-taste-frontend",
       "method": "download",
       "installed_on": "2026-10-08",
-      "additional_files": ["LICENSE from the repository root at the same ref"]
+      "additional_files": [
+        "LICENSE from the repository root at the same ref"
+      ]
     },
     {
       "name": "gsap-core",
@@ -22,7 +24,9 @@
       "path": "skills/gsap-core",
       "method": "download",
       "installed_on": "2026-10-08",
-      "additional_files": ["LICENSE from the repository root at the same ref"]
+      "additional_files": [
+        "LICENSE from the repository root at the same ref"
+      ]
     },
     {
       "name": "gsap-react",
@@ -32,7 +36,9 @@
       "path": "skills/gsap-react",
       "method": "download",
       "installed_on": "2026-10-08",
-      "additional_files": ["LICENSE from the repository root at the same ref"]
+      "additional_files": [
+        "LICENSE from the repository root at the same ref"
+      ]
     },
     {
       "name": "gsap-performance",
@@ -42,7 +48,9 @@
       "path": "skills/gsap-performance",
       "method": "download",
       "installed_on": "2026-10-08",
-      "additional_files": ["LICENSE from the repository root at the same ref"]
+      "additional_files": [
+        "LICENSE from the repository root at the same ref"
+      ]
     },
     {
       "name": "gsap-scrolltrigger",
@@ -52,7 +60,9 @@
       "path": "skills/gsap-scrolltrigger",
       "method": "download",
       "installed_on": "2026-10-08",
-      "additional_files": ["LICENSE from the repository root at the same ref"]
+      "additional_files": [
+        "LICENSE from the repository root at the same ref"
+      ]
     },
     {
       "name": "vercel-react-best-practices",
@@ -72,7 +82,9 @@
       "path": ".agents/skills/impeccable",
       "method": "download",
       "installed_on": "2026-10-08",
-      "additional_files": ["LICENSE and NOTICE.md from the repository root at the same ref"]
+      "additional_files": [
+        "LICENSE and NOTICE.md from the repository root at the same ref"
+      ]
     },
     {
       "name": "shadcn",
@@ -81,7 +93,9 @@
       "ref": "97ddbf4274ed09d02aa7fd34375f2cf1e48cbbf0",
       "path": "skills/shadcn",
       "method": "git",
-      "additional_files": ["LICENSE.md from the repository root at the same ref"]
+      "additional_files": [
+        "LICENSE.md from the repository root at the same ref"
+      ]
     },
     {
       "name": "vercel-composition-patterns",
@@ -122,7 +136,9 @@
       "ref": "8ca22dba9a94f28898bbce59f2537ff4d87c747d",
       "path": "skills/systematic-debugging",
       "method": "download",
-      "additional_files": ["LICENSE from the repository root at the same ref"]
+      "additional_files": [
+        "LICENSE from the repository root at the same ref"
+      ]
     },
     {
       "name": "test-driven-development",
@@ -131,7 +147,9 @@
       "ref": "8ca22dba9a94f28898bbce59f2537ff4d87c747d",
       "path": "skills/test-driven-development",
       "method": "download",
-      "additional_files": ["LICENSE from the repository root at the same ref"]
+      "additional_files": [
+        "LICENSE from the repository root at the same ref"
+      ]
     },
     {
       "name": "verification-before-completion",
@@ -140,7 +158,9 @@
       "ref": "8ca22dba9a94f28898bbce59f2537ff4d87c747d",
       "path": "skills/verification-before-completion",
       "method": "download",
-      "additional_files": ["LICENSE from the repository root at the same ref"]
+      "additional_files": [
+        "LICENSE from the repository root at the same ref"
+      ]
     },
     {
       "name": "gh-fix-ci",
@@ -151,21 +171,15 @@
       "method": "download"
     },
     {
-      "name": "security-threat-model",
-      "directory": "security-threat-model",
-      "repository": "openai/skills",
-      "ref": "49f948faa9258a0c61caceaf225e179651397431",
-      "path": "skills/.curated/security-threat-model",
-      "method": "download"
-    },
-    {
       "name": "docker-patterns",
       "directory": "docker-patterns",
       "repository": "affaan-m/ECC",
       "ref": "ef648e01899ba3e8dc6371642deaaf64b4477775",
       "path": "skills/docker-patterns",
       "method": "download",
-      "additional_files": ["LICENSE from the repository root at the same ref"]
+      "additional_files": [
+        "LICENSE from the repository root at the same ref"
+      ]
     },
     {
       "name": "api-design",
@@ -174,7 +188,9 @@
       "ref": "ef648e01899ba3e8dc6371642deaaf64b4477775",
       "path": "skills/api-design",
       "method": "download",
-      "additional_files": ["LICENSE from the repository root at the same ref"]
+      "additional_files": [
+        "LICENSE from the repository root at the same ref"
+      ]
     },
     {
       "name": "pytorch-patterns",
@@ -183,7 +199,408 @@
       "ref": "ef648e01899ba3e8dc6371642deaaf64b4477775",
       "path": "skills/pytorch-patterns",
       "method": "download",
-      "additional_files": ["LICENSE from the repository root at the same ref"]
+      "additional_files": [
+        "LICENSE from the repository root at the same ref"
+      ]
+    },
+    {
+      "name": "qa-testing",
+      "directory": "qa-testing",
+      "repository": null,
+      "method": "local-composition",
+      "installed_on": "2026-10-17",
+      "source_repository": "petrkindlmann/qa-skills",
+      "source_ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+      "skill_md_sha256": "dc3c0d814b7ec089abebb2478a02e8a42091def8d4eda5a2b5cedd98ee7d1b85",
+      "bundled_guides": [
+        {
+          "name": "qa-project-context",
+          "directory": "qa-testing/references/qa-project-context",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/qa-project-context",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "68ee2974b80174cef1f0c6021a379e9208dfb4a6a00a623a681dfd378bbc58fe",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "test-strategy",
+          "directory": "qa-testing/references/test-strategy",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/test-strategy",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "db6540f19766bd0ddd45cfb94ab57e1cb3fba0a3ac3f8f95de9e24073a377665",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "test-planning",
+          "directory": "qa-testing/references/test-planning",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/test-planning",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "6b1290c5e605b0cd2a58aa1fed537110d37dda27665e70a29921e5fcc5d9dfe6",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "risk-based-testing",
+          "directory": "qa-testing/references/risk-based-testing",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/risk-based-testing",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "d39f564e2389b1de04024a40e0691feb100004f59e2616b2049632947ef0fe4a",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "exploratory-testing",
+          "directory": "qa-testing/references/exploratory-testing",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/exploratory-testing",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "c0dd7d003ef4f337369a57fa71dea1d2c7a08832706c9fba0526d6eac28ad2e8",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "playwright-automation",
+          "directory": "qa-testing/references/playwright-automation",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/playwright-automation",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "f2ece1d2ab09ef4a9d0498d8553862f83e2ccb0f31bdc14a122f650a1f7cbf1a",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "api-testing",
+          "directory": "qa-testing/references/api-testing",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/api-testing",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "075520dac51d1ff7e3227c034a0f19b5df8554c0e27b638bdb0abb4d0973cbd3",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "unit-testing",
+          "directory": "qa-testing/references/unit-testing",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/unit-testing",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "6ae2bf6de212f3d2e1202f8964c56063cc22331d7b484e687a0b8c58992f9f21",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "visual-testing",
+          "directory": "qa-testing/references/visual-testing",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/visual-testing",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "1856046dc5ceaf97e368fc67cbcca27cc080e3a0743bb6e38fb5066984bf56e6",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "performance-testing",
+          "directory": "qa-testing/references/performance-testing",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/performance-testing",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "0237a4494852522e38da50698f7da3a08084838502994652fcf9c06339bdf20f",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "accessibility-testing",
+          "directory": "qa-testing/references/accessibility-testing",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/accessibility-testing",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "04f0a8faffbaaf4432b6075f22ca0c48894fbfb4ad3302b6dc5d1d1c7c20cfd3",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "security-testing",
+          "directory": "qa-testing/references/security-testing",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/security-testing",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "b02b6050d6c41987db91b29fda40628680432e662f152a06937430251c5b5e65",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "cross-browser-testing",
+          "directory": "qa-testing/references/cross-browser-testing",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/cross-browser-testing",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "fc26ccd876434fc13f4f1ac940565f564ce4ff5d1057b64165d0fadb07be4fbe",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "database-testing",
+          "directory": "qa-testing/references/database-testing",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/database-testing",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "20ef5ba9aac22e4a29769c22b2eb28d94a9cd0a1d20464626d31baaa50e75b86",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "ai-test-generation",
+          "directory": "qa-testing/references/ai-test-generation",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/ai-test-generation",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "e675c3e58f7c170dcd1a1e9adbeb6f13f4c8b236bcd3ebc1ab928019a07075fe",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "ai-qa-review",
+          "directory": "qa-testing/references/ai-qa-review",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/ai-qa-review",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "07a40a415272e346b6120ec867054bced297276029e725a793efb80180af7782",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "test-reliability",
+          "directory": "qa-testing/references/test-reliability",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/test-reliability",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "3e33645460ef078b0895e99cbd1ee4331bd6188a2836732372d9e4b495cacf01",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "test-environments",
+          "directory": "qa-testing/references/test-environments",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/test-environments",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "6559533f36de02d17e19ea29e7de5db2ca80e7c86fe1f4970f8245e29e216e9d",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "test-data-management",
+          "directory": "qa-testing/references/test-data-management",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/test-data-management",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "e8bd7ce43c8b93a884fee70d5abc3b2efd8553f1ea8c582aef4f66b123823e66",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "contract-testing",
+          "directory": "qa-testing/references/contract-testing",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/contract-testing",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "fc69dd9b0e7228f20dc65afdf7e5107ba6b10d02e1417c53c91ebbf9e997b418",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "service-virtualization",
+          "directory": "qa-testing/references/service-virtualization",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/service-virtualization",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "51ec9e2d83afac147173d84d84ed86323d35ca065ec23c0ca7b67ad3813dd776",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "coverage-analysis",
+          "directory": "qa-testing/references/coverage-analysis",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/coverage-analysis",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "c3e1e60a893968bb49e4f0e66b9499d45827c7af1d3ebc32c9da4aeede2d9f7d",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "ci-cd-integration",
+          "directory": "qa-testing/references/ci-cd-integration",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/ci-cd-integration",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "5550baa1f4bacb17668f6751f5789868d163a4b93083534362974ccec1ebd8f3",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "email-testing",
+          "directory": "qa-testing/references/email-testing",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/email-testing",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "698f97f4684eec1feabb3b6626c93488708b6f9ef97b66e40536d4b834962f07",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        },
+        {
+          "name": "release-readiness",
+          "directory": "qa-testing/references/release-readiness",
+          "repository": "petrkindlmann/qa-skills",
+          "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+          "path": "skills/release-readiness",
+          "method": "download",
+          "installed_on": "2026-10-17",
+          "additional_files": [
+            "LICENSE from the repository root at the same ref"
+          ],
+          "skill_md_sha256": "313ddcc1ad871d3b9f4bfd031d91137650aa4ac15badc9b85e3f20f21c5fe2e8",
+          "entrypoint": "guide.md",
+          "original_entrypoint": "SKILL.md"
+        }
+      ]
+    }
+  ],
+  "shared_resources": [
+    {
+      "directory": "qa-testing/references/support",
+      "repository": "petrkindlmann/qa-skills",
+      "ref": "b3bb61bd268b147476252c6ed5a0440c87b97441",
+      "files": [
+        "tools/REGISTRY.md",
+        "LICENSE"
+      ],
+      "installed_on": "2026-10-17"
     }
   ]
 }

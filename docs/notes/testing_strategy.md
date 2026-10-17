@@ -1,5 +1,9 @@
 # Kế hoạch kiểm thử AgriVision AI
 
+> Layout hiện hành từ 2026-10-17: tất cả test AI ở `ai/tests/`; xem
+> [hướng dẫn chạy](../../ai/tests/README.md) và [QA AGRI-127](../reports/AGRI-127/system_qa.md).
+> Các đường dẫn và kết quả bên dưới được giữ làm ghi chép lịch sử.
+
 > Cập nhật CI/Docker/coverage ngày 2026-09-29: xem
 > [báo cáo AGRI-75](../reports/AGRI-75/ci_branch_coverage.md).
 > Các số liệu và mô tả Vite bên dưới là lịch sử ngày 2026-09-27.

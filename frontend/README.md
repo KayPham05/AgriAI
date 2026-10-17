@@ -52,7 +52,7 @@ corepack pnpm check       # typecheck, lint, tests
 corepack pnpm check:ci    # the above, then formatting and production build
 
 # Format only the files you intentionally changed; review the diff afterward.
-corepack pnpm format src/test/lintRules.test.ts
+corepack pnpm exec biome format --write tests/tooling/lintRules.test.ts
 ```
 
 Do not run a blanket formatter or `--unsafe` fix across somebody else's dirty worktree. `.editorconfig` standardizes UTF-8, two-space indentation and LF for frontend files. Generated output, dependency folders, public assets and `next-env.d.ts` are excluded from the formatter/linter. The quality commands do not start Docker, contact the backend, stage files, commit or deploy.
@@ -70,7 +70,11 @@ The new full-project gates may reject existing source. Do not silence rules to m
 - `src/components/common`, `features`, `layout`, `modals`: domain composition built from shared primitives; import from `@/components/ui`, not Radix directly.
 - `src/services`: existing API clients and contracts; keep transport logic out of UI primitives.
 - `src/lib`: small shared utilities, including the `cn` alias.
-- `src/test`: shared setup and tooling regression tests; feature tests remain beside their source.
+- `tests`: centralized Vitest suites; `unit/` covers services/data/utilities/metadata,
+  `component/` covers rendered components, `integration/` covers app/admin/diagnosis
+  flows with controlled API boundaries, and `tooling/` runs lint regression checks.
+  Shared setup is `tests/setup.ts`; test-only composition lives in `tests/helpers/`.
+  See [test layout and commands](tests/README.md).
 
 Lint enforces direct Radix package imports outside the primitive layer and the listed `@/` application imports inside it. It is not a complete dependency-graph analyzer: relative-path boundary bypasses still need review. The tooling tests run the real linter against isolated temporary fixture files and remove only their own fixtures afterward. Run full-tree lint/format checks after the tests finish, not concurrently with these temporary fixtures; `check` and `check:ci` already sequence their steps.
 
@@ -167,6 +171,6 @@ cd frontend
 corepack pnpm check:ci
 ```
 
-`pnpm test:coverage` runs every Vitest file, including component and mocked API integration tests. The current CI floor is 25% branch coverage across `src/`, with an 80% target that will rise as tests expand. Reports are in `../.cache/coverage/frontend/`. Reports include untested source files; this suite does not test real backend/model inference.
+`pnpm test:coverage` runs every Vitest file, including component and mocked API integration tests. The current CI floor is 60% branch coverage across `src/`, with an 80% target that will rise as tests expand. Reports are in `../.cache/coverage/frontend/`. Reports include untested source files; this suite does not test real backend/model inference.
 
 For backend coverage commands, see the [CI report](../docs/reports/AGRI-75/ci_branch_coverage.md). For a UI check, test registration, login, one valid image, one non-image file, a file above 15 MB, and a request with the backend stopped. Confirm the authentication, preview, loading, result, and error states.

@@ -1,5 +1,9 @@
 # PostgreSQL và migration riêng trong Docker
 
+## Cập nhật AGRI-127 — 2026-10-17
+
+Source bổ sung `20261017084014_DatabaseImprovement` và `20261017084202_OptionalAgriculturalProfiles`: tổng 5 migration, 16 bảng nghiệp vụ. Hai migration mới forward-only để giữ dữ liệu; chạy bằng `--migrate` riêng sau khi backup, HTTP startup không thay đổi. Xem [thiết kế và bằng chứng AGRI-127](../reports/AGRI-127/database_improvement_implementation.md). Các số bảng/test ở phần lịch sử bên dưới thuộc lần chạy AGRI-79, không phải kết quả mới.
+
 Phạm vi được chốt ngày 2026-10-06: image backend thật kết nối `agrivision_db`,
 migration chạy bằng lệnh riêng, kiểm thử chạy riêng và tự dọn fixture. Giữ lịch sử
 và snapshot sau khi ảnh hết hạn 30 ngày. Nguồn nghiệp vụ:

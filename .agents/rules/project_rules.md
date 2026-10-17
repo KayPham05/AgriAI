@@ -108,7 +108,7 @@ feat(ai): AGRI-24 added and fixed... # combines work and does not use imperative
 ### 3.1. Required Conditions
 
 - The title **MUST** contain the Jira key, for example `AGRI-23 Implement ConvNeXt baseline training`.
-- The branch **MUST** start from `develop` and target `develop`, except releases that target `main`.
+- The branch **MUST** start from `main` and target `main`.
 - Authors **MUST NOT** approve their own pull requests.
 - At least one reviewer from the relevant domain **MUST** approve the pull request.
 

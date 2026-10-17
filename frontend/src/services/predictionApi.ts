@@ -228,10 +228,15 @@ export function createPrediction(
       const dto = body as PredictionResultDto;
       if (
         !dto?.id ||
-        !dto.imagePath ||
+        typeof dto.imagePath !== 'string' ||
         !dto.predictedPlantDisease?.plant ||
         !dto.predictedPlantDisease?.disease ||
-        !Number.isFinite(dto.confidence)
+        !Array.isArray(dto.predictionDetails) ||
+        typeof dto.createdAt !== 'string' ||
+        !Number.isFinite(Date.parse(dto.createdAt)) ||
+        !Number.isFinite(dto.confidence) ||
+        dto.confidence < 0 ||
+        dto.confidence > 1
       ) {
         finish(new Error('Phản hồi từ backend không đúng contract PredictionResultDto.'));
         return;
