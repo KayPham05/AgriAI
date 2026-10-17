@@ -1,6 +1,7 @@
 import io
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from PIL import Image
@@ -60,6 +61,48 @@ class ThreePlantPredictor(FakePredictor):
 
 
 class InferenceServiceTests(unittest.TestCase):
+    def test_upload_at_byte_limit_is_accepted_but_one_more_byte_is_rejected(self):
+        image = make_image()
+        at_limit = image + b"\0" * (15 * 1024 * 1024 - len(image))
+        with TestClient(create_app(lambda **_kwargs: FakePredictor())) as client:
+            accepted = client.post("/predict", files={"file": ("boundary.jpg", at_limit, "image/jpeg")})
+            rejected = client.post("/predict", files={"file": ("boundary.jpg", at_limit + b"\0", "image/jpeg")})
+        self.assertEqual(accepted.status_code, 200, accepted.text)
+        self.assertEqual(accepted.json()["class_name"], "Ca_chua___Chay_la_som")
+        self.assertEqual(rejected.status_code, 413)
+        self.assertEqual(rejected.json()["error"]["code"], "IMAGE_TOO_LARGE")
+
+    def test_pixel_limit_rejects_decodable_image_before_inference(self):
+        class MustNotPredict:
+            def predict_image(self, *_args, **_kwargs):
+                raise AssertionError("Oversized image reached inference")
+
+        with patch("ai.service.app.MAX_IMAGE_PIXELS", 100):
+            with TestClient(create_app(lambda **_kwargs: MustNotPredict())) as client:
+                response = client.post("/predict", files={"file": ("large.jpg", make_image(), "image/jpeg")})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"]["code"], "INVALID_IMAGE")
+
+    def test_inference_failure_removes_temporary_image_and_keeps_service_ready(self):
+        paths = []
+        existed_during_inference = []
+
+        class FailingModel:
+            def predict_image(self, path, top_k=3):
+                paths.append(Path(path))
+                existed_during_inference.append(Path(path).is_file())
+                raise RuntimeError("private checkpoint detail")
+
+        with TestClient(create_app(lambda **_kwargs: FailingModel())) as client:
+            response = client.post("/predict", files={"file": ("leaf.jpg", make_image(), "image/jpeg")})
+            self.assertEqual(client.get("/health/ready").status_code, 200)
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.json()["error"]["code"], "INFERENCE_FAILED")
+        self.assertNotIn("private checkpoint detail", response.text)
+        self.assertEqual(len(paths), 1)
+        self.assertEqual(existed_during_inference, [True])
+        self.assertFalse(paths[0].exists())
+
     def test_both_apis_include_three_plants_with_three_diseases_each(self):
         with TestClient(create_app(lambda **_kwargs: ThreePlantPredictor())) as client:
             backend_response = client.post(
@@ -257,14 +300,15 @@ class InferenceServiceTests(unittest.TestCase):
 
     def test_invalid_topk_has_stable_error_shape(self):
         with TestClient(create_app(lambda **_kwargs: FakePredictor())) as client:
-            response = client.post(
-                "/v1/predictions",
-                data={"topK": "0"},
-                files={"image": ("leaf.jpg", make_image(), "image/jpeg")},
-            )
-
-        self.assertEqual(response.status_code, 422)
-        self.assertEqual(response.json()["error"]["code"], "VALIDATION_ERROR")
+            for top_k in ("-1", "0", "6", "not-a-number"):
+                with self.subTest(top_k=top_k):
+                    response = client.post(
+                        "/v1/predictions",
+                        data={"topK": top_k},
+                        files={"image": ("leaf.jpg", make_image(), "image/jpeg")},
+                    )
+                    self.assertEqual(response.status_code, 422)
+                    self.assertEqual(response.json()["error"]["code"], "VALIDATION_ERROR")
 
 
 if __name__ == "__main__":

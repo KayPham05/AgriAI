@@ -29,10 +29,7 @@ def test_environment():
         print(f"[*] Tổng VRAM: {vram_mb:.0f} MiB")
 
         import torchvision.models as models
-        if __package__:
-            from ai.configs import config
-        else:
-            from configs import config
+        from ai.configs import config
 
         # Test forward pass with dummy tensor
         print(
