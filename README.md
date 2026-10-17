@@ -255,7 +255,8 @@ Xem hướng dẫn chuẩn bị project, dataset ZIP và GPU tại
 Chạy toàn bộ kiểm thử dữ liệu từ root repository:
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s ai/tasks/agri_21/tests -p "test_*.py"
+.\.venv\Scripts\python.exe -m unittest discover -s ai/tests/unit -t . -p "test_*.py"
+.\.venv\Scripts\python.exe -m unittest discover -s ai/tests/integration -t . -p "test_*.py"
 ```
 
 </details>
@@ -370,7 +371,7 @@ docker compose down
 Workflow [CI](.github/workflows/ci.yml) quét secret bằng Gitleaks và chạy độc lập Compose smoke, backend
 unit/integration, frontend và toàn bộ Python unit suite trên CPU. Backend gộp
 coverage của hai suite. Mục tiêu riêng cho backend, frontend và Python là **80%
-branch coverage**; mức sàn CI hiện tại lần lượt là **50%, 25%, 40%** theo artifact
+branch coverage**; mức sàn CI hiện tại lần lượt là **60%, 60%, 40%** theo artifact
 đã đo và sẽ tăng dần khi thêm test. Test pass chưa đủ để CI pass. Job `ci-gate` yêu cầu mọi job thành công;
 sau khi xác minh trên GitHub, cấu hình nó làm required check trong branch protection.
 TRX, coverage HTML/XML và log Compose được upload kể cả khi gate thất bại.
