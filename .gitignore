@@ -51,7 +51,6 @@ events.out.tfevents.*
 
 # Deprecated stub directories created during refactoring — not source code
 /ai/scripts/
-/ai/tests/
 
 # Test and coverage outputs
 .coverage

@@ -16,6 +16,11 @@ public class PredictionConfiguration : IEntityTypeConfiguration<Prediction>
 
         builder.Property(p => p.UserId)
             .HasColumnName("user_id");
+        builder.Property(p => p.AgriculturalProfileId).HasColumnName("agricultural_profile_id");
+        builder.HasOne(p => p.AgriculturalProfile).WithMany(profile => profile.Predictions)
+            .HasForeignKey(p => p.AgriculturalProfileId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasIndex(p => new { p.UserId, p.CreatedAt, p.Id });
+        builder.HasIndex(p => new { p.UserId, p.AgriculturalProfileId, p.CreatedAt, p.Id });
 
         builder.Property(p => p.ImagePath)
             .HasColumnName("image_path")

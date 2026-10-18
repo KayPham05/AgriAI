@@ -31,6 +31,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.PasswordHash)
             .HasColumnName("password_hash");
         builder.Property(u => u.EmailVerifiedAt).HasColumnName("email_verified_at");
+        builder.Property(u => u.IsActive).HasColumnName("is_active").HasDefaultValue(true);
 
         builder.Property(u => u.Role)
             .HasColumnName("role")

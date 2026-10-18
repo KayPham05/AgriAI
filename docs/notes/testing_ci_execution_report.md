@@ -1,5 +1,8 @@
 # Báo cáo thực hiện tài liệu kiểm thử và CI
 
+> Layout hiện hành từ 2026-10-17: test AI đã chuyển vào `ai/tests/`.
+> Xem [hướng dẫn chạy hiện tại](../../ai/tests/README.md); các lệnh/kết quả bên dưới là lịch sử.
+
 Ngày 2026-09-27 · Nhánh `AGRI-75-ci-testing-setup` · base `main` đối chiếu `65082f6`.
 Workflow và Docker đã commit cục bộ; chưa có kết quả GitHub Actions. Ba file trong
 `Testing Document/` là mẫu đầu vào và được giữ nguyên.

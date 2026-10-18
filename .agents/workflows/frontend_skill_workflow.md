@@ -23,7 +23,7 @@ If a specified treatment creates a contrast or usability problem, identify the a
 | Skill | Responsibility | Use on |
 |---|---|---|
 | [Taste](../skills/design-taste-frontend/SKILL.md) | Interpret the brief, shape hierarchy and composition within DESIGN.md | Intro, Home and marketing sections of About |
-| [React Best Practices](../skills/vercel-react-best-practices/SKILL.md) | React/Next.js implementation, lifecycle, data fetching and bundle performance | Components being written or reviewed |
+| [React Best Practices](../skills/react-best-practices/SKILL.md) | React/Next.js implementation, lifecycle, data fetching and bundle performance | Components being written or reviewed |
 | [GSAP React](../skills/gsap-react/SKILL.md) | Implement motion that needs sequencing or programmatic control | Approved hero sequences, splash or other coordinated animations |
 | [Impeccable](../skills/impeccable/SKILL.md) | Review UX, accessibility, responsive behavior, error states and polish | All affected surfaces; prioritize task completion in app UI |
 
@@ -31,7 +31,7 @@ Taste is intended for landing pages, portfolios and redesigns, not multi-step pr
 
 Load only the relevant skill entrypoints and references. Do not activate all four groups for a small change.
 
-For GSAP, start with [Core](../skills/gsap-core/SKILL.md), React and [Performance](../skills/gsap-performance/SKILL.md); add [Timeline](../skills/gsap-timeline/SKILL.md) for sequencing or [ScrollTrigger](../skills/gsap-scrolltrigger/SKILL.md) for approved scroll-driven motion. [Plugins](../skills/gsap-plugins/SKILL.md) and [Utils](../skills/gsap-utils/SKILL.md) are optional references. [Frameworks](../skills/gsap-frameworks/SKILL.md) covers non-React platforms and is not needed for this Next.js app.
+For GSAP, start with [Core](../skills/gsap-core/SKILL.md), React and [Performance](../skills/gsap-performance/SKILL.md); add [Timeline](../skills/gsap-timeline/SKILL.md) for sequencing or [ScrollTrigger](../skills/gsap-scrolltrigger/SKILL.md) for approved scroll-driven motion. [Utils](../skills/gsap-utils/SKILL.md) provides calculation helpers if needed. Non-React framework skills and unused plugins have been pruned.
 
 ## 3. Work sequence
 
@@ -90,11 +90,11 @@ Repository-local copies installed on 2026-10-08, including their bundled referen
 
 | Group | Repository / upstream path | Pinned commit |
 |---|---|---|
-| Taste | [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill), `skills/taste-skill` | `b482f7a970abb98c4108d4a9f761e458c64cefc8` |
-| GSAP | [greensock/gsap-skills](https://github.com/greensock/gsap-skills), eight `skills/gsap-*` folders | `aed9cfd3277740755f6bfc1155c7aa645403b760` |
-| React Best Practices | [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills), `skills/react-best-practices` | `063bee94c3f4df8453406c830b0a7df0f2860278` |
+| Taste | [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill), `skills/taste-skill` (local: `.agents/skills/design-taste-frontend`) | `b482f7a970abb98c4108d4a9f761e458c64cefc8` |
+| GSAP | [greensock/gsap-skills](https://github.com/greensock/gsap-skills), core animation folders (`gsap-core`, `gsap-react`, `gsap-performance`, `gsap-scrolltrigger`, `gsap-timeline`, `gsap-utils`) | `aed9cfd3277740755f6bfc1155c7aa645403b760` |
+| React Best Practices | [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills), `skills/react-best-practices` (local: `.agents/skills/react-best-practices`) | `063bee94c3f4df8453406c830b0a7df0f2860278` |
 | Impeccable | [pbakaus/impeccable](https://github.com/pbakaus/impeccable), `.agents/skills/impeccable` | `778c8a7b71ccd5bfe3ca6ac68c15d9d872d0f87d` |
 
-Taste is v2 experimental; React Best Practices declares 1.0.0 and Impeccable 4.5.0. React's declared skill name is `vercel-react-best-practices`, used as its local folder name.
+Taste is v2 experimental; React Best Practices declares 1.0.0 and Impeccable 4.5.0. Duplicate skill directories have been pruned, retaining `design-taste-frontend` and `react-best-practices` as canonical local locations.
 
 The only local content patch to these skills corrects three links in React Best Practices' AGENTS.md to `./rules/async-defer-await.md`, `./rules/async-cheap-condition-before-await.md` and `./rules/server-hoist-static-io.md`. Recheck those links when updating; rule content is unchanged.

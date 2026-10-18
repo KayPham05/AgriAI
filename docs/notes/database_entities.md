@@ -1,5 +1,11 @@
 # Entities và ảnh hưởng đến ERD
 
+## Cập nhật AGRI-127 — 2026-10-17
+
+Source hiện có 16 bảng nghiệp vụ sau 5 migration. AGRI-127 bổ sung hồ sơ tùy chọn, phiên, audit, tài liệu/thuốc và các quan hệ theo cặp cây–bệnh; thêm `users.is_active` và `predictions.agricultural_profile_id` nullable. Xem [schema, ERD phần mở rộng và giới hạn UI/API](../reports/AGRI-127/database_improvement_implementation.md). Phần dưới giữ baseline 9 bảng của AGRI-79 để truy vết lịch sử, không phải toàn bộ schema mới.
+
+## Baseline AGRI-79
+
 Đối chiếu source và migration ngày 06/10/2026; bổ sung giải thích ngày 07/10/2026.
 
 ## Vì sao có nhiều file?

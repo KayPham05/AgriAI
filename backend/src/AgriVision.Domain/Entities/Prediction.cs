@@ -4,6 +4,7 @@ public class Prediction
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? UserId { get; set; }
+    public Guid? AgriculturalProfileId { get; set; }
     public string ImagePath { get; set; } = string.Empty;
     public string? ImagePublicId { get; set; }
     public Guid PredictedPlantDiseaseId { get; set; }
@@ -13,6 +14,7 @@ public class Prediction
     public string? ResultSnapshotJson { get; set; }
 
     public User? User { get; set; }
+    public AgriculturalProfile? AgriculturalProfile { get; set; }
     public PlantDisease PredictedPlantDisease { get; set; } = null!;
     public ICollection<PredictionDetail> PredictionDetails { get; set; } = new List<PredictionDetail>();
     public ICollection<PredictionImage> Images { get; set; } = new List<PredictionImage>();
