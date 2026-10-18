@@ -1,11 +1,26 @@
-import React, { useEffect, useRef, useState } from 'react';
+import type React from 'react';
+import NextImage from 'next/image';
+import { useEffect, useRef, useState } from 'react';
+import { useGSAP } from '@gsap/react';
+import { gsap } from 'gsap';
 import {
-  AlertCircle, ArrowRight, BrainCircuit, CheckCircle2, ImagePlus,
-  Leaf, LoaderCircle, RefreshCw, ScanLine, ShieldCheck, Upload, X, Zap,
+  AlertCircle,
+  ArrowRight,
+  BrainCircuit,
+  CheckCircle2,
+  ImagePlus,
+  RefreshCw,
+  Upload,
+  X,
 } from 'lucide-react';
-import { createPrediction, PredictionResponse } from '../services/predictionApi';
-import { DiagnosisResult } from '../types';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
+import { createPrediction, type PredictionResponse } from '../services/predictionApi';
+import type { DiagnosisResult } from '../types';
 import { getImageFileError } from '../utils/imageFileValidation';
+
+gsap.registerPlugin(useGSAP);
 
 type PredictionStatus = 'idle' | 'uploading' | 'analyzing' | 'success' | 'error';
 
@@ -34,12 +49,76 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({ authToken, onPredict
   const previewRef = useRef<string | null>(null);
   const requestRef = useRef<AbortController | null>(null);
   const selectionIdRef = useRef(0);
+  const pageRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => () => {
-    selectionIdRef.current += 1;
-    requestRef.current?.abort();
-    if (previewRef.current) URL.revokeObjectURL(previewRef.current);
-  }, []);
+  useGSAP(
+    () => {
+      if (!pageRef.current || typeof window.matchMedia !== 'function') return;
+      const root = pageRef.current;
+      const tokens = getComputedStyle(root);
+      const distance = parseFloat(tokens.getPropertyValue('--analysis-enter-distance'));
+      const duration = parseFloat(tokens.getPropertyValue('--analysis-enter-duration'));
+      const stagger = parseFloat(tokens.getPropertyValue('--analysis-enter-stagger'));
+      if (![distance, duration, stagger].every(Number.isFinite)) return;
+
+      const media = gsap.matchMedia();
+      media.add('(prefers-reduced-motion: no-preference)', () => {
+        const currentStep = root.querySelector('[aria-current="step"] > span');
+        if (currentStep) {
+          gsap.fromTo(
+            currentStep,
+            { y: distance, opacity: 0 },
+            {
+              y: 0,
+              opacity: 1,
+              duration,
+              ease: 'power2.out',
+              clearProps: 'transform,opacity',
+            },
+          );
+        }
+        const resultParts = root.querySelectorAll('[data-result-enter]');
+        if (resultParts.length) {
+          gsap.fromTo(
+            resultParts,
+            { y: distance, opacity: 0 },
+            {
+              y: 0,
+              opacity: 1,
+              duration,
+              stagger,
+              ease: 'power2.out',
+              clearProps: 'transform,opacity',
+            },
+          );
+        }
+        if (status === 'idle' && previewUrl) {
+          gsap.fromTo(
+            '[data-preview-enter]',
+            { scale: 0.98, opacity: 0 },
+            {
+              scale: 1,
+              opacity: 1,
+              duration,
+              ease: 'power2.out',
+              clearProps: 'transform,opacity',
+            },
+          );
+        }
+      });
+      return () => media.revert();
+    },
+    { scope: pageRef, dependencies: [status, previewUrl], revertOnUpdate: true },
+  );
+
+  useEffect(
+    () => () => {
+      selectionIdRef.current += 1;
+      requestRef.current?.abort();
+      if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+    },
+    [],
+  );
 
   const clearImage = () => {
     selectionIdRef.current += 1;
@@ -61,14 +140,21 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({ authToken, onPredict
   const selectFile = (file: File) => {
     clearImage();
     const fileError = getImageFileError(file);
-    if (fileError) { setError(fileError); setStatus('error'); return; }
+    if (fileError) {
+      setError(fileError);
+      setStatus('error');
+      return;
+    }
 
     const selectionId = selectionIdRef.current;
     const url = URL.createObjectURL(file);
     const image = new Image();
     setIsPreparing(true);
     image.onload = () => {
-      if (selectionId !== selectionIdRef.current) { URL.revokeObjectURL(url); return; }
+      if (selectionId !== selectionIdRef.current) {
+        URL.revokeObjectURL(url);
+        return;
+      }
       previewRef.current = url;
       setSelectedFile(file);
       setPreviewUrl(url);
@@ -98,7 +184,9 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({ authToken, onPredict
         token: authToken,
         signal: controller.signal,
         onUploadProgress: setProgress,
-        onUploadComplete: () => { if (!controller.signal.aborted) setStatus('analyzing'); },
+        onUploadComplete: () => {
+          if (!controller.signal.aborted) setStatus('analyzing');
+        },
       });
       if (controller.signal.aborted) return;
       setPrediction(result);
@@ -106,7 +194,9 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({ authToken, onPredict
       setStatus('success');
     } catch (cause) {
       if (controller.signal.aborted) return;
-      setError(cause instanceof Error ? cause.message : 'Không thể phân tích ảnh. Vui lòng thử lại.');
+      setError(
+        cause instanceof Error ? cause.message : 'Không thể phân tích ảnh. Vui lòng thử lại.',
+      );
       setStatus('error');
     } finally {
       if (requestRef.current === controller) requestRef.current = null;
@@ -115,287 +205,239 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({ authToken, onPredict
 
   const busy = status === 'uploading' || status === 'analyzing';
   const activeStep = busy ? 1 : status === 'success' ? 2 : 0;
-  const confidencePct = prediction ? (prediction.confidence * 100) : 0;
-  const confidenceColor = confidencePct >= 85 ? '#4ade80' : confidencePct >= 60 ? '#facc15' : '#f87171';
+  const confidencePct = prediction ? prediction.confidence * 100 : 0;
 
   return (
-    <div className="diagnose-page min-h-screen" style={{ background: 'var(--armor-bg)' }}>
-      <input ref={inputRef} type="file" accept="image/jpeg,image/png" className="sr-only"
+    <div ref={pageRef} className="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:px-12">
+      <Input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png"
+        className="sr-only"
         aria-label="Chọn ảnh lá cây"
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) selectFile(f); e.target.value = ''; }}
+        disabled={busy || isPreparing}
+        tabIndex={-1}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) selectFile(file);
+          e.target.value = '';
+        }}
       />
-
-      {/* ── Hero header ── */}
-      <div className="diagnose-hero relative overflow-hidden">
-        <div className="diagnose-hero-glow-a" aria-hidden="true" />
-        <div className="diagnose-hero-glow-b" aria-hidden="true" />
-        <div className="relative z-10 mx-auto max-w-7xl px-5 py-10 sm:px-8 sm:py-14">
-          {/* Step tracker */}
-          <nav className="mb-8 flex items-center gap-0" aria-label="Tiến trình phân tích">
-            {STEPS.map((step, i) => {
-              const done = i < activeStep;
-              const active = i === activeStep;
-              const Icon = step.icon;
-              return (
-                <React.Fragment key={step.id}>
-                  <div className={`diagnose-step ${active ? 'diagnose-step--active' : done ? 'diagnose-step--done' : 'diagnose-step--pending'}`}>
-                    <span className="diagnose-step-icon">
-                      {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
-                    </span>
-                    <span className="diagnose-step-label">{step.label}</span>
-                  </div>
-                  {i < STEPS.length - 1 && (
-                    <div className={`diagnose-step-line ${done ? 'diagnose-step-line--done' : ''}`} aria-hidden="true" />
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </nav>
-
-          <div className="flex flex-col gap-1">
-            <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.18em]"
-              style={{ color: 'var(--bio-bright)' }}>
-              <ScanLine className="h-3.5 w-3.5" /> LeafAI · Phân tích lá cây
+      <header className="border-b border-border pb-7">
+        <h1 className="text-3xl font-bold tracking-tight text-primary sm:text-4xl">
+          Kiểm tra ảnh lá cây
+        </h1>
+        <p className="mt-3 leading-7 text-muted-foreground">
+          Chọn một ảnh rõ nét. Bạn sẽ nhận được lớp dự đoán và độ tin cậy để đối chiếu.
+        </p>
+      </header>
+      <ol
+        className="my-7 grid grid-cols-3 gap-3 text-sm sm:gap-6"
+        aria-label="Tiến trình phân tích"
+      >
+        {STEPS.map((step, index) => (
+          <li
+            key={step.id}
+            aria-current={index === activeStep ? 'step' : undefined}
+            className={
+              index === activeStep
+                ? 'flex flex-col items-start gap-2 border-b-2 border-primary pb-4 font-semibold text-primary sm:flex-row sm:items-center sm:gap-3'
+                : 'flex flex-col items-start gap-2 border-b border-border pb-4 text-muted-foreground sm:flex-row sm:items-center sm:gap-3'
+            }
+          >
+            <span
+              className={
+                index === activeStep
+                  ? 'grid size-8 shrink-0 place-items-center rounded-full bg-primary tabular-nums text-primary-foreground'
+                  : 'grid size-8 shrink-0 place-items-center rounded-full bg-surface-muted tabular-nums'
+              }
+              aria-hidden="true"
+            >
+              {index + 1}
             </span>
-            <h1 className="text-[clamp(1.75rem,4vw,2.8rem)] font-extrabold leading-tight tracking-[-0.04em]"
-              style={{ color: 'var(--text-primary)' }}>
-              Chẩn đoán từ ảnh lá cây
-            </h1>
-            <p className="mt-1 max-w-lg text-sm leading-6" style={{ color: 'var(--text-muted)' }}>
-              Tải ảnh lá rõ nét lên để mô hình ConvNeXt-Tiny phân loại bệnh và trả về kết quả qua API.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Main content ── */}
-      <div className="mx-auto max-w-7xl px-5 pb-16 sm:px-8 lg:px-12">
-        <div className="grid items-start gap-6 lg:grid-cols-[1.1fr_.9fr]">
-
-          {/* ── Left: Upload zone ── */}
-          <section className="diagnose-card" aria-label="Tải ảnh lên">
-            <div className="diagnose-card-header">
-              <div>
-                <h2 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>Ảnh cần phân tích</h2>
-                <p className="mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>JPG hoặc PNG · tối đa 15 MB</p>
-              </div>
-              {previewUrl && (
-                <div className="flex gap-2">
-                  <button type="button" disabled={busy} onClick={() => inputRef.current?.click()}
-                    className="diagnose-btn-sm diagnose-btn-sm--outline">
-                    <RefreshCw className="h-3.5 w-3.5" /> Đổi ảnh
-                  </button>
-                  <button type="button" disabled={busy} onClick={clearImage} aria-label="Xóa ảnh"
-                    className="diagnose-btn-sm diagnose-btn-sm--danger">
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              )}
+            {step.label}
+          </li>
+        ))}
+      </ol>
+      <div className="grid items-start gap-8 lg:grid-cols-5">
+        <section
+          className="min-w-0 overflow-hidden rounded-card border border-border bg-surface lg:col-span-3"
+          aria-label="Tải ảnh lên"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
+            <div>
+              <h2 className="font-semibold">Ảnh cần phân tích</h2>
+              <p className="mt-1 text-sm text-muted-foreground">JPG hoặc PNG · tối đa 15 MB</p>
             </div>
-
-            <div className="p-5 sm:p-6">
-              {previewUrl ? (
-                <div className="space-y-4">
-                  {/* Preview image with scan overlay when busy */}
-                  <div className="diagnose-preview-wrap">
-                    <img src={previewUrl} alt={`Ảnh xem trước: ${selectedFile?.name ?? 'lá cây'}`}
-                      className="diagnose-preview-img" />
-                    {busy && (
-                      <div className="diagnose-scan-overlay" aria-hidden="true">
-                        <div className="diagnose-scan-beam" />
-                        <div className="diagnose-reticle" />
-                      </div>
-                    )}
-                    {status === 'success' && (
-                      <div className="diagnose-success-overlay" aria-hidden="true">
-                        <CheckCircle2 className="h-10 w-10" style={{ color: '#4ade80' }} />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* File meta */}
-                  <div className="diagnose-file-meta">
-                    <p className="truncate text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                      {selectedFile?.name}
-                    </p>
-                    <p className="mt-0.5 text-xs" style={{ color: 'var(--text-muted)' }}>
-                      {resolution} · {((selectedFile?.size ?? 0) / 1024 / 1024).toFixed(1)} MB
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                // Drop zone
-                <div
-                  role="button" tabIndex={0} aria-label="Chọn hoặc thả ảnh lá cây"
-                  onClick={() => inputRef.current?.click()}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputRef.current?.click(); } }}
-                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                  onDragLeave={() => setIsDragging(false)}
-                  onDrop={(e) => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files[0]; if (f) selectFile(f); }}
-                  className={`diagnose-dropzone ${isDragging ? 'diagnose-dropzone--drag' : ''}`}
+            {previewUrl && (
+              <div className="flex gap-1">
+                <Button variant="outline" disabled={busy} onClick={() => inputRef.current?.click()}>
+                  <RefreshCw />
+                  Đổi ảnh
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  disabled={busy}
+                  onClick={clearImage}
+                  aria-label="Xóa ảnh"
                 >
-                  <div className={`diagnose-dropzone-icon ${isDragging ? 'diagnose-dropzone-icon--drag' : ''}`}>
-                    {isPreparing ? <LoaderCircle className="h-8 w-8 animate-spin" /> : <ImagePlus className="h-8 w-8" />}
-                  </div>
-                  <h3 className="mt-5 text-base font-bold" style={{ color: 'var(--text-primary)' }}>
-                    {isPreparing ? 'Đang kiểm tra ảnh...' : isDragging ? 'Thả ảnh vào đây!' : 'Kéo thả ảnh lá vào đây'}
-                  </h3>
-                  <p className="mt-1.5 text-sm" style={{ color: 'var(--text-muted)' }}>
-                    hoặc nhấn để chọn ảnh từ thiết bị
+                  <X />
+                </Button>
+              </div>
+            )}
+          </div>
+          <div className="p-5 sm:p-6">
+            {previewUrl ? (
+              <div>
+                <NextImage
+                  unoptimized
+                  width={640}
+                  height={480}
+                  data-preview-enter
+                  src={previewUrl}
+                  alt={`Ảnh xem trước: ${selectedFile?.name ?? 'lá cây'}`}
+                  className="aspect-[4/3] w-full rounded-xl bg-surface-muted object-contain"
+                />
+                <p className="mt-4 break-all text-sm font-medium">{selectedFile?.name}</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {resolution} · {((selectedFile?.size ?? 0) / 1024 / 1024).toFixed(1)} MB
+                </p>
+              </div>
+            ) : (
+              <fieldset
+                aria-label="Chọn hoặc thả ảnh lá"
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDragging(false);
+                  const file = e.dataTransfer.files[0];
+                  if (file) selectFile(file);
+                }}
+                className={`flex min-h-80 min-w-0 flex-col items-center justify-center rounded-xl border border-dashed p-6 text-center ${isDragging ? 'border-primary bg-secondary' : 'border-primary/50 bg-surface-muted'}`}
+              >
+                <ImagePlus className="size-10 text-primary" aria-hidden="true" />
+                <h3 className="mt-5 text-lg font-semibold">
+                  {isPreparing
+                    ? 'Đang kiểm tra ảnh...'
+                    : isDragging
+                      ? 'Thả ảnh vào đây'
+                      : 'Kéo thả ảnh lá vào đây'}
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Một lá chính, đủ sáng và nhìn rõ bề mặt.
+                </p>
+                <Button
+                  className="mt-5"
+                  disabled={isPreparing}
+                  onClick={() => inputRef.current?.click()}
+                >
+                  <Upload />
+                  Chọn ảnh
+                </Button>
+              </fieldset>
+            )}
+            {selectedFile && (
+              <Button className="mt-5 w-full" size="lg" onClick={analyze} disabled={busy}>
+                {busy ? (
+                  status === 'uploading' ? (
+                    `Đang tải lên... ${progress}%`
+                  ) : (
+                    'Đang phân tích...'
+                  )
+                ) : (
+                  <>
+                    Phân tích <ArrowRight />
+                  </>
+                )}
+              </Button>
+            )}
+            {status === 'uploading' && (
+              <Progress className="mt-4" value={progress} aria-label="Tiến độ tải ảnh" />
+            )}
+          </div>
+        </section>
+        <section
+          className="min-w-0 border-t-2 border-primary lg:col-span-2"
+          aria-live="polite"
+          aria-label="Kết quả phân tích"
+          aria-busy={busy}
+        >
+          <h2 className="border-b border-border py-5 text-lg font-semibold">Kết quả phân tích</h2>
+          <div className="py-6">
+            {status === 'idle' && (
+              <div className="flex min-h-64 flex-col justify-center border-b border-border pb-8">
+                <p className="font-medium">Kết quả sẽ xuất hiện tại đây</p>
+                <p className="mt-2 max-w-xs text-sm leading-6 text-muted-foreground">
+                  Chọn ảnh lá và nhấn “Phân tích” khi ảnh đã sẵn sàng.
+                </p>
+              </div>
+            )}
+            {busy && (
+              <div className="min-h-64 py-8" role="status">
+                <p data-result-enter className="font-semibold text-primary">
+                  {status === 'uploading' ? 'Đang tải ảnh lên...' : 'Đang phân loại ảnh lá...'}
+                </p>
+                <p data-result-enter className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Vui lòng giữ trang mở trong giây lát.
+                </p>
+                <div data-result-enter className="mt-8 border-y border-border py-5">
+                  <p className="flex items-center gap-3 text-sm font-medium">
+                    <Upload className="size-5 shrink-0 text-primary" aria-hidden="true" />
+                    {status === 'uploading' ? 'Ảnh đang được tải lên' : 'Đã tải ảnh lên'}
                   </p>
-                  <span className="diagnose-upload-btn mt-6">
-                    <Upload className="h-4 w-4" /> Chọn ảnh
-                  </span>
-                  <p className="mt-4 text-xs" style={{ color: 'var(--text-muted)', opacity: 0.7 }}>
-                    JPG, PNG — tối đa 15 MB
-                  </p>
-                </div>
-              )}
-
-              {/* Analyze button */}
-              {selectedFile && (
-                <button type="button" onClick={analyze} disabled={busy}
-                  className="diagnose-analyze-btn mt-5">
-                  {busy
-                    ? <><LoaderCircle className="h-5 w-5 animate-spin" /> {status === 'uploading' ? `Đang tải lên... ${progress}%` : 'Đang phân tích...'}</>
-                    : <><Zap className="h-5 w-5" /> Phân tích <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></>
-                  }
-                </button>
-              )}
-
-              {/* Upload progress bar */}
-              {status === 'uploading' && (
-                <div className="mt-3 h-1.5 overflow-hidden rounded-full" style={{ background: 'var(--armor-deep)' }}>
-                  <div className="diagnose-upload-progress h-full rounded-full transition-[width] duration-300"
-                    style={{ width: `${progress}%` }} />
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* ── Right: Results panel ── */}
-          <section className="diagnose-result-panel" aria-live="polite" aria-label="Kết quả phân tích">
-            <div className="diagnose-card-header">
-              <h2 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>Kết quả phân tích</h2>
-              {status === 'success' && (
-                <span className="diagnose-badge-success">
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Đã nhận kết quả từ backend
-                </span>
-              )}
-            </div>
-
-            <div className="p-5 sm:p-6">
-              {/* Idle */}
-              {status === 'idle' && (
-                <div className="diagnose-empty-state">
-                  <div className="diagnose-empty-icon">
-                    <Leaf className="h-8 w-8" />
-                  </div>
-                  <p className="mt-5 font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                    Kết quả sẽ xuất hiện tại đây
-                  </p>
-                  <p className="mt-2 max-w-xs text-center text-sm leading-6" style={{ color: 'var(--text-muted)' }}>
-                    Chọn ảnh lá và nhấn "Phân tích ngay" để gửi đến backend LeafAI.
-                  </p>
-                </div>
-              )}
-
-              {/* Busy */}
-              {busy && (
-                <div className="diagnose-empty-state" role="status">
-                  <div className="diagnose-scanning-anim">
-                    <BrainCircuit className="h-8 w-8" style={{ color: 'var(--bio-pulse)' }} />
-                    <span className="diagnose-scanning-ring" aria-hidden="true" />
-                    <span className="diagnose-scanning-ring diagnose-scanning-ring--2" aria-hidden="true" />
-                  </div>
-                  <p className="mt-6 font-semibold" style={{ color: 'var(--text-primary)' }}>
-                    {status === 'uploading' ? 'Đang tải ảnh lên Backend...' : 'Backend đang xử lý phản hồi...'}
-                  </p>
-                  <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
-                    Vui lòng giữ trang mở trong giây lát.
-                  </p>
-                </div>
-              )}
-
-              {/* Error */}
-              {status === 'error' && (
-                <div className="diagnose-error-box" role="alert">
-                  <div className="flex items-center gap-2 font-bold">
-                    <AlertCircle className="h-5 w-5 shrink-0" /> Không thể hoàn tất
-                  </div>
-                  <p className="mt-2 text-sm leading-6">{error}</p>
-                  {selectedFile && (
-                    <button type="button" onClick={analyze} className="diagnose-retry-btn mt-4">
-                      <RefreshCw className="h-4 w-4" /> Thử lại
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Success */}
-              {status === 'success' && prediction && (
-                <div className="space-y-5 animate-[fadeSlideUp_.45s_ease_both]">
-                  {/* Thumbnail */}
-                  {previewUrl && (
-                    <div className="diagnose-result-thumb">
-                      <img src={previewUrl} alt="Ảnh lá đã phân tích"
-                        className="h-full w-full object-cover" />
-                      <div className="diagnose-result-thumb-badge">
-                        <ShieldCheck className="h-3.5 w-3.5" /> Đã phân tích
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Result cards */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="diagnose-result-metric">
-                      <span className="diagnose-result-metric-label">Cây trồng</span>
-                      <span className="diagnose-result-metric-value">{prediction.crop}</span>
-                    </div>
-                    <div className="diagnose-result-metric">
-                      <span className="diagnose-result-metric-label">Tên bệnh</span>
-                      <span className="diagnose-result-metric-value text-sm">{prediction.disease}</span>
-                    </div>
-                  </div>
-
-                  {/* Confidence */}
-                  <div className="diagnose-confidence-card">
-                    <div className="flex items-end justify-between">
-                      <div>
-                        <p className="diagnose-result-metric-label">Độ tin cậy</p>
-                        <p className="mt-1 text-4xl font-black leading-none tracking-tight"
-                          style={{ color: confidenceColor }}>
-                          {confidencePct.toFixed(1)}%
-                        </p>
-                      </div>
-                      <div className="diagnose-confidence-gauge">
-                        <svg viewBox="0 0 80 80" className="h-16 w-16 -rotate-90">
-                          <circle cx="40" cy="40" r="32" fill="none" strokeWidth="7"
-                            stroke="rgba(0,0,0,0.08)" />
-                          <circle cx="40" cy="40" r="32" fill="none" strokeWidth="7"
-                            stroke={confidenceColor} strokeLinecap="round"
-                            strokeDasharray={`${2 * Math.PI * 32}`}
-                            strokeDashoffset={`${2 * Math.PI * 32 * (1 - confidencePct / 100)}`}
-                            style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.4,0,0.2,1)' }}
-                          />
-                        </svg>
-                      </div>
-                    </div>
-                    <div className="mt-4 h-2 overflow-hidden rounded-full" style={{ background: 'var(--armor-deep)' }}>
-                      <div className="h-full rounded-full"
-                        style={{ width: `${confidencePct}%`, background: confidenceColor, transition: 'width 1s cubic-bezier(0.4,0,0.2,1)' }} />
-                    </div>
-                  </div>
-
-                  <p className="flex items-start gap-2 text-xs leading-5" style={{ color: 'var(--text-muted)' }}>
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" style={{ color: 'var(--bio-pulse)' }} />
-                    Kết quả hỗ trợ tham khảo; hãy kết hợp quan sát thực địa và tư vấn chuyên gia khi bệnh lan rộng.
+                  <p className="mt-5 flex items-center gap-3 text-sm font-medium">
+                    <BrainCircuit className="size-5 shrink-0 text-primary" aria-hidden="true" />
+                    {status === 'uploading'
+                      ? 'Phân loại sau khi tải xong'
+                      : 'Đang đối chiếu lớp dự đoán'}
                   </p>
                 </div>
-              )}
-            </div>
-          </section>
-        </div>
+              </div>
+            )}
+            {status === 'error' && (
+              <div role="alert" className="space-y-4" data-result-enter>
+                <p className="flex items-center gap-2 font-semibold text-destructive">
+                  <AlertCircle className="size-5" />
+                  Không thể hoàn tất
+                </p>
+                <p className="text-sm leading-6">{error}</p>
+                {selectedFile && (
+                  <Button variant="outline" onClick={analyze}>
+                    <RefreshCw />
+                    Thử lại
+                  </Button>
+                )}
+              </div>
+            )}
+            {status === 'success' && prediction && (
+              <div className="space-y-6">
+                <div data-result-enter>
+                  <p className="text-sm text-muted-foreground">{prediction.crop}</p>
+                  <h3 className="mt-2 text-2xl font-semibold">{prediction.disease}</h3>
+                </div>
+                <div data-result-enter className="border-y border-border py-5">
+                  <p className="text-sm text-muted-foreground">Độ tin cậy</p>
+                  <p className="mt-2 text-4xl font-semibold tabular-nums text-primary">
+                    {confidencePct.toFixed(1)}%
+                  </p>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                    Mức độ mô hình nghiêng về lớp dự đoán này, không phải tỷ lệ chắc chắn cây mắc
+                    bệnh.
+                  </p>
+                </div>
+                <p data-result-enter className="text-sm leading-6 text-muted-foreground">
+                  Kết quả hỗ trợ tham khảo; hãy kết hợp quan sát thực địa và tư vấn chuyên gia khi
+                  bệnh lan rộng.
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );

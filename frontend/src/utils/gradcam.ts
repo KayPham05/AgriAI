@@ -44,7 +44,7 @@ function getJetColor(val: number): [number, number, number, number] {
  */
 export async function generateGradCamImages(
   imgSource: string,
-  focalPoints?: Array<{ x: number; y: number; radius: number; intensity: number }>
+  focalPoints?: Array<{ x: number; y: number; radius: number; intensity: number }>,
 ): Promise<{ heatmapUrl: string; overlayUrl: string; segmentationUrl: string }> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -68,11 +68,29 @@ export async function generateGradCamImages(
       }
 
       // Default activation focal points if none provided
-      const points = focalPoints && focalPoints.length > 0 ? focalPoints : [
-        { x: width * 0.42, y: height * 0.45, radius: Math.min(width, height) * 0.32, intensity: 1.0 },
-        { x: width * 0.62, y: height * 0.52, radius: Math.min(width, height) * 0.22, intensity: 0.82 },
-        { x: width * 0.35, y: height * 0.68, radius: Math.min(width, height) * 0.18, intensity: 0.74 }
-      ];
+      const points =
+        focalPoints && focalPoints.length > 0
+          ? focalPoints
+          : [
+              {
+                x: width * 0.42,
+                y: height * 0.45,
+                radius: Math.min(width, height) * 0.32,
+                intensity: 1.0,
+              },
+              {
+                x: width * 0.62,
+                y: height * 0.52,
+                radius: Math.min(width, height) * 0.22,
+                intensity: 0.82,
+              },
+              {
+                x: width * 0.35,
+                y: height * 0.68,
+                radius: Math.min(width, height) * 0.18,
+                intensity: 0.74,
+              },
+            ];
 
       // Step 1: Draw thermal activation field
       // Fill with dark cool background

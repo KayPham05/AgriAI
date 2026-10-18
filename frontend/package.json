@@ -3,23 +3,44 @@
   "private": true,
   "version": "1.0.0",
   "packageManager": "pnpm@10.34.5",
+  "engines": {
+    "node": "^24.15.0",
+    "pnpm": "10.34.5"
+  },
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0 --port 3000",
     "build": "next build",
     "start": "next start --hostname 0.0.0.0 --port 3000",
-    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome lint . --error-on-warnings",
+    "format:check": "biome format .",
+    "format": "biome format --write",
+    "check": "corepack pnpm typecheck && corepack pnpm lint && corepack pnpm test",
+    "check:ci": "corepack pnpm check && corepack pnpm format:check && corepack pnpm build",
+    "ui": "shadcn",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:unit": "vitest run src/utils src/services",
-    "test:integration": "vitest run src/views/DiagnosePage.integration.test.tsx"
+    "test:unit": "vitest run tests/unit",
+    "test:component": "vitest run tests/component",
+    "test:integration": "vitest run tests/integration",
+    "test:tooling": "vitest run tests/tooling"
   },
   "dependencies": {
+    "@gsap/react": "^2.1.2",
+    "class-variance-authority": "^0.7.1",
+    "cn": "^0.4.0",
+    "gsap": "^3.15.0",
     "lucide-react": "^0.546.0",
     "next": "16.3.6",
+    "next-themes": "^0.4.6",
+    "radix-ui": "^1.7.0",
     "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "sonner": "^2.0.8",
+    "tw-animate-css": "^1.4.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.15",
     "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
@@ -29,6 +50,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitest/coverage-v8": "5.0.2",
     "jsdom": "^30.1.1",
+    "shadcn": "4.21.3",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
     "vitest": "^5.0.2"

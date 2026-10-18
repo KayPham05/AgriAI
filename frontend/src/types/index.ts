@@ -1,20 +1,15 @@
-export type NavigationTab = 
-  | 'home' 
-  | 'diagnose' 
-  | 'plants' 
+export type NavigationTab =
+  | 'home'
+  | 'diagnose'
+  | 'plants'
   | 'plant-detail'
-  | 'diseases' 
+  | 'diseases'
   | 'disease-detail'
-  | 'history' 
-  | 'about' 
+  | 'history'
+  | 'about'
   | 'profile';
 
-export type DiagnoseStep = 
-  | 'upload' 
-  | 'preview' 
-  | 'validation' 
-  | 'analyzing' 
-  | 'result';
+export type DiagnoseStep = 'upload' | 'preview' | 'validation' | 'analyzing' | 'result';
 
 export type ValidationStatus = 'pass' | 'warning' | 'fail';
 
@@ -38,6 +33,8 @@ export interface ValidationResult {
 }
 
 export interface TopPrediction {
+  /** Stable classifier identity; optional for previously saved demo results. */
+  className?: string;
   label: string;
   confidence: number; // e.g. 0.948
   isHealthy?: boolean;
@@ -70,7 +67,13 @@ export interface DiagnosisResult {
   prediction: string;
   diseaseId?: string;
   confidence: number; // 0 to 1
-  confidenceCategory: 'Độ tin cậy cao' | 'Độ tin cậy trung bình' | 'Độ tin cậy thấp' | 'High confidence' | 'Moderate confidence' | 'Low confidence';
+  confidenceCategory:
+    | 'Độ tin cậy cao'
+    | 'Độ tin cậy trung bình'
+    | 'Độ tin cậy thấp'
+    | 'High confidence'
+    | 'Moderate confidence'
+    | 'Low confidence';
   top_predictions: TopPrediction[];
   originalImageUrl: string;
   gradcam_url: string;
@@ -100,7 +103,15 @@ export interface Plant {
   backendId?: string;
   name: string;
   scientificName: string;
-  category: 'Cây lương thực' | 'Cây ăn trái' | 'Cây công nghiệp' | 'Khác' | 'Food Crops' | 'Fruit Trees' | 'Industrial Crops' | 'Other';
+  category:
+    | 'Cây lương thực'
+    | 'Cây ăn trái'
+    | 'Cây công nghiệp'
+    | 'Khác'
+    | 'Food Crops'
+    | 'Fruit Trees'
+    | 'Industrial Crops'
+    | 'Other';
   description: string;
   imageUrl: string;
   detectableCount: number;
@@ -114,8 +125,26 @@ export interface Disease {
   plant: string;
   plantId: string;
   scientificName?: string;
-  category: 'Nấm' | 'Vi khuẩn' | 'Virus' | 'Sinh lý' | 'Khỏe mạnh' | 'Fungal' | 'Bacterial' | 'Viral' | 'Physiological' | 'Healthy';
-  status: 'Phổ biến' | 'Nghiêm trọng' | 'Bình thường' | 'Common' | 'Severe' | 'Normal';
+  category:
+    | 'Nấm'
+    | 'Chưa phân loại'
+    | 'Vi khuẩn'
+    | 'Virus'
+    | 'Sinh lý'
+    | 'Khỏe mạnh'
+    | 'Fungal'
+    | 'Bacterial'
+    | 'Viral'
+    | 'Physiological'
+    | 'Healthy';
+  status:
+    | 'Phổ biến'
+    | 'Nghiêm trọng'
+    | 'Bình thường'
+    | 'Common'
+    | 'Severe'
+    | 'Normal'
+    | 'Chưa xác minh';
   heroImage: string;
   overview: string;
   symptoms: string[];

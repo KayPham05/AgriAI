@@ -64,7 +64,22 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-      - name: Build containers and verify service health
+      - name: Download and verify real inference checkpoints
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/compose ai/models
+          curl --fail --location --silent --show-error --max-time 300 \
+            'https://drive.usercontent.google.com/download?id=1G7xkhJE-ZXVIXHoBn11wbSZayQk1Cm6V&export=download&authuser=0&confirm=t' \
+            --output .cache/ai-model.rar
+          echo 'a55ee86d1f57a44c93a3a0b09f91cd6493490c4edf0c88c3d9b300d0bb171e72  .cache/ai-model.rar' | sha256sum --check
+          sudo apt-get update
+          sudo apt-get install --yes libarchive-tools
+          bsdtar -xf .cache/ai-model.rar -C ai/models --strip-components 1 \
+            ai/checkpoints/plant/best_convnext_tiny.pth ai/checkpoints/plant/class_to_idx.json \
+            ai/checkpoints/disease/best_convnext_tiny.pth ai/checkpoints/disease/class_to_idx.json
+          echo 'd071c13d14ef573430b38674647e5ebfce0b5d3f4bd7099d7e815549073178ea  ai/models/checkpoints/plant/best_convnext_tiny.pth' | sha256sum --check
+          echo 'd21d8d6efd3c66e36ce166bfdb03bf0f017a0452ee07508df82e49ca42d429b9  ai/models/checkpoints/disease/best_convnext_tiny.pth' | sha256sum --check
+      - name: Build containers and verify real AI inference
         env:
           COMPOSE_FILE: docker-compose.yml:docker-compose.ci.yml
           COMPOSE_PROJECT_NAME: ci-${{ github.run_id }}-${{ github.run_attempt }}
@@ -89,13 +104,32 @@ jobs:
           python3 -c 'import json,sys; h=json.load(sys.stdin); assert h["status"] == "Healthy" and h["checks"]["database"] == "Healthy", h' < .cache/compose/api-health.json
           curl --fail --silent --show-error --max-time 15 http://127.0.0.1:5080/api/health/deps > .cache/compose/ai-health.json
           python3 -c 'import json,sys; assert json.load(sys.stdin)["checks"]["aiService"] == "Healthy"' < .cache/compose/ai-health.json
+          curl --fail --silent --show-error --max-time 60 \
+            --form 'file=@frontend/src/assets/banner-leaves/rice-leaf-cutout.png;type=image/png' \
+            http://127.0.0.1:8000/predict > .cache/compose/ai-prediction.json
+          docker compose cp .cache/compose/ai-prediction.json ai-service:/tmp/ai-prediction.json
+          docker compose exec -T ai-service python - <<'PY'
+          import json
+          from ai.configs.plant_disease_mapping import get_plant_to_diseases
+          labels = sorted(f"{plant}___{disease}" for plant, diseases in get_plant_to_diseases("v1.4").items() for disease in diseases)
+          with open("/tmp/ai-prediction.json", encoding="utf-8") as source:
+              prediction = json.load(source)
+          assert len(labels) == 59
+          assert 1 <= len(prediction["top_k"]) <= 3
+          assert len(prediction["plant_predictions"]) == 3
+          for item in [prediction, *prediction["top_k"], *[disease for group in prediction["plant_predictions"] for disease in group["diseases"]]]:
+              assert 0 <= item["class_index"] < len(labels), item
+              assert item["class_name"] == labels[item["class_index"]], item
+              assert 0 <= item["confidence"] <= 1, item
+          assert prediction["class_name"] == prediction["top_k"][0]["class_name"]
+          PY
           docker compose exec -T backend sh -c 'test -w /app/wwwroot/uploads/predictions'
-          docker compose stop ai-health
+          docker compose stop ai-service
           test "$(curl --silent --show-error --max-time 15 -o .cache/compose/ai-unavailable.json -w '%{http_code}' http://127.0.0.1:5080/api/health/deps)" = 503
           curl --fail --silent --show-error --max-time 15 http://127.0.0.1:5080/api/health > .cache/compose/api-without-ai.json
           python3 -c 'import json,sys; assert json.load(sys.stdin)["status"] == "Healthy"' < .cache/compose/api-without-ai.json
           curl --fail --silent --show-error --max-time 15 http://127.0.0.1:3000/ > .cache/compose/frontend.html
-          grep -q 'LeafAI' .cache/compose/frontend.html
+          grep -q 'AgriAI' .cache/compose/frontend.html
           curl --fail --silent --show-error --max-time 15 http://127.0.0.1:3000/api/health > .cache/compose/proxy-health.json
           python3 -c 'import json,sys; assert json.load(sys.stdin)["status"] == "Healthy"' < .cache/compose/proxy-health.json
       - uses: actions/upload-artifact@v7
@@ -124,8 +158,10 @@ jobs:
           python -m pip install -r ai/requirements_ci.txt
       - name: Test CI coverage validation
         run: python -m unittest discover -s .github/scripts -p 'test_*.py'
-      - name: Run all dataset and runtime unit tests
-        run: python -m coverage run -m unittest discover -s ai/tasks/agri_21/tests -p 'test_*.py'
+      - name: Run AI unit and HTTP integration tests
+        run: |
+          python -m coverage run -m unittest discover -s ai/tests/unit -t . -p 'test_*.py'
+          python -m coverage run --append -m unittest discover -s ai/tests/integration -t . -p 'test_*.py'
       - name: Publish coverage and enforce current Python branch floor
         if: ${{ !cancelled() }}
         run: |
@@ -160,7 +196,7 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: |
           docker info --format '{{.ServerVersion}}'
-          dotnet test backend/tests/AgriVision.IntegrationTests/AgriVision.IntegrationTests.csproj --no-build --no-restore --settings backend/coverage.runsettings --collect:"XPlat Code Coverage" --logger "trx;LogFileName=integration.trx" --results-directory .cache/coverage/backend/integration --verbosity quiet
+          dotnet test backend/tests/AgriVision.IntegrationTests/AgriVision.IntegrationTests.csproj --no-build --no-restore --filter 'Category!=RealCheckpoint' --settings backend/coverage.runsettings --collect:"XPlat Code Coverage" --logger "trx;LogFileName=integration.trx" --results-directory .cache/coverage/backend/integration --verbosity quiet
       - name: Verify suites and merge backend coverage
         if: ${{ !cancelled() && steps.unit.outcome == 'success' && steps.integration.outcome == 'success' }}
         run: |
@@ -168,7 +204,7 @@ jobs:
           python3 .github/scripts/check_dotnet_test_results.py .cache/coverage/backend/integration
           dotnet tool install dotnet-reportgenerator-globaltool --tool-path .cache/dotnet-tools --version 5.5.4
           .cache/dotnet-tools/reportgenerator '-reports:.cache/coverage/backend/**/coverage.cobertura.xml' '-targetdir:.cache/coverage/backend/merged' '-reporttypes:Html;Cobertura'
-          python3 .github/scripts/check_coverage.py .cache/coverage/backend/merged/Cobertura.xml --minimum-branches 50 --label Backend
+          python3 .github/scripts/check_coverage.py .cache/coverage/backend/merged/Cobertura.xml --minimum-branches 60 --label Backend
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -203,7 +239,7 @@ jobs:
         run: pnpm run build
       - name: Summarize frontend branch coverage
         if: ${{ !cancelled() }}
-        run: python3 ../.github/scripts/check_coverage.py ../.cache/coverage/frontend/cobertura-coverage.xml --minimum-branches 25 --label Frontend
+        run: python3 ../.github/scripts/check_coverage.py ../.cache/coverage/frontend/cobertura-coverage.xml --minimum-branches 60 --label Frontend
       - uses: actions/upload-artifact@v7
         if: always()
         with:

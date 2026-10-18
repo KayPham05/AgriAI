@@ -1,4 +1,4 @@
-import { ValidationResult, QualityCheck, ValidationStatus } from '../types';
+import type { ValidationResult, QualityCheck, ValidationStatus } from '../types';
 
 /**
  * Kiểm định chất lượng ảnh bằng phân tích quang học trực tiếp trên Canvas
@@ -32,7 +32,6 @@ export async function validateLeafImage(imageSrc: string): Promise<ValidationRes
 
       let totalLum = 0;
       let greenDominantPixels = 0;
-      let darkPixels = 0;
       let brightPixels = 0;
       const totalPixels = sampleW * sampleH;
 
@@ -48,7 +47,6 @@ export async function validateLeafImage(imageSrc: string): Promise<ValidationRes
         totalLum += lum;
         grayscale.push(lum);
 
-        if (lum < 40) darkPixels++;
         if (lum > 225) brightPixels++;
 
         // Kiểm tra sắc tố thực vật: sắc xanh lục hoặc sắc nâu gỉ sắt
@@ -95,7 +93,12 @@ export async function validateLeafImage(imageSrc: string): Promise<ValidationRes
         leafStatus = 'fail';
         leafMsg = 'Ảnh có rất ít vùng màu xanh hoặc nâu. Hãy kiểm tra lại ảnh trước khi sử dụng.';
       }
-      checks.push({ id: 'leaf_detected', name: 'Ước lượng màu lá', status: leafStatus, message: leafMsg });
+      checks.push({
+        id: 'leaf_detected',
+        name: 'Ước lượng màu lá',
+        status: leafStatus,
+        message: leafMsg,
+      });
 
       // 2. Độ sắc nét
       let sharpStatus: ValidationStatus = 'pass';
@@ -108,7 +111,12 @@ export async function validateLeafImage(imageSrc: string): Promise<ValidationRes
         sharpStatus = 'fail';
         sharpMsg = 'Ảnh quá mờ hoặc nhòe rung tay, không đủ điều kiện trích xuất đặc trưng.';
       }
-      checks.push({ id: 'sharpness', name: 'Độ sắc nét ảnh', status: sharpStatus, message: sharpMsg });
+      checks.push({
+        id: 'sharpness',
+        name: 'Độ sắc nét ảnh',
+        status: sharpStatus,
+        message: sharpMsg,
+      });
 
       // 3. Ánh sáng
       let lightStatus: ValidationStatus = 'pass';
@@ -124,7 +132,12 @@ export async function validateLeafImage(imageSrc: string): Promise<ValidationRes
         lightStatus = 'fail';
         lightMsg = 'Ảnh quá tối. Chi tiết tán lá bị chìm hoàn toàn trong bóng đen.';
       }
-      checks.push({ id: 'lighting', name: 'Ánh sáng quang học', status: lightStatus, message: lightMsg });
+      checks.push({
+        id: 'lighting',
+        name: 'Ánh sáng quang học',
+        status: lightStatus,
+        message: lightMsg,
+      });
 
       // 4. Khả năng quan sát lá
       let visStatus: ValidationStatus = 'pass';
@@ -133,7 +146,12 @@ export async function validateLeafImage(imageSrc: string): Promise<ValidationRes
         visStatus = 'warning';
         visMsg = 'Lá mục tiêu chiếm diện tích tương đối nhỏ trong bức ảnh.';
       }
-      checks.push({ id: 'leaf_visibility', name: 'Khả năng quan sát lá', status: visStatus, message: visMsg });
+      checks.push({
+        id: 'leaf_visibility',
+        name: 'Khả năng quan sát lá',
+        status: visStatus,
+        message: visMsg,
+      });
 
       // 5. Độ phức tạp hậu cảnh
       let bgStatus: ValidationStatus = 'pass';
@@ -142,7 +160,12 @@ export async function validateLeafImage(imageSrc: string): Promise<ValidationRes
         bgStatus = 'warning';
         bgMsg = 'Hậu cảnh nhiều chi tiết phức tạp. Nên đặt lá trên nền trơn đơn giản.';
       }
-      checks.push({ id: 'background', name: 'Độ phức tạp hậu cảnh', status: bgStatus, message: bgMsg });
+      checks.push({
+        id: 'background',
+        name: 'Độ phức tạp hậu cảnh',
+        status: bgStatus,
+        message: bgMsg,
+      });
 
       // Đánh giá tổng quát
       const hasFail = checks.some((c) => c.status === 'fail');
@@ -150,7 +173,8 @@ export async function validateLeafImage(imageSrc: string): Promise<ValidationRes
 
       let overallMsg = 'Ảnh đạt các kiểm tra chất lượng sơ bộ trên thiết bị.';
       if (hasWarning && !hasFail) {
-        overallMsg = 'Ảnh có thể sử dụng được, tuy nhiên một số cảnh báo nhỏ có thể ảnh hưởng đến độ tin cậy.';
+        overallMsg =
+          'Ảnh có thể sử dụng được, tuy nhiên một số cảnh báo nhỏ có thể ảnh hưởng đến độ tin cậy.';
       } else if (hasFail) {
         overallMsg = 'Hình ảnh này chưa phù hợp để chẩn đoán bệnh chính xác.';
       }
@@ -164,7 +188,7 @@ export async function validateLeafImage(imageSrc: string): Promise<ValidationRes
         leaf_visibility: visStatus,
         message: overallMsg,
         checks,
-        canAnalyzeAnyway: !hasFail || leafStatus !== 'fail'
+        canAnalyzeAnyway: !hasFail || leafStatus !== 'fail',
       });
     };
 
@@ -187,7 +211,12 @@ function createUnavailableResult(): ValidationResult {
     message: 'Không thể đọc ảnh để kiểm tra chất lượng. Hãy chọn ảnh khác.',
     canAnalyzeAnyway: false,
     checks: [
-      { id: 'unreadable', name: 'Đọc ảnh', status: 'fail', message: 'Tệp ảnh không mở được hoặc trình duyệt không thể xử lý ảnh.' }
-    ]
+      {
+        id: 'unreadable',
+        name: 'Đọc ảnh',
+        status: 'fail',
+        message: 'Tệp ảnh không mở được hoặc trình duyệt không thể xử lý ảnh.',
+      },
+    ],
   };
 }

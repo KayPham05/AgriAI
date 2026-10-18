@@ -1,17 +1,24 @@
+import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
   test: {
+    include: ['tests/**/*.test.{ts,tsx}'],
     environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
+    setupFiles: ['./tests/setup.ts'],
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**', 'src/**/*.d.ts'],
+      exclude: ['src/**/*.d.ts'],
       reportsDirectory: '../.cache/coverage/frontend',
       reporter: ['text', 'html', 'cobertura', 'json-summary'],
       reportOnFailure: true,
-      thresholds: { branches: 25 },
+      thresholds: { branches: 60 },
     },
   },
 });

@@ -48,6 +48,6 @@ The script checks auth, catalog CRUD, migration history and ownership/read/delet
 dotnet test backend/AgriVision.sln --no-restore --settings backend/coverage.runsettings --collect 'XPlat Code Coverage' --results-directory .cache/coverage/backend/local
 ~~~
 
-This collects reports per test project; aggregate them to evaluate backend coverage. Branch coverage target is 80%, current CI floor is 50%. On 2026-10-07, merged coverage was 213/364 = 58.52%, with 33 unit and 13 integration tests passing locally. Passing test counts do not establish coverage. See [coverage report](../../docs/reports/AGRI-75/ci_branch_coverage.md) and [CI workflow](../../.github/workflows/ci.yml).
+This collects reports per test project; aggregate them to evaluate backend coverage. Branch coverage target is 80%, current CI floor is 60%. On 2026-10-07, merged coverage was 213/364 = 58.52%, with 33 unit and 13 integration tests passing locally. Passing test counts do not establish coverage. See [coverage report](../../docs/reports/AGRI-75/ci_branch_coverage.md) and [CI workflow](../../.github/workflows/ci.yml).
 
 API/DB tests and health mocks do not validate ConvNeXt-Tiny inference. See [AGRI-79 task log](../../docs/task-logs/AGRI-79/AGRI-79-database-migrations.md).

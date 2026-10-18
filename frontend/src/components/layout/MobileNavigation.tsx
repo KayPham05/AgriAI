@@ -1,10 +1,12 @@
-import React from 'react';
-import { BookOpen, Camera, Home, Leaf, History, User } from 'lucide-react';
-import { NavigationTab } from '../../types';
+import type React from 'react';
+import Link from 'next/link';
+import { getTabPath } from '@/lib/appRoutes';
+import { Camera, Home, Leaf, History, User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import type { NavigationTab } from '../../types';
 
 interface MobileNavigationProps {
   currentTab: NavigationTab;
-  onSelectTab: (tab: NavigationTab) => void;
 }
 
 const items = [
@@ -15,16 +17,35 @@ const items = [
   { id: 'profile' as NavigationTab, label: 'Hồ sơ', icon: User },
 ];
 
-export const MobileNavigation: React.FC<MobileNavigationProps> = ({ currentTab, onSelectTab }) => {
-  const selected = currentTab === 'plant-detail' ? 'plants' : currentTab === 'disease-detail' ? 'plants' : currentTab;
+export const MobileNavigation: React.FC<MobileNavigationProps> = ({ currentTab }) => {
+  const selected =
+    currentTab === 'plant-detail'
+      ? 'plants'
+      : currentTab === 'disease-detail'
+        ? 'plants'
+        : currentTab;
   return (
-    <nav aria-label="Điều hướng điện thoại" className="fixed inset-x-0 bottom-0 z-40 rounded-t-[28px] border-t border-[#e0eadb] bg-[#fffef9]/95 px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_34px_rgba(30,66,36,.07)] backdrop-blur-xl md:hidden">
+    <nav
+      aria-label="Điều hướng điện thoại"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface px-2 pb-[env(safe-area-inset-bottom)] md:hidden"
+    >
       <div className="mx-auto flex max-w-lg items-center justify-around">
         {items.map(({ id, label, icon: Icon }) => {
           const active = selected === id;
-          return <button key={id} type="button" onClick={() => onSelectTab(id)} aria-current={active ? 'page' : undefined} className={`flex min-h-[66px] flex-1 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-semibold ${active ? 'text-[#245c3a]' : 'text-[#6d806d]'}`}>
-            <span className={`flex h-8 w-10 items-center justify-center rounded-full ${active ? 'bg-[#e5f0df]' : ''}`}><Icon className="h-5 w-5" /></span><span>{label}</span>
-          </button>;
+          return (
+            <Button
+              key={id}
+              asChild
+              variant="ghost"
+              aria-current={active ? 'page' : undefined}
+              className={`h-16 flex-1 flex-col gap-1 rounded-xl px-1 text-xs ${active ? 'bg-secondary text-primary' : 'text-muted-foreground'}`}
+            >
+              <Link href={getTabPath(id)}>
+                <Icon className="size-5" aria-hidden="true" />
+                <span>{label}</span>
+              </Link>
+            </Button>
+          );
         })}
       </div>
     </nav>

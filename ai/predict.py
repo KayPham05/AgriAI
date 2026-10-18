@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -12,6 +13,7 @@ from ai.configs import config
 from ai.configs.plant_disease_mapping import get_plant_to_diseases
 from ai.data.augmentations import get_inference_transforms
 from ai.networks.convnext import build_model
+from ai.utils.checkpoint_correction import inference_state_dict
 
 PLANT_CHECKPOINT_PATH = config.CHECKPOINT_DIR / "plant" / "best_convnext_tiny.pth"
 DISEASE_CHECKPOINT_PATH = (
@@ -47,7 +49,11 @@ class LeafDiseasePredictor:
 
         # Khởi tạo mô hình
         self.model = build_model(num_classes=self.num_classes, pretrained=False, device=config.DEVICE)
-        self.model.load_state_dict(checkpoint["model_state_dict"])
+        checkpoint_sha = (
+            hashlib.sha256(self.checkpoint_path.read_bytes()).hexdigest()
+            if checkpoint.get("task") == "disease" else ""
+        )
+        self.model.load_state_dict(inference_state_dict(checkpoint, checkpoint_sha))
         self.model.eval()
 
         self.transform = get_inference_transforms()
