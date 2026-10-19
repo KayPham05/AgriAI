@@ -155,6 +155,43 @@ public class PredictionServiceTests
     }
 
     [Fact]
+    public async Task CancelledGuestUpload_ShouldNotInvokeAiOrStoreData()
+    {
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        var act = () => _predictionService.PredictAsync(CreateFile(), null, cancellation.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        _diseasePredictor.PredictCount.Should().Be(0);
+        _imageStorage.UploadCount.Should().Be(0);
+        _predictionRepository.AddedPredictions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task MissingGuestUpload_ShouldNotInvokeAiOrStoreData()
+    {
+        var act = () => _predictionService.PredictAsync(null!, null);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+        _diseasePredictor.PredictCount.Should().Be(0);
+        _imageStorage.UploadCount.Should().Be(0);
+        _predictionRepository.AddedPredictions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GuestPrediction_ShouldNotBeAvailableAsSavedHistory()
+    {
+        ConfigureHealthyClass();
+        var result = await _predictionService.PredictAsync(CreateFile(), null);
+
+        (await _predictionService.GetPredictionByIdAsync(result.Id, userId: Guid.NewGuid())).Should().BeNull();
+        _diseasePredictor.ReceivedStream!.CanRead.Should().BeFalse();
+        _imageStorage.UploadCount.Should().Be(0);
+        _predictionRepository.AddedPredictions.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task MappingMismatch_ShouldFailBeforeStorage()
     {
         ConfigureHealthyClass();
