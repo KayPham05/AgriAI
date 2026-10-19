@@ -11,6 +11,7 @@ public static class DependencyInjection
     {
         // Register Application Services
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IUserService, UserService>();
         services.AddScoped<IPlantService, PlantService>();
         services.AddScoped<IDiseaseService, DiseaseService>();
         services.AddScoped<IPredictionService, PredictionService>();
