@@ -1,5 +1,9 @@
 # AGRI-75 — CI, Docker và branch coverage
 
+**Gate hiện hành từ 17/10/2026:** backend **60%**, frontend **60%**, Python **40%**.
+Xem [thay đổi và lần kiểm tra mới trong AGRI-127](../AGRI-127/coverage_uuid_audit.md).
+Các ngưỡng, lệnh và số đo bên dưới được giữ làm lịch sử tại thời điểm ghi nhận.
+
 **Cập nhật gate ngày 07/10/2026:** backend tăng từ 35% lên **50%** theo yêu cầu người dùng. Coverage local gộp unit/integration hiện tại là **213/364 = 58,52%**, đạt gate mới; 33 unit và 13 integration tests pass. Artifact: `.cache/coverage/backend/agri79-review/merged/Cobertura.xml`. Frontend giữ 25%, Python giữ 40%; mục tiêu vẫn 80% riêng từng phần. Các kết quả ngày 29/09 bên dưới là bằng chứng lịch sử, không xác nhận code hiện tại hoặc GitHub Actions HEAD.
 
 Ngày xác minh: **2026-09-29**. Nhánh: `AGRI-75-ci-testing-setup`.

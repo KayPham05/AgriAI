@@ -105,12 +105,8 @@ public class CatalogImportTests
                 ClassName = "Potato___Early_blight", ClassIndex = 6
             };
             database.PlantDiseases.AddRange(tomato, potato);
-            database.Predictions.Add(new Prediction
-            {
-                Id = predictionId, PredictedPlantDisease = potato, Confidence = 0.9,
-                ImagePath = "/legacy.jpg", ResultSnapshotJson = "{\"legacy\":true}"
-            });
             await database.SaveChangesAsync();
+            await InsertLegacyPredictionAsync(database, predictionId, potatoClassId, "/legacy.jpg", "{\"legacy\":true}");
             database.ChangeTracker.Clear();
         }
 
@@ -144,7 +140,8 @@ public class CatalogImportTests
             archived.IsActive.Should().BeFalse();
             archived.ClassIndex.Should().Be(59);
             archived.ClassName.Should().Be("Potato___Early_blight");
-            var history = await database.Predictions.SingleAsync(p => p.Id == predictionId);
+            var history = await database.Predictions.Where(p => p.Id == predictionId)
+                .Select(p => new { p.PredictedPlantDiseaseId, p.ImagePath, p.ResultSnapshotJson }).SingleAsync();
             history.PredictedPlantDiseaseId.Should().Be(potatoClassId);
             history.ImagePath.Should().Be("/legacy.jpg");
             history.ResultSnapshotJson.Should().Contain("\"legacy\": true");
@@ -188,11 +185,6 @@ public class CatalogImportTests
             }
         };
         database.PlantDiseases.Add(existing);
-        database.Predictions.Add(new Prediction
-        {
-            PredictedPlantDisease = existing, Confidence = 0.9, ImagePath = "/preserve.jpg",
-            ResultSnapshotJson = "{\"keep\":true}"
-        });
         switch (conflict)
         {
             case "plant-alias":
@@ -210,6 +202,7 @@ public class CatalogImportTests
                 break;
         }
         await database.SaveChangesAsync();
+        await InsertLegacyPredictionAsync(database, Guid.NewGuid(), existing.Id, "/preserve.jpg", "{\"keep\":true}");
         database.ChangeTracker.Clear();
         var before = await CaptureStateAsync(database);
         var sql = await ReadImportSqlAsync();
@@ -296,18 +289,25 @@ public class CatalogImportTests
         (await database.PlantDiseases.OrderBy(p => p.ClassIndex).Select(p => p.Id).ToListAsync()).Should().Equal(afterIds);
         (await database.PlantDiseases.Where(p => p.IsActive).OrderBy(p => p.ClassIndex).Select(p => p.ClassName).ToListAsync())
             .Should().Equal(ExpectedLabels);
-        (await database.Database.GetAppliedMigrationsAsync()).Should().HaveCount(3)
+        (await database.Database.GetAppliedMigrationsAsync()).Should().HaveCount(5)
             .And.Contain("20261007032722_DatasetV14Catalog");
 
         var state = await CaptureStateAsync(database);
         var downgrade = () => MigrateToPreCatalogAsync(database);
         await downgrade.Should().ThrowAsync<NotSupportedException>().WithMessage("*forward-only*");
         (await CaptureStateAsync(database)).Should().Be(state);
-        (await database.Database.GetAppliedMigrationsAsync()).Should().HaveCount(3);
+        (await database.Database.GetAppliedMigrationsAsync()).Should().HaveCount(5);
     }
 
     private static Task MigrateToPreCatalogAsync(AppDbContext database) =>
         database.GetService<IMigrator>().MigrateAsync("20261006161042_ConfirmedRequirementsSchema");
+
+    private static Task<int> InsertLegacyPredictionAsync(AppDbContext database, Guid id, Guid classId, string path, string snapshot) =>
+        // Seed the historical schema without columns introduced by later models.
+        database.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO predictions (id, predicted_plant_disease_id, image_path, confidence, created_at, result_snapshot)
+            VALUES ({id}, {classId}, {path}, 0.9, now(), {snapshot}::jsonb)
+            """);
 
     private static async Task<string> ReadImportSqlAsync()
     {

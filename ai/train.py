@@ -25,6 +25,7 @@ from ai.configs.classification_tasks import (
 from ai.data.dataset import compute_class_weights, create_dataloaders
 from ai.networks.convnext import build_model
 from ai.utils.metrics import compute_metrics
+from ai.utils.losses import SampleWeightedCrossEntropy
 from ai.utils.training import set_finetuning_phase, warmup_cosine_factor
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -80,7 +81,7 @@ def build_criterion(
     training_records: list[dict[str, Any]],
     num_classes: int,
     device: torch.device,
-) -> tuple[nn.CrossEntropyLoss, list[float] | None]:
+) -> tuple[nn.Module, list[float] | None]:
     """Create task-appropriate cross-entropy loss."""
 
     class_weights = None
@@ -92,9 +93,10 @@ def build_criterion(
             dtype=torch.float32,
             device=device,
         )
-    criterion = nn.CrossEntropyLoss(
-        weight=weight_tensor,
-        label_smoothing=config.LABEL_SMOOTHING,
+    criterion = (
+        SampleWeightedCrossEntropy(weight_tensor, config.LABEL_SMOOTHING)
+        if weight_tensor is not None
+        else nn.CrossEntropyLoss(label_smoothing=config.LABEL_SMOOTHING)
     )
     return criterion, class_weights
 
