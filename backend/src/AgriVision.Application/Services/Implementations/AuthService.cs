@@ -10,12 +10,17 @@ namespace AgriVision.Application.Services.Implementations;
 public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepository;
+    private readonly IUserSessionRepository _userSessionRepository;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
 
-    public AuthService(IUserRepository userRepository, IJwtTokenGenerator jwtTokenGenerator)
+    public AuthService(
+        IUserRepository userRepository,
+        IJwtTokenGenerator jwtTokenGenerator,
+        IUserSessionRepository userSessionRepository)
     {
         _userRepository = userRepository;
         _jwtTokenGenerator = jwtTokenGenerator;
+        _userSessionRepository = userSessionRepository;
     }
 
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
@@ -52,7 +57,23 @@ public class AuthService : IAuthService
             throw new UnauthorizedAccessException("Invalid email or password.");
         }
 
+        if (!user.IsActive)
+        {
+            throw new UnauthorizedAccessException("Tài khoản đã bị vô hiệu hóa.");
+        }
+
         var token = _jwtTokenGenerator.GenerateToken(user);
+
+        var session = new UserSession
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            CreatedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            RevokedAt = null
+        };
+        await _userSessionRepository.AddAsync(session, cancellationToken);
+
         var userDto = new UserDto(user.Id, user.FullName, user.Email, user.Role, user.CreatedAt);
 
         return new AuthResponse(token, userDto);
@@ -67,5 +88,10 @@ public class AuthService : IAuthService
         }
 
         return new UserDto(user.Id, user.FullName, user.Email, user.Role, user.CreatedAt);
+    }
+
+    public async Task LogoutAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        await _userSessionRepository.RevokeAllSessionsByUserIdAsync(userId, cancellationToken);
     }
 }

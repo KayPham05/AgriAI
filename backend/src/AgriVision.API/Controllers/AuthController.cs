@@ -44,4 +44,18 @@ public class AuthController : ControllerBase
         var result = await _authService.GetCurrentUserAsync(userId, cancellationToken);
         return Ok(result);
     }
+
+    [Authorize]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout(CancellationToken cancellationToken)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        await _authService.LogoutAsync(userId, cancellationToken);
+        return NoContent();
+    }
 }

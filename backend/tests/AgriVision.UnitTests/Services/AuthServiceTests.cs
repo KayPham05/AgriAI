@@ -12,17 +12,20 @@ namespace AgriVision.UnitTests.Services;
 public class AuthServiceTests
 {
     private readonly Mock<IUserRepository> _userRepositoryMock;
+    private readonly Mock<IUserSessionRepository> _userSessionRepositoryMock;
     private readonly Mock<IJwtTokenGenerator> _jwtTokenGeneratorMock;
     private readonly AuthService _authService;
 
     public AuthServiceTests()
     {
         _userRepositoryMock = new Mock<IUserRepository>();
+        _userSessionRepositoryMock = new Mock<IUserSessionRepository>();
         _jwtTokenGeneratorMock = new Mock<IJwtTokenGenerator>();
 
         _authService = new AuthService(
             _userRepositoryMock.Object,
-            _jwtTokenGeneratorMock.Object
+            _jwtTokenGeneratorMock.Object,
+            _userSessionRepositoryMock.Object
         );
     }
 
@@ -125,5 +128,76 @@ public class AuthServiceTests
         var act = () => _authService.LoginAsync(request);
         await act.Should().ThrowAsync<UnauthorizedAccessException>();
         _jwtTokenGeneratorMock.Verify(generator => generator.GenerateToken(It.IsAny<User>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task LoginAsync_ShouldThrowUnauthorizedAccessException_WhenUserIsInactive()
+    {
+        // Arrange
+        var password = "Password123!";
+        var passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
+        var inactiveUser = new User
+        {
+            Id = Guid.NewGuid(),
+            FullName = "Inactive User",
+            Email = "inactive@example.com",
+            PasswordHash = passwordHash,
+            IsActive = false
+        };
+
+        var request = new LoginRequest("inactive@example.com", password);
+        _userRepositoryMock.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(inactiveUser);
+
+        // Act
+        var act = async () => await _authService.LoginAsync(request);
+
+        // Assert
+        await act.Should().ThrowAsync<UnauthorizedAccessException>()
+            .WithMessage("*vô hiệu hóa*");
+        _userSessionRepositoryMock.Verify(s => s.AddAsync(It.IsAny<UserSession>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task LoginAsync_ShouldCreateUserSession_WhenLoginSucceeds()
+    {
+        // Arrange
+        var password = "Password123!";
+        var passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            FullName = "Active User",
+            Email = "active@example.com",
+            PasswordHash = passwordHash,
+            IsActive = true
+        };
+
+        var request = new LoginRequest("active@example.com", password);
+        _userRepositoryMock.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _jwtTokenGeneratorMock.Setup(g => g.GenerateToken(user)).Returns("token-123");
+
+        // Act
+        var result = await _authService.LoginAsync(request);
+
+        // Assert
+        result.Should().NotBeNull();
+        _userSessionRepositoryMock.Verify(s => s.AddAsync(It.Is<UserSession>(
+            session => session.UserId == user.Id && session.RevokedAt == null
+        ), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task LogoutAsync_ShouldRevokeAllSessionsForUser()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+
+        // Act
+        await _authService.LogoutAsync(userId);
+
+        // Assert
+        _userSessionRepositoryMock.Verify(s => s.RevokeAllSessionsByUserIdAsync(userId, It.IsAny<CancellationToken>()), Times.Once);
     }
 }
