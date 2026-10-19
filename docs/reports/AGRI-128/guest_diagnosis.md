@@ -87,6 +87,8 @@ kiểm tra decoder hoặc model thật.
 | Whitespace | `git diff --check` | Đạt. |
 | Staged diff | Gitleaks v8.24.2 `stdin --redact` trên `git diff --cached` | Không phát hiện leak trong 7 file của task. |
 | Liên kết tài liệu | Kiểm local Markdown links trong 4 file tài liệu mới | Không có liên kết local bị hỏng. |
+| Commit thực tế | `4096da5`, script `.github/scripts/lint_commits.cjs` so với nhánh đích | 1 commit, không có lỗi/cảnh báo. |
+| Secret scan sau commit code | Gitleaks v8.24.2, `.cache/agri128-guest/gitleaks-final.json` | 134 commit, không phát hiện leak. |
 
 Lệnh full suite giữ nguyên baseline, thay results directory bằng
 `.cache/agri128-guest/verification`. Kiểm ngưỡng bằng
@@ -130,3 +132,8 @@ chính sách thư mục tạm/proxy/AI service phải được kiểm chứng ri
 - PR đích là nhánh tích hợp AGRI-128; không tự merge hoặc tự phê duyệt.
 - GitHub CLI chưa đăng nhập; cần đăng nhập chính thức để tạo PR và kiểm CI.
   Backend reviewer theo rules là Tran Trung Thong; chưa xác minh GitHub login.
+
+Commit code `4096da5` đã push lên `origin/AGRI-128-guest-diagnosis`.
+Trang compare xác nhận đúng base/head và 7 file thay đổi, nhưng trình duyệt
+cũng chưa đăng nhập. PR chưa được tạo; workflow hiện chỉ chạy khi có PR,
+push `main` hoặc dispatch nên push nhánh con chưa chứng minh GitHub CI đạt.

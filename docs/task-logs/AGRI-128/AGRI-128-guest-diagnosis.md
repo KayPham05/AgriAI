@@ -70,3 +70,16 @@ Bộ kiểm duyệt tự động từ chối thử lấy credential từ Git Cre
 Không tiếp tục cách này; dùng `gh auth login --hostname github.com --web`.
 Reviewer backend theo rules là Tran Trung Thong, cần xác minh GitHub login
 trước khi gửi review request.
+
+## 6. Bàn giao local và remote ngày 2026-10-19
+
+- Commit code/tài liệu `4096da5` đã push lên `origin/AGRI-128-guest-diagnosis`.
+  Script commitlint trên commit thực tế đạt; Gitleaks sau commit quét 134 commit,
+  không phát hiện leak. Hai file Docker local tiếp tục giữ nguyên, không commit.
+- Trang compare xác nhận base `AGRI-128-backend-improvement`, head
+  `AGRI-128-guest-diagnosis`, 1 commit và 7 file của task ở thời điểm kiểm tra.
+- PR chưa tạo vì cả GitHub CLI và trình duyệt khả dụng đều chưa đăng nhập.
+  Nội dung PR theo template đã chuẩn bị tại `.cache/agri128-guest/pr-body.md`
+  (artifact local, không có trong checkout mới).
+- Chờ phiên đăng nhập chính thức để tạo PR, gán reviewer đã xác minh và kiểm
+  GitHub Actions. Không tuyên bố CI đạt hoặc task AGRI-118 hoàn tất toàn bộ.
