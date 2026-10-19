@@ -2,6 +2,7 @@ using System.Text;
 using AgriVision.Application.Common.Interfaces.Persistence;
 using AgriVision.Application.Common.Interfaces.Services;
 using AgriVision.Application.Services.Implementations;
+using AgriVision.Application.DTOs.Prediction;
 using AgriVision.Domain.Entities;
 using AgriVision.Infrastructure.Services;
 using FluentAssertions;
@@ -267,6 +268,96 @@ public class PredictionServiceTests
         (result.Medication != null).Should().Be(!warning);
     }
 
+    [Fact]
+    public async Task GetFilteredHistoryAsync_ShouldFilterByPlantAndDisease()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var plant1Id = Guid.NewGuid();
+        var plant2Id = Guid.NewGuid();
+        var diseaseId = Guid.NewGuid();
+
+        var pd1 = new PlantDisease
+        {
+            Id = Guid.NewGuid(),
+            PlantId = plant1Id,
+            DiseaseId = diseaseId,
+            Plant = new Plant { Id = plant1Id, Name = "Rice", VietnameseName = "Lúa" },
+            Disease = new Disease { Id = diseaseId, Name = "Blast", VietnameseName = "Đạo ôn" }
+        };
+        var pd2 = new PlantDisease
+        {
+            Id = Guid.NewGuid(),
+            PlantId = plant2Id,
+            DiseaseId = diseaseId,
+            Plant = new Plant { Id = plant2Id, Name = "Corn", VietnameseName = "Ngô" },
+            Disease = new Disease { Id = diseaseId, Name = "Blast", VietnameseName = "Đạo ôn" }
+        };
+
+        _predictionRepository.AddedPredictions.Add(new Prediction
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            PredictedPlantDisease = pd1,
+            CreatedAt = DateTime.UtcNow.AddHours(-2)
+        });
+        _predictionRepository.AddedPredictions.Add(new Prediction
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            PredictedPlantDisease = pd2,
+            CreatedAt = DateTime.UtcNow.AddHours(-1)
+        });
+
+        var filter = new PredictionFilterParams(PlantId: plant1Id, DiseaseId: diseaseId);
+
+        // Act
+        var result = await _predictionService.GetFilteredHistoryAsync(userId, filter);
+
+        // Assert
+        result.TotalCount.Should().Be(1);
+        result.Items.Should().HaveCount(1);
+        result.Items.First().PlantName.Should().Be("Rice");
+    }
+
+    [Fact]
+    public async Task GetFilteredHistoryAsync_ShouldFilterByDateRange()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var pd = new PlantDisease
+        {
+            Id = Guid.NewGuid(),
+            Plant = new Plant { Name = "Rice" },
+            Disease = new Disease { Name = "Healthy" }
+        };
+
+        var now = DateTime.UtcNow;
+        _predictionRepository.AddedPredictions.Add(new Prediction
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            PredictedPlantDisease = pd,
+            CreatedAt = now.AddDays(-10)
+        });
+        _predictionRepository.AddedPredictions.Add(new Prediction
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            PredictedPlantDisease = pd,
+            CreatedAt = now.AddDays(-2)
+        });
+
+        var filter = new PredictionFilterParams(FromDate: now.AddDays(-5), ToDate: now);
+
+        // Act
+        var result = await _predictionService.GetFilteredHistoryAsync(userId, filter);
+
+        // Assert
+        result.TotalCount.Should().Be(1);
+        result.Items.Should().HaveCount(1);
+    }
+
     private void ConfigureHealthyClass() => _plantDiseaseRepository.PlantDiseases =
     [new PlantDisease { ClassIndex = 0, ClassName = "Tomato___Healthy", Plant = new Plant { Name = "Tomato" }, Disease = new Disease { Name = "Healthy" } }];
 
@@ -300,6 +391,36 @@ public class PredictionServiceTests
 
         public Task<int> GetCountByUserIdAsync(Guid userId, CancellationToken cancellationToken = default) =>
             Task.FromResult(AddedPredictions.Count(prediction => prediction.UserId == userId));
+
+        public Task<(IEnumerable<Prediction> Items, int TotalCount)> GetFilteredByUserIdAsync(
+            Guid userId,
+            PredictionFilterParams filterParams,
+            CancellationToken cancellationToken = default)
+        {
+            var query = AddedPredictions.Where(p => p.UserId == userId);
+            if (filterParams.AgriculturalProfileId.HasValue)
+                query = query.Where(p => p.AgriculturalProfileId == filterParams.AgriculturalProfileId.Value);
+            if (filterParams.PlantId.HasValue)
+                query = query.Where(p => p.PredictedPlantDisease?.PlantId == filterParams.PlantId.Value);
+            if (filterParams.DiseaseId.HasValue)
+                query = query.Where(p => p.PredictedPlantDisease?.DiseaseId == filterParams.DiseaseId.Value);
+            if (filterParams.FromDate.HasValue)
+                query = query.Where(p => p.CreatedAt >= filterParams.FromDate.Value);
+            if (filterParams.ToDate.HasValue)
+                query = query.Where(p => p.CreatedAt <= filterParams.ToDate.Value);
+
+            var total = query.Count();
+            var page = filterParams.PageNumber < 1 ? 1 : filterParams.PageNumber;
+            var size = filterParams.PageSize < 1 ? 10 : filterParams.PageSize;
+            var items = query
+                .OrderByDescending(p => p.CreatedAt)
+                .ThenByDescending(p => p.Id)
+                .Skip((page - 1) * size)
+                .Take(size)
+                .ToList();
+
+            return Task.FromResult<(IEnumerable<Prediction>, int)>((items, total));
+        }
 
         public Task AddAsync(Prediction prediction, CancellationToken cancellationToken = default)
         {

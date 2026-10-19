@@ -38,8 +38,7 @@ public class PredictionsController : ControllerBase
     [Authorize]
     [HttpGet]
     public async Task<ActionResult<PagedResult<PredictionHistoryDto>>> GetHistory(
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 10,
+        [FromQuery] PredictionFilterParams filterParams,
         CancellationToken cancellationToken = default)
     {
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
@@ -48,7 +47,7 @@ public class PredictionsController : ControllerBase
             return Unauthorized();
         }
 
-        var result = await _predictionService.GetPredictionHistoryAsync(userId, pageNumber, pageSize, cancellationToken);
+        var result = await _predictionService.GetFilteredHistoryAsync(userId, filterParams, cancellationToken);
         return Ok(result);
     }
 

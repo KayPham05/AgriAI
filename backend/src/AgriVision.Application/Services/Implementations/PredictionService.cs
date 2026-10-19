@@ -155,10 +155,17 @@ public class PredictionService : IPredictionService
 
     public async Task<PagedResult<PredictionHistoryDto>> GetPredictionHistoryAsync(Guid userId, int pageNumber = 1, int pageSize = 10, CancellationToken cancellationToken = default)
     {
-        if (pageNumber < 1 || pageSize < 1)
+        return await GetFilteredHistoryAsync(userId, new PredictionFilterParams(null, null, null, null, null, pageNumber, pageSize), cancellationToken);
+    }
+
+    public async Task<PagedResult<PredictionHistoryDto>> GetFilteredHistoryAsync(Guid userId, PredictionFilterParams filterParams, CancellationToken cancellationToken = default)
+    {
+        if (filterParams.PageNumber < 1 || filterParams.PageSize < 1)
+        {
             throw new ArgumentException("Page number and page size must be positive.");
-        var totalCount = await _predictionRepository.GetCountByUserIdAsync(userId, cancellationToken);
-        var predictions = await _predictionRepository.GetByUserIdAsync(userId, pageNumber, pageSize, cancellationToken);
+        }
+
+        var (predictions, totalCount) = await _predictionRepository.GetFilteredByUserIdAsync(userId, filterParams, cancellationToken);
 
         var historyItems = predictions.Select(p =>
         {
@@ -168,9 +175,9 @@ public class PredictionService : IPredictionService
                 stored.PredictedPlantDisease.Disease.Name, stored.PredictedPlantDisease.Disease.VietnameseName ?? "Chưa xác định",
                 stored.Confidence, p.CreatedAt)
             { HasHistoricalSnapshot = stored.HasHistoricalSnapshot, Images = stored.Images };
-        });
+        }).ToList();
 
-        return new PagedResult<PredictionHistoryDto>(historyItems, pageNumber, pageSize, totalCount);
+        return new PagedResult<PredictionHistoryDto>(historyItems, filterParams.PageNumber, filterParams.PageSize, totalCount);
     }
 
     public async Task DeletePredictionAsync(Guid id, Guid userId, bool isAdmin = false, CancellationToken cancellationToken = default)
