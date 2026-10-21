@@ -23,3 +23,10 @@ Excluded libraries/vendor directories, dependency manifests/lockfiles, generated
 No new browser, backend/Python, coverage or GitHub Actions run in this commit-only task. Historical browser/DB evidence stays historical. No claim of meeting component coverage targets or CI floors. No dependency/vendor files staged. Generated dev declarations remain outside commits.
 
 Ignored evidence: `.cache/commit-20261022-*.log`, subject/path manifests and group list. Actual commit hashes are confirmed in Git at handoff; no self-referential commit hash is embedded here.
+
+
+## Main synchronization and PR preparation
+
+Fetched origin/main on 2026-10-22. Remote main is `893cef474d1e8335513ca900f0c569398be09ccf`, the exact base of the nine local UI commits. `git rev-list --left-right --count HEAD...origin/main` returned 9/0 before this documentation follow-up; `git merge --no-edit origin/main` returned Already up to date. No merge commit, conflicts or configuration changes were needed. No runtime source changed, so the previous checks above remain the applicable evidence and were not presented as fresh reruns.
+
+All feature/source changes are committed; only the pre-existing generated development `frontend/next-env.d.ts` stays outside staging. Prepared local PR description in ignored `.cache/AGRI-57-pr-description.md`, using the project template, target main and explicit test/media/mock/format limits. Required frontend reviewer per project rules: Nguyen Pham Bao Khanh; no GitHub handle or review assignment inferred. No push, PR creation, remote mutation or automatic approval.
