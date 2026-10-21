@@ -6,10 +6,7 @@ import { AdminRecordList, formatAdminDate } from './AdminRecordList';
 export function AdminSessions() {
   const { sessions } = useAdminMock();
   return (
-    <div className="flex flex-col gap-5">
-      <p className="text-sm text-muted-foreground">
-        Các phiên bên dưới là dữ liệu minh họa, không phản ánh phiên đăng nhập thật.
-      </p>
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
       <AdminRecordList<AdminSession>
         resource="sessions"
         items={sessions}

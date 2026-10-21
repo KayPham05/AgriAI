@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+﻿import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { saveAuthSession, clearAuthSession } from '@/services/authApi';
@@ -14,6 +14,7 @@ const admin = {
   createdAt: '2026-10-13T00:00:00Z',
 };
 function setup(role = 'Admin') {
+  vi.stubGlobal('innerWidth', 1280);
   saveAuthSession({ token: 'admin-token', user: { ...admin, role } }, true);
   const requests = vi.fn(async (url: string) => {
     if (url.endsWith('/api/auth/me'))
@@ -24,17 +25,52 @@ function setup(role = 'Admin') {
   return requests;
 }
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   clearAuthSession();
 });
 
 describe('Admin mock workspace with real authentication', () => {
+  it('returns to the overview from the logo without restarting authentication or loading', async () => {
+    const requests = setup();
+    render(<AdminCrmPage />);
+    await screen.findByRole('heading', { name: 'Tổng quan vận hành' });
+    await userEvent.click(screen.getByRole('button', { name: 'Người dùng' }));
+    expect(screen.getByRole('heading', { name: 'Người dùng' })).toBeVisible();
+    const logo = screen.getByRole('link', { name: /AgriAI, về trang/ });
+    expect(logo).toHaveAttribute('href', '/admin');
+    await userEvent.click(logo);
+    expect(screen.getByRole('heading', { name: 'Tổng quan vận hành' })).toBeVisible();
+    expect(screen.queryByRole('status', { name: 'Đang kết nối AgriAI' })).toBeNull();
+    expect(screen.queryByRole('status', { name: 'Đang tải AgriAI' })).toBeNull();
+    expect(localStorage.getItem('leafai_auth_session')).not.toBeNull();
+    expect(requests.mock.calls.map(([url]) => url)).toEqual(['/api/auth/me']);
+  });
   it('shows mock records and charts without requesting administrative APIs', async () => {
     const requests = setup();
     render(<AdminCrmPage />);
-    expect(await screen.findByText(/Dữ liệu minh họa/)).toBeVisible();
-    expect(screen.getByRole('region', { name: 'Ảnh gần đây' })).toBeVisible();
+    expect(
+      screen
+        .getByRole('status', { name: 'Đang tải AgriAI' })
+        .querySelectorAll('[data-reload-block]'),
+    ).toHaveLength(4);
+    expect(await screen.findByRole('heading', { name: 'Tổng quan vận hành' })).toBeVisible();
+    expect(screen.queryByRole('note')).toBeNull();
+    expect(
+      screen
+        .getByRole('link', { name: 'AgriAI, về trang tổng quan' })
+        .querySelector('img')
+        ?.getAttribute('src'),
+    ).toContain('agriai-leaf-mark.png');
     expect(screen.getAllByRole('table', { name: /theo ngày/ })).toHaveLength(3);
+    expect(screen.getByRole('region', { name: 'Ảnh gần đây' })).toBeVisible();
+    await userEvent.click(screen.getByText('Lịch tháng', { selector: 'summary' }));
+    expect(screen.getByRole('region', { name: 'Lịch tháng' })).toBeVisible();
+    await userEvent.click(screen.getByText('Lịch tháng', { selector: 'summary' }));
+    expect(screen.queryByRole('navigation', { name: 'Các mục tổng quan' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Các mục quản trị' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Tài khoản quản trị' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Phiên gần đây' })).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Người dùng' }));
     expect(await screen.findByText('Nguyễn Văn An')).toBeVisible();
     await userEvent.click(screen.getByRole('button', { name: 'Ảnh đã tải lên' }));
@@ -47,7 +83,7 @@ describe('Admin mock workspace with real authentication', () => {
     setup('User');
     const page = render(<AdminCrmPage />);
     expect(await screen.findByText('Tài khoản này không có quyền Admin.')).toBeVisible();
-    expect(screen.queryByText(/Dữ liệu minh họa/)).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Tổng quan vận hành' })).toBeNull();
     page.unmount();
     clearAuthSession();
     render(<AdminCrmPage />);
@@ -56,7 +92,7 @@ describe('Admin mock workspace with real authentication', () => {
   it('filters mock accounts from dashboard search and handles no matches', async () => {
     setup();
     render(<AdminCrmPage />);
-    await screen.findByText(/Dữ liệu minh họa/);
+    await screen.findByRole('heading', { name: 'Tổng quan vận hành' });
     await userEvent.type(
       screen.getByLabelText('Tìm tài khoản theo tên hoặc email'),
       'an@example.test',
@@ -73,7 +109,7 @@ describe('Admin mock workspace with real authentication', () => {
   it('locks a mock account only in memory and resets it when the workspace remounts', async () => {
     const requests = setup();
     const page = render(<AdminCrmPage />);
-    await screen.findByText(/Dữ liệu minh họa/);
+    await screen.findByRole('heading', { name: 'Tổng quan vận hành' });
     await userEvent.click(screen.getByRole('button', { name: 'Người dùng' }));
     let row = screen.getByText('Nguyễn Văn An').closest('li') as HTMLElement;
     await userEvent.click(within(row).getByRole('button', { name: 'Khóa tài khoản' }));
@@ -84,7 +120,7 @@ describe('Admin mock workspace with real authentication', () => {
     expect(requests.mock.calls.map(([url]) => url)).toEqual(['/api/auth/me']);
     page.unmount();
     render(<AdminCrmPage />);
-    await screen.findByText(/Dữ liệu minh họa/);
+    await screen.findByRole('heading', { name: 'Tổng quan vận hành' });
     await userEvent.click(screen.getByRole('button', { name: 'Người dùng' }));
     row = screen.getByText('Nguyễn Văn An').closest('li') as HTMLElement;
     expect(within(row).getByText('Hoạt động')).toBeVisible();
@@ -92,7 +128,7 @@ describe('Admin mock workspace with real authentication', () => {
   it('simulates deleting an image without changing the authenticated session', async () => {
     const requests = setup();
     render(<AdminCrmPage />);
-    await screen.findByText(/Dữ liệu minh họa/);
+    await screen.findByRole('heading', { name: 'Tổng quan vận hành' });
     await userEvent.click(screen.getByRole('button', { name: 'Ảnh đã tải lên' }));
     const row = screen.getByText('Nguyễn Văn An').closest('li') as HTMLElement;
     await userEvent.click(within(row).getByRole('button', { name: 'Xóa ảnh' }));
@@ -105,27 +141,70 @@ describe('Admin mock workspace with real authentication', () => {
     expect(requests.mock.calls.map(([url]) => url)).toEqual(['/api/auth/me']);
     expect(localStorage.getItem('leafai_auth_session')).not.toBeNull();
   });
-  it('preserves hover and keyboard expansion without a header toggle', async () => {
+  it('keeps the sidebar collapsed when hovered, focused or touched', async () => {
     setup();
     render(<AdminCrmPage />);
-    await screen.findByText(/Dữ liệu minh họa/);
+    await screen.findByRole('heading', { name: 'Tổng quan vận hành' });
     const rail = screen.getByRole('complementary', { name: 'Thanh điều hướng quản trị' });
     const label = screen.getByText('Người dùng', { selector: '.admin-rail-label' });
     expect(label).not.toBeVisible();
     await userEvent.hover(rail);
-    expect(label).toBeVisible();
+    expect(label).not.toBeVisible();
     await userEvent.unhover(rail);
     expect(label).not.toBeVisible();
     within(rail).getByRole('button', { name: 'Người dùng' }).focus();
-    await waitFor(() => expect(label).toBeVisible());
-    expect(screen.queryByRole('button', { name: 'Mở rộng thanh điều hướng' })).toBeNull();
+    expect(label).not.toBeVisible();
+    await userEvent.pointer([
+      { keys: '[TouchA>]', target: rail },
+      { keys: '[/TouchA]', target: rail },
+    ]);
+    expect(label).not.toBeVisible();
+    expect(screen.getByRole('button', { name: 'Mở rộng thanh điều hướng' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+  });
+
+  it('pins the sidebar open and collapses it using the header button or keyboard', async () => {
+    setup();
+    render(<AdminCrmPage />);
+    await screen.findByRole('heading', { name: 'Tổng quan vận hành' });
+    const rail = screen.getByRole('complementary', { name: 'Thanh điều hướng quản trị' });
+    const label = screen.getByText('Người dùng', { selector: '.admin-rail-label' });
+    const toggle = screen.getByRole('button', { name: 'Mở rộng thanh điều hướng' });
+    expect(toggle).toHaveAttribute('aria-controls', rail.id);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(toggle);
+    await userEvent.hover(rail);
+    await userEvent.unhover(rail);
+    expect(label).toBeVisible();
+    within(rail).getByRole('button', { name: 'Người dùng' }).focus();
+    toggle.focus();
+    expect(label).toBeVisible();
+    await userEvent.keyboard('{Enter}');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(label).not.toBeVisible();
+    await userEvent.keyboard(' ');
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(label).toBeVisible();
+    await userEvent.click(toggle);
+    expect(label).not.toBeVisible();
   });
   it('logs out locally with the original backend and never calls a logout endpoint', async () => {
     const requests = setup();
     render(<AdminCrmPage />);
-    await screen.findByText(/Dữ liệu minh họa/);
-    await userEvent.click(screen.getByRole('button', { name: 'Đăng xuất' }));
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/'));
+    await screen.findByRole('heading', { name: 'Tổng quan vận hành' });
+    vi.useFakeTimers();
+    router.replace.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Đăng xuất' }));
+    expect(screen.getByRole('heading', { name: 'Tạm biệt, Administrator.' })).toBeVisible();
+    expect(screen.getByText('HẸN GẶP LẠI')).toBeVisible();
+    expect(screen.queryByRole('progressbar')).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Tổng quan vận hành' })).toBeNull();
+    act(() => vi.advanceTimersByTime(3999));
+    expect(router.replace).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1));
+    expect(router.replace).toHaveBeenCalledExactlyOnceWith('/');
     expect(requests.mock.calls.map(([url]) => url)).toEqual(['/api/auth/me']);
     expect(localStorage.getItem('leafai_auth_session')).toBeNull();
     expect(sessionStorage.getItem('leafai_auth_session')).toBeNull();

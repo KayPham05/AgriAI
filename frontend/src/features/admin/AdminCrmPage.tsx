@@ -1,12 +1,23 @@
 'use client';
-import { useRef, useState } from 'react';
-import { AdminMockProvider, useAdminMock } from './AdminMockProvider';
+import { useCallback, useRef, useState } from 'react';
+import { AdminMockProvider } from './AdminMockProvider';
 import { clearAuthSession, type AuthSession } from '@/services/authApi';
 import { useRouter } from 'next/navigation';
 import { AdminAccess } from './AdminAccess';
+import { AdminLoginSuccessScreen } from './AdminLoginSuccessScreen';
 import Link from 'next/link';
 import Image from 'next/image';
-import { LayoutDashboard, Users, Images, Monitor, LogOut, Menu, Search } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Users,
+  Images,
+  Monitor,
+  LogOut,
+  Menu,
+  Search,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,19 +45,15 @@ const NAVIGATION = [
 const VIEW_COPY = {
   overview: {
     title: 'Tổng quan vận hành',
-    description: 'Quản lý người dùng, ảnh đã tải lên và phiên đăng nhập AgriAI.',
   },
   users: {
     title: 'Người dùng',
-    description: 'Thông tin tài khoản người dùng AgriAI.',
   },
   images: {
     title: 'Ảnh đã tải lên',
-    description: 'Ảnh người dùng tải lên để kiểm tra lá cây.',
   },
   sessions: {
     title: 'Phiên đăng nhập',
-    description: 'Phiên đăng nhập gắn với tài khoản người dùng.',
   },
 };
 function CrmNavigation({
@@ -95,17 +102,13 @@ export function AdminCrmPage() {
 
 function AdminWorkspace({ session }: { session: AuthSession }) {
   const router = useRouter();
-  const { rootRef, railOpen, railHandlers } = useAdminRail();
+  const { rootRef, railOpen, toggleRail } = useAdminRail();
+  const [loggingOut, setLoggingOut] = useState(false);
+  const finishLogout = useCallback(() => router.replace('/'), [router]);
   function logout() {
     clearAuthSession();
-    router.replace('/');
+    setLoggingOut(true);
   }
-  const data = useAdminMock();
-  const summary = {
-    userCount: data.users.length,
-    imageCount: data.images.length,
-    sessionCount: data.sessions.length,
-  };
   const [view, setView] = useState<CrmView>('overview');
   const [menuOpen, setMenuOpen] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -117,31 +120,57 @@ function AdminWorkspace({ session }: { session: AuthSession }) {
     setMenuOpen(false);
     requestAnimationFrame(() => heading.current?.focus());
   }
+  if (loggingOut) {
+    return (
+      <AdminLoginSuccessScreen
+        mode="logout"
+        userName={session.user.fullName}
+        onAnimationComplete={finishLogout}
+      />
+    );
+  }
   return (
-    <div className="admin-dashboard min-h-dvh overflow-x-clip bg-surface-muted p-0 text-foreground sm:p-4 lg:p-6">
+    <div className="admin-dashboard h-dvh overflow-hidden bg-surface-muted p-0 text-foreground sm:p-4 lg:p-6">
       <a className="skip-link" href="#admin-main">
         Đến nội dung quản trị
       </a>
       <div
         ref={rootRef}
         data-rail-open={railOpen}
-        className="admin-workspace mx-auto flex max-w-screen-2xl items-start"
+        className="admin-workspace mx-auto flex h-full min-h-0 max-w-screen-2xl items-start"
       >
         <div className="admin-rail-slot sticky top-6 hidden shrink-0 lg:block">
           <aside
             id="admin-desktop-navigation"
-            {...railHandlers}
             aria-label="Thanh điều hướng quản trị"
             className="admin-rail relative isolate flex flex-col rounded-2xl px-3 py-6"
           >
             <span data-admin-rail-surface className="admin-rail-surface" aria-hidden="true" />
             <div className="admin-rail-content flex h-full min-h-0 flex-col overflow-y-auto">
               <Link
-                href="/"
-                aria-label="AgriAI, về trang giới thiệu"
+                href="/admin"
+                aria-label="AgriAI, về trang tổng quan"
+                onClick={(event) => {
+                  if (
+                    event.button !== 0 ||
+                    event.metaKey ||
+                    event.ctrlKey ||
+                    event.shiftKey ||
+                    event.altKey
+                  )
+                    return;
+                  event.preventDefault();
+                  navigate('overview');
+                }}
                 className="mb-10 flex min-h-11 items-center gap-3"
               >
-                <Image src="/images/logo.png" alt="" width={40} height={40} />
+                <Image
+                  src="/images/agriai-leaf-mark.png"
+                  alt=""
+                  width={40}
+                  height={40}
+                  className="size-10 shrink-0 object-contain"
+                />
                 <span className="admin-rail-label text-sm font-bold" hidden={!railOpen}>
                   AgriAI
                 </span>
@@ -162,7 +191,10 @@ function AdminWorkspace({ session }: { session: AuthSession }) {
             </div>
           </aside>
         </div>
-        <div data-admin-content className="admin-frame min-h-dvh min-w-0 flex-1 bg-background">
+        <div
+          data-admin-content
+          className="admin-frame flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background"
+        >
           <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3 sm:px-6">
             <div className="flex min-w-0 items-center gap-3">
               <Button
@@ -173,6 +205,22 @@ function AdminWorkspace({ session }: { session: AuthSession }) {
                 onClick={() => setMenuOpen(true)}
               >
                 <Menu />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="hidden lg:inline-flex"
+                aria-label={railOpen ? 'Thu gọn thanh điều hướng' : 'Mở rộng thanh điều hướng'}
+                title={railOpen ? 'Thu gọn thanh điều hướng' : 'Mở rộng thanh điều hướng'}
+                aria-controls="admin-desktop-navigation"
+                aria-expanded={railOpen}
+                onClick={toggleRail}
+              >
+                {railOpen ? (
+                  <PanelLeftClose aria-hidden="true" />
+                ) : (
+                  <PanelLeftOpen aria-hidden="true" />
+                )}
               </Button>
 
               <div>
@@ -206,8 +254,8 @@ function AdminWorkspace({ session }: { session: AuthSession }) {
               </Button>
             </form>
           </header>
-          <main id="admin-main" className="px-5 py-4 sm:px-6 sm:py-5">
-            <div className="mb-5 flex flex-col gap-2">
+          <main id="admin-main" className="flex min-h-0 flex-1 flex-col px-4 py-3 sm:px-6">
+            <div className="mb-2 flex shrink-0 flex-col gap-1">
               <h1
                 ref={heading}
                 tabIndex={-1}
@@ -215,21 +263,12 @@ function AdminWorkspace({ session }: { session: AuthSession }) {
               >
                 {VIEW_COPY[view].title}
               </h1>
-              <p className="max-w-prose text-sm leading-relaxed text-muted-foreground">
-                {VIEW_COPY[view].description}
-              </p>
             </div>
-            <p role="note" className="mb-4 text-sm text-muted-foreground">
-              Dữ liệu minh họa (mock). Thao tác chỉ mô phỏng trên giao diện, đặt lại khi tải lại
-              trang.
-            </p>
             <AdminMotion view={view}>
               {view === 'overview' && (
                 <AdminOverview
-                  summary={summary}
-                  user={session.user}
-                  onUsers={() => navigate('users')}
                   onImages={() => navigate('images')}
+                  onUsers={() => navigate('users')}
                   onSessions={() => navigate('sessions')}
                 />
               )}
@@ -237,10 +276,12 @@ function AdminWorkspace({ session }: { session: AuthSession }) {
               {view === 'images' && <AdminImages />}
               {view === 'sessions' && <AdminSessions />}
             </AdminMotion>
-            <footer className="mt-10 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-5 text-xs text-muted-foreground">
-              <p>AgriAI Quản trị / Giao diện quản trị người dùng</p>
-              <p>Nguồn dữ liệu: Mock frontend</p>
-            </footer>
+            {view !== 'overview' && (
+              <footer className="mt-2 flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border pt-2 text-xs text-muted-foreground">
+                <p>AgriAI Quản trị / Giao diện quản trị người dùng</p>
+                <p>Nguồn dữ liệu: Mock frontend</p>
+              </footer>
+            )}
           </main>
         </div>
       </div>
