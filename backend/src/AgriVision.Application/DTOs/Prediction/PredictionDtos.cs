@@ -5,7 +5,8 @@ namespace AgriVision.Application.DTOs.Prediction;
 
 public class PredictRequest
 {
-    public required IFormFile File { get; set; }
+    public required IFormFile File { get; init; }
+    public Guid? AgriculturalProfileId { get; init; }
 }
 
 public record PredictionDetailDto(
@@ -30,6 +31,7 @@ public record PredictionResultDto(
     public string? Warning { get; init; }
     public bool InformationPending { get; init; }
     public string? Medication { get; init; }
+    public Guid? AgriculturalProfileId { get; init; }
 }
 
 public record PredictionImageDto(Guid Id, string? ImagePath, double Confidence, DateTime ExpiresAt, bool IsExpired);
@@ -45,6 +47,7 @@ public record PredictionHistoryDto(
     DateTime CreatedAt
 )
 {
+    public Guid? AgriculturalProfileId { get; init; }
     public bool HasHistoricalSnapshot { get; init; }
     public IReadOnlyList<PredictionImageDto> Images { get; init; } = [];
 }

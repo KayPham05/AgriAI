@@ -30,7 +30,7 @@ public class PredictionsController : ControllerBase
             userId = parsedUserId;
         }
 
-        var result = await _predictionService.PredictAsync(request.File, userId, cancellationToken);
+        var result = await _predictionService.PredictAsync(request.File, userId, request.AgriculturalProfileId, cancellationToken);
         if (!userId.HasValue) return Ok(result);
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }

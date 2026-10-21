@@ -70,3 +70,47 @@ Mục tiêu: Xây dựng pipeline cải tiến backend toàn diện theo 10 task
 - Toàn bộ 57/57 unit tests passed (`dotnet test backend/tests/AgriVision.UnitTests/AgriVision.UnitTests.csproj`).
 - Project `AgriVision.IntegrationTests` build thành công với 0 lỗi, 0 cảnh báo.
 
+## 2026-10-21 — Hồ sơ nông nghiệp: S3-03 và chọn hồ sơ S3-06
+
+Ghi chú định danh bổ sung: người dùng sau đó xác nhận Jira của phần hồ sơ là
+**AGRI-116**. Phần dưới giữ nhật ký đợt triển khai trên nhánh nền; bàn giao ở
+[task log AGRI-116](../AGRI-116/AGRI-116-agricultural-profile.md), không coi tên
+nhánh nền AGRI-128 là Jira của task hồ sơ.
+
+- Yêu cầu: hoàn thiện phần backend của quản lý hồ sơ; giao diện ngoài phạm vi.
+  Nhánh đã xác minh: `AGRI-128-backend-improvement`. Không commit/push/tạo PR hoặc
+  thay đổi trạng thái Jira trong đợt này.
+- Đọc README, quy tắc project/directory, command guides backend/database, schema và
+  migration, Docker/CI pipeline, kế hoạch và implementation rules AGRI-128. Giữ quy
+  tắc hồ sơ tùy chọn: tên 1–150 ký tự sau trim, mô tả/ghi chú canh tác tùy chọn;
+  cây/bệnh theo từng kết quả, không thêm cột cây cố định hoặc sửa schema.
+- Thêm DTO, `IAgriculturalProfileRepository`/repository, service/interface và
+  `AgriculturalProfilesController` cho 5 route CRUD `api/agricultural-profiles`.
+  Owner từ JWT; không cho đổi owner; người khác kể cả Admin nhận 404. List đọc
+  `AsNoTracking`, sort thời gian/ID ổn định, count prediction tính ở DB.
+- Bổ sung multipart `AgriculturalProfileId` tùy chọn vào prediction request,
+  kiểm tra sở hữu trước AI/storage; Guest chọn hồ sơ nhận 401. Lưu FK trong cùng
+  lần SaveChanges với prediction/ảnh/top-K/snapshot. Không chọn vẫn giữ hành vi cũ.
+  DTO kết quả/history phản ánh FK hiện tại; snapshot lịch sử không bị sửa khi xóa hồ sơ.
+- Xóa hồ sơ dùng FK `SET NULL` đã có: giữ prediction, top-K, snapshot và metadata ảnh,
+  giữ TTL 30 ngày, không gọi xóa storage. Tái sử dụng filter history S3-07.
+- Source mới tại `backend/src/{AgriVision.API/Controllers,AgriVision.Application/DTOs/AgriculturalProfile,
+  AgriVision.Application/Common/Interfaces/Persistence,AgriVision.Application/Services,
+  AgriVision.Infrastructure/Persistence/Repositories}`; cập nhật DI và prediction
+  controller/DTO/interface/service. Thêm unit và HTTP/PostgreSQL tests trong hai
+  project test hiện có. Không thay frontend, AI, migration, EF snapshot hoặc CI.
+- TDD: 16 integration tests mới fail trước triển khai rồi 16/16 pass sau triển khai.
+  Lần chạy đầu testhost aborted vì host thiếu runtime .NET 9; sau đó dùng runtime
+  Microsoft ASP.NET Core 9.0.21 đã xác minh SHA-512, đặt local trong cache. Build
+  vẫn target net9.0 với SDK 10.0.401; không đổi dependency/target framework dự án.
+- Kiểm chứng mới: **79/79 unit + 99/99 integration pass**, failed/skipped 0 trong
+  suite được chạy; filter loại `Category=RealCheckpoint`. Backend branch coverage
+  **308/500 = 61,60%**, gate 60% PASS, target 80% chưa đạt. Build 0 warning/error;
+  `git diff --check` pass. Unit TRX đã lưu lại riêng vì TRX chung bị integration ghi đè.
+- PostgreSQL thật qua Testcontainers tạm, AI/storage fake; không nghiệm thu
+  checkpoint/storage thật hoặc GitHub Actions. Không chạy test frontend/Python.
+  Giữ nguyên các thay đổi cục bộ notebook/AI/Compose đã tồn tại trước công việc.
+- [Báo cáo kỹ thuật và lệnh/artifact cụ thể](../../reports/AGRI-116/agricultural_profiles.md),
+  [entry point AGRI-116](../../reports/AGRI-116/README.md). UI nằm ngoài phạm vi;
+  backend S3-03 và chọn hồ sơ S3-06 hoàn tất trong phạm vi đã kiểm chứng.
+

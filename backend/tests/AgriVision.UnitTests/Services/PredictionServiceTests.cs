@@ -7,6 +7,7 @@ using AgriVision.Domain.Entities;
 using AgriVision.Infrastructure.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
+using Moq;
 
 namespace AgriVision.UnitTests.Services;
 
@@ -17,6 +18,7 @@ public class PredictionServiceTests
     private readonly RecordingImageStorage _imageStorage;
     private readonly RecordingPlantDiseasePredictor _diseasePredictor;
     private readonly PredictionService _predictionService;
+    private readonly Mock<IAgriculturalProfileRepository> _profileRepository = new();
 
     public PredictionServiceTests()
     {
@@ -29,7 +31,8 @@ public class PredictionServiceTests
             _predictionRepository,
             _plantDiseaseRepository,
             _imageStorage,
-            _diseasePredictor
+            _diseasePredictor,
+            _profileRepository.Object
         );
     }
 
@@ -153,6 +156,55 @@ public class PredictionServiceTests
         result.HasHistoricalSnapshot.Should().BeFalse();
         _predictionRepository.AddedPredictions.Should().BeEmpty();
         _imageStorage.UploadCount.Should().Be(0);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ProfileSelection_RejectsForeignOrMissingProfileBeforeInferenceAndStorage(bool missing)
+    {
+        var owner = Guid.NewGuid();
+        var profileId = Guid.NewGuid();
+        if (!missing)
+            _profileRepository.Setup(repository => repository.GetByIdAsync(profileId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AgriculturalProfile { Id = profileId, UserId = Guid.NewGuid() });
+        var action = () => _predictionService.PredictAsync(CreateFile(), owner, profileId);
+        await action.Should().ThrowAsync<KeyNotFoundException>();
+        _diseasePredictor.PredictCount.Should().Be(0);
+        _imageStorage.UploadCount.Should().Be(0);
+        _predictionRepository.AddedPredictions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ProfileSelection_RejectsGuestBeforeRepositoryInferenceOrStorage()
+    {
+        var action = () => _predictionService.PredictAsync(CreateFile(), null, Guid.NewGuid());
+        await action.Should().ThrowAsync<UnauthorizedAccessException>();
+        _profileRepository.VerifyNoOtherCalls();
+        _diseasePredictor.PredictCount.Should().Be(0);
+        _imageStorage.UploadCount.Should().Be(0);
+        _predictionRepository.AddedPredictions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ProfileSelection_PersistsLinkAndSnapshot_AndReadReflectsRemovedLink()
+    {
+        ConfigureHealthyClass();
+        var owner = Guid.NewGuid();
+        var profileId = Guid.NewGuid();
+        _profileRepository.Setup(repository => repository.GetByIdAsync(profileId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AgriculturalProfile { Id = profileId, UserId = owner });
+        var result = await _predictionService.PredictAsync(CreateFile(), owner, profileId);
+        result.AgriculturalProfileId.Should().Be(profileId);
+        var saved = _predictionRepository.AddedPredictions.Single();
+        saved.AgriculturalProfileId.Should().Be(profileId);
+        var snapshot = saved.ResultSnapshotJson;
+        saved.AgriculturalProfileId = null;
+        var stored = await _predictionService.GetPredictionByIdAsync(result.Id, userId: owner);
+        stored!.AgriculturalProfileId.Should().BeNull();
+        var history = await _predictionService.GetPredictionHistoryAsync(owner);
+        history.Items.Single().AgriculturalProfileId.Should().BeNull();
+        saved.ResultSnapshotJson.Should().Be(snapshot);
     }
 
     [Fact]
