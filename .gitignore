@@ -13,6 +13,8 @@ __pycache__/
 .ipynb_checkpoints/
 
 # Local dataset and generated mappings
+# User-supplied auth video and its local optimized derivatives
+/frontend/public/media/auth/
 /datasets/
 /datasets tunning/
 /Ớt bổ sung

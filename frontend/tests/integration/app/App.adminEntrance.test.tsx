@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from '../../helpers/AppHarness';
 import { login, restoreAuthSession } from '@/services/authApi';
 import { getPlants, getDiseases } from '@/services/catalogApi';
@@ -20,8 +20,8 @@ vi.mock('@/services/predictionApi', () => ({
   deletePrediction: vi.fn(),
   getPredictionById: vi.fn(),
 }));
-vi.mock('@/components/common/LoginSuccessScreen', () => ({
-  LoginSuccessScreen: ({
+vi.mock('@/features/admin/AdminLoginSuccessScreen', () => ({
+  AdminLoginSuccessScreen: ({
     userName,
     onAnimationComplete,
   }: {
@@ -47,14 +47,25 @@ const session = {
   },
 };
 
+afterEach(() => vi.useRealTimers());
+
 describe('Admin entrance routing', () => {
   it.each(['restored', 'fresh'])(
-    'waits for the entrance before redirecting a %s admin session',
+    'uses the correct reload or login entrance for a %s admin session',
     async (mode) => {
       router.replace.mockClear();
       vi.mocked(restoreAuthSession).mockResolvedValue(mode === 'restored' ? session : null);
       vi.mocked(login).mockResolvedValue(session);
       render(<App />);
+      if (mode === 'restored') {
+        expect(await screen.findByRole('status', { name: 'Đang tải AgriAI' })).toBeVisible();
+        expect(screen.queryByRole('button', { name: 'Finish test entrance' })).toBeNull();
+        await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/admin'));
+        expect(getPlants).not.toHaveBeenCalled();
+        expect(getDiseases).not.toHaveBeenCalled();
+        expect(getPredictionHistory).not.toHaveBeenCalled();
+        return;
+      }
       if (mode === 'fresh') {
         await userEvent.click(await screen.findByRole('button', { name: 'Đăng nhập' }));
         const dialog = within(screen.getByRole('dialog'));
@@ -73,7 +84,8 @@ describe('Admin entrance routing', () => {
       expect(getDiseases).not.toHaveBeenCalled();
       expect(getPredictionHistory).not.toHaveBeenCalled();
       await userEvent.click(screen.getByRole('button', { name: 'Finish test entrance' }));
-      await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/admin'));
+      await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/admin'), { timeout: 6000 });
     },
+    10000,
   );
 });

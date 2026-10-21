@@ -56,9 +56,9 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="navigation-bar mx-auto flex h-18 max-w-7xl items-center justify-between gap-3 rounded-card border border-border bg-surface px-3 sm:px-5">
         <Button asChild variant="ghost" className="h-auto gap-3 px-0 hover:bg-transparent">
           <Link href="/home" aria-label="AgriAI, về trang chủ">
-            <span className="grid size-11 place-items-center overflow-hidden rounded-2xl bg-secondary p-1">
+            <span className="grid h-11 w-8 shrink-0 place-items-center">
               <Image
-                src="/images/logo.png"
+                src="/images/agriai-leaf-mark.png"
                 width={44}
                 height={44}
                 alt="Logo AgriAI"

@@ -1,0 +1,79 @@
+.stalk,
+.canopy {
+  transform-origin: 0 0;
+  animation: grow var(--admin-login-cycle) steps(1, end) infinite;
+}
+.canopy {
+  transform: translate(0, -81px);
+  animation-name: unfold;
+}
+.ripple {
+  opacity: 0;
+  animation: ripple var(--admin-login-ripple-duration) ease-out infinite;
+}
+.delayed {
+  animation-delay: calc(var(--admin-login-ripple-duration) / 2);
+}
+.progress {
+  transform: scaleX(0.6);
+  animation: progress var(--admin-login-progress-duration) ease-in-out infinite;
+}
+.screen[data-paused="true"] * {
+  animation-play-state: paused;
+}
+@keyframes grow {
+  0% {
+    transform: scaleY(0.3);
+  }
+  33% {
+    transform: scaleY(0.6);
+  }
+  66%,
+  100% {
+    transform: scaleY(1);
+  }
+}
+@keyframes unfold {
+  0% {
+    transform: translate(0, -24px) scale(0.75);
+  }
+  33% {
+    transform: translate(0, -49px) scale(0.82);
+  }
+  66%,
+  100% {
+    transform: translate(0, -81px) scale(1);
+  }
+}
+@keyframes ripple {
+  from {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  to {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+@keyframes progress {
+  0% {
+    transform: scaleX(0.06);
+    opacity: 1;
+  }
+  87% {
+    transform: scaleX(0.92);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(0.92);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stalk,
+  .canopy,
+  .ripple,
+  .progress {
+    animation: none;
+  }
+}

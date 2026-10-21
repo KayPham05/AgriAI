@@ -96,7 +96,7 @@ export function LoginSuccessScreen({
         <div className="flex items-center justify-center gap-4">
           <Image
             data-auth-logo
-            src="/images/logo.png"
+            src="/images/agriai-leaf-mark.png"
             alt="AgriAI"
             width={64}
             height={64}

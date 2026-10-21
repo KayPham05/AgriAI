@@ -23,17 +23,22 @@ import { NotificationsModal } from '@/components/modals/NotificationsModal';
 import { HistoryDetailModal } from '@/components/modals/HistoryDetailModal';
 import { ToastContainer } from '@/components/common/ToastContainer';
 import { AppSplashScreen } from '@/components/common/AppSplashScreen';
-import { LoginSuccessScreen } from '@/components/common/LoginSuccessScreen';
+import { AdminLoginSuccessScreen } from '@/features/admin/AdminLoginSuccessScreen';
+import { SeedlingLoadingScreen } from '@/components/common/SeedlingLoadingScreen';
 import { AuthContext, CatalogContext, HistoryContext, FeedbackContext } from './AppContexts';
 import { guestProfile, createUserProfile, readGuestHistory } from './sessionProfile';
+
+const AUTH_NOTICE_DURATION_MS = 4000;
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const returnPathRef = useRef<string | null>(null);
+  const restoredStartupRef = useRef(false);
   const [hasEnteredApp, setHasEnteredApp] = useState(false);
   // true while restoreAuthSession() is in-flight — prevents IntroPage flash on reload
   const [isRestoringSession, setIsRestoringSession] = useState(true);
+  const [logoutName, setLogoutName] = useState<string | null>(null);
   // Wait for startup data and the finite brand entrance before entering the app
   const [loginPendingSession, setLoginPendingSession] = useState<AuthSession | null>(null);
   const [startupError, setStartupError] = useState('');
@@ -41,6 +46,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     null,
   );
   const [entranceReady, setEntranceReady] = useState(false);
+  const [noticeReady, setNoticeReady] = useState(false);
   const finishEntrance = useCallback(() => setEntranceReady(true), []);
   const [authEntryMode, setAuthEntryMode] = useState<'login' | 'register'>('login');
 
@@ -79,6 +85,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     restoreAuthSession().then((session) => {
       if (!isActive) return;
       if (session) {
+        restoredStartupRef.current = true;
+        if (session.user.role === 'Admin') setEntranceReady(true);
         setLoginPendingSession(session);
       }
       // Always mark restore as done so the correct UI is shown
@@ -88,6 +96,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isActive = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!loginPendingSession) return;
+    if (restoredStartupRef.current) {
+      setNoticeReady(true);
+      return;
+    }
+    setNoticeReady(false);
+    const timer = window.setTimeout(() => setNoticeReady(true), AUTH_NOTICE_DURATION_MS);
+    return () => window.clearTimeout(timer);
+  }, [loginPendingSession]);
 
   useEffect(() => {
     if (!loginPendingSession) return;
@@ -119,13 +138,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [loginPendingSession, pathname]);
 
   useEffect(() => {
-    if (loginPendingSession?.user.role === 'Admin' && pathname === '/' && entranceReady) {
+    if (
+      loginPendingSession?.user.role === 'Admin' &&
+      pathname === '/' &&
+      entranceReady &&
+      noticeReady
+    ) {
       router.replace('/admin');
     }
-  }, [loginPendingSession, pathname, entranceReady, router]);
+  }, [loginPendingSession, pathname, entranceReady, noticeReady, router]);
 
   useEffect(() => {
-    if (!loginPendingSession || !startupData || !entranceReady) return;
+    if (
+      !loginPendingSession ||
+      !startupData ||
+      !noticeReady ||
+      (loginPendingSession.user.role === 'Admin' && !entranceReady)
+    )
+      return;
     setPlants(startupData[0]);
     setDiseases(startupData[1]);
     setHistory(startupData[2]);
@@ -134,10 +164,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (pathname === '/') router.replace(returnPathRef.current ?? '/home');
     setLoginPendingSession(null);
     setHasEnteredApp(true);
-  }, [loginPendingSession, startupData, entranceReady, pathname, router]);
+    restoredStartupRef.current = false;
+  }, [loginPendingSession, startupData, entranceReady, noticeReady, pathname, router]);
 
   useEffect(() => {
-    if (isRestoringSession || loginPendingSession) return;
+    if (isRestoringSession || loginPendingSession || logoutName !== null) return;
     if (!hasEnteredApp && pathname !== '/') {
       returnPathRef.current = pathname;
       router.replace('/');
@@ -146,7 +177,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } else if (hasEnteredApp) {
       returnPathRef.current = null;
     }
-  }, [isRestoringSession, loginPendingSession, hasEnteredApp, pathname, router]);
+  }, [isRestoringSession, loginPendingSession, logoutName, hasEnteredApp, pathname, router]);
+
+  useEffect(() => {
+    if (logoutName === null || pathname !== '/') return;
+    const timer = window.setTimeout(() => setLogoutName(null), AUTH_NOTICE_DURATION_MS);
+    return () => window.clearTimeout(timer);
+  }, [logoutName, pathname]);
 
   // Toast Notifications
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -223,6 +260,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const handleAuthSuccess = useCallback((session: AuthSession) => {
     // Wait for real startup data and the finite brand entrance before entering home.
     setEntranceReady(false);
+    setNoticeReady(false);
     setStartupData(null);
     setStartupError('');
     setLoginPendingSession(session);
@@ -230,6 +268,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    setLogoutName(authSession?.user.fullName ?? '');
     clearAuthSession();
     setAuthSession(null);
     setUserProfile(guestProfile);
@@ -237,7 +276,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     returnPathRef.current = null;
     router.replace('/');
     setHasEnteredApp(false);
-  }, [router]);
+  }, [router, authSession]);
   const updateProfile = useCallback(
     (updated: UserProfile) => {
       setUserProfile(updated);
@@ -280,23 +319,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [notifications, openNotifications],
   );
 
+  if (logoutName !== null) return <SeedlingLoadingScreen mode="logout" userName={logoutName} />;
   if (isRestoringSession) return <AppSplashScreen />;
   if (loginPendingSession) {
-    return (
-      <LoginSuccessScreen
-        userName={loginPendingSession.user.fullName}
-        onAnimationComplete={finishEntrance}
-        error={startupError}
-        onRetry={() => setLoginPendingSession((session) => (session ? { ...session } : null))}
-        onCancel={() => {
-          clearAuthSession();
-          setLoginPendingSession(null);
-          setStartupData(null);
-          setEntranceReady(false);
-          returnPathRef.current = null;
-          router.replace('/');
-        }}
-      />
+    const startupProps = {
+      userName: loginPendingSession.user.fullName,
+      error: startupError,
+      onRetry: () => setLoginPendingSession((session) => (session ? { ...session } : null)),
+      onCancel: () => {
+        clearAuthSession();
+        restoredStartupRef.current = false;
+        setLoginPendingSession(null);
+        setStartupData(null);
+        setEntranceReady(false);
+        returnPathRef.current = null;
+        router.replace('/');
+      },
+    };
+    if (restoredStartupRef.current) return <AppSplashScreen {...startupProps} />;
+    return loginPendingSession.user.role === 'Admin' ? (
+      <AdminLoginSuccessScreen {...startupProps} onAnimationComplete={finishEntrance} />
+    ) : (
+      <SeedlingLoadingScreen {...startupProps} />
     );
   }
   // UI gate only. The API remains responsible for authorization.
