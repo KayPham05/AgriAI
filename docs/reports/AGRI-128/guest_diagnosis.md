@@ -137,3 +137,39 @@ Commit code `4096da5` đã push lên `origin/AGRI-128-guest-diagnosis`.
 Trang compare xác nhận đúng base/head và 7 file thay đổi, nhưng trình duyệt
 cũng chưa đăng nhập. PR chưa được tạo; workflow hiện chỉ chạy khi có PR,
 push `main` hoặc dispatch nên push nhánh con chưa chứng minh GitHub CI đạt.
+
+## 7. Bổ sung nghiệm thu và chuẩn bị PR ngày 2026-10-21
+
+Các ghi nhận ngày 2026-10-19 ở trên là lịch sử, không phải trạng thái đăng nhập
+hoặc kết quả CI hiện tại. Người dùng đã yêu cầu tạo PR Guest. GitHub CLI hiện
+đăng nhập chính thức; API GitHub xác minh collaborator `trunthong09012005`
+có tên Trần Trung Thông, đúng reviewer backend trong project rules.
+
+Người dùng tự kiểm thử và báo kết quả trong phiên làm việc:
+
+| Nhóm ca | Kết quả người dùng xác nhận |
+| --- | --- |
+| Guest chẩn đoán và dữ liệu | Thành công; ba bảng theo dõi giữ số lượng 1 : 1 : 3. |
+| Input không hợp lệ | File `.md`, thiếu file và ảnh rỗng trả 400. |
+| Ranh giới xác thực | Guest gọi API được bảo vệ và token lỗi trả 401. |
+| User và lịch sử | Sau khi thêm tiền tố Bearer, POST trả 201, GET trả 200 với item của mình. |
+| Cách ly Guest | Guest không tăng lịch sử User (vẫn 1); đọc ID Guest trả 404. |
+| AI không khả dụng | Tắt AI trả 503; bật lại trả 200. |
+
+Đây là bằng chứng người dùng báo lại, tách biệt với test tự động. Các ca input
+cho thấy thiếu file dùng ProblemDetails còn file rỗng/sai đuôi dùng response
+hiện có; PR này không chuẩn hóa lại hợp đồng lỗi. Inference thủ công không
+chứng nhận accuracy hoặc Cloudinary.
+
+Kiểm tra PR: đúng 7 file Guest; `git merge-tree --write-tree HEAD
+origin/AGRI-128-backend-improvement` không xung đột với base `ad22a8a`.
+Không thay worktree `AGRI-128-history-integration`. Commitlint của hai commit
+Guest hiện có đạt. Nhánh đích theo chỉ định người dùng thay cho mặc định develop.
+
+Kiểm chứng lại ngày 2026-10-21: unit 36/36 đạt. Lần integration đầu có
+3 pass/51 fail do Docker engine chưa chạy (DockerUnavailableException), không
+phải bằng chứng regression. Đã khởi động engine 29.7.2 và chạy lại; tại lúc
+chuẩn bị PR chưa xác nhận hoàn tất integration. Artifact tách riêng tại
+`.cache/agri128-guest/pr-verification-20261021/` và
+`.cache/agri128-guest/pr-verification-20261021-docker/`.
+Không trình bày kết quả 90 test ngày 2026-10-19 như kết quả chạy mới.

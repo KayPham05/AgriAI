@@ -83,3 +83,23 @@ trước khi gửi review request.
   (artifact local, không có trong checkout mới).
 - Chờ phiên đăng nhập chính thức để tạo PR, gán reviewer đã xác minh và kiểm
   GitHub Actions. Không tuyên bố CI đạt hoặc task AGRI-118 hoàn tất toàn bộ.
+
+## 7. Chuẩn bị PR theo yêu cầu ngày 2026-10-21
+
+- Người dùng yêu cầu tạo PR phần Guest vào `AGRI-128-backend-improvement`.
+  Chỉ bàn giao 7 file Guest; phần A history tại worktree khác không nằm trong PR.
+- Đã đăng nhập GitHub CLI chính thức. Xác minh qua GitHub API reviewer backend
+  là `trunthong09012005` (Trần Trung Thông); không còn blocker đăng nhập trước đó.
+- Bổ sung [kết quả test thủ công do người dùng xác nhận](../../reports/AGRI-128/guest_diagnosis.md#7-bổ-sung-nghiệm-thu-và-chuẩn-bị-pr-ngày-2026-10-21):
+  Guest không lưu lịch sử, input lỗi 400, API bảo vệ 401, User POST 201/GET 200,
+  ID Guest 404, AI tắt 503/bật lại 200.
+- Nhánh đích `ad22a8a` gộp được không xung đột qua merge-tree. Không merge
+  vào nhánh đích hoặc tự phê duyệt; GitHub Actions và reviewer vẫn cần xác nhận.
+
+Kiểm chứng lại ngày 2026-10-21: unit 36/36 đạt. Lần integration đầu có
+3 pass/51 fail do Docker engine chưa chạy (DockerUnavailableException), không
+phải bằng chứng regression. Đã khởi động engine 29.7.2 và chạy lại; tại lúc
+chuẩn bị PR chưa xác nhận hoàn tất integration. Artifact tách riêng tại
+`.cache/agri128-guest/pr-verification-20261021/` và
+`.cache/agri128-guest/pr-verification-20261021-docker/`.
+Không trình bày kết quả 90 test ngày 2026-10-19 như kết quả chạy mới.
