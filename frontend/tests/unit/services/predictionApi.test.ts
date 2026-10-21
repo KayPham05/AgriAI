@@ -6,6 +6,7 @@ import {
   getPredictionHistory,
   mapPredictionResult,
 } from '@/services/predictionApi';
+import { DIAGNOSIS_ISSUE_CODES } from '@/features/diagnosis/diagnosisIssues';
 
 class MockXMLHttpRequest {
   static latest: MockXMLHttpRequest | null = null;
@@ -88,6 +89,20 @@ const successfulResponse = {
 };
 
 describe('createPrediction', () => {
+  it.each(DIAGNOSIS_ISSUE_CODES)('preserves the structured %s code from the API', async (code) => {
+    const request = createPrediction(new File(['leaf'], 'leaf.png', { type: 'image/png' }));
+    MockXMLHttpRequest.latest?.respond(422, { code, message: 'Image rejected' });
+    await expect(request).rejects.toMatchObject({ code, message: 'Image rejected' });
+  });
+
+  it('does not reinterpret unknown error codes as leaf detection', async () => {
+    const request = createPrediction(new File(['leaf'], 'leaf.png', { type: 'image/png' }));
+    MockXMLHttpRequest.latest?.respond(503, {
+      code: 'SOMETHING_NEW',
+      message: 'Service unavailable',
+    });
+    await expect(request).rejects.toMatchObject({ code: 'SERVER_TIMEOUT_OR_ERROR' });
+  });
   beforeEach(() => {
     MockXMLHttpRequest.latest = null;
     vi.stubGlobal('XMLHttpRequest', MockXMLHttpRequest);

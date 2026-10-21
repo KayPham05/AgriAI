@@ -3,46 +3,57 @@ import NextImage from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
-import {
-  AlertCircle,
-  ArrowRight,
-  BrainCircuit,
-  CheckCircle2,
-  ImagePlus,
-  RefreshCw,
-  Upload,
-  X,
-} from 'lucide-react';
+import { ArrowRight, ImagePlus, RefreshCw, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { AnalysisStepper } from '@/components/diagnosis/AnalysisStepper';
+import { AnalysisResultCard } from '@/components/diagnosis/AnalysisResultCard';
+import { AnalysisIssueNotice } from '@/components/diagnosis/AnalysisIssueNotice';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
+  getInputIssue,
+  getResolutionIssue,
+  getConfidenceIssue,
+  getRequestIssue,
+  isInputIssue,
+  type DiagnosisIssue,
+} from '@/features/diagnosis/diagnosisIssues';
+import sampleLeaf from '@/assets/Bệnh lá/cà chua/Cháy lá sớm  đốm vòng.jpg';
 import { createPrediction, type PredictionResponse } from '../services/predictionApi';
-import type { DiagnosisResult } from '../types';
-import { getImageFileError } from '../utils/imageFileValidation';
+import type { DiagnosisResult, Plant } from '../types';
 
 gsap.registerPlugin(useGSAP);
 
-type PredictionStatus = 'idle' | 'uploading' | 'analyzing' | 'success' | 'error';
+type PredictionStatus = 'idle' | 'uploading' | 'analyzing' | 'success' | 'error' | 'attention';
 
 interface DiagnosePageProps {
   authToken?: string;
   onPredictionCreated: (result: DiagnosisResult) => void;
+  supportedPlants?: Plant[];
 }
 
-const STEPS = [
-  { id: 0, label: 'Chọn ảnh', icon: ImagePlus },
-  { id: 1, label: 'Phân tích AI', icon: BrainCircuit },
-  { id: 2, label: 'Kết quả', icon: CheckCircle2 },
-];
-
-export const DiagnosePage: React.FC<DiagnosePageProps> = ({ authToken, onPredictionCreated }) => {
+export const DiagnosePage: React.FC<DiagnosePageProps> = ({
+  authToken,
+  onPredictionCreated,
+  supportedPlants = [],
+}) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [resolution, setResolution] = useState('');
   const [status, setStatus] = useState<PredictionStatus>('idle');
   const [progress, setProgress] = useState(0);
   const [prediction, setPrediction] = useState<PredictionResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [issue, setIssue] = useState<DiagnosisIssue | null>(null);
+  const [showComparison, setShowComparison] = useState(false);
+  const [showSupported, setShowSupported] = useState(false);
+  const [isSample, setIsSample] = useState(false);
   const [isPreparing, setIsPreparing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -130,18 +141,20 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({ authToken, onPredict
     setPreviewUrl(null);
     setResolution('');
     setPrediction(null);
-    setError(null);
+    setIssue(null);
+    setShowComparison(false);
+    setIsSample(false);
     setProgress(0);
     setIsPreparing(false);
     setStatus('idle');
     if (inputRef.current) inputRef.current.value = '';
   };
 
-  const selectFile = (file: File) => {
+  const selectFile = (file: File, sample = false) => {
     clearImage();
-    const fileError = getImageFileError(file);
+    const fileError = getInputIssue(file);
     if (fileError) {
-      setError(fileError);
+      setIssue(fileError);
       setStatus('error');
       return;
     }
@@ -155,7 +168,16 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({ authToken, onPredict
         URL.revokeObjectURL(url);
         return;
       }
+      const resolutionIssue = getResolutionIssue(image.naturalWidth, image.naturalHeight);
+      if (resolutionIssue) {
+        URL.revokeObjectURL(url);
+        setIsPreparing(false);
+        setIssue(resolutionIssue);
+        setStatus('error');
+        return;
+      }
       previewRef.current = url;
+      setIsSample(sample);
       setSelectedFile(file);
       setPreviewUrl(url);
       setResolution(`${image.naturalWidth} × ${image.naturalHeight} px`);
@@ -165,18 +187,54 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({ authToken, onPredict
       URL.revokeObjectURL(url);
       if (selectionId !== selectionIdRef.current) return;
       setIsPreparing(false);
-      setError('Không đọc được ảnh. Tệp có thể bị hỏng hoặc sai định dạng.');
+      setIssue({ code: 'CORRUPTED_OR_LOW_RES' });
       setStatus('error');
     };
     image.src = url;
   };
 
+  const chooseSample = async () => {
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
+    setIsPreparing(true);
+    let timedOut = false;
+    const timer = window.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 15000);
+    try {
+      const response = await fetch(sampleLeaf.src, { signal: controller.signal });
+      if (!response.ok) throw new Error('Không tải được ảnh mẫu. Vui lòng chọn ảnh từ thiết bị.');
+      const blob = await response.blob();
+      if (controller.signal.aborted) return;
+      selectFile(new File([blob], 'anh-la-mau.jpg', { type: 'image/jpeg' }), true);
+    } catch (cause) {
+      if (controller.signal.aborted && !timedOut) return;
+      setIssue(
+        getRequestIssue(
+          timedOut
+            ? new Error('Tải ảnh mẫu quá thời gian chờ. Vui lòng chọn ảnh từ thiết bị.')
+            : cause,
+        ),
+      );
+      setStatus('error');
+    } finally {
+      window.clearTimeout(timer);
+      if (requestRef.current === controller) {
+        requestRef.current = null;
+        if (!controller.signal.aborted || timedOut) setIsPreparing(false);
+      }
+    }
+  };
+
   const analyze = async () => {
-    if (!selectedFile || status === 'uploading' || status === 'analyzing') return;
+    if (!selectedFile || isPreparing || status === 'uploading' || status === 'analyzing') return;
     const controller = new AbortController();
     requestRef.current = controller;
     setPrediction(null);
-    setError(null);
+    setIssue(null);
+    setShowComparison(false);
     setProgress(0);
     setStatus('uploading');
     try {
@@ -191,12 +249,12 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({ authToken, onPredict
       if (controller.signal.aborted) return;
       setPrediction(result);
       onPredictionCreated(result.diagnosis);
-      setStatus('success');
+      const confidenceIssue = getConfidenceIssue(result);
+      setIssue(confidenceIssue);
+      setStatus(confidenceIssue ? 'attention' : 'success');
     } catch (cause) {
       if (controller.signal.aborted) return;
-      setError(
-        cause instanceof Error ? cause.message : 'Không thể phân tích ảnh. Vui lòng thử lại.',
-      );
+      setIssue(getRequestIssue(cause));
       setStatus('error');
     } finally {
       if (requestRef.current === controller) requestRef.current = null;
@@ -204,8 +262,18 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({ authToken, onPredict
   };
 
   const busy = status === 'uploading' || status === 'analyzing';
-  const activeStep = busy ? 1 : status === 'success' ? 2 : 0;
-  const confidencePct = prediction ? prediction.confidence * 100 : 0;
+  const inputIssue = issue && isInputIssue(issue) ? issue : null;
+  const resultIssue = issue && !isInputIssue(issue) ? issue : null;
+  const currentStep = busy
+    ? 2
+    : status === 'success' ||
+        resultIssue?.code === 'LOW_CONFIDENCE_SOFTMAX' ||
+        resultIssue?.code === 'SERVER_TIMEOUT_OR_ERROR'
+      ? 3
+      : resultIssue
+        ? 2
+        : 1;
+  const chooseImage = () => inputRef.current?.click();
 
   return (
     <div ref={pageRef} className="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:px-12">
@@ -223,42 +291,12 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({ authToken, onPredict
           e.target.value = '';
         }}
       />
-      <header className="border-b border-border pb-7">
-        <h1 className="text-3xl font-bold tracking-tight text-primary sm:text-4xl">
-          Kiểm tra ảnh lá cây
-        </h1>
-        <p className="mt-3 leading-7 text-muted-foreground">
-          Chọn một ảnh rõ nét. Bạn sẽ nhận được lớp dự đoán và độ tin cậy để đối chiếu.
-        </p>
-      </header>
-      <ol
-        className="my-7 grid grid-cols-3 gap-3 text-sm sm:gap-6"
-        aria-label="Tiến trình phân tích"
-      >
-        {STEPS.map((step, index) => (
-          <li
-            key={step.id}
-            aria-current={index === activeStep ? 'step' : undefined}
-            className={
-              index === activeStep
-                ? 'flex flex-col items-start gap-2 border-b-2 border-primary pb-4 font-semibold text-primary sm:flex-row sm:items-center sm:gap-3'
-                : 'flex flex-col items-start gap-2 border-b border-border pb-4 text-muted-foreground sm:flex-row sm:items-center sm:gap-3'
-            }
-          >
-            <span
-              className={
-                index === activeStep
-                  ? 'grid size-8 shrink-0 place-items-center rounded-full bg-primary tabular-nums text-primary-foreground'
-                  : 'grid size-8 shrink-0 place-items-center rounded-full bg-surface-muted tabular-nums'
-              }
-              aria-hidden="true"
-            >
-              {index + 1}
-            </span>
-            {step.label}
-          </li>
-        ))}
-      </ol>
+      <h1 className="sr-only">Chẩn đoán ảnh lá</h1>
+      <AnalysisStepper
+        currentStep={currentStep}
+        hasIssue={!!issue}
+        hasImage={Boolean(selectedFile) || isPreparing}
+      />
       <div className="grid items-start gap-8 lg:grid-cols-5">
         <section
           className="min-w-0 overflow-hidden rounded-card border border-border bg-surface lg:col-span-3"
@@ -288,6 +326,11 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({ authToken, onPredict
             )}
           </div>
           <div className="p-5 sm:p-6">
+            {inputIssue && (
+              <div className="mb-5">
+                <AnalysisIssueNotice issue={inputIssue} onChooseImage={chooseImage} />
+              </div>
+            )}
             {previewUrl ? (
               <div>
                 <NextImage
@@ -300,6 +343,12 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({ authToken, onPredict
                   className="aspect-[4/3] w-full rounded-xl bg-surface-muted object-contain"
                 />
                 <p className="mt-4 break-all text-sm font-medium">{selectedFile?.name}</p>
+                {isSample && (
+                  <p className="mt-2 text-sm text-warning">
+                    Ảnh mẫu minh họa từ cẩm nang. Kết quả chỉ được tạo sau khi bạn nhấn Phân tích
+                    ngay.
+                  </p>
+                )}
                 <p className="mt-1 text-sm text-muted-foreground">
                   {resolution} · {((selectedFile?.size ?? 0) / 1024 / 1024).toFixed(1)} MB
                 </p>
@@ -339,10 +388,23 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({ authToken, onPredict
                   <Upload />
                   Chọn ảnh
                 </Button>
+                <Button
+                  variant="link"
+                  className="mt-2"
+                  disabled={isPreparing}
+                  onClick={() => void chooseSample()}
+                >
+                  Chọn mẫu thử
+                </Button>
               </fieldset>
             )}
             {selectedFile && (
-              <Button className="mt-5 w-full" size="lg" onClick={analyze} disabled={busy}>
+              <Button
+                className="mt-5 w-full"
+                size="lg"
+                onClick={analyze}
+                disabled={busy || isPreparing}
+              >
                 {busy ? (
                   status === 'uploading' ? (
                     `Đang tải lên... ${progress}%`
@@ -351,7 +413,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({ authToken, onPredict
                   )
                 ) : (
                   <>
-                    Phân tích <ArrowRight />
+                    Phân tích ngay <ArrowRight />
                   </>
                 )}
               </Button>
@@ -361,84 +423,48 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({ authToken, onPredict
             )}
           </div>
         </section>
-        <section
-          className="min-w-0 border-t-2 border-primary lg:col-span-2"
-          aria-live="polite"
-          aria-label="Kết quả phân tích"
-          aria-busy={busy}
-        >
-          <h2 className="border-b border-border py-5 text-lg font-semibold">Kết quả phân tích</h2>
-          <div className="py-6">
-            {status === 'idle' && (
-              <div className="flex min-h-64 flex-col justify-center border-b border-border pb-8">
-                <p className="font-medium">Kết quả sẽ xuất hiện tại đây</p>
-                <p className="mt-2 max-w-xs text-sm leading-6 text-muted-foreground">
-                  Chọn ảnh lá và nhấn “Phân tích” khi ảnh đã sẵn sàng.
-                </p>
-              </div>
-            )}
-            {busy && (
-              <div className="min-h-64 py-8" role="status">
-                <p data-result-enter className="font-semibold text-primary">
-                  {status === 'uploading' ? 'Đang tải ảnh lên...' : 'Đang phân loại ảnh lá...'}
-                </p>
-                <p data-result-enter className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Vui lòng giữ trang mở trong giây lát.
-                </p>
-                <div data-result-enter className="mt-8 border-y border-border py-5">
-                  <p className="flex items-center gap-3 text-sm font-medium">
-                    <Upload className="size-5 shrink-0 text-primary" aria-hidden="true" />
-                    {status === 'uploading' ? 'Ảnh đang được tải lên' : 'Đã tải ảnh lên'}
-                  </p>
-                  <p className="mt-5 flex items-center gap-3 text-sm font-medium">
-                    <BrainCircuit className="size-5 shrink-0 text-primary" aria-hidden="true" />
-                    {status === 'uploading'
-                      ? 'Phân loại sau khi tải xong'
-                      : 'Đang đối chiếu lớp dự đoán'}
-                  </p>
-                </div>
-              </div>
-            )}
-            {status === 'error' && (
-              <div role="alert" className="space-y-4" data-result-enter>
-                <p className="flex items-center gap-2 font-semibold text-destructive">
-                  <AlertCircle className="size-5" />
-                  Không thể hoàn tất
-                </p>
-                <p className="text-sm leading-6">{error}</p>
-                {selectedFile && (
-                  <Button variant="outline" onClick={analyze}>
-                    <RefreshCw />
-                    Thử lại
-                  </Button>
-                )}
-              </div>
-            )}
-            {status === 'success' && prediction && (
-              <div className="space-y-6">
-                <div data-result-enter>
-                  <p className="text-sm text-muted-foreground">{prediction.crop}</p>
-                  <h3 className="mt-2 text-2xl font-semibold">{prediction.disease}</h3>
-                </div>
-                <div data-result-enter className="border-y border-border py-5">
-                  <p className="text-sm text-muted-foreground">Độ tin cậy</p>
-                  <p className="mt-2 text-4xl font-semibold tabular-nums text-primary">
-                    {confidencePct.toFixed(1)}%
-                  </p>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                    Mức độ mô hình nghiêng về lớp dự đoán này, không phải tỷ lệ chắc chắn cây mắc
-                    bệnh.
-                  </p>
-                </div>
-                <p data-result-enter className="text-sm leading-6 text-muted-foreground">
-                  Kết quả hỗ trợ tham khảo; hãy kết hợp quan sát thực địa và tư vấn chuyên gia khi
-                  bệnh lan rộng.
-                </p>
-              </div>
-            )}
-          </div>
-        </section>
+        <div className="min-w-0 lg:col-span-2">
+          <AnalysisResultCard
+            analysisResult={prediction}
+            isLoading={busy}
+            isUploading={status === 'uploading'}
+            issue={resultIssue}
+            showComparison={showComparison}
+            onChooseImage={chooseImage}
+            onChooseSample={() => void chooseSample()}
+            onShowSupported={() => setShowSupported(true)}
+            onViewComparison={() => setShowComparison(true)}
+            onRetry={selectedFile ? analyze : undefined}
+          />
+        </div>
       </div>
+      <Dialog open={showSupported} onOpenChange={setShowSupported}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cây trồng đang được hỗ trợ</DialogTitle>
+            <DialogDescription>
+              Danh sách cây đang hoạt động từ hệ thống. Các cây chỉ có trong cẩm nang tham khảo
+              không được đưa vào danh sách này.
+            </DialogDescription>
+          </DialogHeader>
+          {supportedPlants.length > 0 ? (
+            <ul className="grid max-h-80 gap-3 overflow-y-auto sm:grid-cols-2">
+              {supportedPlants.map((plant) => (
+                <li
+                  key={plant.backendId ?? plant.id}
+                  className="rounded-xl border border-border p-3 text-sm"
+                >
+                  {plant.name}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm leading-6 text-muted-foreground">
+              Chưa tải được danh sách cây đang hoạt động. Vui lòng thử lại sau.
+            </p>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

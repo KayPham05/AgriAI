@@ -1,71 +1,19 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPrediction, type PredictionResponse } from '@/services/predictionApi';
+import {
+  createPrediction,
+  PredictionApiError,
+  type PredictionResponse,
+} from '@/services/predictionApi';
 import { MAX_IMAGE_BYTES } from '@/utils/imageFileValidation';
 import { DiagnosePage } from '@/views/DiagnosePage';
+import { successfulPrediction } from '../../helpers/prediction';
 
 vi.mock('@/services/predictionApi', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/services/predictionApi')>();
   return { ...actual, createPrediction: vi.fn() };
 });
-
-const successfulPrediction: PredictionResponse = {
-  dto: {
-    id: 'prediction-id',
-    imagePath: '/uploads/predictions/leaf.jpg',
-    imagePublicId: 'leaf-public-id',
-    predictedPlantDisease: {
-      id: 'plant-disease-id',
-      plantId: 'plant-id',
-      diseaseId: 'disease-id',
-      className: 'Tomato___Early_blight',
-      classIndex: 1,
-      isActive: true,
-      plant: {
-        id: 'plant-id',
-        name: 'Tomato',
-        vietnameseName: 'Cà chua',
-        scientificName: 'Solanum lycopersicum',
-        description: null,
-        isActive: true,
-        createdAt: '2026-09-27T10:00:00Z',
-      },
-      disease: {
-        id: 'disease-id',
-        name: 'Early Blight',
-        vietnameseName: 'Bệnh cháy lá sớm',
-        description: null,
-        symptoms: null,
-        treatment: null,
-        prevention: null,
-        isActive: true,
-        createdAt: '2026-09-27T10:00:00Z',
-      },
-    },
-    confidence: 0.94,
-    predictionDetails: [],
-    createdAt: '2026-09-27T10:00:00Z',
-  },
-  diagnosis: {
-    id: 'prediction-id',
-    timestamp: '27/09/2026 17:00',
-    plant: 'Cà chua',
-    scientificName: 'Solanum lycopersicum',
-    prediction: 'Bệnh cháy lá sớm',
-    diseaseId: 'disease-id',
-    confidence: 0.94,
-    confidenceCategory: 'Độ tin cậy cao',
-    top_predictions: [{ label: 'Bệnh cháy lá sớm', confidence: 0.94 }],
-    originalImageUrl: '/uploads/predictions/leaf.jpg',
-    gradcam_url: '',
-    severity: null,
-    modelVersion: 'convnext-tiny-backend',
-  },
-  crop: 'Cà chua',
-  disease: 'Bệnh cháy lá sớm',
-  confidence: 0.94,
-};
 
 class SuccessfulImage {
   onload: ((event: Event) => void) | null = null;
@@ -94,6 +42,84 @@ async function uploadValidImage(fileInput: HTMLInputElement, fileName = 'leaf.jp
 }
 
 describe('DiagnosePage prediction flow', () => {
+  it('decodes an explicitly selected sample without automatically running inference', async () => {
+    const fetchSample = vi.fn().mockResolvedValue({
+      ok: true,
+      blob: async () => new Blob(['sample-leaf'], { type: 'image/jpeg' }),
+    });
+    vi.stubGlobal('fetch', fetchSample);
+    renderDiagnosePage();
+    await userEvent.click(screen.getByRole('button', { name: 'Chọn mẫu thử' }));
+    expect(await screen.findByRole('img', { name: 'Ảnh xem trước: anh-la-mau.jpg' })).toBeVisible();
+    expect(screen.getByText(/Ảnh mẫu minh họa từ cẩm nang/)).toBeVisible();
+    expect(createPrediction).not.toHaveBeenCalled();
+  });
+
+  it('blocks corrupted images in the input column and releases the object URL', async () => {
+    vi.stubGlobal(
+      'Image',
+      class extends SuccessfulImage {
+        set src(_value: string) {
+          queueMicrotask(() => this.onerror?.(new Event('error')));
+        }
+      },
+    );
+    const { fileInput } = renderDiagnosePage();
+    await userEvent.upload(fileInput, new File(['broken'], 'broken.jpg', { type: 'image/jpeg' }));
+    const alert = await screen.findByRole('alert');
+    expect(screen.getByRole('region', { name: 'Tải ảnh lên' })).toContainElement(alert);
+    expect(createPrediction).not.toHaveBeenCalled();
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:leaf-preview');
+  });
+  it('blocks low-resolution images in the upload column before any API request', async () => {
+    vi.stubGlobal(
+      'Image',
+      class extends SuccessfulImage {
+        naturalWidth = 223;
+      },
+    );
+    const { fileInput } = renderDiagnosePage();
+    await userEvent.upload(fileInput, new File(['small'], 'small.jpg', { type: 'image/jpeg' }));
+    const alert = await screen.findByRole('alert');
+    expect(screen.getByRole('region', { name: 'Tải ảnh lên' })).toContainElement(alert);
+    expect(alert).toHaveTextContent('224 × 224');
+    expect(createPrediction).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Phân tích ngay' })).toBeNull();
+  });
+
+  it('maps verified API content codes to a recoverable warning without losing the photo', async () => {
+    vi.mocked(createPrediction).mockRejectedValue(
+      new PredictionApiError('Quality gate rejected image', 'OBSTRUCTED_LEAF'),
+    );
+    const { fileInput } = renderDiagnosePage();
+    await uploadValidImage(fileInput);
+    await userEvent.click(screen.getByRole('button', { name: 'Phân tích ngay' }));
+    expect(await screen.findByRole('heading', { name: 'Bề mặt lá bị che khuất' })).toBeVisible();
+    expect(screen.getByRole('img', { name: 'Ảnh xem trước: leaf.jpg' })).toBeVisible();
+    expect(screen.getByText('CẦN KIỂM TRA')).toBeVisible();
+    expect(screen.queryByText('ĐÃ HOÀN TẤT')).toBeNull();
+  });
+
+  it('gates low confidence results and only reveals a provisional comparison on request', async () => {
+    vi.mocked(createPrediction).mockResolvedValue({
+      ...successfulPrediction,
+      confidence: 0.4,
+      diagnosis: {
+        ...successfulPrediction.diagnosis,
+        confidence: 0.4,
+        top_predictions: [{ label: 'Lớp chưa chắc chắn', confidence: 0.4 }],
+      },
+    });
+    const { fileInput } = renderDiagnosePage();
+    await uploadValidImage(fileInput);
+    await userEvent.click(screen.getByRole('button', { name: 'Phân tích ngay' }));
+    expect(await screen.findByRole('heading', { name: 'Độ tin cậy chẩn đoán thấp' })).toBeVisible();
+    expect(screen.queryByRole('list', { name: 'Dự đoán Top-3' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Xem tạm bảng đối chiếu Top-3' }));
+    expect(screen.getByRole('list', { name: 'Dự đoán Top-3' })).toHaveTextContent('40.0%');
+    expect(screen.queryByRole('heading', { name: 'Bệnh cháy lá sớm' })).toBeNull();
+    expect(screen.queryByText('ĐÃ HOÀN TẤT')).toBeNull();
+  });
   beforeEach(() => {
     vi.stubGlobal('Image', SuccessfulImage);
     vi.mocked(createPrediction).mockReset();
@@ -103,6 +129,12 @@ describe('DiagnosePage prediction flow', () => {
     const { fileInput } = renderDiagnosePage();
     const user = userEvent.setup();
     const zone = screen.getByRole('group', { name: 'Chọn hoặc thả ảnh lá' });
+    expect(screen.queryByText('Kiểm tra ảnh lá cây')).toBeNull();
+    expect(
+      screen.queryByText(
+        'Chọn một ảnh rõ nét. Bạn sẽ nhận được lớp dự đoán và độ tin cậy để đối chiếu.',
+      ),
+    ).toBeNull();
     expect(
       screen
         .getByRole('list', { name: 'Tiến trình phân tích' })
@@ -121,7 +153,7 @@ describe('DiagnosePage prediction flow', () => {
     expect(
       await screen.findByRole('img', { name: 'Ảnh xem trước: dropped.jpg' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Phân tích$/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^Phân tích ngay$/i })).toBeEnabled();
   });
 
   it('shows an image preview, supports replacing it, and returns to idle after removal', async () => {
@@ -134,7 +166,7 @@ describe('DiagnosePage prediction flow', () => {
     // Assert
     expect(screen.getByText('first-leaf.jpg')).toBeInTheDocument();
     expect(screen.getByText(/1200 × 800 px/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Phân tích$/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^Phân tích ngay$/i })).toBeEnabled();
 
     // Act: choose another valid image through the same file input.
     await uploadValidImage(fileInput, 'second-leaf.jpg');
@@ -149,7 +181,7 @@ describe('DiagnosePage prediction flow', () => {
 
     // Assert
     expect(screen.queryByText('second-leaf.jpg')).not.toBeInTheDocument();
-    expect(screen.getByText(/Kết quả sẽ xuất hiện tại đây/i)).toBeInTheDocument();
+    expect(screen.getByText(/Kết quả chẩn đoán sẽ xuất hiện tại đây/i)).toBeInTheDocument();
   });
 
   it.each([
@@ -189,10 +221,18 @@ describe('DiagnosePage prediction flow', () => {
       });
     });
     const { fileInput } = renderDiagnosePage(onPredictionCreated);
+    expect(screen.getByText('CHỌN ẢNH')).toBeVisible();
+    expect(screen.queryByText('ĐANG THỰC HIỆN')).toBeNull();
     const imageFile = await uploadValidImage(fileInput);
+    expect(screen.getByText('ĐANG THỰC HIỆN')).toBeVisible();
+    expect(
+      screen
+        .getByRole('list', { name: 'Tiến trình phân tích' })
+        .querySelector('[aria-current="step"]'),
+    ).toHaveTextContent('Chọn ảnh lá');
 
     // Act
-    await userEvent.click(screen.getByRole('button', { name: /^Phân tích$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^Phân tích ngay$/i }));
 
     // Assert: uploading
     expect(await screen.findByRole('status')).toHaveTextContent(/Đang tải ảnh lên/i);
@@ -200,7 +240,7 @@ describe('DiagnosePage prediction flow', () => {
       screen
         .getByRole('list', { name: 'Tiến trình phân tích' })
         .querySelector('[aria-current="step"]'),
-    ).toHaveTextContent('Phân tích AI');
+    ).toHaveTextContent('Phân tích');
     expect(screen.getByRole('status')).toHaveTextContent('Ảnh đang được tải lên');
     expect(createPrediction).toHaveBeenCalledWith(
       imageFile,
@@ -227,9 +267,11 @@ describe('DiagnosePage prediction flow', () => {
 
     // Assert: success
     expect(await screen.findByRole('heading', { name: 'Bệnh cháy lá sớm' })).toBeInTheDocument();
+    expect(screen.queryByText('ĐANG THỰC HIỆN')).toBeNull();
+    expect(screen.getByText('ĐÃ HOÀN TẤT')).toBeVisible();
+    expect(screen.getAllByLabelText('Đã hoàn thành')).toHaveLength(3);
     expect(screen.getByText('Cà chua')).toBeInTheDocument();
-    expect(screen.getByText('Bệnh cháy lá sớm')).toBeInTheDocument();
-    expect(screen.getByText('94.0%')).toBeInTheDocument();
+    expect(screen.getAllByText('94.0%')).toHaveLength(2);
     expect(
       screen
         .getByRole('list', { name: 'Tiến trình phân tích' })
@@ -251,7 +293,7 @@ describe('DiagnosePage prediction flow', () => {
     await uploadValidImage(fileInput);
 
     // Act
-    await userEvent.click(screen.getByRole('button', { name: /^Phân tích$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^Phân tích ngay$/i }));
 
     // Assert: error
     const alert = await screen.findByRole('alert');
@@ -259,7 +301,7 @@ describe('DiagnosePage prediction flow', () => {
     expect(screen.getByText('leaf.jpg')).toBeInTheDocument();
 
     // Act: retry
-    await userEvent.click(screen.getByRole('button', { name: /Thử lại/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Phân tích lại ngay' }));
 
     // Assert
     expect(await screen.findByRole('heading', { name: 'Bệnh cháy lá sớm' })).toBeInTheDocument();
@@ -279,7 +321,7 @@ describe('DiagnosePage prediction flow', () => {
     );
     const fileInput = screen.getByLabelText(/Chọn ảnh lá cây/i) as HTMLInputElement;
     await uploadValidImage(fileInput);
-    await userEvent.click(screen.getByRole('button', { name: /^Phân tích$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^Phân tích ngay$/i }));
 
     // Act
     unmount();

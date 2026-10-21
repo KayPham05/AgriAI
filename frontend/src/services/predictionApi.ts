@@ -1,5 +1,28 @@
 import type { DiagnosisResult, TopPrediction } from '../types';
 import type { DiseaseDto, PlantDto } from './catalogApi';
+import {
+  isDiagnosisIssueCode,
+  type DiagnosisIssueCode,
+} from '@/features/diagnosis/diagnosisIssues';
+
+export class PredictionApiError extends Error {
+  constructor(
+    message: string,
+    public readonly code: DiagnosisIssueCode = 'SERVER_TIMEOUT_OR_ERROR',
+  ) {
+    super(message);
+    this.name = 'PredictionApiError';
+  }
+}
+
+function getPredictionError(body: unknown, status: number): PredictionApiError {
+  const record = body && typeof body === 'object' ? (body as Record<string, unknown>) : {};
+  const code = record.code ?? record.errorCode;
+  return new PredictionApiError(
+    getBackendError(body, status),
+    isDiagnosisIssueCode(code) ? code : undefined,
+  );
+}
 
 interface PlantDiseaseDto {
   id: string;
@@ -216,13 +239,14 @@ export function createPrediction(
     };
     xhr.upload.onload = () => options.onUploadComplete?.();
     xhr.onerror = () =>
-      finish(new Error('Không thể kết nối backend. Hãy kiểm tra máy chủ và thử lại.'));
-    xhr.ontimeout = () => finish(new Error('Yêu cầu quá thời gian chờ. Vui lòng thử lại.'));
+      finish(new PredictionApiError('Không thể kết nối backend. Hãy kiểm tra máy chủ và thử lại.'));
+    xhr.ontimeout = () =>
+      finish(new PredictionApiError('Yêu cầu quá thời gian chờ. Vui lòng thử lại.'));
     xhr.onabort = () => finish(new Error('Yêu cầu đã được hủy.'));
     xhr.onload = () => {
       const body = xhr.response as unknown;
       if (xhr.status < 200 || xhr.status >= 300) {
-        finish(new Error(getBackendError(body, xhr.status)));
+        finish(getPredictionError(body, xhr.status));
         return;
       }
       const dto = body as PredictionResultDto;
