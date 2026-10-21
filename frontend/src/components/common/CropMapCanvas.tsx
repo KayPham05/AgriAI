@@ -72,16 +72,27 @@ export function CropMapCanvas({
     <section
       className={cn(
         'mx-auto max-w-full overflow-x-auto overflow-y-hidden focus-visible:outline-2 focus-visible:outline-ring',
-        variant === 'details' ? 'max-w-(--crop-map-detail-width)' : 'max-w-lg',
+        variant === 'details'
+          ? 'max-w-(--crop-map-detail-width)'
+          : 'crop-map-hero-canvas w-full max-w-lg',
       )}
-      // biome-ignore lint/a11y/noNoninteractiveTabindex: Native horizontal map scrolling needs keyboard access.
-      tabIndex={0}
-      aria-label="Bản đồ địa lý Việt Nam, cuộn ngang để xem các đảo phía đông"
+      tabIndex={variant === 'details' ? 0 : undefined}
+      aria-label={
+        variant === 'hero'
+          ? 'Bản đồ địa lý Việt Nam'
+          : 'Bản đồ địa lý Việt Nam, cuộn ngang để xem các đảo phía đông'
+      }
     >
       <div
         ref={rootRef}
-        className={cn('relative mx-auto w-108', variant === 'hero' && 'sm:w-lg')}
-        style={{ aspectRatio: `${CROP_MAP_PRESENTATION_WIDTH} / ${VIETNAM_MAP_HEIGHT}` }}
+        className={cn('relative mx-auto', variant === 'hero' ? 'w-full' : 'w-108')}
+        style={{
+          aspectRatio: `${CROP_MAP_PRESENTATION_WIDTH} / ${VIETNAM_MAP_HEIGHT}`,
+          maxWidth:
+            variant === 'hero'
+              ? `calc(var(--crop-map-hero-max-height) * ${CROP_MAP_PRESENTATION_WIDTH / VIETNAM_MAP_HEIGHT})`
+              : undefined,
+        }}
       >
         <svg
           viewBox={`0 0 ${CROP_MAP_PRESENTATION_WIDTH} ${VIETNAM_MAP_HEIGHT}`}

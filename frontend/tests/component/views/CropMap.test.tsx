@@ -27,7 +27,7 @@ describe('Vietnam crop map', () => {
     ).toContain('nho banner.jpg');
     expect(within(dialog).getByRole('link', { name: 'Nguồn vùng trồng' })).toHaveAttribute(
       'href',
-      expect.stringContaining('ipvietnam.gov.vn'),
+      expect.stringContaining('cong-bo-chi-dan-dia-ly-cho-san-pham-nho-ninh-thuan'),
     );
   });
   it('switches the selected region from the map inside the details window and restores the opening pin focus', async () => {
@@ -82,8 +82,11 @@ describe('Vietnam crop map', () => {
     expect(within(coffeeDialog).getByRole('heading', { name: 'Cà phê' })).toBeVisible();
     expect(within(coffeeDialog).getByRole('link', { name: 'Nguồn vùng trồng' })).toHaveAttribute(
       'href',
-      expect.stringContaining('mard.gov.vn'),
+      expect.stringContaining('xay-dung-chuoi-nganh-hang-ca-phe-viet-nam-chat-luong-cao'),
     );
+    const source = within(coffeeDialog).getByRole('link', { name: 'Nguồn vùng trồng' });
+    expect(source).toHaveAttribute('target', '_blank');
+    expect(source).toHaveAttribute('rel', 'noopener noreferrer');
 
     await user.click(within(coffeeDialog).getByRole('button', { name: 'Xem cây trong cẩm nang' }));
     expect(onSelectPlant).toHaveBeenCalledWith(coffee);

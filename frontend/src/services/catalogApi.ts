@@ -90,7 +90,7 @@ export async function getPlants(): Promise<Plant[]> {
           scientificName: record.scientificName ?? '',
           category: 'Khác' as const,
           description: record.description ?? 'Thông tin cây trồng từ hệ thống AgriAI.',
-          imageUrl: '/images/logo.png',
+          imageUrl: '/images/agriai-leaf-mark.png',
           detectableCount: 0,
           conditions: [],
         }),

@@ -16,6 +16,7 @@ export interface CropRegion {
 
 // Representative locations, not a nationwide production-density dataset.
 // Coordinates place a regional marker approximately; each crop keeps its own locality and source.
+// Sources must be direct news or research articles about the crop in its representative region.
 export const CROP_REGIONS: CropRegion[] = [
   {
     id: 'dong-bac',
@@ -27,15 +28,16 @@ export const CROP_REGIONS: CropRegion[] = [
       {
         plantId: 'orange',
         locality: 'Bắc Quang, Hà Giang',
-        context: 'Vùng Bắc Quang gắn với cam sành Hà Giang và chỉ dẫn địa lý của sản phẩm.',
-        sourceUrl: 'https://tuyengiao.hagiang.gov.vn/upload/64711/20220407/04-NQTU_01_91891.pdf',
+        context: 'Bắc Quang có các nhà vườn trồng cam sành theo hướng hữu cơ.',
+        sourceUrl:
+          'https://baohagiang.vn/kinh-te/202201/trong-cam-huu-co-huong-di-ben-vung-cho-nha-vuon-8C02CF2/',
       },
       {
         plantId: 'tea',
         locality: 'Tân Cương, Thái Nguyên',
-        context: 'Tân Cương là vùng chè truyền thống có chỉ dẫn địa lý.',
+        context: 'Tân Cương có truyền thống trồng, chăm sóc và chế biến chè đặc sản.',
         sourceUrl:
-          'https://thainguyen.gov.vn/thuong-hieu-tra/khat-vong-vuon-tam-du-lich-sinh-thai-va-van-hoa-tra-161797',
+          'https://www.vietnamplus.vn/tri-thuc-trong-che-bien-che-tan-cuong-di-san-van-hoa-phi-vat-the-qg-post855479.vnp',
       },
     ],
   },
@@ -48,9 +50,9 @@ export const CROP_REGIONS: CropRegion[] = [
       {
         plantId: 'corn',
         locality: 'Sơn La',
-        context: 'Ngô được ghi nhận trong thống kê diện tích gieo trồng của địa phương.',
+        context: 'Sơn La có mô hình trồng ngô ngọt theo chuỗi liên kết sản xuất và tiêu thụ.',
         sourceUrl:
-          'https://data.sonla.gov.vn/storage/all/2024/04/tL25KoyA445iGuflrH9KWwZReMMncOfYC1lz3NwD.PDF',
+          'https://sonlatv.vn/mo-hinh-trong-ngo-ngot-vu-dong-xuan-theo-chuoi-lien-ket-tai-song-ma-19402.html',
       },
     ],
   },
@@ -65,7 +67,7 @@ export const CROP_REGIONS: CropRegion[] = [
         locality: 'Đắk Lắk',
         context: 'Đắk Lắk là vùng trồng cà phê trọng điểm của Tây Nguyên.',
         sourceUrl:
-          'https://www.mard.gov.vn/VanBanLayYKien/VBPLFile/QHPCTTTL_BaoCaoTongHop_20210708.pdf',
+          'https://baochinhphu.vn/xay-dung-chuoi-nganh-hang-ca-phe-viet-nam-chat-luong-cao-102230312155540856.htm',
       },
       {
         plantId: 'durian',
@@ -84,9 +86,8 @@ export const CROP_REGIONS: CropRegion[] = [
       {
         plantId: 'tomato',
         locality: 'Đơn Dương, Lâm Đồng',
-        context: 'Đơn Dương có mô hình sản xuất cà chua phù hợp điều kiện địa phương.',
-        sourceUrl:
-          'https://lamdong.gov.vn/sites/snnptnt/tth/SitePages/Ca-chua-NT8-nang-suat-cao-o-Don-Duong.aspx',
+        context: 'Đơn Dương là vùng canh tác cà chua của Lâm Đồng.',
+        sourceUrl: 'https://nhandan.vn/chua-chat-ca-chua-don-duong-post273925.html',
       },
       {
         plantId: 'potato',
@@ -106,8 +107,7 @@ export const CROP_REGIONS: CropRegion[] = [
         plantId: 'banana',
         locality: 'Trảng Bom, Đồng Nai',
         context: 'Trảng Bom có vùng chuyên canh chuối phục vụ xuất khẩu.',
-        sourceUrl:
-          'https://dongnai.gov.vn/vi/news/chuong-trinh-ke-hoach-phat-trien-ktxh/vung-chuyen-canh-van-kho-san-xuat-lon-12284.html',
+        sourceUrl: 'https://nhandan.vn/mo-huong-cho-chuoi-tuoi-xuat-ngoai-post742535.html',
       },
     ],
   },
@@ -122,9 +122,9 @@ export const CROP_REGIONS: CropRegion[] = [
         plantId: 'grape',
         locality: 'Vùng trồng Ninh Phước và Thuận Nam, Ninh Thuận',
         context:
-          'Nho Ninh Thuận được bảo hộ chỉ dẫn địa lý; tên vùng trồng theo tài liệu của Cục Sở hữu trí tuệ.',
+          'Nho Ninh Thuận được bảo hộ chỉ dẫn địa lý, gồm vùng trồng tại Ninh Phước và Thuận Nam theo bài viết của TTXVN.',
         sourceUrl:
-          'https://www.ipvietnam.gov.vn/vi_VN/web/guest/phat-trien-chi-dan-ia-ly/-/asset_publisher/SGA9PgvmYtWI/content/danh-sach-chi-dan-ia-ly-uoc-ang-tren-cong-bao-shcn',
+          'https://www.vietnamplus.vn/cong-bo-chi-dan-dia-ly-cho-san-pham-nho-ninh-thuan-post135387.vnp',
       },
     ],
   },
@@ -137,32 +137,36 @@ export const CROP_REGIONS: CropRegion[] = [
       {
         plantId: 'rice',
         locality: 'Cần Thơ và vùng Đồng bằng sông Cửu Long',
-        context: 'Đồng bằng sông Cửu Long là vùng sản xuất lúa lớn của cả nước.',
-        sourceUrl: 'https://sokhcn.cantho.gov.vn/default.aspx?nid=21729&pid=57',
+        context: 'Các địa phương Đồng bằng sông Cửu Long phát triển canh tác lúa bền vững.',
+        sourceUrl:
+          'https://baochinhphu.vn/cong-nghe-so-mo-duong-cho-canh-tac-lua-ben-vung-tai-dong-bang-song-cuu-long-102251023172321188.htm',
       },
       {
         plantId: 'mango',
         locality: 'Cao Lãnh, Đồng Tháp',
         context: 'Cao Lãnh gắn với vùng xoài cát chu và vườn xoài địa phương.',
-        sourceUrl: 'https://dongthap.gov.vn/vi/web/cong-thong-tin-dtp/tin-tuc/chi-tiet?id=6499265',
+        sourceUrl:
+          'https://www.vietnamplus.vn/san-pham-xoai-cao-lanh-chinh-thuc-co-thuong-hieu-post177670.vnp',
       },
       {
         plantId: 'chili',
         locality: 'Thanh Bình, Đồng Tháp',
-        context: 'Ớt Thanh Bình được địa phương giới thiệu trong nhóm nông sản đặc trưng.',
-        sourceUrl: 'https://dongthap.gov.vn/tiem-nang-phat-trien-dong-thap',
+        context: 'Thanh Bình là vùng trồng ớt được nghiên cứu trong chuỗi giá trị ớt Đồng Tháp.',
+        sourceUrl: 'https://ctujsvn.ctu.edu.vn/index.php/ctujsvn/article/view/1981',
       },
       {
         plantId: 'pomelo',
         locality: 'Vùng Bến Tre',
-        context: 'Bưởi da xanh Bến Tre đã được cấp chỉ dẫn địa lý.',
-        sourceUrl: 'https://xtdt.bentre.gov.vn/tiem-nang-va-the-manh/tiem-nang/',
+        context: 'Bến Tre phát triển vùng trồng bưởi da xanh phục vụ xuất khẩu.',
+        sourceUrl:
+          'https://www.vietnamplus.vn/buoi-da-xanh-cua-ben-tre-san-sang-vuon-minh-ra-bien-lon-post832614.vnp',
       },
       {
         plantId: 'watermelon',
         locality: 'Gò Công Đông',
-        context: 'Gò Công Đông có vùng trồng dưa hấu được cấp mã số xuất khẩu.',
-        sourceUrl: 'https://dongthap.gov.vn/en/ubnd-xa-go-cong-dong',
+        context: 'Gò Công Đông có vùng trồng dưa hấu gắn với phát triển nhãn hiệu Dưa hấu Gò Công.',
+        sourceUrl:
+          'https://baodongthap.vn/xay-dung-phat-trien-nhan-hieu-dua-hau-go-cong-a52097.html',
       },
     ],
   },

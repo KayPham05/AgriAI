@@ -36,7 +36,7 @@ describe('user-provided crop photographs', () => {
     ['watermelon', 'dưa hấu.jpg'],
     ['orange', 'cam banner.jpg'],
     ['mango', 'xoài banner.jpg'],
-    ['durian', 'sầu riêng.jpg'],
+    ['durian', 'sầu riêng banner.jpg'],
     ['pomelo', 'bưởi banner.jpg'],
     ['grape', 'nho banner.jpg'],
   ])('uses the supplied JPEG for %s rather than old artwork', (id, filename) => {
