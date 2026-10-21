@@ -4,10 +4,14 @@ import { useRef } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 import Image from 'next/image';
-import { ArrowRight, CheckCircle2, ImageUp, ScanSearch } from 'lucide-react';
+import { ArrowRight, Camera, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import leafTexture from '@/assets/banner-leaves/rice-leaf-cutout.png';
 import { CropMap } from '@/components/common/CropMap';
 import { CropFilmStrip } from '@/components/common/CropFilmStrip';
+import { IntroLeafBackdrop } from '@/components/home/IntroLeafBackdrop';
 import { SUPPORTED_PLANTS } from '@/data/plantData';
 import { CROP_PHOTOS } from '@/data/cropPhotos';
 
@@ -20,18 +24,15 @@ interface IntroPageProps {
 
 const workflowSteps = [
   {
-    icon: ImageUp,
     title: 'Chọn một ảnh lá rõ nét',
     description: 'Tải ảnh JPG hoặc PNG, ưu tiên một chiếc lá dưới ánh sáng tự nhiên.',
   },
   {
-    icon: ScanSearch,
     model: 'ConvNeXt-Tiny',
     title: 'Phân loại bệnh lá cây',
     description: 'Ảnh được kiểm tra trước khi gửi tới mô hình phân loại của AgriAI.',
   },
   {
-    icon: CheckCircle2,
     title: 'Đọc kết quả có ngữ cảnh',
     description: 'Xem lớp dự đoán, độ tin cậy và lưu lại kết quả để đối chiếu.',
   },
@@ -39,7 +40,7 @@ const workflowSteps = [
 
 const principles = [
   'Mỗi kết quả đi kèm lớp dự đoán và độ tin cậy.',
-  'Ảnh đủ sáng, một lá chính giúp kết quả dễ đối chiếu hơn.',
+  'Lưu lịch sử phân loại để xem lại và đối chiếu.',
   'Kết quả chỉ hỗ trợ tham khảo, không thay thế chuyên gia.',
 ];
 
@@ -108,14 +109,14 @@ export function IntroPage({ onLogin, onRegister }: IntroPageProps) {
         Đến nội dung chính
       </a>
       <header className="sticky top-0 z-40 px-5 py-3 sm:px-8 lg:px-12">
-        <div className="navigation-bar mx-auto flex h-18 max-w-7xl items-center justify-between gap-3 rounded-card border border-border bg-surface px-3 sm:px-5">
+        <div className="navigation-bar mx-auto flex min-h-18 max-w-7xl flex-wrap items-center justify-between gap-2 rounded-card border border-border bg-surface px-3 py-2 sm:gap-3 sm:px-5 sm:py-0">
           <a
             href="#intro"
             className="flex shrink-0 items-center gap-3 rounded-lg"
             aria-label="AgriAI - Trang giới thiệu"
           >
             <Image
-              src="/images/logo.png"
+              src="/images/agriai-leaf-mark.png"
               alt="Logo AgriAI"
               width={44}
               height={44}
@@ -125,11 +126,11 @@ export function IntroPage({ onLogin, onRegister }: IntroPageProps) {
               AgriAI
             </span>
           </a>
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="ghost" onClick={onLogin}>
+          <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+            <Button type="button" variant="ghost" className="px-2 sm:px-5" onClick={onLogin}>
               Đăng nhập
             </Button>
-            <Button type="button" onClick={onRegister}>
+            <Button type="button" className="px-2 sm:px-5" onClick={onRegister}>
               Tạo tài khoản
             </Button>
           </div>
@@ -137,114 +138,169 @@ export function IntroPage({ onLogin, onRegister }: IntroPageProps) {
       </header>
 
       <main id="intro" tabIndex={-1}>
-        <section aria-label="Giới thiệu AgriAI" className="border-b border-border">
-          <CropMap plants={SUPPORTED_PLANTS}>
-            <div data-intro-copy className="min-w-0">
-              <p data-intro-reveal className="text-sm font-semibold text-primary">
-                Phân loại bệnh lá cây từ ảnh
-              </p>
-              <h1
-                data-intro-reveal
-                className="mt-4 text-4xl font-bold leading-tight tracking-tight text-balance lg:text-5xl"
-              >
-                Nhìn kỹ chiếc lá. <span className="text-primary">Hiểu thêm về cây.</span>
-              </h1>
-              <p
-                data-intro-reveal
-                className="mt-5 max-w-lg text-base leading-7 text-muted-foreground md:text-lg"
-              >
-                AgriAI giúp bạn phân loại bệnh lá cây từ một bức ảnh và đọc kết quả để đối chiếu với
-                những gì bạn quan sát.
-              </p>
-              <div data-intro-reveal className="mt-7 flex flex-col gap-3 sm:flex-row">
-                <Button type="button" size="lg" onClick={onRegister}>
-                  Tạo tài khoản <ArrowRight aria-hidden="true" />
-                </Button>
-                <Button type="button" size="lg" variant="outline" asChild>
-                  <a href="#how-it-works">Xem cách hoạt động</a>
-                </Button>
+        <section
+          aria-label="Giới thiệu AgriAI"
+          className="relative isolate overflow-hidden border-b border-border"
+        >
+          <IntroLeafBackdrop variant="hero" />
+          <div className="relative">
+            <CropMap plants={SUPPORTED_PLANTS}>
+              <div data-intro-copy className="min-w-0">
+                <p
+                  data-intro-reveal
+                  className="intro-hero-eyebrow text-sm font-semibold text-primary"
+                >
+                  Phân loại bệnh lá cây từ ảnh
+                </p>
+                <h1
+                  data-intro-reveal
+                  className="intro-hero-title mt-4 text-4xl font-bold leading-tight tracking-tight text-balance lg:text-5xl"
+                >
+                  Nhìn kỹ chiếc lá. <span className="text-primary">Hiểu thêm về cây.</span>
+                </h1>
+                <p
+                  data-intro-reveal
+                  className="intro-hero-description mt-5 max-w-lg text-base leading-7 text-muted-foreground md:text-lg"
+                >
+                  AgriAI giúp bạn phân loại bệnh lá cây từ một bức ảnh và đọc kết quả để đối chiếu
+                  với những gì bạn quan sát.
+                </p>
+                <div
+                  data-intro-reveal
+                  className="intro-hero-actions mt-7 flex flex-col flex-wrap gap-3 sm:flex-row"
+                >
+                  <Button
+                    type="button"
+                    size="lg"
+                    className="h-auto min-h-12 whitespace-normal"
+                    onClick={onRegister}
+                  >
+                    Tạo tài khoản <ArrowRight aria-hidden="true" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="lg"
+                    variant="outline"
+                    className="h-auto min-h-12 whitespace-normal"
+                    asChild
+                  >
+                    <a href="#how-it-works">Xem cách hoạt động</a>
+                  </Button>
+                </div>
+                <CropFilmStrip />
               </div>
-              <CropFilmStrip />
-            </div>
-          </CropMap>
+            </CropMap>
+          </div>
         </section>
 
-        <section id="how-it-works" className="border-y border-border bg-surface">
-          <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8 md:py-16 lg:px-12">
-            <div data-intro-reveal-group className="grid items-end gap-5 lg:grid-cols-2 lg:gap-16">
+        <section id="how-it-works" aria-label="Cách AgriAI hoạt động" className="bg-surface">
+          <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:px-8 md:py-16 lg:grid-cols-2 lg:gap-12 lg:px-12">
+            <div data-intro-reveal-group className="flex min-w-0 flex-col gap-6">
               <h2 data-intro-reveal className="text-3xl font-semibold tracking-tight text-balance">
                 Từ ảnh lá đến thông tin có thể đối chiếu.
               </h2>
+              <figure data-intro-reveal className="overflow-hidden rounded-media bg-secondary">
+                <Image
+                  src={CROP_PHOTOS.rice.imageSrc}
+                  alt={CROP_PHOTOS.rice.imageAlt}
+                  width={1536}
+                  height={1024}
+                  sizes="(min-width: 1280px) 560px, (min-width: 1024px) 46vw, 100vw"
+                  className="aspect-[4/3] w-full object-cover"
+                />
+                <figcaption className="flex items-start gap-3 px-4 py-4 text-sm leading-6 text-foreground sm:px-5">
+                  <Camera className="mt-1 size-5 shrink-0 text-primary" aria-hidden="true" />
+                  <span>
+                    Khung hình đủ sáng, một lá chính và nền ít nhiễu giúp mô hình nhận được tín hiệu
+                    hữu ích hơn.
+                  </span>
+                </figcaption>
+              </figure>
+            </div>
+            <div data-intro-reveal-group className="flex min-w-0 flex-col gap-6">
               <p data-intro-reveal className="max-w-lg leading-7 text-muted-foreground">
                 Chọn ảnh, xem dự đoán rồi đối chiếu với triệu chứng trên cây. Bạn có thể lưu kết quả
                 để xem lại.
               </p>
-            </div>
-            <div className="mt-9 grid items-start gap-8 lg:grid-cols-2 lg:gap-16">
-              <figure data-intro-reveal-group>
-                <div data-intro-reveal>
-                  <Image
-                    src={CROP_PHOTOS.rice.imageSrc}
-                    alt={CROP_PHOTOS.rice.imageAlt}
-                    width={1536}
-                    height={1024}
-                    sizes="(min-width: 1280px) 560px, (min-width: 1024px) 46vw, 100vw"
-                    className="aspect-[4/3] w-full rounded-media object-cover"
-                  />
-                </div>
-                <figcaption className="mt-4 max-w-lg text-sm leading-6 text-muted-foreground">
-                  Khung hình đủ sáng, một lá chính và nền ít nhiễu giúp mô hình nhận được tín hiệu
-                  hữu ích hơn.
-                </figcaption>
-              </figure>
-              <div
-                data-intro-reveal-group
-                className="divide-y divide-border border-t border-border"
-              >
-                {workflowSteps.map(({ icon: Icon, model, title, description }) => (
-                  <article data-intro-reveal key={title} className="flex gap-4 py-6 last:pb-0">
-                    <Icon className="mt-1 size-5 shrink-0 text-primary" aria-hidden="true" />
-                    <div>
-                      <h3 className="text-lg font-semibold">{title}</h3>
-                      <p className="mt-2 max-w-lg text-sm leading-6 text-muted-foreground">
-                        {description}
-                      </p>
-                      {model && <p className="mt-2 text-xs font-medium text-primary">{model}</p>}
-                    </div>
-                  </article>
+              <ol className="grid flex-1 auto-rows-fr gap-4" aria-label="Ba bước sử dụng AgriAI">
+                {workflowSteps.map(({ model, title, description }, index) => (
+                  <li key={title} data-intro-reveal>
+                    <article className="h-full">
+                      <Card className="h-full justify-center rounded-card border border-border bg-background shadow-sm ring-0">
+                        <CardHeader>
+                          <div className="flex items-start gap-4">
+                            <span
+                              className="text-3xl font-bold leading-none tabular-nums text-primary"
+                              aria-hidden="true"
+                            >
+                              {String(index + 1).padStart(2, '0')}
+                            </span>
+                            <div className="flex min-w-0 flex-col gap-2">
+                              <CardTitle>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <h3 className="text-base font-semibold">{title}</h3>
+                                  {model && <Badge variant="secondary">{model}</Badge>}
+                                </div>
+                              </CardTitle>
+                              <CardDescription className="leading-6">{description}</CardDescription>
+                            </div>
+                          </div>
+                        </CardHeader>
+                      </Card>
+                    </article>
+                  </li>
                 ))}
-              </div>
+              </ol>
             </div>
           </div>
         </section>
 
         <section
           data-intro-reveal-group
-          className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:px-8 md:py-16 lg:grid-cols-2 lg:gap-16 lg:px-12"
+          aria-label="Sử dụng kết quả có trách nhiệm"
+          className="relative overflow-hidden bg-background"
         >
-          <div data-intro-reveal>
-            <h2 className="max-w-xl text-3xl font-semibold tracking-tight text-balance">
-              AI hỗ trợ quan sát. Con người đưa ra quyết định.
-            </h2>
-            <p className="mt-4 max-w-xl leading-7 text-muted-foreground">
-              AgriAI trình bày kết quả và độ tin cậy để bạn có thêm căn cứ, không biến một dự đoán
-              thành kết luận tuyệt đối.
-            </p>
+          <IntroLeafBackdrop />
+          <div className="relative mx-auto grid max-w-7xl items-center gap-8 px-5 py-12 sm:px-8 md:py-14 lg:grid-cols-2 lg:gap-12 lg:px-12">
+            <div data-intro-reveal>
+              <h2 className="max-w-xl text-3xl font-semibold tracking-tight text-balance">
+                AI hỗ trợ quan sát. Con người đưa ra quyết định.
+              </h2>
+              <p className="mt-4 max-w-xl leading-7 text-muted-foreground">
+                AgriAI trình bày kết quả và độ tin cậy để bạn có thêm căn cứ, không biến một dự đoán
+                thành kết luận tuyệt đối.
+              </p>
+            </div>
+            <ul className="flex flex-col gap-3">
+              {principles.map((principle) => (
+                <li
+                  data-intro-reveal
+                  key={principle}
+                  className="flex items-start gap-3 rounded-lg border border-border bg-surface px-4 py-3"
+                >
+                  <CheckCircle2 className="mt-1 size-5 shrink-0 text-primary" aria-hidden="true" />
+                  <p className="leading-7">{principle}</p>
+                </li>
+              ))}
+            </ul>
           </div>
-          <ul className="space-y-5">
-            {principles.map((principle) => (
-              <li data-intro-reveal key={principle} className="flex gap-3">
-                <CheckCircle2 className="mt-1 size-5 shrink-0 text-primary" aria-hidden="true" />
-                <p className="leading-7">{principle}</p>
-              </li>
-            ))}
-          </ul>
         </section>
 
-        <section className="bg-primary text-primary-foreground">
+        <section
+          aria-label="Bắt đầu với AgriAI"
+          className="relative overflow-hidden bg-primary-hover text-primary-foreground"
+        >
+          <Image
+            src={leafTexture}
+            alt=""
+            aria-hidden="true"
+            fill
+            sizes="100vw"
+            className="pointer-events-none object-cover object-right opacity-10"
+          />
           <div
             data-intro-reveal-group
-            className="mx-auto flex max-w-7xl flex-col items-start gap-7 px-5 py-12 sm:px-8 md:py-16 lg:flex-row lg:items-center lg:justify-between lg:px-12"
+            className="relative mx-auto flex max-w-7xl flex-col items-start gap-7 px-5 py-12 sm:px-8 md:py-14 lg:flex-row lg:items-center lg:justify-between lg:gap-12 lg:px-12"
           >
             <div data-intro-reveal className="max-w-xl">
               <h2 className="text-3xl font-semibold tracking-tight text-balance">
@@ -254,10 +310,24 @@ export function IntroPage({ onLogin, onRegister }: IntroPageProps) {
                 Tạo tài khoản để lưu lịch sử phân loại và theo dõi những mẫu bạn đã kiểm tra.
               </p>
             </div>
-            <div data-intro-reveal>
-              <Button type="button" size="lg" variant="secondary" onClick={onRegister}>
-                Tạo tài khoản <ArrowRight aria-hidden="true" />
-              </Button>
+            <div data-intro-reveal className="flex max-w-full flex-col gap-3">
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  type="button"
+                  size="lg"
+                  variant="inverse"
+                  className="h-auto min-h-12 max-w-full whitespace-normal"
+                  onClick={onRegister}
+                >
+                  Tạo tài khoản <ArrowRight aria-hidden="true" />
+                </Button>
+                <Button type="button" size="lg" variant="outlineOnDark" onClick={onLogin}>
+                  Thử nghiệm ngay
+                </Button>
+              </div>
+              <p className="text-sm leading-6 text-primary-foreground">
+                Đăng nhập để thử phân tích từ ảnh.
+              </p>
             </div>
           </div>
         </section>
