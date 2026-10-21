@@ -3,7 +3,7 @@
 - Ngày: 2026-10-08 (Asia/Bangkok).
 - Nhánh xác minh: `AGRI-57-frontend-summary`.
 - Phạm vi: cấu hình frontend Next.js/shadcn và xử lý lint theo nhóm; không đổi kiến trúc backend/AI, token thiết kế hoặc hợp đồng HTTP API.
-- [Tổng hợp AGRI-57](README.md) · [Task log hiện có](../../task-logs/AGRI-57/AGRI-57-trunthong09012005.md).
+- [Tổng hợp AGRI-57](README.md) · [Task log hiện có](../../task-logs/AGRI-57/AGRI-57-frontend-ui-and-integration.md).
 
 ## 1. Trạng thái
 

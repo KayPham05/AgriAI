@@ -1,12 +1,409 @@
 # AGRI-57 — Hoàn thiện frontend demo và tích hợp Backend
 
+## Cập nhật lượt149 — Trang 404 tùy chỉnh (2026-10-21)
+
+User yêu cầu custom404 và nhắc test: nâng rootnot-found bằng brand/tokens/logo/teaasset sẵn có, h1/copy tiếngViệt, homelink'/' vàbackhistory/fallback. Giữ NextHTTP404/noindex, không auth/API mới. TestRED3 trước sửa, GREEN4/4component1,08s10:58:11UTCexit0; Biome2files/detector[]/buildcompile4,6sTS1075ms đạt. Browserinvalid/nestedroutes HTTP404/noindex,5sizes/nooverflow/44pxtargets/home/back đạt, pageerrors rỗng. [Paths/evidence/limits](../../reports/AGRI-57/agri_57_not_found_2026_10_21.md). Chỉ frontendlocalhost, không fullsuite/coverage/CI mới, không commit/push/DB.
+
+## Khởi động backend với migration còn thiếu (2026-10-21)
+
+Backend thoát139 do pending migrations, không OOM. Review hai migration `DatabaseImprovement`/`OptionalAgriculturalProfiles`; tạo pg_dump local 40,447bytes và kiểm tra archive list, chưa thử restore. Sau khi user đồng ý rõ ràng, chạy `docker compose run --rm --no-deps backend --migrate` exit0, áp dụng đúng hai migration; khởi động backend không build bằng `up -d --no-deps --wait` đạt Healthy. Xác nhận history có hai ID mới, giữ các ID cũ; API/database/dependencies/catalog/proxy frontend HTTP200, cả bốn service Healthy. [Chi tiết, log, backup và giới hạn kiểm chứng](../../reports/AGRI-57/agri_57_local_backend_migrations_2026_10_21.md). Không sửa migration/source, xóa volume, rollback, commit/push hoặc chạm stash. Phần tiếp theo là bản ghi media trước đó.
+
+## Khôi phục media auth sau chuyển nhánh (2026-10-21)
+
+File component vẫn đúng nhưng thư mục media local bị thiếu khi khôi phục stash57; MP4/poster/WebM đang ở untracked parent của stash80 `4d6176fa297d7c55a715989669f3c737cabededa`. Khôi phục riêng ba asset (75,923,556 / 239,408 / 704,549 bytes), giữ ignored và giữ cả hai stash; không áp code admin vào57. Copy media vào container frontend hiện tại và restart riêng frontend để Next nhận public files, không build hoặc đụng backend/DB. HTTP video206/poster200; browser script `auth_panel_video.py` đạt real4K playback, HTTPRange, cùng video khi chuyển mode, hidden pause, mobile/reduced và không nút pause. [Bằng chứng và giới hạn image cũ](../../reports/AGRI-57/agri_57_auth_panel_video_2026_10_21.md#media-restoration-after-stash-restore-2026-10-21). Không rerun component/build/CI; không commit/push hoặc drop stash.
+
+## Cập nhật lượt148 — Bỏ nút video (2026-10-21)
+
+User yêu cầu bỏ pausebutton: gỡ Button/icons/manualpausedstate AuthPanelVideo, giữautoplayloop/hiddenpause/reduced. BrowserREDbuttoncount1, GREENbuttonabsent/playback/visibility/mode/unmount/mobile/reduced đạt; buildcompile4,4sTS962ms đạt. Biomeexit0noerrors/1infofragment; không reruncomponents/fullsuite/CI. [Bằng chứng](../../reports/AGRI-57/agri_57_auth_panel_video_2026_10_21.md#follow-up148-remove-playback-button). Chỉ frontendlocalhost, chưa commit/push.
+
+## Cập nhật lượt147 — Khung auth và video thống nhất (2026-10-21)
+
+Theo yêu cầu equalheight/onebackground, tokenauthheight min44rem/viewport, dialog cố định, formcuộnbêntrong; chuyển AuthPanelVideo ra nền chung toànkhung, giữ video đứngyên/sameDOM chỉform/greetingtrượt. Pausecontrol ởphầnlộ, closez30khôngbịformchekhi cuộn. REDbrowservideonested, GREEN5sizes/18frames×3switches height/top<1px/video stationary/terms-scroll/closehit đạt. Final6/6modal1,89s10:42:42UTCexit0, Biome4files/detector[]/buildcompile4,1sTS790ms đạt; regressionMP4controls/mobile/reduced đạt. [Paths/evidence/limits](../../reports/AGRI-57/agri_57_auth_panel_video_2026_10_21.md#follow-up147-stable-dialog-and-unified-video-background). Chỉ frontendlocalhost, không fullsuite/CI mới, không commit/push/DB.
+
+## Cập nhật lượt146 — Dùng MP4 gốc cho khung auth (2026-10-21)
+
+User báo lag/yêu cầu video gốc: đổi AuthPanelVideo sang field-original.mp4, copy nguyên75.923.556bytes và hashSHA256khớp nguồn, không nén/transcode. Giữ poster/layout/controls/reduced/mobile; media vẫnignored cần provision khi deploy. RegressionREDsrcWebM, final6/6modal1,86s10:31:35UTCexit0, Biome/buildcompile5,4s/TS2,4s đạt. Browser xác nhận4K/duration/HTTPRange206/playback/modal đạt; mẫuheadless1s tiến0,922546s/52frames/12dropped, không chứng nhận60fpsmượt trên thiết bịuser. [Bằng chứng](../../reports/AGRI-57/agri_57_auth_panel_video_2026_10_21.md#follow-up146-use-original-mp4). Chỉ localhostfrontend, chưa fullsuite/CI/commit/push.
+
+## Cập nhật lượt145 — Video nền đăng nhập/đăng ký (2026-10-21)
+
+Theo user cung cấp video aerialfield4K24,69s/75,9MB, tạo bản local720pVP9khôngtiếng704.549bytes +poster239.408bytes, giữ nguyên gốc. AuthPanelVideo dùng trongsidepanelLoginModal, mutedloop/playsInline, giữDOMkhichuyểnmode, pausehidden/manual/unmount, posterfallback/reduced, mobilekhôngloadvideo. Dùng token/Button cósẵn, chữsáng/overlayxanh/closebgsurface; không đổi form/API. Assets localpublicmedia/auth ignored cần provision riêng khi deploy. TestREDtrướcsửa; final6/6modal2,50s10:24:19UTCexit0, Biome/detector[]/buildcompile4,9sTS1350ms và browserplayback1280/768/mobile375/320/reduced/pause/resume/mode/unmount đạt. [Paths/evidence/limits](../../reports/AGRI-57/agri_57_auth_panel_video_2026_10_21.md). Chỉ localhostfrontend, không fullsuite/CI mới, không commit/push/DB.
+
+## Cập nhật lượt144 — Sửa giật khi banner đổi lá (2026-10-21)
+
+Đọc video/source, xác nhận ảnh fade nhưng lá remount độc lập/chưa preload. Gộp photo/overlay/foliage cùng scene fade, preload chờ đủ ảnh+lá, active pause giữ pose cũ, isolate stacking và gỡ previous khi fade xong/reduced. Giữ size/layout/copy/API. Component RED trước sửa; final10/10twofiles1,21s09:31:49UTCexit0; Biome4files và buildcompile4,4s/TS1690ms đạt. Browser desktop/mobile24opacitysamples đồng bộ<0,001, ready/fade/pose/cleanup đạt; regression5sizes/nooverlap/pause/reduced đạt, pageerrors rỗng. Snapshot hide/show intermediate không pass, thay bằng cleanupDOM thực và kiểm tra removal sau fade. [Paths/evidence/limits](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md#cập-nhật-lượt144--đồng-bộ-chuyển-cảnh-ảnh-và-lá-2026-10-21). Chỉ localhostfrontend, không fullsuite/CI mới, không commit/push/DB.
+
+## Cập nhật lượt143 — Lá động banner trang chủ (2026-10-21)
+
+Theo yêu cầu khôi phục banner-leaves vào `/home`, thêm HomeBannerLeaves và map plantId trong HomeBannerSlideshow để chọn đúng foliage/crop. Size160/320/384/448px max45%, corn75%, phone đặt giữa phía phải tránh caption, desktop góc phải dưới; rice có lá rời. Dùng GSAP/tokenasset hiện có, pause hidden/offscreen/reducedstatic/cleanup, aria-hidden/pointer-events-none. Regression RED thiếu layer, final9/9focused2files1,08s07:23:41UTC exit0; Biome/detector[]/buildcompile4,8s/TypeScript918ms đạt. Browser5sizes/nooverlap/hit-testing/decoding/motion/pause/cropsync đạt; fixtures ban đầu sai shape/date đã sửa riêng test. [Paths/evidence/limits](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md#cập-nhật-lượt143--khôi-phục-lá-động-trên-banner-home-2026-10-21). Chỉ cập nhật frontendlocalhost3000; không fullsuite/coverage/CI mới, không commit/push/DB.
+
+## Cập nhật lượt142 — Nền lá cho hero Intro (2026-10-21)
+
+Theo lựa chọn user, bổ sung2lá lớn mờ ở mép và4lá nhỏ chuyển động chậm (3mobile), tái sử dụng IntroLeafBackdrop variant hero và ảnh lá sẵn có. Giữ map/copy/CTA, clip/pointer-events-none/aria-hidden, pause/reduced. DESIGN ghi nhận ngoại lệ được user cho phép. Browser RED chưa có nền, GREEN5widths1920/1280/768/375/320, decoding/nooverflow/map/focus/đăngký; regression section giữa đạt. Biome2files/detector[]/buildcompile4,3s/TypeScript963ms và focused5/5 (2,84s,07:09:28UTC,exit0) đạt. Phát hiện follow-up khi đổi reduced-motion lúc trang đang mở: map copy có thể bị hidden; test kiểm tra cleanup nền rồi reload để xác minh layout, không chứng nhận dynamic map preference. [Paths/evidence/limits](../../reports/AGRI-57/agri_57_intro_lower_sections_2026_10_21.md#follow-up-botanical-hero-background-turn142). Không fullsuite/CI mới, không commit/push/DB.
+
+## Cập nhật lượt141 — Tăng chuyển động lá (2026-10-21)
+
+Theo yêu cầu, chỉ tăng sway cục bộ IntroLeafBackdrop: dịch chuyển60px/góc15độ, duration5,85s từ tokens hiện có; giữ pause/reduced/layout. Browser test thêm ngưỡng di chuyển>25px/2,5s: RED3,2px trước sửa, GREEN sau build; pause/resume/reduced và768/375/320px không tràn đạt, pageerrors rỗng. Biome và final production build compile4,8s/TypeScript849ms đạt; cập nhật riêng frontendlocalhost3000. Không fullsuite/coverage/CI mới, không commit/push. [Phạm vi và bằng chứng](../../reports/AGRI-57/agri_57_intro_lower_sections_2026_10_21.md#follow-up-stronger-leaf-motion-turn141).
+
+## Cập nhật lượt140 — Nhiều lá nền chuyển động (2026-10-21)
+
+Theo screenshot/yêu cầu, thay lá tĩnh sectionbeIntro bằng IntroLeafBackdrop:5desktop/3mobile, opacity10group/staticasset, GSAPtransform-onlysway/stagger/sineyoyo với tokensbannerhiệncó. Scope/ref/mm cleanup, pauseIOoffscreen/documenthidden, reducedstatic; khôngglobal/token/asset/deps/bannerthayđổi. BrowsermotionREDtrước/GREENsau đo realtransform, controlledvisibilitypause/resume, offscreenpause, reducedrevert và3widths768/375/320nooverflow; layout6sizes/CTAregressionđạt, pageerrorsrỗng, xemdesktop/mobileảnh. Biome2TSX/Typecheck/buildcompile4,1s/TS862ms đạt; cậpnhậtriêngfrontendlocalhost3000. FullLinux311/31146files36,75s (06:47:52UTC), branch1225/1846=66,35%, actualcontainerexit0; owncontainerremovedsaucopyevidence. [Paths/evidence/limits](../../reports/AGRI-57/agri_57_intro_lower_sections_2026_10_21.md#follow-up-multiple-moving-background-leaves-turn140). Browsermotionkhôngthaythếtargetcomponentcoverage80%; khôngCI/realdevice/Lighthouse/DBvolumes/commit/push.
+
+## Cập nhật lượt139 — Các section dưới Intro theo mẫu (2026-10-21)
+
+User xác nhận áp dụng mẫu vào Intro và nhắcviếttest. Chỉ chỉnh3section dướihero: ảnhlúa/tipcamera +3numberedcards/modelbadge, principlesnềnbe, closingforestbanner/staticleaf +register/trialbuttons. Trial dùngloginhiệncókèmcopygiảithích; khôngguestinference. Reuseassets/tokens/Button/Card/Badge, giữmap/film/hero/footer (snapshot source equality), GSAPcleanup/reduced; khôngglobal/shared/API/deps. TestCTA RED trước/GREENsau. NativeBiome/Typecheckđạt; nativeViteststartupchậm chuyểnDockerLinuxnetworknone. Firstfull307pass/4lintprobesfail do/.gitignorethiếu, bindmountEdevicefail; copyoriginalignorevàrerunfull311/31146files39,90s (05:58:10UTC), branch1220/1829=66,70%, exit0verified. Sauiconcleanupmobile finalfocused5/5/2,00s (05:59:28UTC), finalbuildcompile5,2s/TS1286ms, Chromium6sizes/photo/layout/register/login/singlemap/nooverflow đạt,pageerrorsrỗng;screenshotsdesktop/mobilexemtrựctiếp. [Affected paths/evidence/limits](../../reports/AGRI-57/agri_57_intro_lower_sections_2026_10_21.md). Recreate riêngfrontendlocalhost3000; testcontainersownexit0removedsaucopyevidence, noDBvolumes/CI/realdevice/Lighthouse/commit/push. Introanimationbranch31,25%chưachứngnhậntarget80%.
+
+## Cập nhật lượt138 — Stepper chờ chọn ảnh (2026-10-21)
+
+Theo yêu cầu, thêm hasImage ở AnalysisStepper/DiagnosePage: idle CHỌNẢNH, có selectedFile/isPreparing mới ĐANGTHỰCHIỆN bước1, bấm phân tích qua2, success qua3hoàntất, cleartrởvềchọnảnh. Bỏ AI trongtitlebước2. Tests2RED, Biome4TSX/Typecheck đạt. Fullcoverage giánđoạn “The device is not ready”, đườngdẫn/tệp/branch kiểmtralạivẫncòn; focuseddefault bịtreođãdừng. Focusedthread1 cuối18/18twofiles runner12:22:57 (28,63s) đạt, không fullsuitecoverage mới. Dockerbuildcompile4,2s/TS759ms và Chromium6viewports/idle/select/analyze/errorretry/success/reset/reduced đạt, pageerrors rỗng; cậpnhậtriêngfrontendlocalhost3000. [Paths/evidence/limits](../../reports/AGRI-57/agri_57_diagnosis_components_2026_10_21.md#cập-nhật-lượt138--phân-biệt-chờ-chọn-ảnh-và-đang-thực-hiện). Không API/global/shared/CI/commit/push.
+
+## Cập nhật lượt137 — Phân trang hai hàng (2026-10-21)
+
+Theo yêu cầu mỗi trang tối đa2hàng trong hai danh mục public Plants/Diseases: useCatalogPagination dùng useSyncExternalStore subscribe breakpoint768/1024 khớpgrid1/2/3cols, pageSize2/4/6; giữ clamp/filterreset/focus/scroll. Không thêm paginationHistory, không chỉnh adminlist/API/global/markupviews. Tests5RED trước rồifocused7/7 (runner12:12:28,5,05s), final Biome/Typecheck đạt sau sửa testforEach lint. Full309/30946files (12:12:47,58,69s), branch1213/1822=66,57%, hook100%. Buildcompile4,9s/TS808ms đạt; recreate riêng frontendlocalhost3000. Chromium2routes6widths320/375/767/768/1024/1280 xác nhận count6/4/2,2rowtops, next/prev khôngtrùngvàkhôngtràn, pageerrors rỗng. Fixtureplants banđầuemptychỉ4reference gâyfailđúng; bổsungđủDTOfixture, khôngsửaproduction. [Paths/evidence/limits](../../reports/AGRI-57/agri_57_catalog_pagination_2026_10_21.md). Chưa CI/thiếtbịthật/commit/push.
+
+## Cập nhật lượt136 — Cuộn danh sách lọc (2026-10-21)
+
+Theo yêu cầu sửa dropdown Cây trồng, chỉ chỉnh FilterSelect trong CatalogControls: popper/bottom/start, maxheight spacing64 hoặc khả dụng, Group baoitems. Không thêm lại filter mới, không đổi primitive/global/tokens/API. Browser RED cũ menu660px ởy158 ngangtrigger, GREEN4widths1280/768/375/320: nằm dưới, cao<=256, wheelcuộnbêntrong khôngcuộntrang, End/Enter/reopen/Escape đạt. Sửa testselector do aria-hidden và chờfocus End trướcEnter; không đổi keyboardlogic. Fresh14/14threefiles4,15s runner12:01:29, Biome/Typecheck/buildcompile3,8s/TS753ms đạt; recreate riêng frontendlocalhost3000 và xem screenshotdesktop. [Paths/evidence/limits](../../reports/AGRI-57/agri_57_catalog_filters_2026_10_21.md#cập-nhật-lượt136--danh-sách-lọc-cố-định-và-cuộn-bên-trong). Không fullcoverage/CI mới; chưa commit/push.
+
+## Cập nhật lượt135 — Xác nhận thay ảnh (2026-10-21)
+
+Theo yêu cầu, chọn ảnh xong mở Dialog xem trước với Lưu ảnh/Không lưu/Chọn ảnh khác; chỉ commitdraft vào profile khi lưu. Đóng/Escape bỏ draft, trả focus camera; cleanup khi hủy lúc đọc, disableSave khi đọc/lỗi. Chỉ sửa ProfileAvatarEditor, component/browser tests và README, không shared/global/API/provider. TDD6RED, full308/30846files (runner11:49:09,60,21s), branch1203/1814=66,31%, editor30/35=85,71%. Sau chỉnh test simulationnativechooser và queryoptions, focused19/19 (11:49:59,2,90s), Biome/Typecheck đạt. Dockerbuildcompile4,3s/TS1235ms và finalChromium5widths/modal3sizes/realchooser/discard/save/retry/navigation/edit đạt, pageerrors rỗng; xem screenshot320px và cập nhật riêng frontendlocalhost3000. [Paths/evidence/limits](../../reports/AGRI-57/agri_57_profile_layout_2026_10_21.md#follow-up-confirm-or-discard-avatar-changes-turn135). Vẫn lưu phiên, chưa backendpersistence/CI/thiếtbịthật/commit/push.
+
+## Cập nhật lượt134 — Icon camera trên avatar (2026-10-21)
+
+Theo screenshot/yêu cầu, bỏ textbutton dưới avatar, đặt badgecamera32px góc dưới phải với target44px/aria-label/title. Chỉ markup ProfileAvatarEditor và regressionbrowser vị trí; không đổi file/state/API/shared/global. Browser RED trên nút cũ rồiGREEN ở1280/375/320px, final5widths và upload/decode/retry/navigation/edit đạt, pageerrors rỗng. Focused16/16twofiles11:45:13 (2,54s), Biome/Typecheck/buildcompile4,2s/TS1365ms đạt; cập nhật riêng frontendlocalhost3000, xem screenshot320px. [Chi tiết/paths/limits](../../reports/AGRI-57/agri_57_profile_layout_2026_10_21.md#follow-up-avatar-corner-camera-control-turn134). Không fullsuite/coverage/CI mới; chưa commit/push.
+
+## Cập nhật lượt133 — Đổi ảnh đại diện (2026-10-21)
+
+Theo yêu cầu cho đổi ảnh trong Hồ sơ: thêm ProfileAvatarEditor, giữ cơ chế session hiện có, nút chọn ảnh và decode trước update; reuse JPG/PNG/15MiB, báo lỗi không thay ảnh cũ, resetinput/retry, cleanupunmount và latestcallback chống ghi đè thông tin mới. Không uploadAPI/DB/localStorage/shared/global/Navbar. TDD6RED sau minimalstub rồiGREEN; suite cuối9avatar +7profile được bao gồm trong full305/30546files (runner11:41:48,56,22s), branch1193/1803=66,16%, editor20/24=83,33%. Typecheck/Biome3TSX đạt sau sửa annotationthis trong test; Dockerbuild4,3s/TS938ms đạt, cập nhật riêng frontendlocalhost3000. Chromium5widths/filepicker/PNGdecode/corruptretry/navigation/giữảnhsauedit đạt, pageerrors rỗng; screenshot320px xem trực tiếp. [Affected paths/evidence/limits](../../reports/AGRI-57/agri_57_profile_layout_2026_10_21.md#follow-up-change-profile-avatar-turn133). Ảnh chỉ trong phiên, reload/login không giữ; chưa backendpersistence/thiếtbịthật/CI/commit/push.
+
+## Cập nhật lượt132 — Trang Hồ sơ (2026-10-21)
+
+Theo yêu cầu thiết kế lại Hồ sơ: sidebar nhận diện/ngày tham gia/phiên đăng nhập, thông tin cá nhân hai cột và thống kê mẫu gọn; mobile xếp dọc, avatar nhỏ và ba số liệu cùng hàng. Chỉ sửa ProfilePage, test component và browser riêng/README; không global/shared/API/trang khác. Giữ local-session update, thứ tự field, cancel/trim/blank-name guard và hạn chế diễn giải thống kê; thêm live status sau lưu. TDD3RED rồi7GREEN; full296/29645files57,97s (runner11:31:55), branch1175/1783=65,90%, Profile90,62%. Sau CSS mobile final7/7 (11:33:26), Biome/Typecheck/finalDockerbuild/Chromium5sizes-flow đạt; cập nhật riêng frontendlocalhost3000. Lượt default-worker trước đó lỗi19 khi chạy cùng build, rerun2workers đạt không đổi test/timeouts. [Paths, evidence và giới hạn](../../reports/AGRI-57/agri_57_profile_layout_2026_10_21.md). Không remoteprofile persistence/CI/thiết bị thật/Lighthouse mới; chưa commit/push.
+
+## Cập nhật lượt131 — Gỡ thiết kế Về dự án mới (2026-10-21)
+
+Người dùng hủy bản thiết kế mới. Khôi phục `frontend/src/views/AboutAiPage.tsx` từ snapshot trước redesign, SHA256 trùng và Git diff tệp rỗng; bỏ component test riêng của redesign, browser script riêng không còn tồn tại. Giữ route/menu Về dự án và mọi thay đổi khác. Fresh `docker compose build frontend` đạt (compile4,4s, TypeScript2,1s), `docker compose up -d --no-deps frontend` đạt; Chromium localhost3000 xác nhận heading “Hiểu kết quả trước khi sử dụng” và không còn navigation/FAQ mới. Không chạy lại full suite/coverage/CI; không dùng kết quả296 tests bản đã bỏ làm bằng chứng mới. [Báo cáo](../../reports/AGRI-57/README.md). Chưa commit/push.
+
+## Cập nhật lượt130 — Đặt tên task log theo công việc (2026-10-21)
+
+Theo yêu cầu người dùng, đổi tên tệp nhật ký thành `AGRI-57-frontend-ui-and-integration.md`, mô tả phạm vi giao diện và tích hợp frontend thay cho username trong tên tệp. Đây là ngoại lệ đặt tên được người dùng yêu cầu trực tiếp so với mẫu `<member>` trong project rules; không sửa quy tắc chung hoặc lịch sử nội dung. Cập nhật các liên kết từ task-logs README, reports README và hai báo cáo setup hiện có. Kiểm tra đường dẫn mới/tệp cũ/liên kết và whitespace; không chạy lại ứng dụng/tests/build vì chỉ đổi tài liệu. Chưa commit/push.
+
+## Cập nhật lượt129 — 2026-10-21
+
+Thực hiện attachment11case: typed issue policy/IssueNotice, cột trái file/MIME/15MiB/224px; cột phải semantic codes, confidence warning/provisionalTop3 và retry giữ ảnh. Stepper attention, sampleexplicit/fetchabort15s và activebackendplants dialog; giữ APIsuccess/model/global/shared. Test RED20policyUI và3flow trước wiring, full293/29345files03:16:54 (126,52s), branch1163/1773=65,59%>=60%. Sau sửa case-sensitiveasset và CTA320px focused74/7403:23:55, Biome14files/Typecheck/finalbuild/browser11cases×3widths + normalflow6sizes đạt, pageerrors rỗng. [Paths/failures/giới hạn](../../reports/AGRI-57/agri_57_diagnosis_error_states_2026_10_21.md). NhómB chưa được backend/model thật phát code, không chứng nhận detector/OOD. Cập nhật riêng frontendlocalhost3000; chưa CI/thiết bị thật/commit/push.
+
+## Cập nhật lượt128 — 2026-10-21
+
+Gỡ filters mới lượt127 theo yêu cầu: khôi phục search/bộ lọc/bố cục cũ Plants/Diseases/History, xóa state/sort/reset/panel/counter mới và hai test riêng/README của chúng. Giữ header đã xóa và mọi thay đổi khác. Fresh14/14 catalog tests03:03:07 (4,12s), Biome3files/build/browser3routes4sizes đạt; cập nhật riêng frontendlocalhost3000. [Chi tiết](../../reports/AGRI-57/agri_57_catalog_filters_2026_10_21.md). Không full suite/coverage mới, chưa commit/push.
+
+## Cập nhật lượt127 — 2026-10-21
+
+Theo yêu cầu thêm filters cho3trang: Plants số bệnh/tên, Diseases trạng thái/tên, History confidence/sort; panel/reset thống nhất, giữ search/nhóm/callback/data và paging reset. Không shared/global/API/dependency. Tests RED3 trước/GREEN3 sau, full257/25744files02:56:04 (131,24s), branch1089/1688=64,51%>=60%; thêm ca paging saufull focused4/4 lúc02:58:36. Biome/Typecheck/finalbuild/browser3pages6sizes/selected/reset đạt, pageerrors rỗng; xem screenshots và cập nhật riêng frontendlocalhost3000. [Paths/bằng chứng/giới hạn](../../reports/AGRI-57/agri_57_catalog_filters_2026_10_21.md). Không gọi full258, chưa CI/thiết bị thật/commit/push.
+
+## Cập nhật lượt126 — 2026-10-21
+
+Xóa visible header/mô tả/border PlantsPage và DiseasesPage, giữ sr-only h1 và bỏ margin-top bộ lọc. Không shared/global/API. Browser regression RED trước/GREEN sau, lưu tests/browser/catalog; cả hai route4sizes/search/reset đạt. Fresh focused14/14 lúc02:50:40 (3,77s), Biome2files/build đạt, cập nhật riêng frontendlocalhost3000. [Đường dẫn/bằng chứng/giới hạn](../../reports/AGRI-57/agri_57_compact_catalog_headers_2026_10_21.md). Không full suite/coverage/CI mới; chưa commit/push.
+
+## Cập nhật lượt125 — 2026-10-21
+
+Xóa header/mô tả/border trang Chẩn đoán theo ảnh, giữ h1 sr-only và bỏ margin-top Stepper. Cập nhật routing heading/regression component-flow-browser; RED trước/GREEN focused25/25 lúc02:46:45 (6,56s), Biome4files/build/browser6sizes-flow đạt. Cập nhật riêng frontendlocalhost3000, không API/global/shared. [Chi tiết](../../reports/AGRI-57/agri_57_diagnosis_components_2026_10_21.md). Không full suite/coverage mới; chưa commit/push.
+
+## Cập nhật lượt124 — 2026-10-21
+
+Đổi CTA và lời hướng dẫn sang “Phân tích ngay” theo yêu cầu, giữ bước Phân tích AI/logic. Test component/integration/browser cập nhật; focused18/18 lúc02:43:51 (10,65s), Biome4files/build/browser6sizes và flow đạt. Cập nhật riêng frontendlocalhost3000, không shared/global/API. [Chi tiết](../../reports/AGRI-57/agri_57_diagnosis_components_2026_10_21.md). Không full suite/coverage mới, chưa commit/push.
+
+## Cập nhật lượt123 — 2026-10-21
+
+Root cause Stepper luôn ghi ĐANG THỰC HIỆN cho currentStep, dù trang chỉ truyền3 khi success. Sửa local currentStep3 là hoàn tất cả ba, Badge ĐÃ HOÀN TẤT/Check; giữ aria-current3 và reset1 khi xóa ảnh. Component regression RED1 trước/GREEN sau; integration/browser mở rộng kiểm tra completed3/no executing/reset. Full254/25443files lúc02:38:05 (106,41s), Biome3files/build và browser6sizes/error-retry-success-reset/reduced-motion đạt, pageerrors rỗng. [Bằng chứng/giới hạn](../../reports/AGRI-57/agri_57_diagnosis_components_2026_10_21.md). Cập nhật riêng frontendlocalhost3000; không coverage/CI/inference mới, chưa commit/push.
+
+## Cập nhật lượt122 — 2026-10-21
+
+Xây Stepper3 bước theo currentStep và Result Card theo analysisResult/isLoading/error/retry cho DiagnosePage, token/radius/lucide/Card/Badge/Progress hiện có; gradient primary→accent cục bộ theo yêu cầu. Giữ upload/validation/progress/abort/API/animation, hiển thị Top-3 và metadata thật, null có fallback. Không global/shared/backend/dependency. Component RED8 trước/GREEN sau, focused16/16 sau cập nhật CTA cũ, bổ sung2 ca rồi fullcoverage **254/25443files**,02:31:47,123,23s, branch1041/1634=63,70%>=60%; Stepper14/14 và Result21/21 branch100%, DiagnosePage64,93% chưa đạt80%. Typecheck/Biome7files/build và browser6 kích thước/503-retry-201/reset/reduced-motion đạt, pageerrors rỗng. [Đường dẫn, kết quả lỗi ban đầu và giới hạn](../../reports/AGRI-57/agri_57_diagnosis_components_2026_10_21.md). Cập nhật riêng frontendlocalhost3000; chưa real inference/CI/thiết bị thật/commit/push.
+
+## Cập nhật lượt121 — 2026-10-21
+
+Theo yêu cầu tăng card/danh mục cân đối: max-w-7xl/gap6/Card mặc định, ảnh16:9, heading/tên/mô tả lớn hơn; hover/active/focus nhấc4px/bóng200ms, reduced motion tắt. Chỉ HomePlantGuide/testbrowser/README; giữ shared/global CSS/data/navigation. Browser RED trước sửa/GREEN sau cho hover/return/focus/pressed/reduced-motion, geometry ảnh/chữ và4 viewport; browsernavigation6 kích thước đạt. Full244/24441files lúc02:09:04 (104,14s), Biome/build đạt, cập nhật riêng frontendlocalhost3000. [Bằng chứng/giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md). Chưa coverage/CI/thiết bị thật/commit/push.
+
+## Cập nhật lượt120 — 2026-10-21
+
+Đổi card danh mục Home sang ảnh32/9 phủ ngang đầu thẻ, Card sm, tên/khoa học/badge nhóm/số bệnh gọn và footer link. Giữ data/assets/tabs/callback, không shared/global CSS/dependency. Test browser layout mới RED trên container cũ/GREEN sau cập nhật, lưu frontend/tests/browser/home/plant_catalog_layout.py; không coi là test-first source. Full244/24441files lúc02:02:58 (127,25s), Biome/build đạt. Browser4 kích thước layout và6 kích thước/navigation đạt, pageerrors rỗng; xem ảnh desktop/mobile. [Chi tiết/giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md). Chưa coverage/CI/thiết bị thật/commit/push.
+
+## Cập nhật lượt119 — 2026-10-21
+
+Thêm hiệu ứng từng ô lưu ý nhấc4px/bóng khi hover/active và trở về200ms, motion-safe bảo vệ reduced motion; chỉ class HomePlantGuide, không JS/shared/global CSS. Test browser trước sửa RED (sau sửa fixture API), sau sửa GREEN ba thẻ/return/pressed/reduced-motion; lưu đúng frontend/tests/browser/home/photo_tip_motion.py và hướng dẫn README. Focused6/6 lúc01:57:18, full244/24441files lúc01:58:53 (93,27s), Biome/build đạt; cập nhật riêng frontendlocalhost3000. [Bằng chứng/giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md). Chưa coverage/CI/thiết bị thật/commit/push.
+
+## Cập nhật lượt118 — 2026-10-21
+
+Xóa toàn cụm heading/mô tả/selector/CTA theo ảnh người dùng, dọn state/import và margin-top trong HomePlantGuide. Giữ khung lưu ý và danh mục; hai test cập nhật kiểm tra không còn selector và mở cây bằng card. RED trước/GREEN full244/244 lúc01:51:01 (124,02s), Typecheck/Biome/build đạt sau sửa tùy chọn test dư gây build lỗi ban đầu. Browser6 kích thước xác nhận removal/no-overflow/tab/card/navigation, pageerrors rỗng; cập nhật riêng frontendlocalhost3000. [Bằng chứng và giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md). Không coverage/CI mới; chưa commit/push.
+
+## Cập nhật lượt117 — 2026-10-21
+
+Thiết kế cụm lưu ý Home theo mẫu: header camera, badge, divider, ba thẻ01–03 có icon riêng; dùng token hiện có và giữ selector/catalog/navigation. Chỉ sửa HomePlantGuide và hai tệp test liên quan; không global CSS/shared/dependency. Không sao chép98% chưa được kiểm chứng. TDD RED1/GREEN focused6/6 lúc01:46:29 (5,85s), Typecheck/Biome3 tệp/build đạt; Chromium6 kích thước/tabs/selector/card/navigation đạt, pageerrors rỗng. [Chi tiết và giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md). Không full suite/coverage/CI mới; chưa commit/push.
+
+## Cập nhật lượt116 — 2026-10-21
+
+Thêm HomePlantGuide, thay bố cục dướiHome bằng hướng dẫn01–03 và tab/card cây có sẵn; giữ chọn cây/CTA/navigation/hero. Tests mới ở component/home/HomePlantGuide.test.tsx và cập nhật HomePage.test.tsx/tests README. Full244/244 lúc01:25:10 (105,92s), Typecheck/Biome/build và browser6 kích thước/tabs/selector/card navigation đạt. [Đường dẫn, bằng chứng và giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md). Không coverage mới; chưa commit/push.
+
+## Cập nhật lượt115 — 2026-10-21
+
+SeedlingLoadingScreen cho logout chạy2 vòng sóng như login nhưng không thanh tiến trình; giữ lời Tạm biệt/timer4s. Browser RED trước/GREEN sau, reduced motion/return đạt. Focused13/13 lúc01:10:27 (8,64s), Biome/build đạt; [bằng chứng và giới hạn](../../reports/AGRI-57/agri_57_reload_loading_2026_10_20.md). Không full coverage mới; chưa commit/push.
+
+## Cập nhật lượt114 — 2026-10-21
+
+Triển khai SeedlingLoadingScreen ba khối, Agri/AI hai sắc xanh, cây cũ trong circle/sóng, tên động và thanh tải indeterminate accessible/ĐANG TẢI. Giữ4s/logout/error/retry; không global CSS/Provider/backend. Tests RED/GREEN, full241/241 lúc01:02:25 (105,75s); sau chỉnh viewBox focused7/7, Biome/build/browser5 kích thước và contrast/reduced motion đạt. [Đường dẫn, bằng chứng và giới hạn](../../reports/AGRI-57/agri_57_reload_loading_2026_10_20.md). Chưa coverage mới/commit/push.
+
+## Cập nhật lượt113 — 2026-10-21
+
+Sắp lại layout SeedlingLoadingScreen thành cụm logo/tên/lời chào/cây/trạng thái gọn và căn giữa; giữ animation/error/retry/timer4s. Focused13/13 lúc00:52:10 (90,60s), Biome/build và browser320/375/667/1440px đạt; xem screenshot mobile. [Bằng chứng và giới hạn](../../reports/AGRI-57/agri_57_reload_loading_2026_10_20.md). Không full coverage mới; chưa commit/push.
+
+## Cập nhật lượt112 — 2026-10-20
+
+Bỏ userName/heading và copy chuẩn bị trang trong ReloadLoadingScreen, giữ aria-label, animation và UI lỗi. Cập nhật component/integration tests đúng loading status; login/logout4s giữ nguyên. Targeted24/24 lúc20:41:36 (43,37s), Biome/build/browser đạt. [Bằng chứng và giới hạn](../../reports/AGRI-57/agri_57_reload_loading_2026_10_20.md). Không full coverage mới; chưa commit/push.
+
+## Cập nhật lượt111 — 2026-10-20
+
+AppProvider đặt mốc4s cho fresh login và logout; login còn chờ data/entrance, restore không chèn4s, logout xóa phiên ngay rồi về giới thiệu sau thông báo. Thêm App.authTiming.test.tsx và cập nhật startup/admin/logout tests. Focused21/21 lúc20:35:02 (32,72s), Typecheck/Biome/build/browser timing đạt. Full mới241/241 (40 tệp,95,28s lúc20:36:10) đạt; [chi tiết và giới hạn](../../reports/AGRI-57/agri_57_reload_loading_2026_10_20.md). Chưa commit/push.
+
+## Cập nhật lượt110 — 2026-10-20
+
+Thêm outline-none cho main trong AppShell theo yêu cầu bỏ viền mờ reload, giữ focusability/skip link và focus nút/link. Browser RED trước/GREEN sau tại1904/375px. Routing7/7 lúc20:26:34 (2,86s), Biome/build đạt; cập nhật frontendlocalhost3000. [Chi tiết và giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md). Không full coverage mới; chưa commit/push.
+
+## Cập nhật lượt109 — 2026-10-20
+
+Thêm ReloadLoadingScreen theo chuyển động ô vuông trong video, màu semantic project; nối AppSplashScreen/AppProvider với restore+data thực. Giữ loading đăng nhập/thông báo đăng xuất cũ theo yêu cầu bổ sung. Test component/integration viết RED trước/GREEN sau; focused11/11 và Admin2/2, Typecheck/Biome/build/browser đạt. Full đầu235/237; sau sửa2 expectation cũ, fresh full237/237 (39 tệp,85,15s lúc20:21:38) đạt. [Chi tiết đường dẫn, kiểm tra và giới hạn](../../reports/AGRI-57/agri_57_reload_loading_2026_10_20.md). Chưa commit/push.
+
+## Cập nhật lượt108 — 2026-10-20
+
+Chỉ sửa HomeLandingHero cho banner phủ toàn nền hero, bỏ margin/radius, lớp phủ nhạt phía trên giảm dần xuống dưới; giữ CTA trên ảnh và caption tránh bottom navigation mobile. Focused11/11 lúc20:06:05 (8,17s), Biome/build đạt. Browser layout RED trước/GREEN sau,5 kích thước không tràn/chồng CTA-caption. [Bằng chứng và giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md). Không chạy full coverage mới; chưa commit/push.
+
+## Cập nhật lượt107 — 2026-10-20
+
+Log build frontend lỗi vì cropPhotos.ts còn import sầu riêng.jpg trong khi ảnh đã đổi tên sầu riêng banner.jpg. Sửa import và expected asset trong tests/unit/data/bannerData.test.ts, giữ ảnh người dùng. Fresh targeted24/24 lúc20:00:06 (26,54s), Biome/build đạt; cập nhật riêng frontendlocalhost3000. [Chi tiết và giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md). Chưa full coverage/commit/push.
+
+## Cập nhật lượt106 — 2026-10-20
+
+Bỏ nút Pause/Play trong HomeBannerSlideshow và khoảng caption chừa cho nút ở HomeLandingHero; cập nhật test và README tests. Giữ tự chuyển14 banner/loading/reduced motion/visibility. Focused11/11 lúc19:54:12 (14,06s), Biome/build đạt. [Bằng chứng và giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md). Không chạy full coverage mới; chưa commit/push.
+
+## Cập nhật lượt105 — 2026-10-20
+
+Thêm HomeBannerSlideshow, đưa đủ14 banner có sẵn vào khung lớn Home, chuyển sau khi ảnh kế tải xong với crossfade; hỗ trợ tạm dừng/tiếp tục, reduced motion, hidden tab và cleanup. Tests ở frontend/tests/component/home/HomeBannerSlideshow.test.tsx, cập nhật tests README. Full233/233 lúc19:46:56 (104,74s), Typecheck/Biome/build và Chromium desktop/mobile/rotation/pause đạt. [Bằng chứng, đường dẫn và giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md). Chưa chạy coverage mới/CI/thiết bị thật; chưa commit/push.
+
+## Cập nhật lượt104 — 2026-10-20
+
+Đổi figure HomeLandingHero sang rounded-b-media, bỏ bo góc trên/giữ góc dưới. Build/Biome và Chromium320/375/768/1904px đạt (radius0/0/20/20px). Vitest forks không kết thúc, đã dừng/thử threads: fresh6/6 đạt,27,01s lúc19:40:00. [Bằng chứng và giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md). Chưa commit/push.
+
+## Cập nhật lượt103 — 2026-10-20
+
+Thu sát vùng HomeLandingHero thêm bằng padding và viewBox nhỏ hơn, bỏ margin CTA. Focused6/6 lúc16:55:38 (2,79s), Biome/build đạt; Chromium4 kích thước không tràn/cắt chữ. Banner desktop lên47,59px. [Chi tiết và giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md). Không chạy lại full coverage cho spacing; chưa commit/push.
+
+## Cập nhật lượt102 — 2026-10-20
+
+Giảm padding trên, khoảng cách hai dòng chữ và khoảng trống SVG trong HomeLandingHero để vùng đầu gọn hơn; banner desktop lên thêm63,20px. Focused6/6 lúc16:52:50 (2,66s), Biome/build đạt; Chromium4 kích thước không tràn/cắt dấu. [Bằng chứng và giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md). Không chạy lại full coverage cho spacing; chưa commit/push.
+
+## Cập nhật lượt101 — 2026-10-20
+
+Sửa spacing trong HomeLandingHero để CTA lên16px và banner lên/cao thêm32px ở desktop. Focused6/6 test lúc16:47:54 (2,52s), Biome/build đạt; Chromium so trước/sau và kiểm tra4 kích thước đạt. [Báo cáo và giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md). Không chạy lại full coverage cho spacing; chưa commit/push.
+
+## Cập nhật lượt100 — 2026-10-20
+
+Uốn hai dòng tiêu đề Home thành vòng cung trong HomeLandingHero bằng SVG textPath, giữ màu/font và nội dung heading truy cập được. Thêm test tại tests/component/home/HomeLandingHero.test.tsx: RED trước/GREEN sau, focused6/6 lúc16:43:42 (2,84s). Typecheck/Biome/build đạt; Chromium320/375/768/1904px xác nhận chữ không bị cắt/tràn. Chi tiết và giới hạn tại [báo cáo landing](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md). Không chạy lại full coverage; chưa commit/push.
+
+## Cập nhật lượt99 — 2026-10-20
+
+Bỏ ba dấu chấm cuối heading/caption trong HomeLandingHero theo yêu cầu; cập nhật kỳ vọng hai tệp test Home. Focused Vitest lúc16:38:20 đạt5/5 (2,42s), Biome3 tệp đạt; Docker production build đạt. Không chạy lại full coverage cho dấu câu. Chi tiết đường dẫn và bằng chứng tại [báo cáo landing](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md). Chưa commit/push.
+
 - **Owner:** trunthong09012005
 - **Completion date (baseline demo):** 2026-09-28
-- **Last documentation update:** 2026-10-12
+- **Last documentation update:** 2026-10-20
 - **Branch:** `AGRI-57-frontend-summary`
 - **Pull request:** Chưa tạo
 
 Các mục 1–5 giữ kết quả baseline ngày2026-09-28; mục6–63 ghi lịch sử triển khai và kiểm chứng từng lượt đến2026-10-12. Mục64 ghi lượt tổng hợp tài liệu. Hiện trạng và phần còn lại ở [report tổng hợp](../../reports/AGRI-57/frontend_implementation_report.md#tổng-hợp-hiện-trạng-ngày-2026-10-12). Không coi test lịch sử là lần kiểm chứng mới, không suy diễn nghiệm thu production/E2E hoặc tự chuyển Jira sang Done.
+
+## 98. Bỏ khung kép của logo ngày 2026-10-20
+
+- Dùng built-in image_gen tách nền ảnh lá, lưu `frontend/public/images/agriai-leaf-mark.png`, SHA C5F1AA16386B9833AC9C1304525C992693BDF18E9CC50A1B869243417B5D9083. Prompt/nguồn/giới hạn trong [report](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md#hiện-trạng-lượt98--logo-lá-trong-suốt-bỏ-khung-kép). Navbar bỏ nền xanh/bo tròn/padding logo, giữ link/fallback/focus; đổi7 URLlogo đồng bộ, không sửa global/design hoặc business logic.
+- Navbar test RED/GREEN; cập nhật expected logo Intro/Login/Loading. Fresh23/23targeted tests/6 tệp/7,62s lúc16:30:19, typecheck/lint170/Biome/build compile5,3s/TypeScript2,2s đạt. Lần đầu1 test Loading còn basename cũ, sửa expected rồi đạt; không chạy full coverage lại, full227 lượt97 là lịch sử.
+- Browser fixture xác nhận4 góc alpha0/có pixel lá, wrapperbackground trong suốt/border-radius-padding0; đã xem crop logo thực tế không viền kép.8 kích thước/reflow200%/bannerheight/CTA/page errors đạt. Cập nhật riêng frontendlocalhost3000; chưa commit/push/CI/Safari/thiết bị thật/backend E2E.
+
+## 97. URL logo lá riêng ngày 2026-10-20
+
+- Người dùng còn thấy logo cũ, thêm public/images/agriai-leaf-logo.png đúng PNG lá và đổi7 reference logo sang URL mới; logo.png giữ alias. Cache cùng URL là khả năng, không khẳng định đọc được cache phiên người dùng. Source shared chỉ đổi URL theo yêu cầu logo, không sửa styles/design/global/behavior.
+- Navbar test thêm kỳ vọng URL mới RED/GREEN, cập nhật kỳ vọng Intro/Login. Fresh227/227full/37 tệp/65,91s lúc16:17:11; branch968/1542=62,77%, typecheck/lint170/Biome/build compile5,3s/TypeScript1213ms đạt.
+- Browser fixture xác nhận queryURL mới trong Navbar và rawfile hash đúng PNG lá; bannerfullheight8 kích thước/200%/CTA/page errors đạt.5 tệp protected chỉ đổiURL sau normalize hashtrùng, Intro chỉ đổiURL. Cập nhật riêng frontendlocalhost3000. [Report](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md#hiện-trạng-lượt97--url-logo-lá-riêng-để-tránh-ảnh-cũ-trong-cache). Chưa commit/push/CI/Safari/thiết bị thật/backend E2E.
+
+## 96. Banner kéo hết màn hình đầu ngày 2026-10-20
+
+- Chỉ sửa HomeLandingHero sectionmin-height theo viewport trừ navbar6rem và figureflex1/minh72; bỏ48svh/maxheight. Ảnh lấp chiều cao còn lại, không che/hủy section sau, vẫn cuộn được; không sửa shared/global/design.
+- Fresh5/5focused tests/2 tệp/2,93s lúc16:08:32, Biome/build compile4,7s/TypeScript946ms đạt. Không chạy full coverage lại; lượt94 là lịch sử. Browser height assertion RED bản trước1904×947 (bottom872,55), GREEN bản mới ở8 kích thước320–1920/landscape; CTA/logo/reflow200% không tràn ngang/page errors rỗng. Đã xem ảnh1904.
+- Cập nhật riêng frontendlocalhost3000. [Report](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md#hiện-trạng-lượt96--banner-phủ-hết-màn-hình-đầu). Chưa commit/push/CI/Safari/thiết bị thật/backend E2E.
+
+## 95. Xóa dòng phụ và thay logo lá ngày 2026-10-20
+
+- Xóa3 dòng phụ được đánh dấu trong HomeLandingHero, giữ title/CTA/caption trái; test sửa RED/GREEN. Thay nguyên byte public/images/logo.png bằng ảnh lá người dùng gửi, hash FE012E9ACF126B402953AC271FD8E1ABC801387BF1A1B969C981FD8362479237 trùng nguồn. Asset chung cập nhật logo ở Navbar/Intro/login/loading/admin/fallback catalog; không sửa source/behavior của chúng hoặc global/design.
+- Fresh23/23targeted tests/6 tệp/6,70s lúc16:03:02 (Home/Navbar/Login/Loading/Intro); typecheck/lint170/Biome/build compile6,2s/TypeScript888ms đạt. Không chạy lại full coverage;227/227 lượt94 là lịch sử.
+- Browser fixture rawlogo hash đúng/header tải thật,3 dòng không còn;7 kích thước/200% không tràn ngang/CTA đúng/page errors rỗng.49 tệp bảo vệ source không đổi; cập nhật riêng frontendlocalhost3000. [Report và phạm vi](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md#hiện-trạng-lượt95--xóa-ba-dòng-phụ-và-thay-logo-lá-do-người-dùng-gửi). Chưa commit/push/CI/Safari/thiết bị thật/backend E2E.
+
+## 94. Thay hero Home theo ảnh tham khảo ngày 2026-10-20
+
+- Theo yêu cầu xóa hiệu ứng landing cũ, thêm HomeLandingHero: tiêu đề lớn/CTA giữa, ảnh đồi chè rộng bên dưới, semantic theme/font/ảnh có sẵn. HomePage giữ hướng dẫn chụp/chọn cây, CTA và shared navigation. Không đổi Intro/global/shared/design/dependency/backend.
+- Xóa5 component HomeMotionHero/HomePhotoPreview/HomePointerTrail/HomeWatermark/HomeBannerFoliage và5 test file (36 test của chức năng đã gỡ), giữ lịch sử report. Thêm2 test hero mới tại `tests/component/home/HomeLandingHero.test.tsx`, sửa HomePage.test.tsx đúng bố cục mới. RED trước/GREEN sau; không hạ gate/exclusion.
+- Fresh227/227full/37 tệp/54,19s lúc15:47:51; branch968/1542=62,77%. Typecheck/lint170/Biome/build compile5,4s/TypeScript1425ms đạt;11 trang tĩnh/hai route động. Hero không có nhánh; HomePage50% chưa target80%, không suy diễn toàn frontend đạt80%.
+- Chromium fixture7 kích thước320–1920/landscape và chữ200% không tràn ngang; ảnh tải đúng, heading giữa, CTA `/diagnose`/`diseases` đạt, không còn DOM hiệu ứng cũ/page errors. Đã xem desktop/mobile/200%.49 tệp bảo vệ SHA giữ nguyên, Intro khớp snapshot; cập nhật riêng frontendlocalhost3000. [Report và giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md#hiện-trạng-lượt94--thay-toàn-bộ-hero-home-theo-bố-cục-ảnh-tham-khảo). Chưa commit/push/CI/Safari/thiết bị thật/backend E2E. Các lượt sau là lịch sử đã được thay thế.
+
+## 93. Cây động trên banner Home ngày 2026-10-20
+
+- Thêm HomeBannerFoliage, gắn đúng5 cây vào rail và preview qua cropId; lúa thêm2 lá trôi. Reuse artwork/token sẵn có, aria-hidden/inert/pointer-events-none; không sửa shared/global/design/dependency. Sway hai chiều, pause theo gallery/offscreen/hidden, reduced motion tĩnh; cleanup/lỗi artwork xử lý riêng.
+- 8 ca mới tại `tests/component/home/HomeBannerFoliage.test.tsx`:5 loạiasset/pause/reduced-error/offscreen-hidden-cleanup. Fresh full261/261test/41 tệp/78,88s lúc15:15:24; branch1112/1787=62,22%, component23/24=95,83%, giữ gate. Sau full ổn định2 test flip cũ bằng seek timeline thay poll peak ngắn; focused39/39/6 tệp/7,22s lúc15:19:24 đạt, không chạy full lại cho sửa test này. Typecheck/lint178/Biome/build compile10,2s/TypeScript3,6s đạt.
+- Browser fixture xác nhận5 cây/2 lá tải thật/chuyển động/Spacepause, preview1 lớp cây, hồi quy mở-đóng/flip/drag/responsive/reduced/vệt chấm/autoplay-focus đạt, page errors rỗng; screenshot đã xem.49 tệp bảo vệ không đổi, cập nhật riêng frontendlocalhost3000. [Report và giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md#hiện-trạng-lượt93--khôi-phục-cây-động-trên-ảnh-banner-home). Chưa commit/push/CI/Safari/thiết bị thật/FPS/backend E2E.
+
+## 92. Tăng độ biến dạng chữ ngày 2026-10-20
+
+- Chỉ chỉnh HomeWatermark: uốnY nhân3, giãn tối đa52% thay16%, radius12 lần token thay9, phản hồi65% thời lượng cũ. Giữ màu/font/cleanup/media gates/shared/global/design.
+- Nâng kỳ vọng test đúng `tests/component/home/HomeWatermark.test.tsx` về scale>1,3/dịchY>20px; RED mức cũ/GREEN mức mới. Fresh31/31focused tests/5 tệp/5,82s lúc15:07:05, typecheck/lint176/Biome/build compile4,0s/TypeScript849ms đạt. Không chạy lại full coverage; full253 lượt91 là lịch sử.
+- Browser fixture đo stretch1,4544/lát xa1, rời phục hồi/reduced motion đứng yên; screenshot đã xem/page errors rỗng. Cập nhật frontendlocalhost3000. [Report](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md#hiện-trạng-lượt92--tăng-cường-độ-biến-dạng-chữ). Chưa commit/push/CI/Safari/thiết bị thật/FPS.
+
+## 91. Chữ nền AgriAI biến dạng theo chuột ngày 2026-10-20
+
+- Thêm HomeWatermark và gắn trong HomeMotionHero:48 lát chữ uốn/giãn Y cục bộ bằng GSAP quickTo quanh con trỏ, rời rail phục hồi. Giữ font/màu/cỡ/drift/vệt chấm; reduced/coarse/touch không biến dạng. Trang trí aria-hidden/pointer-events-none, cleanup matchMedia/listeners; không sửa shared/global/design/dependency.
+- Thêm3 test đúng `tests/component/home/HomeWatermark.test.tsx`, RED trước/GREEN sau. Fresh253/253full/40 tệp/54,37s lúc14:58:53; branch1085/1759=61,68%, watermark13/15=86,66%; typecheck/lint176/Biome đạt. Sửa khoảng hiển thị đuôi g sau xem screenshot, chạy lại3/3focused tests/final build/browser; không ghi full253 thành kết quả sau style cuối.
+- Chromium fixture đo biến dạng gần/xa và phục hồi/reduced motion; đã xem ảnh distorted/restored. Hồi quy thao tác ảnh/vệt chấm/flip/responsive trước style cuối đạt, kiểm tra chữ sau style đạt; page errors rỗng.49 tệp bảo vệ không đổi, chỉ cập nhật frontendlocalhost3000. [Report và giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md#hiện-trạng-lượt91--chữ-agriai-biến-dạng-cục-bộ-theo-chuột). Chưa commit/push/CI/Safari/thiết bị thật/FPS/backend E2E.
+
+## 90. Vệt chấm nền theo chuột ngày 2026-10-20
+
+- Đọc video144207, thêm HomePointerTrail và gắn dưới ảnh/chữ Home. Canvas dùng foreground10%/nền cũ; vệt chấm tự tan850ms, tối đa24 mẫu/DPR1,5, chỉ vẽ khi cần. Không chặn pointer, tắt khi reduced/coarse/touch; cleanup frame/observer/listeners và xóa khi hidden/resize/media change. Không sửa shared/global/design/dependency.
+- Test riêng đúng `tests/component/home/HomePointerTrail.test.tsx`: vẽ/tan/dừng frame, preferences/touch, media change, hidden, unmount, missing context, pointer bursts. Test phát hiện listener sai host sau thêm inert wrapper; đã sửa rồi chạy lại. Static/build compile5,0s/TypeScript1314ms đạt; [kết quả full mới nhất](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md#hiện-trạng-lượt90--vệt-chấm-nền-theo-con-trỏ).
+- Fresh final full250/250test/39 tệp/47,67s bắt đầu14:52:46; branch1072/1744=61,46% toàn frontend, trail26/28=92,85%.8 test mới, không chỉnh gate/exclusion. Các lần245/247/249 trong lượt là lịch sử, không thay bằng chứng final250.
+- Browser fixture kiểm tra pixel có vệt rồi về0, reduced/touch không vẽ, screenshot đã xem; hồi quy mở/đóng/flip/drag/responsive/autoplay-focus đạt, page errors rỗng.49 tệp bảo vệ không đổi; cập nhật riêng frontendlocalhost3000. Chưa commit/push/CI/Safari/thiết bị thật/FPS/backend E2E.
+
+## 89. Đồng bộ nền Home ngày 2026-10-20
+
+- Đổi riêng nền HomeMotionHero từ surface sang background giống AppShell, không sửa shared/global/design. Giữ ảnh/hiệu ứng/chức năng.
+- Fresh20/20focused tests/3 tệp/5,26s lúc14:39:51, Biome/build compile5,2s/TypeScript2,5s đạt. Sửa test reduced motion kiểm tra tween duration0 rồi chờ React unmount, tránh giả định GSAP callback đồng bộ; lần đầu1 test flaky, sau sửa đạt. Không chạy lại full coverage.
+- Chromium fixture đo cả hai nền rgb244/242/234 ở1920/375px, screenshot desktop đã xem/page errors rỗng; chỉ recreate frontendlocalhost3000. [Report](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md#hiện-trạng-lượt89--đồng-bộ-màu-nền-home-với-khung-trang). Chưa commit/push/CI/Safari/thiết bị thật.
+
+## 88. Lật ngang nhẹ khi thu ảnh ngày 2026-10-20
+
+- Sửa HomePhotoPreview: exit có nhịp nghiêng ngang nhẹ rồi khớp góc nguồn khi thu, đối ứng entrance/cùng token hiện có; giữ các cách đóng/reduced motion/cleanup/autoplay. Không sửa shared/global/design/dependency.
+- Thêm2 test trong `tests/component/home/HomePhotoPreview.test.tsx`: rotationY của exit sau entrance hoàn tất/phục hồi source và reduced motion đóng ngay. Điều chỉnh test tránh bắt nhầm entrance; RED trước/GREEN sau triển khai exit. Fresh20/20targeted tests/3 tệp/5,36s lúc14:33:22; typecheck/lint172 tệp/format/build compile4,4s/TypeScript960ms đạt. Không chạy full coverage lại; lượt84 là lịch sử.
+- Chromium fixture xác nhận exit nghiêng ngang, trả về dải; đã xem ảnh giữa exit. Hồi quy mở/đóng/drag/responsive/reduced motion/focus/autoplay đạt, page errors rỗng;49 tệp bảo vệ không đổi. Cập nhật riêng frontendlocalhost3000. [Report và giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md#hiện-trạng-lượt88--lật-ngang-nhẹ-khi-thu-ảnh). Chưa commit/push/CI/Safari/thiết bị thật/FPS/backend E2E.
+
+## 87. Lật chéo nhẹ khi mở ảnh ngày 2026-10-20
+
+- Xem video142448 (8,23s) và sửa riêng HomePhotoPreview: timeline nghiêng phối cảnh X/Y/Z nhẹ khi phóng ảnh, sau đó trở phẳng; chiều theo nguồn, biên độ dùng token drift hiện có. Đóng giữa entrance resetX; reduced motion không tilt. Không sửa shared/global/design/dependency.
+- Thêm2 test trong `tests/component/home/HomePhotoPreview.test.tsx` về tilt/settle và reduced motion; RED trước/GREEN sau. Fresh18/18focused tests/3 tệp/3,94s lúc14:28:41; typecheck/lint172 tệp/format/build compile3,8s/TypeScript730ms đạt. Không chạy lại full coverage; kết quả lượt84 là lịch sử.
+- Chromium fixture đo tilt X/Y rồi matrix trở phẳng, screenshot flight đã xem; hồi quy mở/đóng/drag/responsive/reduced motion/focus/autoplay đạt, page errors rỗng.49 tệp bảo vệ không đổi; chỉ recreate frontendlocalhost3000. [Report và giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md#hiện-trạng-lượt87--lật-chéo-nhẹ-khi-mở-ảnh). Chưa commit/push/CI/Safari/thiết bị thật/FPS/backend E2E.
+
+## 86. Bấm ảnh lớn để thu về dải ngày 2026-10-20
+
+- Sửa riêng HomePhotoPreview: ảnh lớn là native button đóng với tên trợ năng/focus-visible/cursor zoom-out; X là sibling. Tái sử dụng luồng thu về hiện tại, giữ Escape/bấm nền/autoplay. Không đổi shared/global/design/dependency.
+- Thêm2 ca click ảnh phục hồi source trong `tests/component/home/HomePhotoPreview.test.tsx`, motion thường/reduced; RED trước/GREEN sau. Fresh16/16test/3 tệp/3,86s lúc14:21:22, typecheck/lint172 tệp/format đạt; build compile5,1s/TypeScript948ms đạt. Không chạy lại full coverage cho handler nhỏ; kết quả full lượt84 là lịch sử.
+- Browser fixture desktop1920/mobile375 và reduced motion click đóng đạt; hồi quy mở/Escape/X/bấm nền/drag/return/focus/autoplay/responsive đạt, page errors rỗng. Cập nhật riêng frontendlocalhost3000. [Report và giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md#hiện-trạng-lượt86--bấm-lại-ảnh-lớn-để-thu-về-dải). Chưa commit/push/CI hoặc chứng nhận thiết bị thật/Safari/FPS/backend E2E.
+
+## 85. Phân loại test component Home ngày 2026-10-20
+
+- Chuyển HomeMotionHero.test.tsx và HomePhotoPreview.test.tsx vào `frontend/tests/component/home/`; Hero test render trực tiếp component. Ca nội dung Home chuyển vào `tests/component/views/HomePage.test.tsx`, không bỏ test. Cập nhật cây thư mục trong tests/README.md; không đổi production source/discovery.
+- Fresh targeted14/14test/3 tệp/4,21s bắt đầu14:15:21; typecheck/Biome check/format đạt. Không chạy lại full coverage/build vì chỉ sắp xếp test; số236/236 lượt84 là lịch sử. [Report](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md#hiện-trạng-lượt85--đặt-test-đúng-nhóm-component). Chưa commit/push.
+
+## 84. Mở và thu ảnh về dải theo video ngày 2026-10-20
+
+- Người dùng xác nhận mở ảnh lớn/nền mờ và đóng về dải. Sửa HomeMotionHero, thêm HomePhotoPreview, dùng shared DialogContent/Button nguyên trạng và GSAP/token có sẵn. Click/Enter mở; X/Escape/bấm nền thu về; modal tạm dừng dải, trả focus/autoplay sau đóng. Giữ drag-thu nhỏ, phân biệt drag/hold với click; responsive/reduced motion/cleanup.
+- Thêm9 test trong HomeMotionHero.test.tsx và HomePhotoPreview.test.tsx. Test cleanup phát hiện source còn ẩn khi unmount, đã sửa và chạy GREEN. Full236/236test/38 tệp/72,77s bắt đầu14:09:24; branch1038/1706=60,84%, preview46/49=93,87%. Lần đầu coverage58,81% bị gate chặn; thêm ca lifecycle/edge rồi đạt, không chỉnh gate. Hero còn dưới target80% unit branch.
+- Typecheck/lint172 tệp/format4 tệp/build compile5,2s/TypeScript1124ms đạt. Chromium fixture kiểm tra click/keyboard/outside/X, return transition, focus/autoplay, interruption, drag không mở, responsive375/320/667landscape, reduced motion đạt; hồi quy chuột/touch drag đạt, page errors rỗng. Bỏ assert sleep cố định trong script, chờ trạng thái transform thực tế rồi chạy lại đạt.
+- Giữ49 tệp bảo vệ/Intro; chỉ cập nhật frontendlocalhost3000. [Report và giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md#hiện-trạng-lượt84--mở-và-thu-ảnh-về-dải-theo-video). Chưa commit/push/PR/Jira/CI, chưa xác minh Safari/thiết bị thật/FPS/backend E2E.
+
+## 83. Kéo giữ ảnh thu nhỏ và bỏ cụm điều khiển ngày 2026-10-20
+
+- Theo screenshot/yêu cầu: gỡ số đếm/các nút nhìn thấy, giữ vùng ảnh focus được và hướng dẫn/status sr-only. Chuột/touch giữ thu nhỏ60%, drag đi theo con trỏ; thả/cancel/lost capture/blur trả size và tiếp tục autoplay. Capture ngoài khung, touch-pan-y bảo toàn cuộn dọc; reduced motion chỉ drag không shrink/auto. Giữ keyboard trái/phải/Space và focus-visible bằng pattern CropFilmStrip, không tắt lint rule chung.
+- Chỉ sửa HomeMotionHero và test liên quan; giữ49 tệp bảo vệ/Intro/Home copy/backend/dependency. TDD3/3 RED, focused5/5 GREEN; full227/227tests/37 tệp/49.76s, branch985/1635=60.24%>=floor60%, chưa target80% mỗi component. Fresh typecheck/lint170 tệp/format2 tệp và final build compile4.4s/TypeScript762ms đạt.
+- Browser fixture: hold scale~59%, auto dừng lúc giữ, kéo đúng chiều/thả size phục hồi-auto chạy; release ngoài khung/blur/Space/reduced motion đạt. CDP mobile375px kéo ngang và cuộn dọc/cancel đúng, không overflow/page errors; đã xem ảnhheld/moved/mobile. Sửa focus khi mouse drag rồi chạy lại build/static/browser; không chạy lại full suite cho một dòng focus đó.
+- [Report và giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md#hiện-trạng-lượt83--kéo-giữ-thu-nhỏ-ảnh-bỏ-cụm-điều-khiển). Chỉ recreate frontendlocalhost3000; chưa commit/push/PR/Jira/CI hoặc chứng nhận Safari/touch thật/FPS/backend E2E.
+
+## 82. Thêm tên thương hiệu lớn sau ảnh ngày 2026-10-20
+
+- Theo yêu cầu, chỉ sửa HomeMotionHero: chữAgriAI lớn26vw/font hiện có/foreground10%, nền surface sáng; nằm dưới ảnh, aria-hidden/pointer-events-none/absolute. Trôi nhẹ theo phase autoplay/pointer, dừng cùng pause/offscreen/ẩn tab và đứng yên khi reduced motion; giữ copy góc trái dưới/chức năng và token/shared/global/Intro.
+- Fresh5/5 focused Home tests/2 tệp/22.74s, typecheck/lint170 tệp/format/build compile4.7s/TypeScript1107ms đạt. Không chạy lại full suite vì chỉ thêm lớp trang trí;227tests lượt81 là lịch sử.
+- Browser fixture: watermark dưới ảnh/không chặn thao tác, auto/pause/reduced motion,1440/375/320 không tràn ngang, page errors rỗng; đã xem desktop/mobile.49 tệp bảo vệ không đổi; chỉ recreate frontend localhost3000. [Report/evidence](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md#hiện-trạng-lượt82--chữ-thương-hiệu-lớn-phía-sau-ảnh). Chưa commit/push/PR/Jira/CI hoặc chứng nhận thiết bị thật/FPS.
+
+## 81. Phóng ảnh Home tự chạy và thu chữ xuống góc trái dưới ngày 2026-10-20
+
+- Theo screenshot/yêu cầu mới: mở hero toàn chiều ngang, ảnh34vw desktop tự trôi nối vòng; khối tiêu đề/mô tả/CTA thu gọn góc trái dưới. Mobile giữ luồng ảnh rồi copy, controls riêng không đè ảnh. Chỉ sửa component Home mới, Home hero và test; giữ chức năng cũ, Intro và49 tệp Design System/global/shared/providers/services.
+- GSAP phase32.5s/vòng từ token6.5s/ảnh, modulo ngoài clip, quickSetter không tạo tween mỗi frame. Pause/resume, phím, reduced motion, offscreen/tab-hidden pause và cleanup observers/listeners/tween. Không thêm dependency/backend/loading delay.
+- TDD pause control RED/GREEN; focused5/5, full227/227tests/37 tệp/48s, branch983/1589=61.86%>=floor60%. Chưa đạt target80% mỗi component. Final typecheck/lint170 tệp/format3 tệp/build compile4.4s/TypeScript852ms đạt; chỉ recreate frontend localhost3000.
+- Browser fixture: không input vẫn chuyển, pause/resume,34s/208 mẫu không nhảy lớn khi ảnh còn hiện, desktop1920 toàn khung/copy góc trái dưới; responsive320–1440/chữ200%/offscreen/reduced/keyboard đạt; page errors rỗng. Không chứng nhận FPS/CI/auth/backend E2E/thiết bị thật. [Report và bằng chứng](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md#hiện-trạng-lượt81--ảnh-toàn-khung-tự-chạy-chữ-nhỏ-góc-trái-dưới). Chưa commit/push/PR/Jira.
+
+## 80. Giữ nội dung Home, chỉ làm hiệu ứng ảnh ngày 2026-10-20
+
+- Người dùng làm rõ chỉ cần hiệu ứng website mẫu. Mở browser trực tiếp HTTP200, quan sát dải ảnh dịch theo chuột/nghiêng/chiều sâu và khi cuộn; DOM có canvas. Không lấy asset/code reference hoặc tuyên bố shader giống hệt.
+- Gỡ bốn component landing và showcase test tự thêm; phục hồi nội dung Home/Home test ban đầu. Home chỉ đổi import/wrapper hero sang `components/home/HomeMotionHero.tsx`: ảnh cây trồng có sẵn, quickTo transform/scaleX/Y/rotation/perspective, parallax nhẹ, controls/bàn phím, reduced motion và cleanup. Giữ các chức năng cũ, Intro và49 tệp bảo vệ; không đổi Design System/global/shared/backend/dependency.
+- TDD hai test RED trước rail, GREEN sau; full226/226 tests/37 tệp/72.44s, branch977/1576=61.99%>=floor60%. Sau sửa semantic/scale chạy focused Home/Intro; fresh typecheck/lint170 tệp/format đạt, final build compile4.3s/TypeScript893ms đạt. Browser regression bắt alias scale, đã sửa scaleX/Y và giữ kiểm tra depth.
+- Chỉ recreate frontend localhost3000, browser dùng phiên/API fixture. [Bằng chứng và giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md#hiện-trạng-lượt80--chỉ-áp-dụng-hiệu-ứng-ảnh-vào-home). Chưa commit/push/PR/Jira; chưa đạt target80% mỗi component hoặc chứng nhận CI/FPS/thiết bị thật/backend E2E.
+
+## 79. Chuyển trải nghiệm sang đúng Home ngày 2026-10-20
+
+- Người dùng xác nhận yêu cầu cho Home sau đăng nhập, không phải Intro. Chuyển composition/GSAP sang `HomePage.tsx`, tái sử dụng bốn component mới của lượt78; CTA hero/showcase/preview mở chức năng thật trong ứng dụng. Giữ photo tips, bộ chọn cây/callback và AppShell/navbar/footer/mobile navigation hiện có.
+- Khôi phục `IntroPage.tsx` khớp byte bản lưu trước lượt78 và hoàn nguyên riêng Intro test của lượt78; giữ responsive/map/dải phim từ trước. Không thay Design System/global CSS/shared components, providers/services hoặc backend; SHA49 tệp bảo vệ không đổi.
+- Home regression RED khi thiếu showcase, GREEN sau chuyển; focused9/9 đạt. Fresh full227/227 tests/37 tệp/72.40s, branch986/1585=62.20%>=floor60%; Home branch36%, chưa đạt target80% mỗi component. Typecheck/lint173 tệp/format8 tệp và build compile5.4s/TypeScript1043ms đạt; cập nhật riêng frontend localhost3000.
+- Chromium Home bốn cấu hình320–1440px, chữ200%, reduced motion, Enter, slide/map/source tab mới và bốn CTA route thực đạt; Intro có hero map gốc và không có showcase mới. Page errors rỗng, đã xem ảnh desktop/mobile/showcase/Intro. Browser dùng phiên/API fixture, chưa xác minh đăng nhập thật/backend E2E/CI/thiết bị thật/FPS.
+- [Báo cáo sửa phạm vi và giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md#hiện-trạng-lượt79--chuyển-sang-home-theo-yêu-cầu-sửa-phạm-vi). Chưa commit/push/PR/Jira Done. Lượt78 bên dưới là lịch sử triển khai nhầm đích, đã sửa ở lượt này.
+
+## 78. Landing tương tác ngày 2026-10-20
+
+- Người dùng yêu cầu tiếp tục brief premium landing và giới hạn sửa landing/component mới; mọi Design System/global CSS/shared change cần duyệt trước. Audit nhánh, source, rules/skills/design và website tham khảo; chỉ sửa `IntroPage.tsx`, tạo bốn component trong `components/landing/`, sửa/thêm hai test landing và tài liệu liên quan.
+- Hero ảnh cây trồng, ba feature slide lớn có sticky desktop/native mobile, điều hướng trực tiếp/trước/sau, GSAP scope/cleanup/reduced motion; công nghệ phân loại, map/dải phim gốc và preview `DiagnosePage` chỉ đọc. Giữ luồng CTA; không thêm tính năng giả, dependency, asset hoặc backend. Không sửa shared loading; SHA49 tệp bảo vệ không đổi so với đầu lượt.
+- Hai showcase test RED trước triển khai, GREEN sau triển khai. Fresh typecheck/lint173 tệp/format7 tệp đạt. Production build compile4.1s/TypeScript843ms đạt; cập nhật riêng frontend localhost3000 với `--no-deps`.
+- Sau sửa responsive cuối, full coverage226/226 tests/37 tệp/109.17s đạt; branch982/1569=62.58% vượt floor60% giữ nguyên. FeatureShowcase50%, IntroPage34.78% branch, chưa đạt target80% mỗi component; nhánh animation kiểm chứng thêm bằng browser, không quy đổi thành unit coverage.
+- Chromium sáu cấu hình320–1440px, ngang, chữ200%, reduced motion đạt; slide/current step, Enter, thoát vùng sticky, anchor, map/source tab mới và dialog auth đạt; không page errors. Sửa preview containing block gây tràn và header/CTA wrap ngay tại landing, không đổi shared component.
+- [Report và giới hạn](../../reports/AGRI-57/agri_57_interactive_landing_2026_10_20.md). Chưa chứng nhận Safari/thiết bị thật/FPS/Core Web Vitals/CI/backend E2E; chưa commit/push/PR/Jira Done. Các kết quả lịch sử dưới đây giữ nguyên.
+
+## 77. Lời tạm biệt khi đăng xuất ngày 2026-10-20
+
+- Người dùng yêu cầu đăng nhập xin chào, đăng xuất tạm biệt. Sửa `SeedlingLoadingScreen.tsx` thêm mode logout với tên từ phiên vừa đăng nhập, HẸN GẶP LẠI/aria-busy false, bỏ recovery timer cho trạng thái đã hoàn tất; giữ animation/màu.
+- `AppProvider.tsx` xóa phiên và private content ngay, giữ tên tạm biệt trong bộ nhớ, chặn welcome fallback khi điều hướng và dọn màn hình sau1200ms khi route giới thiệu sẵn sàng; timer có cleanup. Không đổi backend/dependency/admin flow.
+- Thêm hai component test và `App.logout.test.tsx` với hai integration test. Trước sửa3/9 fail, sau sửa9/9 đạt; full224/224,36 tệp,66.07s, branch969/1542=62.84%. Typecheck/lint168 tệp/format4 tệp/build đạt (compile4.9s, TypeScript1572ms).
+- Browser1280px/375px normal và375px reduced: tên đúng, storage được xóa ngay, không hiện xin chào trong logout, về giới thiệu và không page errors. Đã xem screenshot mobile. [Report và giới hạn](../../reports/AGRI-57/agri_57_seedling_video_loading_2026_10_20.md#bổ-sung-lời-tạm-biệt-khi-đăng-xuất). Chỉ cập nhật frontend localhost3000; chưa commit/push/PR/Jira, chưa kiểm chứng Safari/thiết bị thật/CI.
+
+## 76. Loading theo video mới ngày 2026-10-20
+
+- Người dùng gửi video5.2333s/488×350 và yêu cầu làm theo mẫu, thêm logo/tên/lời chào user. Đã trích frame và đo26 thời điểm: mầm hai lá ba nấc, chấm đất và LOADING cam; chỉ lấy phần animation nền trắng, không lấy viền bản ghi. Không khôi phục thử nghiệm đã gỡ.
+- Thêm `SeedlingLoadingScreen.tsx` và test; sửa token/animation trong `index.css`, `AppSplashScreen.tsx`, route application loading, `AppProvider.tsx` và kỳ vọng startup test. User kết thúc chờ theo dữ liệu thật, admin giữ brand entrance cũ; recovery/visibility pause/reduced motion/cleanup. Cập nhật `DESIGN.md`; không thêm dependency, ảnh hoặc backend.
+- TDD4/5 fail trước triển khai, focused10/10 đạt; fresh full220/220,35 tệp,66.92s. Branch950/1522=62.41%, component18/19=94.73%. Typecheck/lint167 tệp/format7 tệp/build đạt (compile4.7s, TypeScript1029ms).
+- Chromium5 khung320–1280px/chữ200%/reduced motion, greeting và hoàn tất theo API đạt; joint gap tối đa0.4px, page errors rỗng. Đã xem ảnh desktop/mobile/pha chuyển động. Chỉ recreate frontend localhost3000; [report và giới hạn](../../reports/AGRI-57/agri_57_seedling_video_loading_2026_10_20.md). Chưa commit/push/PR/Jira; chờ review UI, chưa xác minh CI/Safari/thiết bị thật.
+
+## 75. Hoàn nguyên thử nghiệm ngày 2026-10-20
+
+- Theo yêu cầu người dùng, gỡ toàn bộ phần thử nghiệm mới: code/demo/ảnh/test/report và hướng dẫn tương ứng; phục hồi sáu tệp startup/auth/fallback/test đúng nội dung HEAD. Giữ các sửa responsive, bản đồ và nguồn vùng trồng; hash bảy tệp ngoài phạm vi không đổi, không tác động backend/dependency.
+- Fresh215/215 tests,34 tệp,44.70s; typecheck/lint165 tệp/format CSS/build và browser kiểm tra bản phục hồi đạt. Demo và hai ảnh đã gỡ trả404, splash cũ hoạt động, mobile375px không tràn ngang/page errors rỗng. [Biên nhận kỹ thuật](../../reports/AGRI-57/README.md). Đã cập nhật localhost3000; chưa commit/push, chưa kiểm chứng CI/Safari/thiết bị thật.
+
+## 74. Nguồn vùng trồng mở tab mới ngày 2026-10-19
+
+- Theo yêu cầu, nguồn mở tab riêng và chỉ dẫn bài báo/nghiên cứu về cây/vùng tương ứng. Rà14 cây, thay12 URL; giữ bài tin sầu riêng và nghiên cứu khoai tây đúng chủ đề, chỉnh context theo nguồn.
+- Sửa `CropMap.tsx` (target/rel/title), `cropRegions.ts`, test `CropMap.test.tsx`; cập nhật `DESIGN.md` và [report nguồn](../../reports/AGRI-57/agri_57_crop_map_sources_2026_10_19.md). Giữ các sửa responsive chưa commit; không đổi backend/dependency/lockfile.
+- Red-green: nguồn cũ và target thiếu từng làm ca test thất bại; full sau sửa215/215,34 tệp,38.57s đạt. Typecheck/lint165 tệp/format ba tệp sửa/build/diff-check đạt. Chromium14 nguồn mở popup đúng URL, opener null, giữ URL/panel trang gốc; nội dung tab ngoài cô lập, bài thật đối chiếu riêng trên web.
+- Chỉ recreate frontend localhost3000. Bằng chứng `.cache/responsive-2026-10-19/source-tabs.json` bị Git bỏ qua. Chưa kiểm tra CI/coverage mới/thiết bị thật; chưa staging/commit/push.
+
+## 73. Co dải phim theo cột giới thiệu ngày 2026-10-19
+
+- Người dùng báo dải phim chưa thu nhỏ; đo trước sửa tại600px: frame118.25px vượt viewport96px. Ca browser bốn cell thất bại do quy tắc mobile hai cell và viền/lỗ cố định.
+- Bổ sung `frontend/src/index.css`: container units cho chiều cao/padding/viền/lỗ và bốn cell ở mọi độ rộng; cập nhật `DESIGN.md`. Không đổi GSAP/dependency/backend, giữ các sửa đang có.
+- Kiểm chứng mới: Chromium7 độ rộng320–1440px co bốn cell;6 cỡ normal motion không cắt dọc các frame nằm trọn bề ngang, cuộn phím đạt. Tại600px frame còn58.98px. Fresh215/215 Vitest,34 tệp,38.82s; lint165 tệp, format CSS, production build và diff-check đạt. Chỉ recreate frontend localhost3000.
+- [Report và giới hạn](../../reports/AGRI-57/agri_57_intro_map_responsive_2026_10_19.md#bổ-sung-dải-phim-chưa-co-theo-khung). Bằng chứng local bị Git bỏ qua; chưa kiểm tra thiết bị thật/CI/coverage hoặc commit/push.
+
+## 72. Co giãn toàn khối giới thiệu và bản đồ ngày 2026-10-19
+
+- Người dùng xác nhận phần giới thiệu phải thu nhỏ theo khung, không đẩy bản đồ xuống dưới. Giữ hai cột ở mọi độ rộng, token hóa kích thước chữ/CTA/phim/ghim/nhãn; map vừa cột và giữ tỷ lệ. Cập nhật quyết định tương ứng trong `DESIGN.md`.
+- Sửa `CropMap.tsx`, `CropMapCanvas.tsx`, `IntroPage.tsx`, `index.css`: panel ẩn không chiếm chiều cao, thông tin thay copy trong cột trái, bỏ tự cuộn khi mở; giữ Escape/focus và chuyển động cũ. Không sửa backend/dependency/lockfile; giữ bản đồ details độc lập.
+- Kiểm tra mới bản cuối: 215/215 Vitest, 34 tệp, 37.51s; typecheck, lint 165 tệp, format tệp sửa và Docker production build đạt. Chromium 7/7 layout 320–1440px cạnh nhau/vừa cột; 42 lượt chọn đủ 7 điểm trên sáu khung gồm 667×375, đóng/Escape/trả focus đạt; normal motion 1024px đạt, page errors rỗng. Chạy lại 33 ca chữ 200% không tràn ngang.
+- Chỉ rebuild/recreate frontend localhost3000. Ghim hero 24–44px, nhãn 8–12px là ngoại lệ theo yêu cầu co hai cột; chưa xác nhận thiết bị thật/Safari/coverage/CI. [Báo cáo, đường dẫn và giới hạn](../../reports/AGRI-57/agri_57_intro_map_responsive_2026_10_19.md). Chưa staging/commit/push; các mục dưới giữ kết quả lịch sử.
+
+## 71. Rà soát responsive toàn frontend ngày 2026-10-19
+
+- Nhánh xác minh `AGRI-57-frontend-summary`, baseline `893cef4`, working tree sạch trước sửa. Người dùng yêu cầu tự kiểm tra toàn frontend; giữ thiết kế và giới hạn thay đổi trong giao diện.
+- Kiểm tra trang giới thiệu, bảy trang người dùng, chi tiết cây/bệnh, 404 và bốn mục admin; 85 trạng thái trang + 108 trạng thái tương tác + 33 ca chữ 200% không tràn ngang sau sửa. 13 ca bổ sung xác nhận sáu độ rộng intro, cuộn phim bàn phím/cảm ứng tổng hợp, cuộn dọc qua phim, focus/Escape và smoke chuyển động bình thường.
+- Sửa `IntroPage.tsx` để header/CTA vừa 320px và chữ lớn; `dialog.tsx`, `alert-dialog.tsx`, `index.css` giữ lề và cho hộp nội dung dài cuộn trong viewport. Bốn ca layout được đo thất bại trước sửa rồi đạt sau sửa; thao tác xác nhận admin dùng được ở landscape. Không sửa backend/dependency/lockfile hay dữ liệu thật.
+- Kiểm tra mới trên bản cuối: 215/215 Vitest, 34 tệp, 51.79s; typecheck, lint 165 tệp, format bốn tệp sửa và build Docker production đạt. Full format checkout Windows có 57 lỗi CRLF ở các tệp nguyên trạng; không mass-format các tệp đó. Không chạy coverage mới hay xác nhận CI.
+- Frontend production đã cập nhật tại localhost3000; chỉ rebuild/recreate frontend. Dev3001 tạm thời đã dừng, file generated và EOL không liên quan được trả về trước kiểm tra diff.
+- [Báo cáo và giới hạn](../../reports/AGRI-57/agri_57_responsive_audit_2026_10_19.md). Bằng chứng `.cache/responsive-2026-10-19/` bị Git bỏ qua; API dùng fixture cô lập, Chromium mobile/touch giả lập, chưa kiểm chứng Safari/thiết bị vật lý/camera/PDF thực. Chưa staging/commit/push hoặc sửa PR/Jira. DoD tổng thể còn cần review.
 
 ## 1. Completed Work
 
@@ -540,3 +937,37 @@ Các test chính:
 - User đã cho phép commit và push. Inspected đúng ba file thay đổi: `.gitignore`, report main merge và task log này; HEAD local và remote feature trước commit đều là `699328c`. Commit dùng Jira AGRI-57 và chỉ bao gồm ignore policy/bằng chứng tương ứng.
 - Kiểm tra lại ignore-policy cases, staged whitespace và commitlint trước commit. Không đổi source ứng dụng nên không chạy lại component tests/build hoặc trình bày kết quả cũ là mới. Sau delivery đối chiếu HEAD remote/local, worktree và trạng thái PR/CI.
 - Push thường tới `AGRI-57-frontend-summary`, không force, merge PR, đổi main, tự approve hay tác động Docker/database. Kết quả push/hash và trạng thái CI thực tế được xác nhận khi bàn giao; quyết định local-only ở lượt trước được giữ làm lịch sử.
+
+
+## Integrate AGRI-80 admin work ? 2026-10-21
+
+- User requested pulling/merging admin branch 80 into current branch 57. Fetched both remotes; admin commit c02147c was already included, so Git reported already up to date. Integrated the newer admin work from retained stash 4d6176f instead. HEAD stays 893cef4.
+- Retained full safety stash c5e668c and all earlier stashes. Resolved three shared-file conflicts, preserved user video/profile/banner/startup flows and relocated admin tests into destination test folders. No commit/push/stash drop.
+- Fresh full frontend suite: 340/340 tests in 51 files passed after correcting relocated import/component mocks. Scoped Biome 35 files and production build passed. Browser calendar/search/auth/entrance/video checks passed; viewport suite passed 118 checks with documented small-screen inner scrolling.
+- Recreated only frontend; all four services healthy. Admin data remain fixtures; no backend/database changes, fresh backend/Python/CI/coverage claim or production deployment. [Detailed evidence and affected paths](../../reports/AGRI-57/agri_57_admin_ui_merge_2026_10_21.md).
+
+
+## Remove 404 header logo (2026-10-21)
+
+Removed the leaf/AgriAI header from `frontend/src/app/not-found.tsx` as requested. Existing route fallback tests 4/4 and scoped Biome passed. Preserved unrelated work; no commit/push. [Technical record](../../reports/AGRI-57/agri_57_not_found_2026_10_21.md#remove-header-logo-follow-up-2026-10-21).
+
+
+## Automatic search on three user pages - 2026-10-21
+
+- Added shared 500 ms search debounce in CatalogControls for plants, diseases and saved samples. Enter/clear apply immediately, IME Enter is ignored, and pending timers are cleaned up on reset/unmount. Existing plant/disease callbacks reset pagination on commit.
+- New real-page timing tests observed RED before implementation and GREEN afterward. Updated existing pagination/history tests for delayed filtering. Scoped Biome and production build passed; frontend Docker updated. Chromium catalog search/reset passed at four widths.
+- No dependencies, backend/API, admin data or database changes; no commit/push. [Actual checks and limits](../../reports/AGRI-57/agri_57_catalog_search_2026_10_21.md).
+
+Final fresh full frontend run for this search change: 346/346 tests in 52 files passed (61.30 s); no CI/coverage claim.
+
+
+## Remove dated design notes
+
+On verified branch AGRI-57-frontend-summary, removed 51 dated change-note entries from DESIGN.md at user request. Preserved undated design rules and all runtime source; before/after frontend/backend/AI diff hashes matched. No UI change, test/build needed, commit or push. Technical evidence indexed in docs/reports/AGRI-57/README.md, with ignored verification JSON under .cache/design-date-cleanup/.
+
+
+## Requested local commits - 2026-10-22
+
+- User authorized local commits and explicitly excluded libraries. Verified AGRI-57-frontend-summary, inspected dirty paths/diffs and Git rules/skills. Split shared tokens, authentication, catalog, diagnosis, home/intro, profile, AGRI-80 admin, 404 and documentation into nine Conventional Commit groups with associated tests/reports. Preserve stashes and existing generated dev declarations.
+- Fresh 353/353 frontend tests, focused 15/15 after lint fixes, strict lint 205 files, production build/typecheck and all nine proposed commit subjects passed. Scoped format 97 files passed; whole format retains 18 existing untouched-file diagnostics. No new browser/backend/Python/coverage/CI claim.
+- No vendor/dependency changes, private media, secrets, cache, uploads/checkpoints/backups or User Story drafts staged. No push/PR/database operations. [Detailed local evidence and limits](../../reports/AGRI-57/agri_57_local_commits_2026_10_22.md). Actual hashes verified at handoff.
