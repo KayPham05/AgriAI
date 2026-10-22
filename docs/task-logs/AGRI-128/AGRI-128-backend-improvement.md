@@ -114,3 +114,13 @@ nhánh nền AGRI-128 là Jira của task hồ sơ.
   [entry point AGRI-116](../../reports/AGRI-116/README.md). UI nằm ngoài phạm vi;
   backend S3-03 và chọn hồ sơ S3-06 hoàn tất trong phạm vi đã kiểm chứng.
 
+
+
+---
+
+## 2026-10-22 — Đồng bộ Remote và Sửa Lỗi Biên dịch Chữ ký PredictAsync
+
+- Đồng bộ nhánh `AGRI-128-backend-improvement` với remote qua fast-forward (các commit từ PR #36 và PR #38).
+- Phát hiện lỗi biên dịch CS1503 trong `backend/tests/AgriVision.UnitTests/Services/PredictionServiceTests.cs` do xung đột vị trí tham số `Guid? agriculturalProfileId` mới thêm ở PR #38 và `CancellationToken cancellationToken` ở PR #36.
+- Khắc phục: truyền `cancellationToken: cancellation.Token` bằng named argument trong test `CancelledGuestUpload_ShouldNotInvokeAiOrStoreData`.
+- Kiểm chứng: `dotnet build` 0 warning / 0 error; 82/82 backend unit tests passed.

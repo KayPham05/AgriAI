@@ -213,7 +213,7 @@ public class PredictionServiceTests
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
 
-        var act = () => _predictionService.PredictAsync(CreateFile(), null, cancellation.Token);
+        var act = () => _predictionService.PredictAsync(CreateFile(), null, cancellationToken: cancellation.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
         _diseasePredictor.PredictCount.Should().Be(0);
