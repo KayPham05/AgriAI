@@ -124,3 +124,7 @@ nhánh nền AGRI-128 là Jira của task hồ sơ.
 - Phát hiện lỗi biên dịch CS1503 trong `backend/tests/AgriVision.UnitTests/Services/PredictionServiceTests.cs` do xung đột vị trí tham số `Guid? agriculturalProfileId` mới thêm ở PR #38 và `CancellationToken cancellationToken` ở PR #36.
 - Khắc phục: truyền `cancellationToken: cancellation.Token` bằng named argument trong test `CancelledGuestUpload_ShouldNotInvokeAiOrStoreData`.
 - Kiểm chứng: `dotnet build` 0 warning / 0 error; 82/82 backend unit tests passed.
+
+- Phát hiện lỗi test CI trong `GuestPredictionsControllerTests.GuestPrediction_ShouldReturnFullResult_WithoutStorageOrChangesToUserHistory`: bài test từ PR #36 gửi `agriculturalProfileId` trong form data của request Guest và kỳ vọng 200 OK, trong khi quy tắc nghiệp vụ AGRI-116 (PR #38) quy định Guest gửi `agriculturalProfileId` phải bị từ chối 401 Unauthorized (đã được kiểm thử tại `Guest_CannotSelectProfileForDiagnosis`).
+- Khắc phục: loại bỏ `agriculturalProfileId` khỏi request chẩn đoán khách vãng lai trong `GuestPredictionsControllerTests.cs`, giữ nguyên kiểm thử gửi `userId` không làm biến đổi phiên thành bản ghi lưu.
+- Kiểm chứng: `dotnet build` 0 warning / 0 error; 82/82 unit tests passed.

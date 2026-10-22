@@ -77,7 +77,6 @@ public class GuestPredictionsControllerTests : IClassFixture<AgriVisionFactory>
         using var request = CreateImageRequest();
         // Posted identifiers cannot turn an anonymous request into a persisted prediction.
         request.Add(new StringContent(session.User.Id.ToString()), "userId");
-        request.Add(new StringContent(Guid.NewGuid().ToString()), "agriculturalProfileId");
         using var response = await guest.PostAsync("/api/predictions", request);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
