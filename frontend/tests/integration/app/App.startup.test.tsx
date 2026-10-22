@@ -1,5 +1,5 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import App from '../../helpers/AppHarness';
 import { login, restoreAuthSession } from '@/services/authApi';
@@ -32,7 +32,34 @@ const session = {
   },
 };
 
+afterEach(() => vi.useRealTimers());
+
 describe('authenticated app startup', () => {
+  it('keeps the reload animation through session restoration and essential data loading', async () => {
+    let resolveSession!: (value: typeof session) => void;
+    let resolveHistory!: (value: []) => void;
+    vi.mocked(restoreAuthSession).mockReturnValue(
+      new Promise((resolve) => {
+        resolveSession = resolve;
+      }),
+    );
+    vi.mocked(getPredictionHistory).mockReturnValue(
+      new Promise((resolve) => {
+        resolveHistory = resolve;
+      }),
+    );
+    vi.mocked(getPlants).mockResolvedValue([]);
+    vi.mocked(getDiseases).mockResolvedValue([]);
+    render(<App />);
+    expect(screen.getByRole('status', { name: 'Đang tải AgriAI' })).toBeVisible();
+    await act(async () => resolveSession(session));
+    expect(screen.getByRole('status', { name: 'Đang tải AgriAI' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Mở menu' })).toBeNull();
+    await act(async () => resolveHistory([]));
+    expect(screen.queryByRole('status', { name: 'Đang tải AgriAI' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Mở menu' })).toBeVisible();
+  });
+
   it('opens admin after restoring an Admin session without waiting for the user catalog', async () => {
     vi.mocked(restoreAuthSession).mockResolvedValue({
       ...session,
@@ -45,32 +72,49 @@ describe('authenticated app startup', () => {
     expect(getPredictionHistory).not.toHaveBeenCalled();
   });
 
-  it.each(['Admin', 'User'])('routes a fresh %s login to its own workspace', async (role) => {
-    vi.mocked(restoreAuthSession).mockResolvedValue(null);
-    vi.mocked(login).mockResolvedValue({ ...session, user: { ...session.user, role } });
-    vi.mocked(getPlants).mockResolvedValue([]);
-    vi.mocked(getDiseases).mockResolvedValue([]);
-    vi.mocked(getPredictionHistory).mockResolvedValue([]);
-    render(<App />);
-    await userEvent.click(await screen.findByRole('button', { name: 'Đăng nhập' }));
-    const dialog = within(screen.getByRole('dialog'));
-    await userEvent.type(dialog.getByLabelText(/^Email$/i), 'an@example.test');
-    await userEvent.type(dialog.getByLabelText(/^Mật khẩu$/i), 'test-password');
-    const captcha = dialog.getByRole('group', { name: /^Mã CAPTCHA: / });
-    await userEvent.type(
-      dialog.getByLabelText(/Mã xác nhận/i),
-      captcha.getAttribute('aria-label')?.replace('Mã CAPTCHA: ', '') ?? '',
-    );
-    await userEvent.click(dialog.getByRole('button', { name: 'Đăng nhập' }));
-    if (role === 'Admin') {
-      await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/admin'));
-      expect(getPlants).not.toHaveBeenCalled();
-      expect(getPredictionHistory).not.toHaveBeenCalled();
-    } else {
-      await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/home'));
-      expect(router.replace).not.toHaveBeenCalledWith('/admin');
-    }
-  });
+  it.each(['Admin', 'User'])(
+    'routes a fresh %s login to its own workspace',
+    async (role) => {
+      let finishData!: (value: []) => void;
+      vi.mocked(restoreAuthSession).mockResolvedValue(null);
+      vi.mocked(login).mockResolvedValue({ ...session, user: { ...session.user, role } });
+      vi.mocked(getPlants).mockResolvedValue([]);
+      vi.mocked(getDiseases).mockResolvedValue([]);
+      vi.mocked(getPredictionHistory).mockReturnValue(
+        new Promise((resolve) => {
+          finishData = resolve;
+        }),
+      );
+      render(<App />);
+      await userEvent.click(await screen.findByRole('button', { name: 'Đăng nhập' }));
+      const dialog = within(screen.getByRole('dialog'));
+      await userEvent.type(dialog.getByLabelText(/^Email$/i), 'an@example.test');
+      await userEvent.type(dialog.getByLabelText(/^Mật khẩu$/i), 'test-password');
+      const captcha = dialog.getByRole('group', { name: /^Mã CAPTCHA: / });
+      await userEvent.type(
+        dialog.getByLabelText(/Mã xác nhận/i),
+        captcha.getAttribute('aria-label')?.replace('Mã CAPTCHA: ', '') ?? '',
+      );
+      await userEvent.click(dialog.getByRole('button', { name: 'Đăng nhập' }));
+      if (role === 'Admin') {
+        await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/admin'), {
+          timeout: 6000,
+        });
+        expect(getPlants).not.toHaveBeenCalled();
+        expect(getPredictionHistory).not.toHaveBeenCalled();
+      } else {
+        expect(screen.getByText('ĐANG TẢI')).toBeVisible();
+        expect(screen.queryByText('Đang chuẩn bị trang…')).toBeNull();
+        expect(screen.getByRole('heading', { name: 'Xin chào, Nguyễn Văn An.' })).toBeVisible();
+        await act(async () => finishData([]));
+        await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/home'), {
+          timeout: 6000,
+        });
+        expect(router.replace).not.toHaveBeenCalledWith('/admin');
+      }
+    },
+    10000,
+  );
 
   it('waits for real startup data, then enters home without a button', async () => {
     vi.mocked(restoreAuthSession).mockResolvedValue(session);
@@ -83,7 +127,7 @@ describe('authenticated app startup', () => {
     vi.mocked(getPlants).mockResolvedValue([]);
     vi.mocked(getDiseases).mockResolvedValue([]);
     render(<App />);
-    expect(await screen.findByRole('heading', { name: 'Chào Nguyễn Văn An.' })).toBeVisible();
+    expect(await screen.findByRole('status', { name: 'Đang tải AgriAI' })).toBeVisible();
     expect(screen.queryByRole('button', { name: /Vào ứng dụng/ })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Mở menu' })).toBeNull();
     resolveHistory([]);

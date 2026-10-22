@@ -25,6 +25,11 @@ describe('Navbar', () => {
       />,
     );
     const navigation = within(screen.getByRole('navigation', { name: 'Điều hướng chính' }));
+    const logo = new URL(
+      screen.getByRole('img', { name: 'Logo AgriAI' }).getAttribute('src') ?? '',
+      window.location.href,
+    );
+    expect(logo.searchParams.get('url') ?? logo.pathname).toBe('/images/agriai-leaf-mark.png');
     expect(navigation.getByRole('link', { name: 'Cây trồng' })).toHaveAttribute('href', '/plants');
     expect(navigation.getByRole('link', { name: 'Trang chủ' })).toHaveAttribute(
       'aria-current',

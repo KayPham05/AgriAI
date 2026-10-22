@@ -9,7 +9,7 @@ import bananaPhoto from '@/assets/banner/chuối banner.jpg';
 import watermelonPhoto from '@/assets/banner/dưa hấu.jpg';
 import orangePhoto from '@/assets/banner/cam banner.jpg';
 import mangoPhoto from '@/assets/banner/xoài banner.jpg';
-import durianPhoto from '@/assets/banner/sầu riêng.jpg';
+import durianPhoto from '@/assets/banner/sầu riêng banner.jpg';
 import pomeloPhoto from '@/assets/banner/bưởi banner.jpg';
 import grapePhoto from '@/assets/banner/nho banner.jpg';
 import type { StaticImageData } from 'next/image';

@@ -94,7 +94,7 @@ describe('URL-driven app navigation', () => {
   it('restores the requested diagnose page instead of resetting to home', async () => {
     window.history.replaceState({}, '', '/diagnose');
     render(<App />);
-    expect(await screen.findByRole('heading', { name: 'Kiểm tra ảnh lá cây' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'Chẩn đoán ảnh lá' })).toBeVisible();
     expect(window.location.pathname).toBe('/diagnose');
   });
 
@@ -105,13 +105,13 @@ describe('URL-driven app navigation', () => {
         <DiagnoseRoute />
       </App>,
     );
-    expect(await screen.findByRole('heading', { name: 'Kiểm tra ảnh lá cây' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'Chẩn đoán ảnh lá' })).toBeVisible();
   });
 
   it('updates the URL on navigation and restores the view on browser history changes', async () => {
     window.history.replaceState({}, '', '/diagnose');
     render(<App />);
-    await screen.findByRole('heading', { name: 'Kiểm tra ảnh lá cây' });
+    await screen.findByRole('heading', { name: 'Chẩn đoán ảnh lá' });
     await userEvent.click(
       within(screen.getByRole('navigation', { name: 'Điều hướng chính' })).getByRole('link', {
         name: 'Cây trồng',
@@ -122,7 +122,7 @@ describe('URL-driven app navigation', () => {
       window.history.replaceState({}, '', '/diagnose');
       window.dispatchEvent(new PopStateEvent('popstate'));
     });
-    expect(screen.getByRole('heading', { name: 'Kiểm tra ảnh lá cây' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Chẩn đoán ảnh lá' })).toBeVisible();
   });
 
   it('shows a direct plant detail URL after session restoration', async () => {

@@ -36,15 +36,8 @@ export function PlantsPage({ plants, onSelectPlant, onDiagnosePlant }: PlantsVie
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:px-12">
-      <header className="border-b border-border pb-7">
-        <h1 className="text-3xl font-bold tracking-tight text-primary sm:text-4xl">
-          Danh Mục Cây Trồng
-        </h1>
-        <p className="mt-3 leading-7 text-muted-foreground">
-          Tìm hiểu các cây trồng quen thuộc và dấu hiệu bệnh lá thường gặp.
-        </p>
-      </header>
-      <div className="my-7 grid items-end gap-5 lg:grid-cols-2 lg:gap-8">
+      <h1 className="sr-only">Danh Mục Cây Trồng</h1>
+      <div className="mb-7 grid items-end gap-5 lg:grid-cols-2 lg:gap-8">
         <div className="w-full">
           <SearchField
             id="plant-search"

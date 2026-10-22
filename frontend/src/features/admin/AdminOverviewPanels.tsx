@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import type { AdminImage } from './adminTypes';
 import type { AuthUser } from '@/services/authApi';
 import { formatAdminDate } from './AdminRecordList';
+import { matchesAdminDate, type AdminDateFilter } from './adminDateFilter';
 
 function RecentImage({ image }: { image: AdminImage }) {
   const [failed, setFailed] = useState(false);
@@ -25,7 +26,7 @@ function RecentImage({ image }: { image: AdminImage }) {
       : null;
   return (
     <div className="min-w-0">
-      <div className="mb-3 flex aspect-video items-center justify-center overflow-hidden rounded-media bg-surface-muted">
+      <div className="admin-recent-image-preview mb-2 flex aspect-video items-center justify-center overflow-hidden rounded-media bg-surface-muted">
         {url && !failed ? (
           <Image
             src={url}
@@ -59,35 +60,48 @@ function RecentImage({ image }: { image: AdminImage }) {
   );
 }
 
-export function AdminRecentImages({ onImages }: { onImages: () => void }) {
+export function AdminRecentImages({
+  onImages,
+  dateFilter,
+  asOf = new Date(),
+}: {
+  onImages: () => void;
+  dateFilter?: AdminDateFilter | null;
+  asOf?: Date;
+}) {
   const { images } = useAdminMock();
-  const items = images.slice(0, 3);
+  const items = (
+    dateFilter
+      ? images.filter((image) => matchesAdminDate(image.uploadedAt, dateFilter, asOf))
+      : images
+  ).slice(0, 3);
   return (
     <section aria-label="Ảnh gần đây" data-admin-enter>
       <Card className="admin-panel h-full">
         <CardHeader>
-          <CardTitle>
-            <h2>Ảnh gần đây</h2>
-          </CardTitle>
-          <CardDescription>Ảnh minh họa cho bản xem trước giao diện.</CardDescription>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle>
+              <h2>Ảnh gần đây</h2>
+            </CardTitle>
+            <Button variant="ghost" onClick={onImages}>
+              Xem ảnh
+              <ArrowUpRight data-icon="inline-end" />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {items.length ? (
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-3 gap-2">
               {items.map((image) => (
                 <RecentImage key={image.id} image={image} />
               ))}
             </div>
           ) : (
-            <p className="py-5 text-sm text-muted-foreground">Chưa có bản ghi minh họa.</p>
+            <p className="py-5 text-sm text-muted-foreground">
+              {dateFilter ? 'Không có ảnh trong thời gian đã chọn.' : 'Chưa có bản ghi minh họa.'}
+            </p>
           )}
         </CardContent>
-        <CardFooter className="admin-panel-footer">
-          <Button variant="ghost" onClick={onImages}>
-            Mở danh sách ảnh
-            <ArrowUpRight data-icon="inline-end" />
-          </Button>
-        </CardFooter>
       </Card>
     </section>
   );
@@ -114,22 +128,24 @@ export function AdminRecentSessions({ onSessions }: { onSessions: () => void }) 
                     <Monitor className="size-4" aria-hidden="true" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium" title={session.userName}>
-                      {session.userName}
-                    </p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="min-w-0 truncate text-sm font-medium" title={session.userName}>
+                        {session.userName}
+                      </p>
+                      <Badge
+                        variant={session.status === 'Active' ? 'secondary' : 'outline'}
+                        className="shrink-0"
+                      >
+                        {session.status === 'Active'
+                          ? 'Còn hiệu lực'
+                          : session.status === 'Ended'
+                            ? 'Đã đăng xuất'
+                            : 'Hết hạn'}
+                      </Badge>
+                    </div>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">
                       {formatAdminDate(session.createdAt)}
                     </p>
-                    <Badge
-                      variant={session.status === 'Active' ? 'secondary' : 'outline'}
-                      className="mt-2"
-                    >
-                      {session.status === 'Active'
-                        ? 'Còn hiệu lực'
-                        : session.status === 'Ended'
-                          ? 'Đã đăng xuất'
-                          : 'Hết hạn'}
-                    </Badge>
                   </div>
                 </li>
               ))}

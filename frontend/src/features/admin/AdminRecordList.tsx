@@ -1,7 +1,10 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useAdminPageSize } from './useAdminPageSize';
+
+const SEARCH_DEBOUNCE_MS = 500;
 
 export function formatAdminDate(value: string): string {
   const date = new Date(value);
@@ -15,7 +18,6 @@ interface SearchableRecord {
   userName?: string;
   userEmail?: string;
 }
-const PAGE_SIZE = 10;
 function normalize(value: string) {
   return value
     .normalize('NFD')
@@ -41,21 +43,33 @@ export function AdminRecordList<T extends SearchableRecord>({
 }) {
   const [request, setRequest] = useState({ page: 1, q: initialQuery });
   const [draft, setDraft] = useState(initialQuery);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (searchTimer.current !== null) clearTimeout(searchTimer.current);
+    };
+  }, []);
+  function cancelPendingSearch() {
+    if (searchTimer.current !== null) clearTimeout(searchTimer.current);
+    searchTimer.current = null;
+  }
+  const pageSize = useAdminPageSize(2);
   const query = normalize(request.q.trim());
   const filtered = items.filter((item) =>
     normalize(
       `${item.fullName ?? item.userName ?? ''} ${item.email ?? item.userEmail ?? ''}`,
     ).includes(query),
   );
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const totalPages = Math.ceil(filtered.length / pageSize);
   const page = Math.min(request.page, Math.max(1, totalPages));
-  const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
   return (
-    <section aria-label={title} className="flex flex-col gap-6">
+    <section aria-label={title} className="admin-record-list flex min-h-0 flex-1 flex-col gap-3">
       <form
         className="flex flex-wrap items-end gap-3"
         onSubmit={(event) => {
           event.preventDefault();
+          cancelPendingSearch();
           setRequest({ page: 1, q: draft });
         }}
       >
@@ -65,7 +79,15 @@ export function AdminRecordList<T extends SearchableRecord>({
             id={`admin-search-${resource}`}
             value={draft}
             maxLength={150}
-            onChange={(event) => setDraft(event.target.value)}
+            onChange={(event) => {
+              const value = event.target.value;
+              setDraft(value);
+              cancelPendingSearch();
+              searchTimer.current = setTimeout(() => {
+                searchTimer.current = null;
+                setRequest({ page: 1, q: value });
+              }, SEARCH_DEBOUNCE_MS);
+            }}
           />
         </div>
         <Button type="submit" variant="outline">
@@ -78,9 +100,9 @@ export function AdminRecordList<T extends SearchableRecord>({
           {request.q ? 'Không tìm thấy kết quả phù hợp.' : empty}
         </p>
       ) : (
-        <ul className="flex flex-col divide-y divide-border border-y border-border">
+        <ul className="admin-records grid min-h-0 flex-1 items-start gap-4 overflow-auto md:grid-cols-2">
           {visible.map((item) => (
-            <li key={item.id} className="py-5">
+            <li key={item.id} className="min-w-0 rounded-xl border border-border bg-surface p-4">
               {children(item)}
             </li>
           ))}
@@ -89,7 +111,7 @@ export function AdminRecordList<T extends SearchableRecord>({
       {totalPages > 0 && (
         <nav
           aria-label="Phân trang dữ liệu"
-          className="flex flex-wrap items-center justify-between gap-3"
+          className="mt-auto flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border pt-2"
         >
           <p className="text-sm text-muted-foreground">
             Trang {page} / {totalPages}

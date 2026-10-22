@@ -1,0 +1,35 @@
+# AGRI-57 — Diagnosis error and warning states (2026-10-21, lượt129)
+
+## Yêu cầu và phạm vi
+
+Thực hiện brief trong attachment `f2046ae9-d013-4c4a-8c65-32e7465e78f9/Pasted text.txt`:11 tình huống theo nhóm kiểm tra tệp, nội dung/chất lượng và confidence/hệ thống. Nhánh xác minh `AGRI-57-frontend-summary`. Giữ stack/model/nhãn/dataset v1.4; không backend/AI/global CSS/shared primitives/dependency changes. Raw hex trong brief được thay bằng semantic tokens surface/background/primary/destructive/warning hiện có.
+
+## Triển khai thực tế
+
+- `frontend/src/features/diagnosis/diagnosisIssues.ts`: union11 code và quyết định có kiểu. Kiểm tra MIME JPG/PNG, dung lượng>15MiB, empty, cả hai chiều tối thiểu224px. Empty/corrupt/low-res cùng CORRUPTED_OR_LOW_RES; không đọc pixel bằng heuristics để tự tuyên bố có lá/che khuất/giống ngoài mô hình.
+- `frontend/src/components/diagnosis/AnalysisIssueNotice.tsx`: nội dung tiếng Việt/CTA/icon riêng11 tình huống, error destructive và warning warning với nền tint theo token, tiêu đề/mô tả/chi tiết API/checklist1lá-đủsáng-rõbềmặt/nút. Không sửa Button/Alert global. Nút dài dùng child whitespace-normal và max-width/w-full nhỏ để không bị cắt tại320px; thiếu callback không tạo nút chọn ảnh hoạt động giả.
+- `frontend/src/views/DiagnosePage.tsx`: nhómA chặn tại cột trái/bước1, không gọi API; image.onload kiểm tra natural dimensions, error callback giải phóng blob. NhómB nhận mã lỗi xác thực từ API ở cột phải/bước2. NhómC ở cột phải/bước3. Lỗi request giữ file/preview để retry. Chọn file mới/xóa ảnh clear issue/comparison và abort request cũ; cleanup unmount giữ nguyên.
+- `frontend/src/services/predictionApi.ts`: PredictionApiError giữ typed code và message, nhận `code` hoặc `errorCode` trong HTTP lỗi; whitelist11 mã, code lạ/network/timeout về SERVER_TIMEOUT_OR_ERROR, không suy đoán leaf-content bằng thông báo tự do. Giữ contract success/score/request/form/auth và60s timeout hiện có. Ví dụ provider tương thích: HTTP422 `{ "code": "NO_LEAF_DETECTED", "message": "..." }`. API legacy không có code vẫn hiện system error an toàn.
+- Confidence: product warning khi Top-1<0.45, hoặc3 score supplied có max-min<=0.05 (5 điểm phần trăm). Đây là policy UI theo brief, không calibration/accuracy guarantee và không đổi confidenceCategory threshold0.6/0.85. Không chuẩn hóa lại/đổi xác suất hoặc tạo dự đoán thiếu. Khi warning, chưa hiển thị kết luận bệnh/metadata; người dùng bấm “Xem tạm bảng đối chiếu Top-3” mới thấy comparison dưới cảnh báo tham khảo.
+- `AnalysisResultCard.tsx` nhận issue/actions/showComparison, ưu tiên loading→issue→legacy error→result/empty. Tách `PredictionComparison.tsx` để success và provisional dùng cùng renderer xác suất thật. Legacy error props giữ tương thích.
+- `AnalysisStepper.tsx` nhận hasIssue; input/quality/server/low-confidence không hiện ĐÃ HOÀN TẤT, dùng CẦN KIỂM TRA/icon cảnh báo. Success bình thường vẫn check/hoàn tất, reset về1.
+- “Chọn mẫu thử” tải ảnh JPEG cẩm nang đang có (`assets/Bệnh lá/cà chua/Cháy lá sớm  đốm vòng.jpg`), qua cùng decode/dimension validation. Caption minh họa rõ, không tự gọi inference hoặc dựng kết quả. Fetch có AbortController/15s timeout/cleanup. Request phân tích chỉ chạy khi người dùng bấm Phân tích ngay.
+- `DiagnoseRoute.tsx` truyền active backend plants (`backendId`) cho dialog cây hỗ trợ; loại reference-only records. Nếu chưa có dữ liệu active, thông báo chưa tải được danh sách, không điền danh sách model giả. Đây là danh mục đang hoạt động từ backend, chưa tự kiểm chứng checkpoint metadata mới.
+
+## Giới hạn chức năng quan trọng
+
+Source backend/FastAPI hiện chưa phát ra sáu semantic codes NO_LEAF_DETECTED, MULTIPLE_LEAVES_CLUTTERED, BLURRY_SURFACE, POOR_LIGHTING, OBSTRUCTED_LEAF, UNSUPPORTED_SPECIES. UI/transport/recovery cho chúng đã triển khai và test bằng explicit fixtures. Chưa thể tuyên bố hệ thống thật tự phát hiện người/động vật/rối nền/che khuất/ngoài phân phối từ một classifier59nhãn. Cần quality/OOD gate có kiểm chứng ở AI/backend để tự kích hoạt nhómB. Không thêm bộ phát hiện giả theo màu xanh hay confidence, không thay checkpoint/model scope.
+
+## Kiểm chứng mới
+
+- TDD policy/UI:20 test RED trước triển khai03:09:51; GREEN20/20 lúc03:10:59. TDD flow3 ca low-res/APIquality/low-confidence RED03:12:08 trước page wiring. Sau wiring ban đầu3 failures do phần detail không render và CTA retry cũ; sửa đúng renderdetail/name, focused70/70 lúc03:15:00 đạt.
+- Bổ sung sample explicit/no auto-inference, corrupt image/revoke URL, Stepper attention và nearly-tied score. Service tests truyền đủ11 code cùng unknown fallback, giữ tests upload/auth/timeout/abort/malformed hiện có. Paths: `tests/unit/utils/diagnosisIssues.test.ts`, `tests/component/diagnosis/AnalysisIssueNotice.test.tsx`, `AnalysisStepper.test.tsx`, `tests/integration/diagnosis/DiagnosePage.integration.test.tsx`, `tests/unit/services/predictionApi.test.ts`.
+- Fresh full `test:coverage --pool=threads --maxWorkers=2`: **293/293 test,45 tệp**,03:16:54,126,52s, exit0. Branch **1163/1773=65,59%**>=60% giữ nguyên; statements1609/2606=61,74%, functions528/769=68,66%, lines1471/2327=63,21%. New IssueNotice31/32=96,87%, policy26/27=96,29%, ResultCard30/30, Stepper30/30, Comparison2/2=100%; DiagnosePage80/121=66,11%, chưa đạt target80% cho view. Nguồn `.cache/coverage/frontend/coverage-summary.json`.
+- Sau sửa đường dẫn asset case-sensitive và CTA mobile, focused **74/74**,6 tệp,03:23:55,10,83s đạt; không chạy lại full coverage cho thay đổi path/wrap. TypeScript noEmit và Biome14 tệp cuối đạt. Formatter test fixture đã được chuẩn hóa lại, không suppress rule.
+- Docker build đầu lỗi import thư mục `Cà chua` sai chữ hoa/thường so với Linux; sửa theo import asset hiện có `cà chua`, không đổi ảnh gốc. Build cuối compile3,8s/TypeScript726ms,11 trang tĩnh/hai động đạt. Recreate riêng frontendlocalhost3000 `--no-deps`, giữ backend/DB/volumes.
+- `frontend/tests/browser/diagnosis/error_states.py`: cả11 states ở1440/375/320, input3case chặn request thật trên browser;6 quality cases dùng HTTP422 fixture, low-confidence201fixture, system503fixture. Kiểm tra vị trí trái/phải, ảnh giữ nguyên, retry request, active-plant dialog, sample không tự phân tích, provisionalTop3, chưa hoàn tất, CTA không vượt khung. Initial locator alert trùng Next route-announcer được scope theo heading. Visual review phát hiện button Top-3 bị cắt ở320px; thêm geometry regression RED, sửa scoped wrap và GREEN lại toàn script. Đã xem ảnh red/warning/server/mobile cuối.
+- `analysis_components.py` cập nhật retry label mới, chạy lại normal upload/error/retry/success/reset tại6 kích thước đạt. Pageerrors của cả hai script rỗng. Evidence ignored `.cache/diagnosis-errors/` và `.cache/diagnosis-components/`; cách chạy trong tests README.
+
+## Bàn giao
+
+Giao diện review trên localhost:3000/diagnose. UI/typed transport đủ11 trạng thái; nhómA/confidence/network có quyết định hiện tại, nhómB đợi provider thực phát code đã nêu. Chưa real semantic detector/OOD acceptance, CI/Safari/thiết bị thật/WCAG toàn diện. Chưa commit/push/PR/Jira Done.

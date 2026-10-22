@@ -41,7 +41,7 @@ export function AdminUsers({ initialQuery = '' }: { initialQuery?: string }) {
   const [notice, setNotice] = useState('');
   const copy = action ? ACTIONS[action.kind] : null;
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
       {notice && (
         <p role="status" className="text-sm text-primary">
           {notice}

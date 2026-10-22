@@ -29,7 +29,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           isAuthenticated={Boolean(session)}
           onOpenLogin={() => openAuthentication('login')}
         />
-        <main id="main-content" tabIndex={-1} className="min-w-0 flex-1">
+        <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 outline-none">
           <ViewEntrance key={pathname}>{children}</ViewEntrance>
         </main>
         <footer className="mt-10 border-t border-border bg-surface">

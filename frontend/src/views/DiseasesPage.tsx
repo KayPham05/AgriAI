@@ -48,16 +48,8 @@ export function DiseasesPage({
 
   return (
     <div className="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:px-12">
-      <header className="border-b border-border pb-7">
-        <h1 className="text-3xl font-bold tracking-tight text-primary sm:text-4xl">
-          Cẩm Nang Bệnh Hại Cây
-        </h1>
-        <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
-          Thông tin tham khảo về triệu chứng và cách phòng ngừa. Khi bệnh lan nhanh, hãy liên hệ cán
-          bộ bảo vệ thực vật địa phương.
-        </p>
-      </header>
-      <div className="my-7 grid items-end gap-5 xl:grid-cols-3 xl:gap-8">
+      <h1 className="sr-only">Cẩm Nang Bệnh Hại Cây</h1>
+      <div className="mb-7 grid items-end gap-5 xl:grid-cols-3 xl:gap-8">
         <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-end xl:col-span-2">
           <SearchField
             id="disease-search"

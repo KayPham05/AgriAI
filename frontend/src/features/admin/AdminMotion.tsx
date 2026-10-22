@@ -39,7 +39,7 @@ export function AdminMotion({ view, children }: { view: string; children: ReactN
     { scope: rootRef, dependencies: [view], revertOnUpdate: true },
   );
   return (
-    <div ref={rootRef} className="min-w-0">
+    <div ref={rootRef} className="admin-view flex min-h-0 min-w-0 flex-1 flex-col">
       {children}
     </div>
   );
