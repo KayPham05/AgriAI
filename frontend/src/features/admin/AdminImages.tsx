@@ -15,8 +15,8 @@ function UploadedImage({ image }: { image: AdminImage }) {
       ? image.imageUrl
       : null;
   return (
-    <div className="flex flex-col gap-4 sm:flex-row">
-      <div className="flex aspect-video w-full shrink-0 items-center justify-center overflow-hidden rounded-media bg-surface-muted sm:w-48">
+    <div className="flex items-start gap-3">
+      <div className="admin-upload-preview flex aspect-square w-20 shrink-0 items-center justify-center overflow-hidden rounded-media bg-surface-muted sm:w-28">
         {safeUrl && !failed ? (
           <Image
             src={safeUrl}
@@ -64,7 +64,7 @@ export function AdminImages() {
   );
   const [notice, setNotice] = useState('');
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
       {notice && (
         <p role="status" className="text-sm text-primary">
           {notice}

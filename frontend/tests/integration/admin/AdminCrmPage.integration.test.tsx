@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+﻿import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { clearAuthSession, saveAuthSession } from '@/services/authApi';
@@ -24,7 +24,7 @@ async function setup() {
   vi.stubGlobal('fetch', requests);
   const user = userEvent.setup();
   render(<AdminCrmPage />);
-  await screen.findByText(/Dữ liệu minh họa/);
+  await screen.findByRole('heading', { name: 'Tổng quan vận hành' });
   return { user, requests };
 }
 
@@ -46,6 +46,12 @@ describe('Admin frontend integration with real mock provider and components', ()
     await user.type(screen.getByLabelText('Lý do'), 'Kiểm tra luồng mock');
     await confirm('Xác nhận khóa');
     expect(accountRow().getByText('Đã khóa')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Tổng quan' }));
+    const attention = within(screen.getByRole('region', { name: 'Cần chú ý' }));
+    expect(attention.getByText('Tài khoản bị khóa').nextElementSibling).toHaveTextContent('1');
+    expect(
+      within(screen.getByRole('region', { name: 'Phiên đăng nhập' })).getByText('0 còn hiệu lực'),
+    ).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Phiên đăng nhập' }));
     const sessions = screen.getByRole('region', { name: 'Danh sách phiên đăng nhập' });
     const row = within(sessions).getByText('Nguyễn Văn An').closest('li') as HTMLElement;
@@ -76,6 +82,10 @@ describe('Admin frontend integration with real mock provider and components', ()
     await confirm('Gửi cảnh báo');
     expect(accountRow().getByText('2 cảnh báo đã gửi')).toBeVisible();
     expect(accountRow('Trần Thị Bình').getByText('0 cảnh báo đã gửi')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Tổng quan' }));
+    const attention = within(screen.getByRole('region', { name: 'Cần chú ý' }));
+    expect(attention.getByText('Cảnh báo đã gửi').nextElementSibling).toHaveTextContent('2');
+    expect(attention.queryByText('Chưa ghi nhận tài khoản bị khóa hoặc cảnh báo.')).toBeNull();
     expect(requests.mock.calls.map(([url]) => url)).toEqual(['/api/auth/me']);
   });
 

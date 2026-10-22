@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -5,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -21,6 +23,22 @@ export function SearchField({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const [draft, setDraft] = useState(value);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(() => {
+    setDraft(value);
+    clearTimeout(timer.current);
+    return () => clearTimeout(timer.current);
+  }, [value]);
+
+  function changeSearch(nextValue: string) {
+    setDraft(nextValue);
+    clearTimeout(timer.current);
+    if (!nextValue) onChange('');
+    else timer.current = setTimeout(() => onChange(nextValue), 500);
+  }
+
   return (
     <div className="min-w-0 flex-1 space-y-2">
       <Label htmlFor={id}>{label}</Label>
@@ -32,18 +50,24 @@ export function SearchField({
         <Input
           id={id}
           type="search"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
+          value={draft}
+          onChange={(e) => changeSearch(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
+            e.preventDefault();
+            clearTimeout(timer.current);
+            onChange(draft);
+          }}
           className="pl-10 pr-12"
           placeholder={label}
         />
-        {value && (
+        {draft && (
           <Button
             variant="ghost"
             size="icon"
             className="absolute right-0 top-0"
             aria-label="Xóa từ khóa"
-            onClick={() => onChange('')}
+            onClick={() => changeSearch('')}
           >
             <X />
           </Button>
@@ -73,12 +97,22 @@ export function FilterSelect({
         <SelectTrigger id={id} className="h-11 w-full sm:min-w-44">
           <SelectValue />
         </SelectTrigger>
-        <SelectContent>
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
+        <SelectContent
+          position="popper"
+          align="start"
+          side="bottom"
+          style={{
+            maxHeight:
+              'min(calc(var(--spacing) * 64), var(--radix-select-content-available-height))',
+          }}
+        >
+          <SelectGroup>
+            {options.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
         </SelectContent>
       </Select>
     </div>

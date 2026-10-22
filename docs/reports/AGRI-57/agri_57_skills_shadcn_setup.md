@@ -4,7 +4,7 @@
 
 - Ngày thực hiện các lượt được tổng hợp: 2026-10-07.
 - Nhánh đã xác minh khi đồng bộ tài liệu: `AGRI-57-frontend-summary`.
-- Task log hiện có: [AGRI-57-trunthong09012005](../../task-logs/AGRI-57/AGRI-57-trunthong09012005.md).
+- Task log hiện có: [AGRI-57-frontend-ui-and-integration](../../task-logs/AGRI-57/AGRI-57-frontend-ui-and-integration.md).
 - Điểm vào và trạng thái tổng thể: [README AGRI-57](README.md).
 
 ## 1. Phạm vi và trạng thái

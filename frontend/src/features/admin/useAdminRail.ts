@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, type FocusEvent, type PointerEvent } from 'react';
+import { useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 
@@ -12,8 +12,6 @@ export function useAdminRail() {
   const previousWidth = useRef<number | null>(null);
   const [railOpen, setRailOpen] = useState(false);
 
-  const pointerInside = useRef(false);
-  const focusInside = useRef(false);
   const openIntent = useRef(false);
   function setExpanded(open: boolean) {
     if (openIntent.current === open) return;
@@ -94,25 +92,8 @@ export function useAdminRail() {
     { scope: rootRef, dependencies: [railOpen], revertOnUpdate: true },
   );
 
-  const railHandlers = {
-    onPointerEnter(event: PointerEvent<HTMLElement>) {
-      if (event.pointerType !== 'mouse' && event.pointerType !== 'pen') return;
-      pointerInside.current = true;
-      setExpanded(true);
-    },
-    onPointerLeave() {
-      pointerInside.current = false;
-      setExpanded(focusInside.current);
-    },
-    onFocusCapture() {
-      focusInside.current = true;
-      setExpanded(true);
-    },
-    onBlurCapture(event: FocusEvent<HTMLElement>) {
-      if (event.currentTarget.contains(event.relatedTarget)) return;
-      focusInside.current = false;
-      setExpanded(pointerInside.current);
-    },
-  };
-  return { rootRef, railOpen, railHandlers };
+  function toggleRail() {
+    setExpanded(!openIntent.current);
+  }
+  return { rootRef, railOpen, toggleRail };
 }

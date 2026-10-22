@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { DiagnosisResult } from '@/types';
@@ -65,11 +65,13 @@ describe('HistoryPage interactions', () => {
     ]);
     const user = userEvent.setup();
     await user.type(screen.getByRole('searchbox', { name: 'Tìm cây hoặc tên bệnh' }), 'gỈ SẮT');
-    expect(screen.getAllByRole('article')).toHaveLength(1);
+    await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(1));
     expect(screen.getByRole('heading', { name: 'Gỉ sắt' })).toBeVisible();
     await user.clear(screen.getByRole('searchbox'));
     await user.type(screen.getByRole('searchbox'), 'không tồn tại');
-    expect(screen.getByRole('heading', { name: 'Không tìm thấy kết quả phù hợp' })).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { name: 'Không tìm thấy kết quả phù hợp' }),
+    ).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Đặt lại bộ lọc' }));
     expect(screen.getAllByRole('article')).toHaveLength(2);
   });

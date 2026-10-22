@@ -122,11 +122,6 @@ function CropMapHeroLayout({
     // GSAP reveals the panel on its next frame; hidden controls cannot receive focus.
     const focusFrame = requestAnimationFrame(() => {
       closeRef.current?.focus({ preventScroll: true });
-      if (window.matchMedia?.('(max-width: 1279px)').matches) {
-        rootRef.current
-          ?.querySelector('[data-map-hero-panel]')
-          ?.scrollIntoView({ block: 'start', behavior: 'instant' });
-      }
     });
     const handleEscape = (event: KeyboardEvent) => {
       if (
@@ -147,14 +142,14 @@ function CropMapHeroLayout({
     <div
       ref={rootRef}
       data-map-exploring={open}
-      className="group/map-explore mx-auto grid max-w-7xl items-center gap-10 px-5 pt-8 pb-12 sm:px-8 lg:px-12 lg:pt-8 lg:pb-16 xl:grid-cols-2 xl:gap-12 xl:data-[map-exploring=true]:items-start"
+      className="crop-map-hero-layout group/map-explore mx-auto grid max-w-7xl grid-cols-2 items-start gap-3 px-4 pt-6 pb-10 sm:gap-6 sm:px-8 sm:pt-8 lg:gap-12 lg:px-12 lg:pb-16"
     >
-      <div className="grid min-w-0 max-w-xl xl:self-start xl:pt-12 xl:group-data-[map-exploring=true]/map-explore:pt-0">
+      <div className="relative grid min-w-0 max-w-xl md:pt-4 lg:pt-12 md:group-data-[map-exploring=true]/map-explore:pt-0">
         <div
           data-map-hero-copy
           aria-hidden={open}
           inert={open}
-          className="col-start-1 row-start-1 min-w-0 self-start"
+          className="col-start-1 row-start-1 min-w-0 self-start group-data-[map-exploring=true]/map-explore:absolute group-data-[map-exploring=true]/map-explore:inset-x-0 group-data-[map-exploring=true]/map-explore:top-0"
         >
           {children}
         </div>
@@ -163,7 +158,7 @@ function CropMapHeroLayout({
           aria-label={name}
           aria-hidden={!open}
           inert={!open}
-          className="col-start-1 row-start-1 min-w-0 self-start"
+          className="absolute inset-x-0 top-0 col-start-1 row-start-1 min-w-0 self-start group-data-[map-exploring=true]/map-explore:relative"
         >
           <Card>
             <CardHeader>
@@ -188,7 +183,7 @@ function CropMapHeroLayout({
           </Card>
         </section>
       </div>
-      {map}
+      <div className="min-w-0">{map}</div>
     </div>
   );
 }
@@ -404,6 +399,9 @@ export function CropMap({ plants, onSelectPlant, children }: CropMapProps) {
             <p className="mt-2 text-sm leading-6 text-muted-foreground">{selectedCrop.context}</p>
             <a
               href={selectedCrop.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Mở nguồn vùng trồng trong tab mới"
               className="mt-3 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
               Nguồn vùng trồng <ExternalLink aria-hidden="true" className="size-4" />

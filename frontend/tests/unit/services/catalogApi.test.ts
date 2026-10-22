@@ -71,7 +71,7 @@ describe('backend plant photograph matching', () => {
     ['Lua', 'Lúa', 'rice', 'lúa banner.jpg'],
     ['Ngo', 'Ngô', 'corn', 'ngô banner.jpg'],
     ['Ot', 'Ớt', 'chili', 'ớt banner.jpg'],
-    ['Sau_rieng', 'Sầu riêng', 'durian', 'sầu riêng.jpg'],
+    ['Sau_rieng', 'Sầu riêng', 'durian', 'sầu riêng banner.jpg'],
     ['Xoai', 'Xoài', 'mango', 'xoài banner.jpg'],
     ['Pepper', null, 'chili', 'ớt banner.jpg'],
     ['Chuoi', 'Chuối', 'banana', 'chuối banner.jpg'],

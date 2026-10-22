@@ -1,5 +1,16 @@
 # AGRI-80 - Giao diện quản trị frontend mock
 
+## Màn hình chào admin giống user — 2026-10-21
+
+Theo yêu cầu, thêm AdminLoginSuccessScreen/CSSmodule và logo lá đã duyệt, AppProvider chọn
+riêng Admin. Cây non/vòng tròn/hai sóng/progress/tên thật, chờ4giây kể cảreduced; pausehidden,
+cleanup/error/retry/cancel; User/auth/API giữ luồng cũ. Thêm3motiontokens/DESIGN và tests.
+RED thiếucomponent; initial11/13 vì startupadminwait1s, sửa expectations đúng4s. Final13/13,
+4files10,98s11:42:23UTCexit0; coveragecomponent10/10branches100% (trước đổi riênglogopath),
+Biome7files/detector[]/finalbuildcompile3,9sTS1021ms và browser5sizes/fresh-restored/gate/reduced/
+hidden/dashboard đạt. [Paths/evidence/limits](../../reports/AGRI-80/admin_login_entrance_2026_10_15.md#follow-up--seedling-welcome-2026-10-21).
+Không fullsuite/CI/backend thật, không commit/push/DB; stashAGRI-57 vẫn nguyên.
+
 - Nhánh đã xác minh: `AGRI-80-create-crm-admin-page`.
 - Ngày cập nhật: 2026-10-16.
 - Người phụ trách/người duyệt: không suy đoán từ hội thoại.
@@ -112,4 +123,80 @@ Kiểm tra thực tế của đợt dọn tài liệu đạt: còn 12 báo cáo 
 
 ## 5. Giới hạn và việc còn lại
 
+### 2026-10-21 — Bỏ chức năng chọn 7/30 ngày
+
+Xóa selector, state/callback đổi kỳ, tham số tổng hợp 30 ngày và CSS dense không còn dùng. Giữ biểu đồ/bảng cố định bảy ngày gần nhất, số tổng/hôm nay/phiên hiệu lực/Cần chú ý và nút làm mới; timestamp căn phải. Sửa component/helper/test và browser script, không chỉ ẩn nút.
+
+RED một ca thất bại trước sửa; bộ frontend mới 212/212, 36 tệp đạt 26.66s, container exit 0. Biome sáu tệp và production build/TypeScript (4.6s compile/774ms TypeScript) đạt. [Báo cáo và log](../../reports/AGRI-80/admin_overview_statistics_2026_10_21.md). Đã cập nhật riêng frontend localhost:3000; không đo lại coverage, không đổi backend/stash hoặc commit/push.
+
+Browser cuối 118 lượt/10 viewport đạt (`.cache/admin-period/results.json`): không còn selector, biểu đồ đúng bảy cột, lịch/làm mới/phân trang hoạt động, không tràn document. Đã xem ảnh 1280×720; desktop không thêm cuộn, màn hình nhỏ giữ vùng cuộn dự phòng.
+
+### 2026-10-21 — Bỏ mô tả/thông báo theo ảnh
+
+Bỏ note mock dưới tiêu đề ở bốn view, mô tả người dùng/ảnh/phiên và đoạn giải thích bổ sung ở danh sách phiên. Giữ tiêu đề, bộ chọn 7/30 ngày, dữ liệu và thao tác mock. Sửa `AdminCrmPage.tsx`, `AdminSessions.tsx`; hai tệp test đổi readiness sang heading và xác nhận note đã bỏ.
+
+RED 1 thất bại/7 đạt trước sửa; frontend cuối 212/212, 36 tệp, 27.18s, container exit 0. Biome bốn tệp, build/TypeScript (4.6s compile/895ms TypeScript) đạt. Browser cả bốn view ở 1280×720 và 375×812 đạt: không còn các dòng trong ảnh, giữ heading/thống kê, không tràn document. [Báo cáo và log](../../reports/AGRI-80/admin_overview_statistics_2026_10_21.md). Đã cập nhật riêng frontend localhost:3000; không commit/push, đổi backend hoặc stash.
+
+### 2026-10-21 — Cân khoảng trống tổng quan
+
+Theo chấp thuận tiếp theo, tăng kích thước ảnh/biểu đồ và khoảng đệm riêng desktop cao ≥900px, rộng ≥1024px; mở lịch mặc định khi đủ chỗ, giữ compact bên dưới. Thêm `AdminOverviewCalendar.tsx` và test: manual override qua resize/đổi kỳ, cleanup listener, fallback thiếu matchMedia; không thêm panel hoặc dữ liệu lấp chỗ. Sửa `AdminOverview.tsx`, regression test, CSS và browser script.
+
+RED 1 thất bại/2 đạt trước sửa. Bộ frontend mới 212/212, 36 tệp đạt 27.19s (container exit 0); coverage component lịch 3/3 đạt 1.24s, 87.5% branch/100% line. Biome 5 tệp và build/TypeScript đạt. Browser 128 lượt/10 viewport đạt, kiểm tra ngưỡng 899/900px và sidebar mở; desktop không thêm cuộn, màn hình nhỏ dùng vùng cuộn dự phòng. Đã xem ảnh 1920×1080 và cập nhật riêng frontend localhost:3000. [Báo cáo/log](../../reports/AGRI-80/admin_overview_statistics_2026_10_21.md). Không commit/push, không đổi backend hoặc stash.
+
+### 2026-10-21 — Bổ sung số liệu ưu tiên, giữ tổng quan gọn
+
+Thêm phát sinh hôm nay UTC+7, phiên chưa kết thúc/chưa hết hạn, tài khoản bị khóa và cảnh báo đã gửi với liên kết quản lý. Kỳ 7/30 ngày dùng cùng bản ghi mock cho biểu đồ/bảng; làm mới tính lại cục bộ với timestamp và thông báo trợ năng. Thu lịch, bỏ mô tả/footer trùng của tổng quan để giữ chiều cao; không thêm phân trang tổng quan hay số liệu AI/online giả.
+
+Đường dẫn và bằng chứng tại [báo cáo thống kê](../../reports/AGRI-80/admin_overview_statistics_2026_10_21.md). RED được ghi trước sửa; frontend 209/209 (35 tệp, 28.75s) đạt; sau sửa lỗi type fixture/test, coverage tập trung 8/8 (2.80s) đạt, hai tệp mới/cập nhật 100% branch. Biome 9 tệp và production build/TypeScript đạt. Browser 92 lượt/bảy viewport đạt; desktop không cuộn ở 7/30 ngày khi lịch/bảng đóng, màn hình nhỏ có vùng cuộn bên trong. Đã cập nhật riêng frontend localhost:3000. Vẫn mock, chưa có thống kê backend/CI/thiết bị thật; chưa commit/push. Giữ các thay đổi và stash trước đó.
+
+Xác nhận đầy đủ cuối sau sửa type/fixture: 209/209, 35 tệp, 22.80s, bắt đầu 13:02:36 UTC, container exit 0; log `.cache/admin-stats-green.log`. Build cuối compile 3.6s/TypeScript 762ms đạt. Đã xem thêm ảnh phone và desktop kỳ 30 ngày. Không đổi mã sau lượt xác nhận này.
+
+### 2026-10-21 — Giữ tổng quan liên tục, bỏ khối lặp
+
+Theo yêu cầu tiếp theo, bỏ phân trang tổng quan và hai tệp component/test do lượt trước tạo. Giữ ba số liệu/biểu đồ, ảnh, lịch theo cột chính/phụ; bỏ mục quản lý trùng sidebar, tài khoản trùng header, danh sách phiên gần đây đã có trang riêng. Không thay phân trang các danh sách. Chỉnh `AdminOverview.tsx`, `AdminOverviewPanels.tsx`, `AdminMetricChart.tsx`, `AdminCrmPage.tsx`, regression test và token CSS; cập nhật browser script.
+
+RED xác nhận thiếu ảnh/lịch khi tổng quan còn phân trang trước sửa. Bộ mới 205/205, 33 tệp đạt 28.02s, container `agri80-overview-green` exit 0; sau đó chỉ tinh chỉnh khoảng cách cho laptop thấp. Biome sáu tệp và build/TypeScript đạt. Số test giảm hai do bỏ feature phân trang; không áp dụng coverage lịch sử của component đã xóa cho trạng thái mới. [Báo cáo và log](../../reports/AGRI-80/admin_viewport_layout_2026_10_21.md). Chưa commit/push hoặc xác nhận CI.
+
+Browser cuối 85 lượt/bảy viewport đạt, `.cache/admin-overview/results.json`: tổng quan đầy đủ không cuộn nội dung ở bốn viewport desktop; tablet/phone xếp dọc cuộn bên trong, lịch và Xem ảnh vẫn dùng được; phân trang danh sách giữ đủ dữ liệu. Không cuộn document/tràn ngang/lỗi trang. Đã khắc phục Chromium truyền overflow của nội dung xếp dọc lên HTML bằng containment riêng tổng quan, xác nhận qua kích thước và cuộn tới lịch thực tế. Build cuối 3.7s compile/853ms TypeScript đạt, đã cập nhật localhost:3000. Đã xem ảnh desktop mở sidebar và phone.
+
+### 2026-10-21 — Bố cục admin trong viewport
+
+Giữ workspace trong chiều cao màn hình, phân trang tám mục tổng quan theo 3/2/1 panel và danh sách theo 2/1 bản ghi. Header/sidebar/phân trang luôn thuộc khung; ảnh thành thumbnail, hàng hành động/phiên gần đây gọn hơn. Giữ nội dung cuộn bên trong khi màn hình rất thấp hoặc chữ/nội dung dài để không mất thông tin. Không đổi dữ liệu mock hay API, sidebar vẫn chỉ mở bằng nút.
+
+RED ba ca trước triển khai; toàn bộ frontend 207/207, 34 tệp đạt 22.75s, container exit 0 (sau đó chỉ sửa class hàng hành động). Coverage tập trung 17/17: hai tệp mới đạt 100% branch; Biome 14 tệp và production build/TypeScript đạt. Đã cập nhật riêng frontend localhost:3000. Nguồn, đường dẫn và giới hạn: [báo cáo viewport](../../reports/AGRI-80/admin_viewport_layout_2026_10_21.md). Chưa xác nhận CI, chưa commit/push.
+
+Chromium cuối đạt 107 lượt qua bảy kích thước: 1440×900, 1366×768 sidebar mở, 1280×720, 1024×768, 768×900, 375×812, 844×390. Không cuộn document, không tràn ngang, đủ mọi panel/bản ghi qua phân trang. Sáu viewport thông thường không cần cuộn nội dung; landscape cao 390px dùng cuộn bên trong để giữ đủ dữ liệu. Đã sửa tình trạng footer chặn nút ở landscape được phát hiện trong lượt đầu. Bằng chứng `.cache/admin-viewport/results.json`, ảnh cùng thư mục, script `frontend/tests/browser/admin_viewport.py`; build cuối compile 3.8s/TypeScript 732ms đạt. Chưa kiểm tra thiết bị thật hoặc chế độ phóng to chữ bằng trình duyệt.
+
+### 2026-10-21 — Bỏ tự mở sidebar
+
+Theo yêu cầu tiếp theo, sidebar chỉ mở/thu bằng nút header. Bỏ pointer/focus handlers trong `useAdminRail.ts` và `AdminCrmPage.tsx`, cập nhật test hover/focus/touch và browser script. Test RED xác nhận trước sửa; lần cuối toàn bộ frontend 205/205, 33 tệp đạt trong 23.37s (`pnpm test --maxWorkers=2 --testTimeout=15000`, container exit 0). Biome 3 tệp, production build/TypeScript, Chromium 1280/768/375px và reduced-motion đạt; đã cập nhật localhost. Chi tiết lỗi fixture touch đã sửa và log tại [báo cáo sidebar](../../reports/AGRI-80/admin_hover_rail_2026_10_15.md). Chưa đo coverage/CI hoặc commit/push.
+
+### 2026-10-21 — Bổ sung nút sidebar admin
+
+Thêm nút mở/thu gọn tại header desktop bằng Button và icon có sẵn; ghim mở khi chuột/tiêu điểm rời thanh, giữ rê chuột/bàn phím và Sheet di động. Sửa `AdminCrmPage.tsx`, `useAdminRail.ts`, test cùng thư mục; thêm kiểm tra trình duyệt `frontend/tests/browser/admin_sidebar_toggle.py`. Không lưu trạng thái qua tải lại.
+
+RED thiếu nút được xác nhận trước sửa. Kiểm chứng mới: 205/205 frontend, 33 tệp, 23.05s đạt trong container `agri80-sidebar-suite` (exit 0), với timeout 15s và bản sao root ignore-file. Lần đầu 5 ca lỗi do thiếu ignore-file trong Docker và timeout của luồng đăng nhập 4 giây; ghi đầy đủ trong [báo cáo](../../reports/AGRI-80/admin_hover_rail_2026_10_15.md). Biome 3 tệp, production build/TypeScript, Chromium 1280/768/375px và reduced-motion đạt. Đã cập nhật service frontend localhost:3000; chưa đo coverage/CI, chưa commit/push. Các thay đổi màn chào trước đó và stash được giữ nguyên.
+
 DoD tổng thể chưa xác nhận. Chưa có kết quả CI hoặc số đo bao phủ mới cho trạng thái hiện tại; không dùng số đo lịch sử làm kết quả mới. Chưa chứng nhận thiết bị vật lý, nhiều bộ máy trình duyệt, trình đọc màn hình hay toàn bộ khả năng tiếp cận. Người phụ trách/người duyệt/PR chỉ được bổ sung khi có thông tin xác minh. Chưa staging/commit/push hay đổi Jira.
+
+### 2026-10-21 — Lọc lịch theo ngày, tháng, năm
+
+Yêu cầu tinh chỉnh sau đó: bỏ nút “Theo ngày/tháng/năm”, dùng tháng/năm trên tiêu đề mở picker; cột biểu đồ mảnh và nhãn cùng ô/căn tâm, khoảng mốc giãn đều. Thu gọn preview, padding, Cần chú ý và nút ngày desktop 32px (touch vẫn 44px), xử lý cuộn Tổng quan desktop. Tệp chính: `AdminCalendar.tsx`, `AdminMetricChart.tsx`, `AdminOverview.tsx`, `index.css`; thêm test chart, cập nhật test overview và hai browser script. RED ba ca xác nhận; GREEN cuối **226/226**, 38 tệp, 33.09s, exit 0. Coverage chín test: lịch **85.36%**, chart **100%**, tổng **87.62% branch**. Biome năm tệp, diff check, build/TypeScript và browser căn nhãn sáu viewport + hồi quy **118 lượt/10 viewport** đạt. Desktop không cuộn trong các trường hợp thử, giữ fallback di động. [Chi tiết và log mới nhất](../../reports/AGRI-80/admin_calendar_filter_2026_10_21.md#điều-chỉnh-tiếp-theo--tiêu-đề-lịch-biểu-đồ-và-chiều-cao). Localhost đã cập nhật, không commit/push hoặc thay backend. Các đoạn tiếp theo là lịch sử trước điều chỉnh.
+
+Bổ sung kiểm chứng cuối: browser `admin_viewport.py` cập nhật giả định lịch lọc mở và chạy **118 lượt/10 viewport** đạt. Giữ document trong màn hình, có cuộn Tổng quan 122px tại desktop cao 900px khi mở lịch; không thu nhỏ nút hoặc cắt nội dung. Log `.cache/admin-date-viewport.log`, JSON/ảnh `.cache/admin-date-viewport/`.
+
+Mở rộng lịch Tổng quan với chọn ngày/tháng/năm theo yêu cầu cuối, khóa kỳ tương lai và bỏ lọc. Tổng số phát sinh, biểu đồ và ảnh gần đây dùng cùng ranh giới UTC+7; giữ phiên còn hiệu lực và khối Cần chú ý là trạng thái hiện tại có nhãn rõ. Thêm `adminDateFilter.ts`, cập nhật lịch/overview/chart/panels/stats/CSS, test cùng thư mục và browser `admin_date_filter.py`.
+
+RED ba ca đã xác nhận; GREEN cuối **224/224**, 37 tệp, 30.46s, exit 0. Coverage tập trung 12 test: lịch **91.46% branch**, hai helper **100%**, tổng **93.85%**. Biome chín tệp, diff check, build/TypeScript và browser sáu viewport đều đạt; localhost đã cập nhật. Giữ cuộn trong khung khi mở lịch có nút 44px trên màn hình không đủ cao. [Bằng chứng, phạm vi và giới hạn](../../reports/AGRI-80/admin_calendar_filter_2026_10_21.md). Chưa CI/thiết bị thật; dữ liệu mock, không sửa backend hay commit/push. Các phần tiếp theo là lịch sử.
+
+### 2026-10-21 — Tìm kiếm onChange 0,5 giây (bằng chứng trước)
+
+Thêm debounce 500ms trong `AdminRecordList.tsx` dùng chung ba trang Người dùng/Phiên đăng nhập/Ảnh đã tải lên. Hủy timer khi nhập tiếp/submit/unmount; giữ Enter/nút tìm kiếm ngay, bỏ dấu/hoa thường, xóa query và reset trang. Cập nhật test cùng thư mục và thêm `frontend/tests/browser/admin_search.py`. RED bốn ca thiếu tự lọc xác nhận; GREEN **221/221**, 37 tệp, 30.72s, container exit 0. Biome hai tệp, diff check, production build/TypeScript và browser ba trang tại 1280/768/375px đều đạt; localhost đã cập nhật. [Bằng chứng và giới hạn](../../reports/AGRI-80/admin_search_2026_10_21.md). Dữ liệu vẫn mock; không sửa backend, không đo coverage/CI mới, không commit/push. Phần tiếp theo là lịch sử các lượt trước.
+
+### 2026-10-21 — Logo, tải lại và lời tạm biệt admin
+
+Yêu cầu tiếp theo — sửa logo: link cũ đi `/` làm website provider khôi phục phiên và chạy lại lời chào. Đổi link `/admin` và click thường về Tổng quan trong workspace hiện tại, giữ phiên và hành vi mở link bằng phím bổ trợ. Thêm regression test cùng `AdminCrmPage`, cập nhật browser script. RED href sai đã xác nhận; GREEN **216/216**, 37 tệp, 24.73s, exit 0. Biome hai tệp, diff check, build/TypeScript và browser 1280/768/375px đạt; localhost đã cập nhật. Lỗi kiểu query test trong build đầu đã sửa và chạy lại đạt. [Chi tiết](../../reports/AGRI-80/admin_login_entrance_2026_10_15.md#2026-10-21--sửa-logo-quay-về-tổng-quan). Không đổi các hiệu ứng đăng nhập/reload/đăng xuất, không commit/push hoặc đo coverage/CI mới. Phần dưới ghi nhận lượt triển khai trước.
+
+Đổi logo rail sang logo lá user; khôi phục chọn lọc hiệu ứng bốn khối `ReloadLoadingScreen` từ stash user cho `AdminAccess` và route loading admin. Giữ màn cây non chào sau đăng nhập. `AdminCrmPage` xóa phiên ngay khi đăng xuất, chuyển sang chế độ logout của `AdminLoginSuccessScreen`: tên thật, hai vòng sóng, “Tạm biệt”/“HẸN GẶP LẠI”, không progress, sau bốn giây về trang giới thiệu. Không pop/apply stash hay sửa backend.
+
+Kiểm chứng mới: RED hai ca thiếu loading/farewell đã xác nhận; toàn bộ frontend **215/215**, 37 tệp, 23.76s, exit 0. Biome sáu tệp, diff check, build/TypeScript đạt. Browser tải/reload/logo/logout ở 1280/768/375px và bộ chào sau đăng nhập năm viewport đều đạt, bao gồm reduced motion, mobile logout, phiên xóa ngay và thời lượng bốn giây. Đã cập nhật localhost. Chi tiết tệp, log và hai lỗi fixture/mã hóa đã sửa ở [báo cáo màn chào](../../reports/AGRI-80/admin_login_entrance_2026_10_15.md#2026-10-21--đồng-bộ-logo-tải-lại-và-tạm-biệt-admin). Chưa đo coverage/CI hay commit/push; giữ nguyên dữ liệu mock và công việc trước đó.

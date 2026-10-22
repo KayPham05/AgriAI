@@ -87,7 +87,7 @@ describe('IntroPage', () => {
     const logoSource = screen.getByRole('img', { name: 'Logo AgriAI' }).getAttribute('src');
     expect(logoSource).not.toBeNull();
     expect(new URL(logoSource ?? '', 'http://localhost').searchParams.get('url')).toBe(
-      '/images/logo.png',
+      '/images/agriai-leaf-mark.png',
     );
     expect(screen.getAllByText('ConvNeXt-Tiny').length).toBeGreaterThan(0);
     expect(screen.getAllByRole('article')).toHaveLength(3);
@@ -100,5 +100,18 @@ describe('IntroPage', () => {
     expect(onRegister).toHaveBeenCalledOnce();
     expect(onLogin).toHaveBeenCalledOnce();
     expect(screen.queryByRole('button', { name: /Khám phá bản demo/i })).not.toBeInTheDocument();
+  });
+
+  it('offers registration and an authenticated trial from the closing banner', async () => {
+    const onRegister = vi.fn();
+    const onLogin = vi.fn();
+    render(<IntroPage onLogin={onLogin} onRegister={onRegister} />);
+    const banner = screen.getByRole('region', { name: 'Bắt đầu với AgriAI' });
+    await userEvent.click(within(banner).getByRole('button', { name: 'Tạo tài khoản' }));
+    expect(onRegister).toHaveBeenCalledOnce();
+    expect(onLogin).not.toHaveBeenCalled();
+    await userEvent.click(within(banner).getByRole('button', { name: 'Thử nghiệm ngay' }));
+    expect(onLogin).toHaveBeenCalledOnce();
+    expect(within(banner).getByText(/Đăng nhập để thử phân tích/)).toBeVisible();
   });
 });

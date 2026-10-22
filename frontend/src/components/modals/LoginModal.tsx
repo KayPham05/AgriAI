@@ -16,6 +16,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AuthPanelVideo } from '@/components/modals/AuthPanelVideo';
 import { type AuthSession, login, register, saveAuthSession } from '../../services/authApi';
 
 gsap.registerPlugin(useGSAP);
@@ -201,7 +202,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       }}
     >
       <DialogContent
-        className="block max-h-(--auth-dialog-max-height) overflow-y-auto p-0 sm:max-w-lg md:max-w-4xl"
+        className="block h-(--auth-dialog-height) max-h-(--auth-dialog-max-height) overflow-hidden p-0 sm:max-w-lg md:max-w-4xl [&>[data-slot=dialog-close]]:z-30 [&>[data-slot=dialog-close]]:bg-surface"
         showCloseButton={!isSubmitting}
         onEscapeKeyDown={(event) => {
           if (isSubmitting) event.preventDefault();
@@ -210,21 +211,29 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           if (isSubmitting) event.preventDefault();
         }}
       >
-        <div ref={panelRef} data-auth-mode={mode} className="relative min-w-0">
+        <div
+          ref={panelRef}
+          data-auth-mode={mode}
+          className="group/auth relative h-full min-w-0 overflow-hidden"
+        >
+          <div data-auth-background className="absolute inset-0 hidden bg-primary-hover md:block">
+            <AuthPanelVideo />
+          </div>
           <aside
             data-auth-side-panel
-            className="auth-side-panel absolute inset-y-0 left-0 hidden w-1/2 flex-col items-center justify-center gap-5 bg-secondary px-8 py-12 text-center md:flex"
+            className="auth-side-panel absolute inset-y-0 left-0 z-10 hidden w-1/2 flex-col items-center justify-center gap-5 px-8 py-12 text-center text-primary-foreground md:flex"
           >
-            <p className="text-3xl font-semibold tracking-tight text-primary">
+            <p className="relative text-3xl font-semibold tracking-tight">
               {mode === 'login' ? 'Chào bạn đến AgriAI' : 'Bạn đã có tài khoản?'}
             </p>
-            <p className="max-w-xs leading-7 text-muted-foreground">
+            <p className="relative max-w-xs leading-7">
               {mode === 'login'
                 ? 'Tạo tài khoản để lưu và xem lại những mẫu lá đã kiểm tra.'
                 : 'Đăng nhập để tiếp tục với những mẫu lá bạn đã lưu.'}
             </p>
             <Button
-              variant="outline"
+              variant="outlineOnDark"
+              className="relative"
               disabled={isSubmitting}
               onClick={() => switchMode(mode === 'login' ? 'register' : 'login')}
             >
@@ -233,11 +242,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           </aside>
           <div
             data-auth-form-panel
-            className="auth-form-panel relative min-w-0 space-y-5 bg-surface p-6 sm:p-8 md:w-1/2"
+            className="auth-form-panel relative z-10 h-full min-w-0 space-y-5 overflow-y-auto overscroll-contain bg-surface p-6 sm:p-8 md:w-1/2"
           >
             <DialogHeader>
               <Image
-                src="/images/logo.png"
+                src="/images/agriai-leaf-mark.png"
                 alt="Logo AgriAI"
                 width={40}
                 height={40}

@@ -2,6 +2,13 @@
 
 Nhánh: `AGRI-80-create-crm-admin-page`. Cập nhật: 2026-10-16.
 
+## Hiệu ứng cây non sau đăng nhập — 2026-10-21
+
+Admin dùng màn hình cây non/vòng sóng và tên tài khoản giống user, chờ4giây trước dashboard;
+giữ riêng luồng User và API. Fresh13/13focused, component10/10branches100%, Biome/build và
+browser5viewports/fresh-restored/reduced/hidden đạt. Không fullsuite/CI mới, chưa commit/push.
+[Phạm vi và bằng chứng](admin_login_entrance_2026_10_15.md#follow-up--seedling-welcome-2026-10-21).
+
 ## Bổ sung kiểm thử — 2026-10-16
 
 Thêm 22 unit test và 4 integration test cho frontend admin; không đổi hành vi ứng dụng hay thêm thư viện. Bộ frontend hiện đạt **200/200 kiểm thử**, 32 tệp; coverage nhánh nhóm admin **80.79%**, toàn frontend **60.22%**. Typecheck, lint và định dạng đạt. Hai script unit/integration đã chọn cả test admin. [Phạm vi và bằng chứng kiểm thử mới](admin_frontend_tests_2026_10_16.md).
@@ -32,10 +39,14 @@ Giữ luồng đăng nhập Admin có sẵn, kiểm tra vai trò trước khi hi
 | Người dùng | Tìm không dấu theo tên/email, phân trang, mô phỏng khóa/khôi phục/cảnh báo/cưỡng chế đăng xuất. |
 | Ảnh | Xem ảnh minh họa, trạng thái còn hiển thị/hết hạn/đã xóa và mô phỏng cảnh báo/xóa. |
 | Phiên đăng nhập | Danh sách phiên mẫu, tìm kiếm và nhãn trạng thái. |
-| Điều hướng | Thanh biểu tượng trên máy tính mở rộng khi rê chuột/nhận tiêu điểm; di động dùng Sheet. |
+| Điều hướng | Thanh biểu tượng trên máy tính chỉ mở/thu gọn bằng nút ở header; di động dùng Sheet. |
 | Khả năng tiếp cận | Tên điều khiển rõ ràng, tiêu điểm bàn phím, bảng số liệu chi tiết, vùng bấm tối thiểu 44px và chế độ giảm chuyển động. |
 
 ## Báo cáo chi tiết
+
+- [Số liệu ưu tiên và hành động trên tổng quan](admin_overview_statistics_2026_10_21.md).
+
+- [Bố cục admin trong viewport, 2026-10-21](admin_viewport_layout_2026_10_21.md).
 
 - [Unit test và integration test frontend admin](admin_frontend_tests_2026_10_16.md).
 - [Trạng thái frontend mock và bằng chứng gần nhất](admin_mock_frontend_2026_10_15.md).
@@ -52,6 +63,30 @@ Giữ luồng đăng nhập Admin có sẵn, kiểm tra vai trò trước khi hi
 - [Nhật ký AGRI-80](../../task-logs/AGRI-80/AGRI-80-create-crm-admin-page.md).
 
 ## Kiểm chứng đã ghi nhận
+
+Tinh chỉnh lịch/biểu đồ Tổng quan (2026-10-21): bỏ hàng nút chế độ, chọn tháng/năm bằng tiêu đề; cột mảnh và nhãn cùng ô, thu gọn bố cục để desktop không cuộn. **226/226** frontend (38 tệp, 33.09s), Biome năm tệp, build/TypeScript, đo căn nhãn sáu viewport và **118 lượt/10 viewport** đạt. Coverage tập trung lịch/biểu đồ **87.62% branch** qua chín test. [Chi tiết mới nhất](admin_calendar_filter_2026_10_21.md#điều-chỉnh-tiếp-theo--tiêu-đề-lịch-biểu-đồ-và-chiều-cao).
+
+Lịch lọc ngày/tháng/năm (2026-10-21): lọc số phát sinh và ảnh gần đây theo UTC+7, có bỏ lọc, giữ trạng thái hiện tại tách rõ. **224/224** frontend (37 tệp, 30.46s), Biome chín tệp, build/TypeScript, browser lọc sáu viewport và hồi quy **118 lượt/10 viewport** đạt. Coverage tập trung lịch/logic thời gian **93.85% branch** qua 12 test; [chi tiết và giới hạn cuộn khi mở lịch](admin_calendar_filter_2026_10_21.md).
+
+Tìm kiếm onChange 500ms (2026-10-21): áp dụng chung cho Người dùng, Phiên đăng nhập và Ảnh đã tải lên; giữ submit ngay, hủy timer cũ và reset trang khi query đổi. **221/221** frontend (37 tệp, 30.72s), Biome hai tệp, build/TypeScript và browser cả ba trang tại 1280/768/375px đạt. [Chi tiết](admin_search_2026_10_21.md).
+
+Sửa điều hướng logo admin (2026-10-21): logo về Tổng quan trong workspace (`/admin`), không qua trang giới thiệu nên không khởi động lại xác thực/màn chào. **216/216** frontend (37 tệp, 24.73s), Biome hai tệp, build/TypeScript và browser 1280/768/375px đạt. [Chi tiết](admin_login_entrance_2026_10_15.md#2026-10-21--sửa-logo-quay-về-tổng-quan).
+
+Đồng bộ logo/tải lại/tạm biệt admin (2026-10-21): dùng logo lá và hiệu ứng tải lại bên user, giữ màn chào sau đăng nhập; đăng xuất xóa phiên ngay, hiện lời tạm biệt bốn giây không có thanh tiến trình. **215/215** frontend (37 tệp, 23.76s), Biome sáu tệp và build/TypeScript đạt. Chi tiết, kiểm tra trình duyệt và giới hạn ở [báo cáo màn chào](admin_login_entrance_2026_10_15.md#2026-10-21--đồng-bộ-logo-tải-lại-và-tạm-biệt-admin).
+
+Yêu cầu tiếp theo 2026-10-21: bỏ hẳn bộ chọn và logic 7/30 ngày, giữ biểu đồ cố định bảy ngày gần nhất. **212/212** frontend (36 tệp, 26.66s), Biome sáu tệp và build/TypeScript đạt. [Chi tiết](admin_overview_statistics_2026_10_21.md). Các yêu cầu giữ bộ chọn và kiểm tra chuyển kỳ bên dưới là lịch sử.
+
+Theo ảnh yêu cầu tiếp theo 2026-10-21, đã bỏ mô tả/thông báo lặp ở bốn trang admin; giữ tiêu đề và điều khiển thống kê. **212/212** frontend (36 tệp, 27.18s), Biome bốn tệp, build/TypeScript và kiểm tra bốn view ở desktop/phone đạt. [Chi tiết](admin_overview_statistics_2026_10_21.md). Dữ liệu vẫn là mock; chưa commit/push.
+
+Cân bố cục tổng quan 2026-10-21: màn hình desktop cao từ 900px mở lịch mặc định, ảnh/biểu đồ/đệm lớn hơn; màn hình thấp giữ gọn, lựa chọn lịch thủ công được giữ. **212/212** frontend, build/TypeScript, Biome 5 tệp và **128 lượt browser/10 viewport** đạt. Component lịch mới đạt 87.5% branch coverage trong lượt 3 test. [Bằng chứng](admin_overview_statistics_2026_10_21.md). Số liệu bên dưới là các lượt trước.
+
+Bổ sung ưu tiên tổng quan 2026-10-21: hôm nay, phiên còn hiệu lực, Cần chú ý, kỳ 7/30 ngày và cập nhật cục bộ; lịch thu gọn. **209/209** frontend đạt; coverage tập trung **8/8**, hai tệp UI/tính toán đạt 100% branch; Biome 9 tệp, build/TypeScript và 92 lượt browser qua 7 viewport đạt. [Chi tiết và giới hạn mock](admin_overview_statistics_2026_10_21.md). Các số liệu dưới đây thuộc các lượt trước.
+
+Điều chỉnh tiếp theo 2026-10-21: tổng quan trở lại bố cục liên tục, không phân trang; bỏ khối quản lý/tài khoản/phiên gần đây trùng nội dung, giữ ba số liệu/biểu đồ, ảnh và lịch. Phân trang danh sách giữ nguyên. Frontend mới **205/205**, 33 tệp, 28.02s đạt; Biome sáu tệp và build/TypeScript đạt. Xem [phần điều chỉnh tổng quan](admin_viewport_layout_2026_10_21.md). Các số 207 test và coverage phân trang tổng quan dưới đây thuộc lượt triển khai trước.
+
+Bổ sung bố cục viewport 2026-10-21: frontend 207/207 đạt (34 tệp, 22.75s), hai component/hook mới đạt 100% branch coverage trong lượt đo tập trung 17 test; Biome 14 tệp và build/TypeScript đạt. [Chi tiết và giới hạn](admin_viewport_layout_2026_10_21.md). Các lượt sidebar/màn chào dưới đây là bằng chứng riêng của các thay đổi trước đó.
+
+Bổ sung 2026-10-21: nút sidebar đã kiểm tra RED/GREEN, toàn bộ frontend **205/205** đạt (33 tệp, 23.05s, timeout 15s và môi trường Docker đủ ignore-file); Biome 3 tệp, build/TypeScript và Chromium 1280/768/375px đạt. Xem [báo cáo sidebar cập nhật](admin_hover_rail_2026_10_15.md). Chưa đo coverage mới hay xác nhận CI; các số liệu tiếp theo là lịch sử.
 
 Kết quả dưới đây thuộc lần triển khai trước khi dọn tài liệu, không phải kiểm thử chạy lại trong đợt chỉnh văn bản này:
 
