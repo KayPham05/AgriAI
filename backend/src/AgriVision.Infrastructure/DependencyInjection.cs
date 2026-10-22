@@ -32,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<IPlantDiseaseRepository, PlantDiseaseRepository>();
         services.AddScoped<IPredictionRepository, PredictionRepository>();
         services.AddScoped<IAdminAuditLogRepository, AdminAuditLogRepository>();
+        services.AddScoped<IAgriculturalProfileRepository, AgriculturalProfileRepository>();
 
         // Register Image Storage Service
         services.AddScoped<IImageStorage, CloudinaryImageStorage>();

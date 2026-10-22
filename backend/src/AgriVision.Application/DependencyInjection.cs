@@ -16,6 +16,7 @@ public static class DependencyInjection
         services.AddScoped<IDiseaseService, DiseaseService>();
         services.AddScoped<IPredictionService, PredictionService>();
         services.AddScoped<IAdminUserService, AdminUserService>();
+        services.AddScoped<IAgriculturalProfileService, AgriculturalProfileService>();
 
         // Register FluentValidation Validators
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);

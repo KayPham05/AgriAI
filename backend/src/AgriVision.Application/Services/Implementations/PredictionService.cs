@@ -20,6 +20,7 @@ public class PredictionService : IPredictionService
     private readonly IPlantDiseaseRepository _plantDiseaseRepository;
     private readonly IImageStorage _imageStorage;
     private readonly IPlantDiseasePredictor _diseasePredictor;
+    private readonly IAgriculturalProfileRepository _profileRepository;
     private readonly ILogger<PredictionService> _logger;
 
     private static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png" };
@@ -30,17 +31,28 @@ public class PredictionService : IPredictionService
         IPlantDiseaseRepository plantDiseaseRepository,
         IImageStorage imageStorage,
         IPlantDiseasePredictor diseasePredictor,
+        IAgriculturalProfileRepository profileRepository,
         ILogger<PredictionService>? logger = null)
     {
         _predictionRepository = predictionRepository;
         _plantDiseaseRepository = plantDiseaseRepository;
         _imageStorage = imageStorage;
         _diseasePredictor = diseasePredictor;
+        _profileRepository = profileRepository;
         _logger = logger ?? NullLogger<PredictionService>.Instance;
     }
 
-    public async Task<PredictionResultDto> PredictAsync(IFormFile file, Guid? userId, CancellationToken cancellationToken = default)
+    public async Task<PredictionResultDto> PredictAsync(IFormFile file, Guid? userId, Guid? agriculturalProfileId = null, CancellationToken cancellationToken = default)
     {
+        if (agriculturalProfileId.HasValue)
+        {
+            if (!userId.HasValue)
+                throw new UnauthorizedAccessException("Authentication is required to select an agricultural profile.");
+            var profile = await _profileRepository.GetByIdAsync(agriculturalProfileId.Value, cancellationToken);
+            if (profile == null || profile.UserId != userId.Value)
+                throw new KeyNotFoundException("Agricultural profile not found.");
+        }
+
         if (file == null || file.Length == 0)
         {
             throw new ArgumentException("No image file uploaded.");
@@ -78,6 +90,7 @@ public class PredictionService : IPredictionService
         {
             Id = Guid.NewGuid(),
             UserId = userId,
+            AgriculturalProfileId = agriculturalProfileId,
             PredictedPlantDiseaseId = primaryPlantDisease.Id,
             Confidence = aiResult.Confidence,
             CreatedAt = DateTime.UtcNow
@@ -174,7 +187,7 @@ public class PredictionService : IPredictionService
                 stored.PredictedPlantDisease.Plant.Name, stored.PredictedPlantDisease.Plant.VietnameseName ?? "Chưa xác định",
                 stored.PredictedPlantDisease.Disease.Name, stored.PredictedPlantDisease.Disease.VietnameseName ?? "Chưa xác định",
                 stored.Confidence, p.CreatedAt)
-            { HasHistoricalSnapshot = stored.HasHistoricalSnapshot, Images = stored.Images };
+            { HasHistoricalSnapshot = stored.HasHistoricalSnapshot, Images = stored.Images, AgriculturalProfileId = p.AgriculturalProfileId };
         }).ToList();
 
         return new PagedResult<PredictionHistoryDto>(historyItems, filterParams.PageNumber, filterParams.PageSize, totalCount);
@@ -258,6 +271,7 @@ public class PredictionService : IPredictionService
             prediction.CreatedAt
         )
         {
+            AgriculturalProfileId = prediction.AgriculturalProfileId,
             Images = ProjectImages(prediction),
             Warning = prediction.Confidence <= 0.8f ? "Độ tin cậy thấp; cần kiểm tra lại kết quả." : null,
             InformationPending = !approved,
@@ -284,6 +298,8 @@ public class PredictionService : IPredictionService
         var expired = images.Count > 0 ? images[0].IsExpired : prediction.CreatedAt.AddDays(30) <= DateTime.UtcNow;
         return result with
         {
+            // Grouping is live metadata; deletion must not restore a stale link from the immutable snapshot.
+            AgriculturalProfileId = prediction.AgriculturalProfileId,
             Images = images,
             ImagePath = expired ? string.Empty : images.FirstOrDefault()?.ImagePath ?? prediction.ImagePath,
             ImagePublicId = expired ? null : prediction.ImagePublicId,
