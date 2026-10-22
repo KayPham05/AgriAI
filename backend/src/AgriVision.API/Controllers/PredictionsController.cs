@@ -24,17 +24,9 @@ public class PredictionsController : ControllerBase
     public async Task<ActionResult<PredictionResultDto>> Predict([FromForm] PredictRequest request, CancellationToken cancellationToken)
     {
         Guid? userId = null;
-        var isAuthenticated = User.Identity?.IsAuthenticated == true;
-        // Invalid credentials must not silently turn a user's request into an unsaved guest prediction.
-        if (Request.Headers.ContainsKey("Authorization") && !isAuthenticated)
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out var parsedUserId))
         {
-            return Unauthorized();
-        }
-
-        if (isAuthenticated)
-        {
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-            if (!Guid.TryParse(userIdClaim, out var parsedUserId)) return Unauthorized();
             userId = parsedUserId;
         }
 
