@@ -12,15 +12,18 @@ public class AdminUserService : IAdminUserService
     private readonly IUserRepository _userRepository;
     private readonly IUserSessionRepository _userSessionRepository;
     private readonly IAdminAuditLogRepository _auditLogRepository;
+    private readonly IPredictionRepository _predictionRepository;
 
     public AdminUserService(
         IUserRepository userRepository,
         IUserSessionRepository userSessionRepository,
-        IAdminAuditLogRepository auditLogRepository)
+        IAdminAuditLogRepository auditLogRepository,
+        IPredictionRepository predictionRepository)
     {
         _userRepository = userRepository;
         _userSessionRepository = userSessionRepository;
         _auditLogRepository = auditLogRepository;
+        _predictionRepository = predictionRepository;
     }
 
     public async Task<PagedResult<AdminUserListItemDto>> GetUsersAsync(AdminUserFilterParams filterParams, CancellationToken cancellationToken = default)
@@ -38,7 +41,7 @@ public class AdminUserService : IAdminUserService
             filterParams.PageSize,
             cancellationToken);
 
-        var dtos = users.Select(MapToDto).ToList();
+        var dtos = users.Select(u => MapToDto(u, u.Predictions?.Count ?? 0)).ToList();
 
         return new PagedResult<AdminUserListItemDto>(dtos, filterParams.PageNumber, filterParams.PageSize, totalCount);
     }
@@ -51,7 +54,8 @@ public class AdminUserService : IAdminUserService
             throw new KeyNotFoundException($"User with ID '{userId}' not found.");
         }
 
-        return MapToDto(user);
+        var predictionCount = await _predictionRepository.GetCountByUserIdAsync(userId, cancellationToken);
+        return MapToDto(user, predictionCount);
     }
 
     public async Task<AdminUserListItemDto> SetUserStatusAsync(Guid adminId, Guid targetUserId, bool isActive, CancellationToken cancellationToken = default)
@@ -88,7 +92,8 @@ public class AdminUserService : IAdminUserService
             }, cancellationToken);
         }
 
-        return MapToDto(user);
+        var predictionCount = await _predictionRepository.GetCountByUserIdAsync(targetUserId, cancellationToken);
+        return MapToDto(user, predictionCount);
     }
 
     public async Task<AdminUserListItemDto> SetUserRoleAsync(Guid adminId, Guid targetUserId, string role, CancellationToken cancellationToken = default)
@@ -115,6 +120,9 @@ public class AdminUserService : IAdminUserService
             user.UpdatedAt = DateTime.UtcNow;
             await _userRepository.UpdateAsync(user, cancellationToken);
 
+            // Invalidate active sessions to enforce role change immediately
+            await _userSessionRepository.RevokeAllSessionsByUserIdAsync(targetUserId, cancellationToken);
+
             await _auditLogRepository.AddAsync(new AdminAuditLog
             {
                 Id = Guid.NewGuid(),
@@ -125,7 +133,8 @@ public class AdminUserService : IAdminUserService
             }, cancellationToken);
         }
 
-        return MapToDto(user);
+        var predictionCount = await _predictionRepository.GetCountByUserIdAsync(targetUserId, cancellationToken);
+        return MapToDto(user, predictionCount);
     }
 
     public async Task<PagedResult<AdminAuditLogDto>> GetAuditLogsAsync(int pageNumber = 1, int pageSize = 20, CancellationToken cancellationToken = default)
@@ -150,7 +159,7 @@ public class AdminUserService : IAdminUserService
         return new PagedResult<AdminAuditLogDto>(dtos, pageNumber, pageSize, totalCount);
     }
 
-    private static AdminUserListItemDto MapToDto(User u) => new(
+    private static AdminUserListItemDto MapToDto(User u, int predictionCount) => new(
         u.Id,
         u.FullName,
         u.Email,
@@ -159,6 +168,6 @@ public class AdminUserService : IAdminUserService
         u.EmailVerifiedAt,
         u.CreatedAt,
         u.UpdatedAt,
-        u.Predictions?.Count ?? 0
+        predictionCount
     );
 }

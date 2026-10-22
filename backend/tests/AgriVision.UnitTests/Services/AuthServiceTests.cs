@@ -37,7 +37,7 @@ public class AuthServiceTests
         _userRepositoryMock.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync((User?)null);
 
-        _jwtTokenGeneratorMock.Setup(g => g.GenerateToken(It.IsAny<User>()))
+        _jwtTokenGeneratorMock.Setup(g => g.GenerateToken(It.IsAny<User>(), It.IsAny<Guid?>()))
             .Returns("fake-jwt-token");
 
         // Act
@@ -51,6 +51,7 @@ public class AuthServiceTests
         result.User.Role.Should().Be(UserRole.User);
 
         _userRepositoryMock.Verify(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Once);
+        _userSessionRepositoryMock.Verify(s => s.AddAsync(It.IsAny<UserSession>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -90,7 +91,7 @@ public class AuthServiceTests
         _userRepositoryMock.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
-        _jwtTokenGeneratorMock.Setup(g => g.GenerateToken(user))
+        _jwtTokenGeneratorMock.Setup(g => g.GenerateToken(user, It.IsAny<Guid?>()))
             .Returns("valid-jwt-token");
 
         // Act
@@ -127,7 +128,7 @@ public class AuthServiceTests
             .ReturnsAsync(new User { Email = request.Email, PasswordHash = null });
         var act = () => _authService.LoginAsync(request);
         await act.Should().ThrowAsync<UnauthorizedAccessException>();
-        _jwtTokenGeneratorMock.Verify(generator => generator.GenerateToken(It.IsAny<User>()), Times.Never);
+        _jwtTokenGeneratorMock.Verify(generator => generator.GenerateToken(It.IsAny<User>(), It.IsAny<Guid?>()), Times.Never);
     }
 
     [Fact]
@@ -176,7 +177,7 @@ public class AuthServiceTests
         var request = new LoginRequest("active@example.com", password);
         _userRepositoryMock.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
-        _jwtTokenGeneratorMock.Setup(g => g.GenerateToken(user)).Returns("token-123");
+        _jwtTokenGeneratorMock.Setup(g => g.GenerateToken(user, It.IsAny<Guid?>())).Returns("token-123");
 
         // Act
         var result = await _authService.LoginAsync(request);

@@ -43,7 +43,17 @@ public class AuthService : IAuthService
 
         await _userRepository.AddAsync(user, cancellationToken);
 
-        var token = _jwtTokenGenerator.GenerateToken(user);
+        var session = new UserSession
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            CreatedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            RevokedAt = null
+        };
+        await _userSessionRepository.AddAsync(session, cancellationToken);
+
+        var token = _jwtTokenGenerator.GenerateToken(user, session.Id);
         var userDto = new UserDto(user.Id, user.FullName, user.Email, user.Role, user.CreatedAt);
 
         return new AuthResponse(token, userDto);
@@ -62,8 +72,6 @@ public class AuthService : IAuthService
             throw new UnauthorizedAccessException("Tài khoản đã bị vô hiệu hóa.");
         }
 
-        var token = _jwtTokenGenerator.GenerateToken(user);
-
         var session = new UserSession
         {
             Id = Guid.NewGuid(),
@@ -73,6 +81,8 @@ public class AuthService : IAuthService
             RevokedAt = null
         };
         await _userSessionRepository.AddAsync(session, cancellationToken);
+
+        var token = _jwtTokenGenerator.GenerateToken(user, session.Id);
 
         var userDto = new UserDto(user.Id, user.FullName, user.Email, user.Role, user.CreatedAt);
 

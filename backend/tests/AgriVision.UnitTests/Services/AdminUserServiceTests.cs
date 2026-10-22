@@ -13,6 +13,7 @@ public class AdminUserServiceTests
     private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<IUserSessionRepository> _userSessionRepositoryMock;
     private readonly Mock<IAdminAuditLogRepository> _auditLogRepositoryMock;
+    private readonly Mock<IPredictionRepository> _predictionRepositoryMock;
     private readonly AdminUserService _adminUserService;
 
     public AdminUserServiceTests()
@@ -20,11 +21,13 @@ public class AdminUserServiceTests
         _userRepositoryMock = new Mock<IUserRepository>();
         _userSessionRepositoryMock = new Mock<IUserSessionRepository>();
         _auditLogRepositoryMock = new Mock<IAdminAuditLogRepository>();
+        _predictionRepositoryMock = new Mock<IPredictionRepository>();
 
         _adminUserService = new AdminUserService(
             _userRepositoryMock.Object,
             _userSessionRepositoryMock.Object,
-            _auditLogRepositoryMock.Object
+            _auditLogRepositoryMock.Object,
+            _predictionRepositoryMock.Object
         );
     }
 
@@ -101,6 +104,8 @@ public class AdminUserServiceTests
 
         _userRepositoryMock.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
+        _predictionRepositoryMock.Setup(p => p.GetCountByUserIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(7);
 
         // Act
         var result = await _adminUserService.GetUserByIdAsync(userId);
@@ -109,6 +114,7 @@ public class AdminUserServiceTests
         result.Should().NotBeNull();
         result.Id.Should().Be(userId);
         result.FullName.Should().Be("Nguyen Van A");
+        result.PredictionCount.Should().Be(7);
     }
 
     [Fact]
@@ -187,6 +193,7 @@ public class AdminUserServiceTests
         result.Role.Should().Be(UserRole.Admin);
         targetUser.Role.Should().Be(UserRole.Admin);
         _userRepositoryMock.Verify(r => r.UpdateAsync(targetUser, It.IsAny<CancellationToken>()), Times.Once);
+        _userSessionRepositoryMock.Verify(s => s.RevokeAllSessionsByUserIdAsync(targetUserId, It.IsAny<CancellationToken>()), Times.Once);
         _auditLogRepositoryMock.Verify(a => a.AddAsync(It.Is<AdminAuditLog>(l =>
             l.ActorUserId == adminId &&
             l.TargetUserId == targetUserId &&

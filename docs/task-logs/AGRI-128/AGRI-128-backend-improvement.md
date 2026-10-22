@@ -128,3 +128,39 @@ nhánh nền AGRI-128 là Jira của task hồ sơ.
 - Phát hiện lỗi test CI trong `GuestPredictionsControllerTests.GuestPrediction_ShouldReturnFullResult_WithoutStorageOrChangesToUserHistory`: bài test từ PR #36 gửi `agriculturalProfileId` trong form data của request Guest và kỳ vọng 200 OK, trong khi quy tắc nghiệp vụ AGRI-116 (PR #38) quy định Guest gửi `agriculturalProfileId` phải bị từ chối 401 Unauthorized (đã được kiểm thử tại `Guest_CannotSelectProfileForDiagnosis`).
 - Khắc phục: loại bỏ `agriculturalProfileId` khỏi request chẩn đoán khách vãng lai trong `GuestPredictionsControllerTests.cs`, giữ nguyên kiểm thử gửi `userId` không làm biến đổi phiên thành bản ghi lưu.
 - Kiểm chứng: `dotnet build` 0 warning / 0 error; 82/82 unit tests passed.
+
+---
+
+## 2026-10-22 — Khắc phục 3 Vấn đề Bảo mật & Toàn vẹn Dữ liệu Backend (P1/P2)
+
+### 1. [P2] Incorrect prediction count: `GetUserByIdAsync` trả về 0 do navigation property chưa nạp
+- **Nguyên nhân:** Trong `AdminUserService.GetUserByIdAsync`, `SetUserStatusAsync`, `SetUserRoleAsync`, hệ thống gọi `MapToDto(User u, int predictionCount)` nhưng trước đó đọc `u.Predictions?.Count ?? 0`. Entity `User` được truy vấn bằng `GetByIdAsync` không `Include(u => u.Predictions)`, dẫn đến collection luôn null và `predictionCount` luôn bằng 0.
+- **Khắc phục:**
+  - Tiêm `IPredictionRepository` vào `AdminUserService`.
+  - Thay thế việc đếm navigation property bằng truy vấn count trực tiếp tại database: `await _predictionRepository.GetCountByUserIdAsync(userId, cancellationToken)`.
+  - Bổ sung unit test trong `AdminUserServiceTests` xác minh `PredictionCount` phản ánh đúng số lượng từ repository.
+
+### 2. [P1] Session revocation is not enforced: JWT vẫn hợp lệ sau logout, đổi mật khẩu, vô hiệu hóa tài khoản hoặc hạ quyền Admin
+- **Nguyên nhân:** ASP.NET Core `AddJwtBearer` chỉ kiểm tra chữ ký HMAC và thời gian hết hạn của JWT, không xác thực trạng thái session, trạng thái tài khoản `is_active` hay vai trò người dùng trong quá trình xử lý request. Do đó, các JWT đã cấp vẫn có hiệu lực cho đến khi hết hạn (24h) ngay cả khi người dùng đã logout, đổi mật khẩu hoặc bị admin khóa/hạ quyền.
+- **Khắc phục:**
+  - Cập nhật `IJwtTokenGenerator` & `JwtTokenGenerator`: hỗ trợ nhúng claim `sid` (Session ID) vào JWT payload.
+  - Cập nhật `AuthService.RegisterAsync` & `LoginAsync`: tự động tạo bản ghi `UserSession` và truyền `session.Id` vào token generator.
+  - Cập nhật `AdminUserService.SetUserRoleAsync`: thu hồi toàn bộ session (`_userSessionRepository.RevokeAllSessionsByUserIdAsync`) khi vai trò người dùng bị thay đổi.
+  - Cấu hình sự kiện `JwtBearerEvents.OnTokenValidated` trong `Program.cs`:
+    1. Kiểm tra tài khoản tồn tại và `user.IsActive == true`. Nếu bị vô hiệu hóa hoặc không tồn tại -> từ chối (`context.Fail`).
+    2. Kiểm tra vai trò trong token khớp với vai trò thực tế trong database (`user.Role`). Nếu vai trò bị thay đổi/hạ quyền -> từ chối (`context.Fail`).
+    3. Xác thực session qua claim `sid`: kiểm tra bản ghi session trong `user_sessions` chưa bị thu hồi (`RevokedAt == null`) và chưa quá hạn (`ExpiresAt > DateTime.UtcNow`).
+    4. Cơ chế tương thích ngược (fallback) cho token không có `sid`: từ chối nếu toàn bộ session của user đã bị thu hồi.
+  - Bổ sung unit tests cho `JwtTokenGenerator` (kiểm tra claim `sid`), `AuthService` (kiểm tra tạo session khi register/login), `AdminUserService` (kiểm tra thu hồi session khi đổi role).
+
+### 3. [P2] Concurrent updates can overwrite security fields: Cập nhật thông tin cá nhân ghi đè toàn bộ entity User
+- **Nguyên nhân:** `UserService.UpdateProfileAsync` lấy đối tượng `User` rồi gọi `_userRepository.UpdateAsync(user)`, bên trong `UserRepository.UpdateAsync` gọi `_context.Users.Update(user)` đánh dấu toàn bộ thuộc tính ở trạng thái `Modified`. Nếu một thao tác quản trị viên (đổi vai trò, khóa tài khoản) hoặc đổi mật khẩu diễn ra đồng thời, việc lưu lại đối tượng User cũ sẽ ghi đè các trường bảo mật nhạy cảm (`role`, `is_active`, `password_hash`).
+- **Khắc phục:**
+  - Thêm phương thức `UpdateProfileAsync(Guid userId, string fullName, DateTime updatedAt)` trong `IUserRepository` và triển khai tại `UserRepository` sử dụng `ExecuteUpdateAsync` của EF Core, chỉ tác động duy nhất lên 2 cột `FullName` và `UpdatedAt` tại database.
+  - Bổ sung bảo vệ trong `UserRepository.UpdateAsync`: chỉ cập nhật nếu entity chưa được theo dõi bởi DbContext nhằm tránh vô tình ghi đè toàn bộ thuộc tính.
+  - Cập nhật `UserService.UpdateProfileAsync` gọi `_userRepository.UpdateProfileAsync` và đọc lại entity để trả về response.
+  - Cập nhật unit test `UserServiceTests`: xác minh `UpdateProfileAsync` chỉ gọi phương thức cập nhật riêng lẻ, không gọi `UpdateAsync`.
+
+### Kết quả kiểm thử
+- `dotnet build backend/AgriVision.sln`: Thành công, 0 warning, 0 error.
+- `dotnet test backend/tests/AgriVision.UnitTests/AgriVision.UnitTests.csproj`: **85/85 unit tests passed (100%)**.

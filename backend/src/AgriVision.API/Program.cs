@@ -1,10 +1,12 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text;
 using AgriVision.API.Middleware;
 using AgriVision.Application;
 using AgriVision.Infrastructure;
 using AgriVision.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
@@ -60,6 +62,58 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = jwtAudience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
     };
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = async context =>
+        {
+            var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+            var userIdClaim = context.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                           ?? context.Principal?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+
+            if (!Guid.TryParse(userIdClaim, out var userId))
+            {
+                context.Fail("Invalid user identifier in token.");
+                return;
+            }
+
+            var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null || !user.IsActive)
+            {
+                context.Fail("User account does not exist or has been deactivated.");
+                return;
+            }
+
+            var tokenRole = context.Principal?.FindFirst(ClaimTypes.Role)?.Value;
+            if (!string.IsNullOrEmpty(tokenRole) && tokenRole != user.Role)
+            {
+                context.Fail("User role has been changed.");
+                return;
+            }
+
+            var sidClaim = context.Principal?.FindFirst("sid")?.Value;
+            if (Guid.TryParse(sidClaim, out var sessionId))
+            {
+                var session = await db.UserSessions.AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.Id == sessionId && s.UserId == userId);
+                if (session == null || session.RevokedAt != null || session.ExpiresAt <= DateTime.UtcNow)
+                {
+                    context.Fail("User session has been revoked or expired.");
+                    return;
+                }
+            }
+            else
+            {
+                var userSessions = await db.UserSessions.AsNoTracking()
+                    .Where(s => s.UserId == userId)
+                    .ToListAsync();
+                if (userSessions.Count > 0 && userSessions.All(s => s.RevokedAt != null))
+                {
+                    context.Fail("User session has been revoked.");
+                    return;
+                }
+            }
+        }
+    };
 });
 
 builder.Services.AddAuthorization();
@@ -91,12 +145,12 @@ builder.Services.AddSwaggerGen(c =>
             new OpenApiSecurityScheme
             {
                 Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            Array.Empty<string>()
+            {
+                Type = ReferenceType.SecurityScheme,
+                Id = "Bearer"
+            }
+        },
+        Array.Empty<string>()
         }
     });
 });

@@ -44,16 +44,16 @@ public class UserService : IUserService
             throw new ArgumentException("Họ và tên không được để trống.");
         }
 
+        var trimmedName = request.FullName.Trim();
+        var now = DateTime.UtcNow;
+
+        await _userRepository.UpdateProfileAsync(userId, trimmedName, now, cancellationToken);
+
         var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
         if (user == null)
         {
             throw new KeyNotFoundException($"User with ID '{userId}' not found.");
         }
-
-        user.FullName = request.FullName.Trim();
-        user.UpdatedAt = DateTime.UtcNow;
-
-        await _userRepository.UpdateAsync(user, cancellationToken);
 
         return new UserProfileDto(
             user.Id,

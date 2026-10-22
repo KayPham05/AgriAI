@@ -36,8 +36,28 @@ public class UserRepository : IUserRepository
 
     public async Task UpdateAsync(User user, CancellationToken cancellationToken = default)
     {
-        _context.Users.Update(user);
+        var entry = _context.Entry(user);
+        if (entry.State == EntityState.Detached)
+        {
+            _context.Users.Attach(user);
+            entry.State = EntityState.Modified;
+        }
         await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task UpdateProfileAsync(Guid userId, string fullName, DateTime updatedAt, CancellationToken cancellationToken = default)
+    {
+        var rowsAffected = await _context.Users
+            .Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(u => u.FullName, fullName)
+                .SetProperty(u => u.UpdatedAt, updatedAt),
+                cancellationToken);
+
+        if (rowsAffected == 0)
+        {
+            throw new KeyNotFoundException($"User with ID '{userId}' not found.");
+        }
     }
 
     public async Task<(IEnumerable<User> Users, int TotalCount)> GetPagedUsersAsync(

@@ -78,12 +78,14 @@ public class UserServiceTests
         var user = new User
         {
             Id = userId,
-            FullName = "Old Name",
+            FullName = "New Name",
             Email = "user@example.com",
             Role = UserRole.User,
             IsActive = true
         };
 
+        _userRepositoryMock.Setup(r => r.UpdateProfileAsync(userId, "New Name", It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
         _userRepositoryMock.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
@@ -94,9 +96,28 @@ public class UserServiceTests
 
         // Assert
         result.FullName.Should().Be("New Name");
-        user.FullName.Should().Be("New Name");
-        user.UpdatedAt.Should().NotBeNull();
-        _userRepositoryMock.Verify(r => r.UpdateAsync(user, It.IsAny<CancellationToken>()), Times.Once);
+        _userRepositoryMock.Verify(r => r.UpdateProfileAsync(userId, "New Name", It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);
+        _userRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateProfileAsync_ShouldThrowKeyNotFoundException_WhenUserDoesNotExist()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        _userRepositoryMock.Setup(r => r.UpdateProfileAsync(userId, "New Name", It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _userRepositoryMock.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        var request = new UpdateProfileRequest("New Name");
+
+        // Act
+        var act = async () => await _userService.UpdateProfileAsync(userId, request);
+
+        // Assert
+        await act.Should().ThrowAsync<KeyNotFoundException>()
+            .WithMessage($"*'{userId}' not found*");
     }
 
     [Fact]
@@ -113,6 +134,7 @@ public class UserServiceTests
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*không được để trống*");
         _userRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
+        _userRepositoryMock.Verify(r => r.UpdateProfileAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
