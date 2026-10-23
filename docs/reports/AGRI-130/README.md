@@ -1,6 +1,6 @@
 # AGRI-130 — Full ASP.NET Core API test suite
 
-**Local acceptance complete, 2026-10-23.** Branch `AGRI-130-api-tests`, based on merged PR #43 (`d5310fd`). Implementation is split into Conventional Commits at the user’s request. No push or PR created for this task. GitHub Actions has not run for these changes.
+**Original local acceptance: 2026-10-23; PR review follow-up: 2026-10-24.** Branch `AGRI-130-api-tests`, based on merged PR #43 (`d5310fd`). [PR #44](https://github.com/KayPham05/AgriAI/pull/44) exists and CI passed at `69c925c`; the review corrections below are delivered in follow-up commits at the user’s request. Consult PR #44 for the latest head and CI state; acceptance at `69c925c` does not establish CI success for a newer revision.
 
 ## Implementation
 
@@ -10,7 +10,7 @@
 - Add an independent CI API step and artifact; validate nonempty, fully passed TRX/coverage for all three suites before merging production coverage. Backend floor remains 70%, frontend 65%, Python 40%; target remains 80%.
 - Fix demonstrated error disclosure, unused HTTP validators, catalog validation/duplicate-name handling and session revocation under clock skew. Add forward-only migration `20261023130623_SessionRevocationClockSafety`; preserve migration history and constraints.
 
-## Verified local results
+## Original verified local results — 2026-10-23
 
 All ordinary suites ran independently with zero failures or skipped tests. Artifacts are ignored local evidence under `.cache/qa-verification/agri130/`.
 
@@ -45,6 +45,23 @@ Earlier static checkpoints recorded 136 unit passes, 5 mapping-guard passes and 
 
 Deployment requires a backup and a separate `--migrate` run for migration 7 before starting the updated API. It was verified only against disposable test databases; the application DB/volumes were not migrated or reset. HTTP startup still only checks schema.
 
-Frontend/Python suites, real checkpoint inference, real R2 acceptance, load/mutation testing and security scanners were not run for this task. Existing opt-in coverage stays separate; excluded/skipped real-service cases are not claimed as passes.
+During the original local acceptance, frontend/Python suites, real checkpoint inference, real R2 acceptance, load/mutation testing and security scanners were not run. Real R2 was subsequently verified in the dated follow-up below; the other limits remain. Existing opt-in coverage stays separate; excluded/skipped real-service cases are not claimed as passes.
 
 Run instructions: [backend guide](../../../.agents/commands/backend.md). Sources: [API tests](../../../backend/tests/AgriVision.ApiTests/), [shared support](../../../backend/tests/Shared/), [validation filter](../../../backend/src/AgriVision.API/Middleware/RequestValidationFilter.cs), [middleware](../../../backend/src/AgriVision.API/Middleware/GlobalExceptionMiddleware.cs), [CI](../../../.github/workflows/ci.yml).
+
+## PR #44 review follow-up — 2026-10-24
+
+The reviewer identified a valid P2: shared synthetic R2 settings overrode the opt-in suite’s endpoint, bucket and credentials. Ordinary CI excluded RealR2, so its green result did not detect this regression.
+
+- Add a protected storage-configuration hook to shared support. Ordinary fixtures keep synthetic R2 settings. `RealR2Factory` loads explicitly supplied `R2__ServiceUrl`, `R2__BucketName`, `R2__AccessKeyId`, `R2__SecretAccessKey` from the test process environment, rejects missing settings and restricts the bucket to `agrivision-images-dev`. AI remains fake and PostgreSQL disposable.
+- Add ordinary configuration regressions with synthetic values, including SDK registration without cloud requests, missing credential and rejected bucket. A deliberately uncorrected fixture produced one expected failure/one pass in `pr44-red-confirmed/`; the corrected pair passed in `pr44-green/`, then all four cases passed in the complete Integration run. An earlier compilation error was corrected before obtaining the valid red evidence.
+- Add exact **15 MiB** HTTP acceptance for Guest and User, asserting successful business result, User storage byte length/hash and Location/read-back, and Guest absence of storage/history effects. Retain **15 MiB + 1 byte** rejection with zero AI/storage. An initial test assumed a relative lowercase Location; it was corrected to check the existing absolute same-origin route and successful follow-up HTTP, without changing production behavior. Payloads are synthetic bytes; this does not validate real image decoding.
+- Full local results: Unit **137/137**, Integration **64/64**, API **202/202**, all zero skips/failures. Reports: `pr44-verified/{unit,integration,api}/`. Merged production coverage remains **604/746 = 80.97%**, artifact `pr44-merged/Cobertura.xml`; all suite result checkers and the backend70% gate pass. Build has zero warnings/errors.
+- Real R2 opt-in **1/1 passed**, zero skips: `pr44-real-r2/real-r2.trx`. Test-process-only credentials were loaded from local configuration without printing them; the test checked upload/read/owner isolation/expiry/delete against the agreed private dev bucket and cleaned its synthetic object keys. No application DB migration or volume reset was performed.
+- Baseline preservation: `pr44-discovery-audit.json` confirms all **264** baseline cases retained and no duplicate keys across **403** ordinary executed cases. The manifest now has **98** behavioral IDs for the same **35** method/route pairs.
+
+Actual remote evidence: [CI run 39965059599](https://github.com/KayPham05/AgriAI/actions/runs/39965059599) at `69c925c` passed every required job. Backend log confirms build, Unit137, Integration60, API200, no skips, coverage80.97% (`pr44-ci-backend.log`). These are the original PR revision’s results, not a remote run of this local follow-up.
+
+API stability after the fixture change: **202/202 in three consecutive runs**, without retries, separate processes/fresh databases and unchanged binaries. Artifacts: `pr44-verified/api/`, `pr44-api-repeat-2/`, `pr44-api-repeat-3/`; TRX elapsed times and all counters are summarized in `pr44-acceptance.json`.
+
+Delivery update, 2026-10-24: follow-up changes are grouped as fixture fix/regression, exact-size API tests and documentation. Updated-revision CI must be verified through PR #44; no merge or deployment is included.

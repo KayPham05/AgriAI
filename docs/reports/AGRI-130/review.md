@@ -1,6 +1,6 @@
 # AGRI-130 — Test quality review
 
-Final review on 2026-10-23 covered source/configuration and actual local artifacts. No unresolved P1/P2 finding remains in the inspected scope. This does not establish GitHub Actions success, production acceptance, a security-scan result, load capacity, mutation score or AI accuracy.
+Original review on 2026-10-23 covered source/configuration and actual local artifacts. It reported no unresolved P1/P2 in the inspected scope; subsequent PR feedback found the opt-in configuration regression documented below. This does not establish GitHub Actions success, production acceptance, a security-scan result, load capacity, mutation score or AI accuracy.
 
 ## Independent review
 
@@ -35,3 +35,21 @@ The initial review incorrectly assumed duplicate Disease names were allowed. Sch
 - Merged coverage 604/746 (80.97%) versus baseline 528/720 (73.33%), with the same four production modules. Branch denominator rises by 24 in API and 2 in Infrastructure; no test assembly or production module was omitted to raise the percentage.
 - CI Integration/API steps execute after a successful build even if another suite fails; final merge requires all three successful, nonempty/no-skip results. Backend floor 70%, frontend 65%, Python 40% unchanged. No remote CI run is claimed.
 - Migration 7 was tested on disposable PostgreSQL only. Deployment must use backup plus the separate migration command; application DB/volumes were preserved.
+
+## PR feedback reassessment — 2026-10-24
+
+**P2 confirmed and corrected locally:** the shared fixture overwrote real R2 configuration. The original review missed that RealR2 exclusion prevented CI from exercising this configuration path. A dedicated opt-in fixture now selects explicit environment configuration; normal fixtures remain isolated. Regression assertions check all four configured values and actual SDK endpoint registration without cloud access, plus failure on a missing secret or unapproved bucket. RealR2 subsequently passed 1/1 against the agreed dev bucket.
+
+**Boundary addition accepted:** exactly 15 MiB is tested for Guest/User, paired with max+1 rejection. Assertions verify result, side effects, stored byte hash and Location followed over HTTP. The incorrect relative-Location assumption in the first new test was corrected to the existing ASP.NET contract. No upload limit, DTO or production endpoint was changed.
+
+**Documentation addition accepted:** PR #44 exists and its CI run at 69c925c passed. Reports and PR description must name that revision/run and distinguish pending local corrections from remote evidence. Previous dated entries remain historical.
+
+Rechecked readability, isolation, cleanup, diagnostics, independent byte/HTTP assertions and manifest mapping for the changed tests. Full Unit/Integration/API and dev-bucket opt-in results are recorded in the acceptance report. This follow-up review is by the implementing agent; no new independent reviewer approval or security scanner result is claimed.
+
+## Focused P2 re-review — 2026-10-24
+
+Rechecked configuration ownership, explicit environment selection, all four R2 values, production SDK registration, fake AI/disposable PostgreSQL, opt-in gating and synthetic-key cleanup. No additional blocker was found in the configuration regression's scope; no source-code change was needed in this re-review.
+
+Fresh checks: configuration regressions **4/4 passed**; real dev-bucket test **1/1 passed** with upload/read/ownership/expiry/delete and cleanup; opt-out with credentials removed produced **one intentional skip, zero passes/failures**, confirming the gate without counting it as cloud acceptance. TRX/results: `.cache/qa-verification/agri130/pr44-rereview/`, `summary.json`. Skip is verified from the individual TRX outcome and total/executed counts; the runner leaves its aggregate notExecuted counter at zero.
+
+The real-service test verifies the working storage path and cleanup in that run, not recovery under every possible cloud outage. Corrections remain local until committed/pushed; the PR's green CI at `69c925c` does not verify this new revision.

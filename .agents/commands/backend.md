@@ -66,3 +66,25 @@ dotnet test backend/AgriVision.sln --no-restore --filter 'Category!=RealCheckpoi
 This collects reports per test project; aggregate Unit, Integration and API reports to evaluate backend coverage. Exclude RealCheckpoint/RealR2 from ordinary CI and run them explicitly only in configured isolated environments; skips are not acceptance. Branch coverage target is 80%, current CI floor is 70%. On 2026-10-07, merged coverage was 213/364 = 58.52%, with 33 unit and 13 integration tests passing locally. Passing test counts do not establish coverage. See [coverage report](../../docs/reports/AGRI-75/ci_branch_coverage.md) and [CI workflow](../../.github/workflows/ci.yml).
 
 API/DB tests and health mocks do not validate ConvNeXt-Tiny inference. See [AGRI-79 task log](../../docs/task-logs/AGRI-79/AGRI-79-database-migrations.md).
+
+## Real R2 opt-in verification
+
+`RealR2StorageTests` uses `RealR2Factory`, not the synthetic R2 configuration of
+ordinary fixtures. Export all four settings into the test process environment:
+`R2__ServiceUrl`, `R2__BucketName`, `R2__AccessKeyId`, `R2__SecretAccessKey`.
+Keep credentials in local secret configuration; never print or commit them.
+The bucket must be `agrivision-images-dev`. Missing configuration or another bucket
+fails before cloud operations. The test runs in Testing, keeps disposable PostgreSQL
+and fake AI, and opts into real storage only.
+
+Set `AGRIVISION_REAL_R2=1` in that process, then run from the repository root:
+
+```powershell
+dotnet test backend/tests/AgriVision.IntegrationTests/AgriVision.IntegrationTests.csproj --no-restore --filter 'Category=RealR2'
+```
+
+Root `.env` Docker-style names such as `R2_SERVICE_URL` are not automatically loaded
+by `dotnet test`; explicitly map them to the four .NET environment names above.
+The suite creates synthetic users/objects and cleans only the object keys it creates.
+Do not run it against another bucket or use a skip as acceptance. Ordinary fixture
+configuration regression tests use synthetic settings and do not access R2.
