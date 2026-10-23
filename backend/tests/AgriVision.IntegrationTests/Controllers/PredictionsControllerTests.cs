@@ -42,7 +42,7 @@ public class PredictionsControllerTests : IClassFixture<AgriVisionFactory>
 
         var result = await response.Content.ReadFromJsonAsync<PredictionResultDto>();
         result.Should().NotBeNull();
-        result!.ImagePath.Should().Be("https://images.test/leaf.jpg");
+        result!.ImagePath.Should().Be($"/api/predictions/{result.Id}/images/{result.Images.Single().Id}");
         result.Confidence.Should().BeApproximately(0.94, 0.0001);
         result.PredictedPlantDisease.ClassName.Should().Be("Ca_chua___Chay_la_som");
         result.PredictedPlantDisease.Plant.Name.Should().Be("Ca_chua");
@@ -59,6 +59,34 @@ public class PredictionsControllerTests : IClassFixture<AgriVisionFactory>
         persistedPrediction.PredictionDetails.Should().HaveCount(2);
         persistedPrediction.ResultSnapshotJson.Should().NotBeNull();
         (await dbContext.PredictionImages.CountAsync(image => image.PredictionId == result.Id)).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task PrivateImage_RequiresOwnerAndLiveImage_AndDisablesCaching()
+    {
+        using var owner = _factory.CreateClient();
+        using var foreign = _factory.CreateClient();
+        using var guest = _factory.CreateClient();
+        await LoginAsync(owner);
+        await LoginAsync(foreign);
+        using var request = CreateImageRequest("leaf.jpg", "image/jpeg");
+        var prediction = await (await owner.PostAsync("/api/predictions", request)).Content.ReadFromJsonAsync<PredictionResultDto>();
+        var url = prediction!.ImagePath;
+        (await guest.GetAsync(url)).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await foreign.GetAsync(url)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var image = await owner.GetAsync(url);
+        image.StatusCode.Should().Be(HttpStatusCode.OK);
+        image.Content.Headers.ContentType!.MediaType.Should().Be("image/jpeg");
+        (await image.Content.ReadAsByteArrayAsync()).Should().Equal(1, 2, 3);
+        image.Headers.CacheControl!.NoStore.Should().BeTrue();
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var stored = await db.PredictionImages.SingleAsync(item => item.PredictionId == prediction.Id);
+        stored.UploadedAt = DateTime.UtcNow.AddDays(-31);
+        stored.ExpiresAt = stored.UploadedAt.AddDays(30);
+        await db.SaveChangesAsync();
+        (await owner.GetAsync(url)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await guest.GetAsync("/uploads/predictions/leaf.jpg")).StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -97,7 +125,7 @@ public class PredictionsControllerTests : IClassFixture<AgriVisionFactory>
             {
                 PredictionId = result.Id, Position = 1, Confidence = 0.94,
                 UploadedAt = image.UploadedAt, ExpiresAt = image.ExpiresAt,
-                ImagePath = "https://images.test/second.jpg", ImagePublicId = "integration/second.jpg"
+                ImagePath = "https://images.test/second.jpg", ImagePublicId = "r2/predictions/second.jpg"
             });
             var disease = await db.Diseases.SingleAsync(disease => disease.Id == result.PredictedPlantDisease.Disease.Id);
             disease.Description = "Edited after prediction";
@@ -228,8 +256,10 @@ public class PredictionsControllerTests : IClassFixture<AgriVisionFactory>
 
     private sealed class FailingDeletionStorage : IImageStorage
     {
-        public Task<ImageUploadResult> UploadImageAsync(Microsoft.AspNetCore.Http.IFormFile file, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public Task<ImageUploadResult> UploadImageAsync(Stream stream, string name, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<ImageDownloadResult?> ReadImageAsync(string publicId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<ImageDownloadResult?>(null);
+        public Task<ImageUploadResult> UploadImageAsync(Microsoft.AspNetCore.Http.IFormFile file, ImageStorageContext context, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<ImageUploadResult> UploadImageAsync(Stream stream, string name, ImageStorageContext context, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<bool> DeleteImageAsync(string publicId, CancellationToken cancellationToken = default) => Task.FromResult(false);
     }
 

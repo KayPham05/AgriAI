@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Image from 'next/image';
+import { PrivateImage } from '@/components/common/PrivateImage';
 import { CROP_PHOTOS } from '@/data/cropPhotos';
 import { LayoutGrid, List, Trash2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -152,7 +153,7 @@ export function HistoryPage({
                 onClick={() => onSelectResult(item)}
                 aria-label={`Xem kết quả ${item.prediction}`}
               >
-                <Image
+                <PrivateImage
                   unoptimized
                   width={640}
                   height={480}

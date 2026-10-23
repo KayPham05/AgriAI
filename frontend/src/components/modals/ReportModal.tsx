@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
+import { PrivateImage } from '@/components/common/PrivateImage';
 import {
   Dialog,
   DialogContent,
@@ -48,7 +49,7 @@ export function ReportModal({ isOpen, onClose, result }: ReportModalProps) {
               </div>
             ))}
           </dl>
-          <Image
+          <PrivateImage
             unoptimized
             width={640}
             height={480}

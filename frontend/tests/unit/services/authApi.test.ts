@@ -3,6 +3,7 @@ import {
   clearAuthSession,
   login,
   register,
+  revokeSession,
   restoreAuthSession,
   saveAuthSession,
 } from '@/services/authApi';
@@ -86,4 +87,22 @@ describe('authentication API', () => {
     expect(localStorage.length).toBe(0);
     expect(sessionStorage.getItem('leafai_auth_session')).toContain('jwt-token');
   });
+});
+
+it('revokes only the current bearer session and accepts an already expired session', async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, status: 204 })
+    .mockResolvedValueOnce({ ok: false, status: 401 });
+  vi.stubGlobal('fetch', fetchMock);
+  await expect(revokeSession('current')).resolves.toBeUndefined();
+  expect(fetchMock).toHaveBeenCalledWith(
+    '/api/auth/logout',
+    expect.objectContaining({
+      method: 'POST',
+      headers: { Authorization: 'Bearer current' },
+      signal: expect.any(AbortSignal),
+    }),
+  );
+  await expect(revokeSession('expired')).resolves.toBeUndefined();
 });

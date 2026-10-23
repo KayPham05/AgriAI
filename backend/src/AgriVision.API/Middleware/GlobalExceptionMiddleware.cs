@@ -35,6 +35,7 @@ public class GlobalExceptionMiddleware
         var statusCode = exception switch
         {
             AiServiceException aiServiceException => aiServiceException.StatusCode,
+            ImageStorageException => HttpStatusCode.ServiceUnavailable,
             KeyNotFoundException => HttpStatusCode.NotFound,
             UnauthorizedAccessException => HttpStatusCode.Unauthorized,
             ArgumentException or InvalidOperationException => HttpStatusCode.BadRequest,

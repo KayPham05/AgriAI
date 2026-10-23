@@ -11,7 +11,12 @@ import type {
   NotificationItem,
 } from '@/types';
 import { SUPPORTED_PLANTS, ALL_DISEASES } from '@/data/plantData';
-import { type AuthSession, clearAuthSession, restoreAuthSession } from '@/services/authApi';
+import {
+  type AuthSession,
+  clearAuthSession,
+  restoreAuthSession,
+  revokeSession,
+} from '@/services/authApi';
 import { getPlants, getDiseases } from '@/services/catalogApi';
 import {
   getPredictionHistory,
@@ -267,7 +272,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIsLoginOpen(false);
   }, []);
 
-  const logout = useCallback(() => {
+  const logoutPending = useRef(false);
+  const logout = useCallback(async () => {
+    if (logoutPending.current) return;
+    logoutPending.current = true;
+    try {
+      if (authSession) await revokeSession(authSession.token);
+    } catch {
+      addToast({
+        type: 'error',
+        title: 'Chưa thể đăng xuất',
+        message: 'Không thể thu hồi phiên. Vui lòng kiểm tra kết nối và thử lại.',
+      });
+      return;
+    } finally {
+      logoutPending.current = false;
+    }
     setLogoutName(authSession?.user.fullName ?? '');
     clearAuthSession();
     setAuthSession(null);
@@ -276,7 +296,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     returnPathRef.current = null;
     router.replace('/');
     setHasEnteredApp(false);
-  }, [router, authSession]);
+  }, [router, authSession, addToast]);
   const updateProfile = useCallback(
     (updated: UserProfile) => {
       setUserProfile(updated);
@@ -326,7 +346,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       userName: loginPendingSession.user.fullName,
       error: startupError,
       onRetry: () => setLoginPendingSession((session) => (session ? { ...session } : null)),
-      onCancel: () => {
+      onCancel: async () => {
+        try {
+          await revokeSession(loginPendingSession.token);
+        } catch {
+          setStartupError('Chưa thể thu hồi phiên. Vui lòng thử lại.');
+          return;
+        }
         clearAuthSession();
         restoredStartupRef.current = false;
         setLoginPendingSession(null);

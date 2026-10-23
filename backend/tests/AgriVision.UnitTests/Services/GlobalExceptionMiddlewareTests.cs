@@ -10,6 +10,21 @@ namespace AgriVision.UnitTests.Services;
 
 public class GlobalExceptionMiddlewareTests
 {
+    [Fact]
+    public async Task StorageFailure_ReturnsServiceUnavailable()
+    {
+        var context = new DefaultHttpContext();
+        context.Response.Body = new MemoryStream();
+        var middleware = new GlobalExceptionMiddleware(
+            _ => throw new ImageStorageException("Image storage is unavailable. Please try again."),
+            NullLogger<GlobalExceptionMiddleware>.Instance);
+        await middleware.InvokeAsync(context);
+        context.Response.StatusCode.Should().Be(StatusCodes.Status503ServiceUnavailable);
+        context.Response.Body.Position = 0;
+        using var body = await JsonDocument.ParseAsync(context.Response.Body);
+        body.RootElement.GetProperty("message").GetString().Should().Be("Image storage is unavailable. Please try again.");
+    }
+
     [Theory]
     [InlineData(HttpStatusCode.ServiceUnavailable)]
     [InlineData(HttpStatusCode.BadGateway)]

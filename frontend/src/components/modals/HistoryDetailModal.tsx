@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import Image from 'next/image';
+import { PrivateImage } from '@/components/common/PrivateImage';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -55,7 +55,7 @@ export function HistoryDetailModal({
               isDemo={result.isDemo ?? false}
             />
           ) : (
-            <Image
+            <PrivateImage
               unoptimized
               width={640}
               height={480}

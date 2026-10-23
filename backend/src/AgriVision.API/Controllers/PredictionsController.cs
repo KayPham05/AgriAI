@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Http.Timeouts;
 using AgriVision.Application.DTOs.Common;
 using AgriVision.Application.DTOs.Prediction;
 using AgriVision.Application.Services.Interfaces;
@@ -10,6 +12,7 @@ namespace AgriVision.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public class PredictionsController : ControllerBase
 {
     private readonly IPredictionService _predictionService;
@@ -20,6 +23,10 @@ public class PredictionsController : ControllerBase
     }
 
     [HttpPost]
+    [EnableRateLimiting("prediction")]
+    [RequestTimeout("prediction")]
+    [RequestSizeLimit(16 * 1024 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 15 * 1024 * 1024)]
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<PredictionResultDto>> Predict([FromForm] PredictRequest request, CancellationToken cancellationToken)
     {
@@ -72,6 +79,19 @@ public class PredictionsController : ControllerBase
         }
 
         return Ok(result);
+    }
+
+    [Authorize]
+    [HttpGet("{id:guid}/images/{imageId:guid}")]
+    [EnableRateLimiting("image")]
+    public async Task<IActionResult> ReadImage(Guid id, Guid imageId, CancellationToken cancellationToken)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (!Guid.TryParse(userIdClaim, out var userId)) return Unauthorized();
+        var image = await _predictionService.ReadImageAsync(id, imageId, userId, cancellationToken);
+        if (image == null) return NotFound();
+        Response.Headers["X-Content-Type-Options"] = "nosniff";
+        return File(image.Content, image.ContentType);
     }
 
     [Authorize]
