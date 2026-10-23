@@ -229,11 +229,11 @@ public class UserServiceTests
     }
 
     [Fact]
-    public async Task UpdateProfileAsync_ShouldThrowArgumentException_WhenFullNameExceeds150Chars()
+    public async Task UpdateProfileAsync_ShouldThrowArgumentException_WhenFullNameExceeds60Chars()
     {
         // Arrange
         var userId = Guid.NewGuid();
-        var longName = new string('A', 151);
+        var longName = new string('A', 61);
         var request = new UpdateProfileRequest(longName);
 
         // Act
@@ -241,7 +241,7 @@ public class UserServiceTests
 
         // Assert
         await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*không được vượt quá 150 ký tự*");
+            .WithMessage("*không được vượt quá 60 ký tự*");
         _userRepositoryMock.Verify(r => r.UpdateProfileAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 

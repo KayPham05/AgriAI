@@ -48,9 +48,9 @@ public class UserService : IUserService
             throw new ArgumentException("Họ và tên không được để trống.");
         }
 
-        if (trimmedName.Length > 150)
+        if (trimmedName.Length > 60)
         {
-            throw new ArgumentException("Họ và tên không được vượt quá 150 ký tự.");
+            throw new ArgumentException("Họ và tên không được vượt quá 60 ký tự.");
         }
 
         var now = DateTime.UtcNow;

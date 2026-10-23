@@ -202,9 +202,16 @@ nhánh nền AGRI-128 là Jira của task hồ sơ.
   - Chuẩn hóa `FromDate` và `ToDate` về UTC (`DateTimeKind.Utc`) thông qua hàm chuyển đổi `ToUtc` trước khi bind query EF Core.
   - Thêm xác thực logic `FromDate <= ToDate` trong `PredictionService.GetFilteredHistoryAsync`, quăng `ArgumentException` nếu khoảng ngày không hợp lệ.
 
-### 4. Giới hạn độ dài Họ tên khi Cập nhật Profile
-- **Vấn đề:** `UserService.UpdateProfileAsync` chỉ kiểm tra rỗng, chưa kiểm tra độ dài tối đa 150 ký tự theo schema `varchar(150)`, khiến chuỗi > 150 ký tự gây lỗi database 500 thay vì 400.
-- **Khắc phục:** Thêm kiểm tra `trimmedName.Length > 150` quăng `ArgumentException` với thông báo `"Họ và tên không được vượt quá 150 ký tự."` để API trả về mã lỗi 400 Bad Request hợp lệ.
+### 4. Giới hạn độ dài Họ tên khi Cập nhật Profile (Tối đa 60 ký tự)
+- **Vấn đề:** `UserService.UpdateProfileAsync` chỉ kiểm tra rỗng, chưa kiểm tra giới hạn độ dài họ tên.
+- **Khắc phục:** Thêm kiểm tra `trimmedName.Length > 60` quăng `ArgumentException` với thông báo `"Họ và tên không được vượt quá 60 ký tự."` để API trả về mã lỗi 400 Bad Request hợp lệ.
+
+### 5. Bổ sung Integration Tests cho Rollback Transaction & Lọc ngày không Timezone
+- **Rollback Transaction trên PostgreSQL thật:** Bổ sung `UnitOfWork_ShouldRollbackAllOperations_WhenExceptionThrownMidTransaction` trong `DatabaseImprovementTests.cs` kiểm chứng việc cập nhật user bị rollback hoàn nguyên khi xảy ra lỗi giữa chừng trong transaction, session không bị thu hồi.
+- **Lọc ngày không timezone trên PostgreSQL thật:** Bổ sung `PredictionRepository_ShouldFilterByUnspecifiedDateTimeKind_WithoutTimezoneException` trong `DatabaseImprovementTests.cs` kiểm chứng truy vấn với `DateTimeKind.Unspecified` thực thi trơn tru với cột `timestamptz`.
+- **HTTP Integration Tests:**
+  - `SecurityAuthorizationTests.cs`: Thêm `UpdateProfile_ShouldRejectNameExceeding60Characters` kiểm tra HTTP PUT profile từ chối tên 61 ký tự (400 Bad Request) và chấp nhận tên 60 ký tự (200 OK).
+  - `PredictionsControllerTests.cs`: Thêm `GetFilteredHistory_WithUnspecifiedTimezoneQueryParams_ShouldSucceed` kiểm tra query param ngày không timezone và `GetFilteredHistory_ShouldReturnBadRequest_WhenFromDateGreaterThanToDate`.
 
 ### Kết quả kiểm thử
 - `dotnet build backend/AgriVision.sln`: Thành công, 0 warning, 0 error.

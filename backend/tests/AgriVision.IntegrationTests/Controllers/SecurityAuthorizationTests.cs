@@ -323,4 +323,20 @@ public class SecurityAuthorizationTests(AgriVisionFactory factory) : IClassFixtu
         payload[ClaimTypes.Role] = "Admin";
         return $"{parts[0]}.{Base64UrlEncoder.Encode(payload.ToJsonString())}.{parts[2]}";
     }
+
+    [Fact]
+    public async Task UpdateProfile_ShouldRejectNameExceeding60Characters()
+    {
+        using var client = factory.CreateClient();
+        var auth = await RegisterAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.Token);
+
+        var longName = new string('A', 61);
+        using var response = await client.PutAsJsonAsync("/api/users/profile", new { fullName = longName });
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var validName = new string('A', 60);
+        using var validResponse = await client.PutAsJsonAsync("/api/users/profile", new { fullName = validName });
+        validResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
 }
