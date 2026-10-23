@@ -164,3 +164,21 @@ nhánh nền AGRI-128 là Jira của task hồ sơ.
 ### Kết quả kiểm thử
 - `dotnet build backend/AgriVision.sln`: Thành công, 0 warning, 0 error.
 - `dotnet test backend/tests/AgriVision.UnitTests/AgriVision.UnitTests.csproj`: **85/85 unit tests passed (100%)**.
+
+---
+
+## 2026-10-23 — Siết Chặt Thu Hồi Phiên (Từ Chối Token Thiếu/Sai sid) & Bổ Sung HTTP Tests
+
+- **Vấn đề phát hiện:** Cơ chế fallback cũ trong `JwtBearerEvents.OnTokenValidated` chấp nhận token không có claim `sid` nếu user có ít nhất một session chưa bị thu hồi trong database (`userSessions.All(s => s.RevokedAt != null) == false`). Khi user đăng nhập lại trên thiết bị/trình duyệt khác, một session mới được tạo ra khiến token cũ không có `sid` vô tình được chấp nhận trở lại, vi phạm nguyên tắc Session Revocation nghiêm ngặt.
+- **Khắc phục:**
+  - Trong `Program.cs`: Loại bỏ hoàn toàn nhánh fallback. Bắt buộc mọi JWT phải chứa claim `sid` hợp lệ (`Guid.TryParse(sidClaim, out var sessionId)`). Token thiếu hoặc sai định dạng `sid` bị từ chối ngay lập tức (`context.Fail`), yêu cầu người dùng đăng nhập lại.
+  - Bản ghi session tương ứng trong `user_sessions` phải tồn tại, thuộc về chính `userId`, chưa bị thu hồi (`RevokedAt == null`), và chưa hết hạn (`ExpiresAt > DateTime.UtcNow`).
+- **Bổ sung HTTP Integration Tests (`SecurityAuthorizationTests.cs`):**
+  - Mở rộng `ProtectedEndpoints_ShouldRejectInvalidBearer` bao phủ thêm 2 biến thể: `"missing-sid"` (token hợp lệ nhưng thiếu claim `sid`) và `"nonexistent-sid"` (token có claim `sid` nhưng không tồn tại trong DB).
+  - Thêm `LegacyTokenWithoutSid_ShouldBeRejected_EvenWhenNewActiveSessionExists`: Đăng ký tài khoản, đăng nhập tạo thêm session mới, sau đó gửi request HTTP với token cũ không có `sid` $\rightarrow$ xác nhận nhận mã 401 Unauthorized.
+  - Thêm `SessionRevocation_AfterLogout_ShouldRejectSubsequentRequestsWithSameToken`: Xác minh token hợp lệ gửi request 200 OK, sau khi gọi `POST /api/auth/logout` thì gửi lại request với cùng token đó nhận mã 401 Unauthorized.
+  - Thêm `SessionRevocation_AfterUserDeactivation_ShouldRejectSubsequentRequests`: Xác minh vô hiệu hóa tài khoản khiến request tiếp theo của token bị từ chối 401 Unauthorized ngay lập tức.
+  - Thêm `SessionRevocation_AfterRoleChange_ShouldRejectSubsequentRequests`: Xác minh thay đổi vai trò trong database khiến request với token cũ bị từ chối 401 Unauthorized ngay lập tức.
+- **Kiểm chứng:**
+  - `dotnet build backend/AgriVision.sln`: Thành công, 0 warning, 0 error.
+  - `dotnet test backend/tests/AgriVision.UnitTests/AgriVision.UnitTests.csproj`: **85/85 unit tests passed (100%)**.

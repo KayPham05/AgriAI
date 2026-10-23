@@ -91,26 +91,18 @@ builder.Services.AddAuthentication(options =>
             }
 
             var sidClaim = context.Principal?.FindFirst("sid")?.Value;
-            if (Guid.TryParse(sidClaim, out var sessionId))
+            if (!Guid.TryParse(sidClaim, out var sessionId))
             {
-                var session = await db.UserSessions.AsNoTracking()
-                    .FirstOrDefaultAsync(s => s.Id == sessionId && s.UserId == userId);
-                if (session == null || session.RevokedAt != null || session.ExpiresAt <= DateTime.UtcNow)
-                {
-                    context.Fail("User session has been revoked or expired.");
-                    return;
-                }
+                context.Fail("Token is missing a valid session identifier (sid). Please log in again.");
+                return;
             }
-            else
+
+            var session = await db.UserSessions.AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == sessionId && s.UserId == userId);
+            if (session == null || session.RevokedAt != null || session.ExpiresAt <= DateTime.UtcNow)
             {
-                var userSessions = await db.UserSessions.AsNoTracking()
-                    .Where(s => s.UserId == userId)
-                    .ToListAsync();
-                if (userSessions.Count > 0 && userSessions.All(s => s.RevokedAt != null))
-                {
-                    context.Fail("User session has been revoked.");
-                    return;
-                }
+                context.Fail("User session has been revoked or expired. Please log in again.");
+                return;
             }
         }
     };
