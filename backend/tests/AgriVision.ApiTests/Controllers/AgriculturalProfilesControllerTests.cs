@@ -5,12 +5,12 @@ using System.Text.Json;
 using AgriVision.Application.DTOs.Auth;
 using AgriVision.Application.DTOs.Prediction;
 using AgriVision.Infrastructure.Persistence;
-using AgriVision.IntegrationTests.Fixtures;
+using AgriVision.TestSupport;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AgriVision.IntegrationTests.Controllers;
+namespace AgriVision.ApiTests.Controllers;
 
 public class AgriculturalProfilesControllerTests : IClassFixture<AgriVisionFactory>
 {
@@ -19,6 +19,7 @@ public class AgriculturalProfilesControllerTests : IClassFixture<AgriVisionFacto
 
     public AgriculturalProfilesControllerTests(AgriVisionFactory factory) => _factory = factory;
 
+    [Trait("ApiCase", "existing.AgriculturalProfilesControllerTests.Owner_CanCreateListReadUpdateAndDeleteProfile")]
     [Fact]
     public async Task Owner_CanCreateListReadUpdateAndDeleteProfile()
     {
@@ -55,6 +56,7 @@ public class AgriculturalProfilesControllerTests : IClassFixture<AgriVisionFacto
         (await owner.GetFromJsonAsync<JsonElement[]>(ProfilesUrl)).Should().BeEmpty();
     }
 
+    [Trait("ApiCase", "existing.AgriculturalProfilesControllerTests.Guest_CannotManageProfiles")]
     [Theory]
     [InlineData("GET")]
     [InlineData("POST")]
@@ -69,6 +71,7 @@ public class AgriculturalProfilesControllerTests : IClassFixture<AgriVisionFacto
         (await guest.SendAsync(request)).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    [Trait("ApiCase", "existing.AgriculturalProfilesControllerTests.OtherUserOrAdmin_CannotReadChangeOrDeleteProfile")]
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -102,6 +105,7 @@ public class AgriculturalProfilesControllerTests : IClassFixture<AgriVisionFacto
         original.GetProperty("name").GetString().Should().Be("Vườn nhà");
     }
 
+    [Trait("ApiCase", "existing.AgriculturalProfilesControllerTests.CreateAndUpdate_RejectEmptyNames")]
     [Theory]
     [InlineData(null)]
     [InlineData("")]
@@ -117,6 +121,7 @@ public class AgriculturalProfilesControllerTests : IClassFixture<AgriVisionFacto
         (await owner.GetFromJsonAsync<JsonElement[]>(ProfilesUrl)).Should().ContainSingle();
     }
 
+    [Trait("ApiCase", "existing.AgriculturalProfilesControllerTests.NameBoundary_Allows150CharactersAndRejects151")]
     [Fact]
     public async Task NameBoundary_Allows150CharactersAndRejects151()
     {
@@ -132,6 +137,7 @@ public class AgriculturalProfilesControllerTests : IClassFixture<AgriVisionFacto
             .StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
+    [Trait("ApiCase", "existing.AgriculturalProfilesControllerTests.Diagnosis_CanSelectOwnedProfile_AndDeletionPreservesHistorySnapshotAndImages")]
     [Fact]
     public async Task Diagnosis_CanSelectOwnedProfile_AndDeletionPreservesHistorySnapshotAndImages()
     {
@@ -170,6 +176,7 @@ public class AgriculturalProfilesControllerTests : IClassFixture<AgriVisionFacto
         history.GetProperty("totalCount").GetInt32().Should().Be(1);
     }
 
+    [Trait("ApiCase", "existing.AgriculturalProfilesControllerTests.Diagnosis_RejectsForeignOrMissingProfile_WithoutPersisting")]
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -187,6 +194,7 @@ public class AgriculturalProfilesControllerTests : IClassFixture<AgriVisionFacto
         (await db.Predictions.CountAsync(item => item.UserId == userId)).Should().Be(0);
     }
 
+    [Trait("ApiCase", "existing.AgriculturalProfilesControllerTests.Guest_CannotSelectProfileForDiagnosis")]
     [Fact]
     public async Task Guest_CannotSelectProfileForDiagnosis()
     {

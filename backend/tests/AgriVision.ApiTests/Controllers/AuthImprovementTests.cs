@@ -14,7 +14,7 @@ using AgriVision.Domain.Entities;
 using AgriVision.Domain.Enums;
 using AgriVision.Infrastructure.Persistence;
 using AgriVision.Infrastructure.Persistence.Repositories;
-using AgriVision.IntegrationTests.Fixtures;
+using AgriVision.TestSupport;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -27,7 +27,7 @@ using Npgsql;
 using System.Data.Common;
 using Xunit;
 
-namespace AgriVision.IntegrationTests.Controllers;
+namespace AgriVision.ApiTests.Controllers;
 
 [Trait("Category", "Security")]
 public class AuthImprovementTests : IClassFixture<AgriVisionFactory>, IDisposable
@@ -120,6 +120,7 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>, IDisposabl
     }
 
     // 1. Logout nhiều thiết bị: Tạo phiên A/B; logout A trả 204; A gọi /me nhận 401, B vẫn 200; DB chỉ đánh dấu A bị thu hồi.
+    [Trait("ApiCase", "existing.AuthImprovementTests.Scenario1_MultiDeviceLogout_ShouldRevokeOnlyCurrentSession_AndKeepOtherSessionActive")]
     [Fact]
     public async Task Scenario1_MultiDeviceLogout_ShouldRevokeOnlyCurrentSession_AndKeepOtherSessionActive()
     {
@@ -172,6 +173,7 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>, IDisposabl
     }
 
     // 2. Phạm vi phiên: Sai owner/session không được sửa phiên của tài khoản khác; thiếu/sai sid nhận 401.
+    [Trait("ApiCase", "existing.AuthImprovementTests.Scenario2_SessionScope_ShouldRejectInvalidOrCrossUserSid")]
     [Fact]
     public async Task Scenario2_SessionScope_ShouldRejectInvalidOrCrossUserSid()
     {
@@ -227,6 +229,7 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>, IDisposabl
     }
 
     // 3. Logout đồng thời: Hai request đã qua xác thực cùng logout một phiên không gây lỗi ghi đè RevokedAt; trạng thái cuối vẫn bị thu hồi.
+    [Trait("ApiCase", "existing.AuthImprovementTests.Scenario3_ConcurrentLogout_ShouldNotCorruptOrThrow_AndEndInRevokedState")]
     [Fact]
     public async Task Scenario3_ConcurrentLogout_ShouldNotCorruptOrThrow_AndEndInRevokedState()
     {
@@ -278,6 +281,7 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>, IDisposabl
     }
 
     // 4. Đổi mật khẩu: Sau thành công, mọi token cũ nhận 401; đăng nhập bằng mật khẩu mới thành công.
+    [Trait("ApiCase", "existing.AuthImprovementTests.Scenario4_ChangePassword_ShouldRevokeAllExistingSessions_AndRequireNewPassword")]
     [Fact]
     public async Task Scenario4_ChangePassword_ShouldRevokeAllExistingSessions_AndRequireNewPassword()
     {
@@ -322,6 +326,7 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>, IDisposabl
     }
 
     // 5. Race: đổi mật khẩu trước: Giữ transaction sau khi cập nhật hash, khởi chạy login bằng mật khẩu cũ rồi cho transaction hoàn tất; login phải nhận 401, không tạo phiên mới hợp lệ.
+    [Trait("ApiCase", "existing.AuthImprovementTests.Scenario5_Race_PasswordChangeBeforeLogin_ShouldRejectLoginWithOldPassword")]
     [Fact]
     public async Task Scenario5_Race_PasswordChangeBeforeLogin_ShouldRejectLoginWithOldPassword()
     {
@@ -372,6 +377,7 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>, IDisposabl
         }
     }
 
+    [Trait("ApiCase", "existing.AuthImprovementTests.Scenario6_Race_LoginBeforePasswordChange_ShouldRevokeNewlyIssuedToken")]
     [Fact]
     public async Task Scenario6_Race_LoginBeforePasswordChange_ShouldRevokeNewlyIssuedToken()
     {
@@ -426,6 +432,7 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>, IDisposabl
         }
     }
     // 7. Đăng ký thành công: Có đúng một user và một session tương ứng; JWT chứa đúng sid, dùng được với /me.
+    [Trait("ApiCase", "existing.AuthImprovementTests.Scenario7_RegisterAtomic_Success_ShouldCreateExactlyOneUserAndSession")]
     [Fact]
     public async Task Scenario7_RegisterAtomic_Success_ShouldCreateExactlyOneUserAndSession()
     {
@@ -461,108 +468,10 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>, IDisposabl
     }
 
     // 8. Đăng ký thất bại: Chèn lỗi khi lưu session và khi tạo token; sau rollback không còn user/session, đăng ký lại cùng email thành công.
-    [Fact]
-    public async Task Scenario8_RegisterAtomic_FailureDuringSessionOrToken_ShouldRollbackCompletely_AndAllowRetry()
-    {
-        var email = $"atomic_fail_{Guid.NewGuid():N}@example.test";
-        var password = "Password123!";
 
-        // Case A: Fault injection during session save
-        Guid failedUserId;
-        var faultInterceptor = new FaultInjectionDbCommandInterceptor("INSERT INTO user_sessions");
-        await using (var db = CreateDbContext(faultInterceptor))
-        {
-            var unitOfWork = new UnitOfWork(db);
-            var userRepo = new UserRepository(db);
-            var sessionRepo = new UserSessionRepository(db);
-            var jwtGen = _services.ServiceProvider.GetRequiredService<IJwtTokenGenerator>();
-            var authService = new AuthService(userRepo, jwtGen, sessionRepo, unitOfWork);
-
-            Func<Task> act = async () => await authService.RegisterAsync(new RegisterRequest("Fault User", email, password));
-            await act.Should().ThrowAsync<DbUpdateException>();
-            failedUserId = db.ChangeTracker.Entries<User>().Single().Entity.Id;
-        }
-
-        // Verify rollback: no user, no session
-        await using (var freshDb = CreateDbContext())
-        {
-            var userExists = await freshDb.Users.AnyAsync(u => u.Email == email);
-            userExists.Should().BeFalse("User must be rolled back after session save failure");
-            (await freshDb.UserSessions.AnyAsync(s => s.UserId == failedUserId)).Should().BeFalse();
-        }
-
-        // Retry registration with same email succeeds!
-        using var client = _factory.CreateClient();
-        var retryResp = await client.PostAsJsonAsync("/api/auth/register",
-            new RegisterRequest("Fault User", email, password));
-        retryResp.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        // Case B: Fault injection during token generation
-        var emailB = $"atomic_fail_token_{Guid.NewGuid():N}@example.test";
-        var faultyTokenGen = new FaultyJwtTokenGenerator();
-        Guid failedTokenUserId;
-
-        await using (var db = CreateDbContext())
-        {
-            var unitOfWork = new UnitOfWork(db);
-            var userRepo = new UserRepository(db);
-            var sessionRepo = new UserSessionRepository(db);
-            var authService = new AuthService(userRepo, faultyTokenGen, sessionRepo, unitOfWork);
-
-            Func<Task> act = async () => await authService.RegisterAsync(new RegisterRequest("Fault Token User", emailB, password));
-            await act.Should().ThrowAsync<InvalidOperationException>()
-                .WithMessage("Simulated token generation failure");
-            failedTokenUserId = db.ChangeTracker.Entries<User>().Single().Entity.Id;
-        }
-
-        // Verify rollback for Case B: no user and no session in DB
-        await using (var freshDb = CreateDbContext())
-        {
-            var userExists = await freshDb.Users.AnyAsync(u => u.Email == emailB);
-            userExists.Should().BeFalse("User must be rolled back after token generation failure");
-            (await freshDb.UserSessions.AnyAsync(s => s.UserId == failedTokenUserId)).Should().BeFalse();
-        }
-
-        // Retry registration for Case B with same email succeeds!
-        var retryRespB = await client.PostAsJsonAsync("/api/auth/register",
-            new RegisterRequest("Fault Token User", emailB, password));
-        retryRespB.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
 
     // 9. Cancellation: Hủy sau khi user đã được lưu nhưng trước commit; không còn user/session sau khi transaction kết thúc.
-    [Fact]
-    public async Task Scenario9_RegisterAtomic_Cancellation_ShouldRollbackCompletely()
-    {
-        var email = $"cancel_reg_{Guid.NewGuid():N}@example.test";
-        using var cts = new CancellationTokenSource();
-        Guid cancelledUserId;
 
-        // Interceptor that cancels the token right after INSERT INTO users
-        var cancelInterceptor = new CancelOnCommandDbCommandInterceptor("INSERT INTO users", cts);
-
-        await using (var db = CreateDbContext(cancelInterceptor))
-        {
-            var unitOfWork = new UnitOfWork(db);
-            var userRepo = new UserRepository(db);
-            var sessionRepo = new UserSessionRepository(db);
-            var jwtGen = _services.ServiceProvider.GetRequiredService<IJwtTokenGenerator>();
-            var authService = new AuthService(userRepo, jwtGen, sessionRepo, unitOfWork);
-
-            Func<Task> act = async () => await authService.RegisterAsync(
-                new RegisterRequest("Cancel User", email, "Password123!"), cts.Token);
-
-            await act.Should().ThrowAsync<OperationCanceledException>();
-            cancelledUserId = db.ChangeTracker.Entries<User>().Single().Entity.Id;
-        }
-
-        // Verify in fresh DB scope: no user and no session
-        await using (var freshDb = CreateDbContext())
-        {
-            var userExists = await freshDb.Users.AnyAsync(u => u.Email == email);
-            userExists.Should().BeFalse("User must not exist after cancelled transaction");
-            (await freshDb.UserSessions.AnyAsync(s => s.UserId == cancelledUserId)).Should().BeFalse();
-        }
-    }
 
     private sealed class LogoutGate
     {

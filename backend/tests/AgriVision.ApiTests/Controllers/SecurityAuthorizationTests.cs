@@ -10,18 +10,19 @@ using AgriVision.Application.DTOs.Common;
 using AgriVision.Application.DTOs.Plant;
 using AgriVision.Application.DTOs.Prediction;
 using AgriVision.Infrastructure.Persistence;
-using AgriVision.IntegrationTests.Fixtures;
+using AgriVision.TestSupport;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 
-namespace AgriVision.IntegrationTests.Controllers;
+namespace AgriVision.ApiTests.Controllers;
 
 [Trait("Category", "Security")]
 public class SecurityAuthorizationTests(AgriVisionFactory factory) : IClassFixture<AgriVisionFactory>
 {
+    [Trait("ApiCase", "existing.SecurityAuthorizationTests.ProtectedEndpoints_ShouldRejectInvalidBearer")]
     [Theory]
     [InlineData("missing")]
     [InlineData("malformed")]
@@ -59,6 +60,7 @@ public class SecurityAuthorizationTests(AgriVisionFactory factory) : IClassFixtu
         write.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    [Trait("ApiCase", "existing.SecurityAuthorizationTests.CatalogWrites_ShouldRejectGuestAndRegularUser")]
     [Theory]
     [InlineData("plants", "POST", false)]
     [InlineData("plants", "PUT", false)]
@@ -97,6 +99,7 @@ public class SecurityAuthorizationTests(AgriVisionFactory factory) : IClassFixtu
         after.Should().Be(before);
     }
 
+    [Trait("ApiCase", "existing.SecurityAuthorizationTests.AdminCatalogWrite_ShouldWork_WithTokenIssuedAfterRoleAssignment")]
     [Fact]
     public async Task AdminCatalogWrite_ShouldWork_WithTokenIssuedAfterRoleAssignment()
     {
@@ -118,6 +121,7 @@ public class SecurityAuthorizationTests(AgriVisionFactory factory) : IClassFixtu
         deleted.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
+    [Trait("ApiCase", "existing.SecurityAuthorizationTests.Registration_ShouldIgnoreInjectedRole_AndNeverExposePasswordHash")]
     [Fact]
     public async Task Registration_ShouldIgnoreInjectedRole_AndNeverExposePasswordHash()
     {
@@ -145,6 +149,7 @@ public class SecurityAuthorizationTests(AgriVisionFactory factory) : IClassFixtu
         BCrypt.Net.BCrypt.Verify("Password123!", user.PasswordHash).Should().BeTrue();
     }
 
+    [Trait("ApiCase", "existing.SecurityAuthorizationTests.History_ShouldIsolateAccounts_AndRejectForeignOrGuestDeletion")]
     [Fact]
     public async Task History_ShouldIsolateAccounts_AndRejectForeignOrGuestDeletion()
     {
@@ -182,6 +187,7 @@ public class SecurityAuthorizationTests(AgriVisionFactory factory) : IClassFixtu
         ownDelete.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
+    [Trait("ApiCase", "existing.SecurityAuthorizationTests.Login_ShouldRejectWrongPasswordAndUnknownAccount_WithSamePublicError")]
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -205,6 +211,7 @@ public class SecurityAuthorizationTests(AgriVisionFactory factory) : IClassFixtu
         return (await response.Content.ReadFromJsonAsync<AuthResponse>())!;
     }
 
+    [Trait("ApiCase", "existing.SecurityAuthorizationTests.LegacyTokenWithoutSid_ShouldBeRejected_EvenWhenNewActiveSessionExists")]
     [Fact]
     public async Task LegacyTokenWithoutSid_ShouldBeRejected_EvenWhenNewActiveSessionExists()
     {
@@ -223,6 +230,7 @@ public class SecurityAuthorizationTests(AgriVisionFactory factory) : IClassFixtu
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    [Trait("ApiCase", "existing.SecurityAuthorizationTests.SessionRevocation_AfterLogout_ShouldRejectSubsequentRequestsWithSameToken")]
     [Fact]
     public async Task SessionRevocation_AfterLogout_ShouldRejectSubsequentRequestsWithSameToken()
     {
@@ -243,6 +251,7 @@ public class SecurityAuthorizationTests(AgriVisionFactory factory) : IClassFixtu
         afterLogout.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    [Trait("ApiCase", "existing.SecurityAuthorizationTests.SessionRevocation_AfterUserDeactivation_ShouldRejectSubsequentRequests")]
     [Fact]
     public async Task SessionRevocation_AfterUserDeactivation_ShouldRejectSubsequentRequests()
     {
@@ -264,6 +273,7 @@ public class SecurityAuthorizationTests(AgriVisionFactory factory) : IClassFixtu
         afterDeactivation.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    [Trait("ApiCase", "existing.SecurityAuthorizationTests.SessionRevocation_AfterRoleChange_ShouldRejectSubsequentRequests")]
     [Fact]
     public async Task SessionRevocation_AfterRoleChange_ShouldRejectSubsequentRequests()
     {
@@ -324,6 +334,7 @@ public class SecurityAuthorizationTests(AgriVisionFactory factory) : IClassFixtu
         return $"{parts[0]}.{Base64UrlEncoder.Encode(payload.ToJsonString())}.{parts[2]}";
     }
 
+    [Trait("ApiCase", "existing.SecurityAuthorizationTests.UpdateProfile_ShouldRejectNameExceeding60Characters")]
     [Fact]
     public async Task UpdateProfile_ShouldRejectNameExceeding60Characters()
     {

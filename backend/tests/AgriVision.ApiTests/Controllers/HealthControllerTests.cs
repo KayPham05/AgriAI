@@ -1,10 +1,10 @@
 using System.Net;
 using System.Text.Json;
-using AgriVision.IntegrationTests.Fixtures;
+using AgriVision.TestSupport;
 using FluentAssertions;
 using Xunit;
 
-namespace AgriVision.IntegrationTests.Controllers;
+namespace AgriVision.ApiTests.Controllers;
 
 public class HealthControllerTests : IClassFixture<AgriVisionFactory>
 {
@@ -15,6 +15,7 @@ public class HealthControllerTests : IClassFixture<AgriVisionFactory>
         _client = factory.CreateClient();
     }
 
+    [Trait("ApiCase", "existing.HealthControllerTests.GetHealth_ShouldReportDatabaseReady_WithoutAiService")]
     [Fact]
     public async Task GetHealth_ShouldReportDatabaseReady_WithoutAiService()
     {
@@ -30,6 +31,7 @@ public class HealthControllerTests : IClassFixture<AgriVisionFactory>
         content.RootElement.GetProperty("status").GetString().Should().Be("Healthy");
     }
 
+    [Trait("ApiCase", "existing.HealthControllerTests.GetDependencies_ShouldReportUnavailableAi")]
     [Fact]
     public async Task GetDependencies_ShouldReportUnavailableAi()
     {
