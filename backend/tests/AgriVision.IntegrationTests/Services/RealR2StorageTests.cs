@@ -6,7 +6,7 @@ using AgriVision.Application.DTOs.Auth;
 using AgriVision.Application.DTOs.Prediction;
 using AgriVision.Infrastructure.Persistence;
 using AgriVision.Infrastructure.Services;
-using AgriVision.TestSupport;
+using AgriVision.IntegrationTests.Fixtures;
 using FluentAssertions;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
@@ -26,7 +26,7 @@ public sealed class RealR2FactAttribute : FactAttribute
 }
 
 [Trait("Category", "RealR2")]
-public class RealR2StorageTests(AgriVisionFactory factory) : IClassFixture<AgriVisionFactory>
+public class RealR2StorageTests(RealR2Factory factory) : IClassFixture<RealR2Factory>
 {
     [RealR2Fact]
     public async Task RealBucket_UploadReadOwnerIsolationDeleteAndExpiry()

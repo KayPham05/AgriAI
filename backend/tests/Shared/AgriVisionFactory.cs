@@ -27,10 +27,7 @@ public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
-        builder.UseSetting("R2:ServiceUrl", "https://test.invalid");
-        builder.UseSetting("R2:BucketName", "test-bucket");
-        builder.UseSetting("R2:AccessKeyId", "synthetic-key");
-        builder.UseSetting("R2:SecretAccessKey", "synthetic-secret");
+        ConfigureR2(builder);
         builder.UseSetting("TrafficLimits:PredictionRequestsPerMinute", "10000");
         builder.UseSetting("TrafficLimits:ImageRequestsPerMinute", "10000");
         builder.UseSetting("TrafficLimits:AuthRequestsPerMinute", "10000");
@@ -65,6 +62,14 @@ public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
             db.Database.Migrate();
             DbInitializer.SeedAsync(scope.ServiceProvider).GetAwaiter().GetResult();
         });
+    }
+
+    protected virtual void ConfigureR2(IWebHostBuilder builder)
+    {
+        builder.UseSetting("R2:ServiceUrl", "https://test.invalid");
+        builder.UseSetting("R2:BucketName", "test-bucket");
+        builder.UseSetting("R2:AccessKeyId", "synthetic-key");
+        builder.UseSetting("R2:SecretAccessKey", "synthetic-secret");
     }
 
     public new virtual async Task DisposeAsync()
