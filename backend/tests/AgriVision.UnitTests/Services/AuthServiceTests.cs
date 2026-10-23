@@ -14,6 +14,7 @@ public class AuthServiceTests
     private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<IUserSessionRepository> _userSessionRepositoryMock;
     private readonly Mock<IJwtTokenGenerator> _jwtTokenGeneratorMock;
+    private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly AuthService _authService;
 
     public AuthServiceTests()
@@ -21,11 +22,19 @@ public class AuthServiceTests
         _userRepositoryMock = new Mock<IUserRepository>();
         _userSessionRepositoryMock = new Mock<IUserSessionRepository>();
         _jwtTokenGeneratorMock = new Mock<IJwtTokenGenerator>();
+        _unitOfWorkMock = new Mock<IUnitOfWork>();
+
+        _unitOfWorkMock.Setup(u => u.ExecuteInTransactionAsync(It.IsAny<Func<Task<AuthResponse>>>(), It.IsAny<CancellationToken>()))
+            .Returns<Func<Task<AuthResponse>>, CancellationToken>((action, _) => action());
+
+        _unitOfWorkMock.Setup(u => u.ExecuteInTransactionAsync(It.IsAny<Func<Task>>(), It.IsAny<CancellationToken>()))
+            .Returns<Func<Task>, CancellationToken>((action, _) => action());
 
         _authService = new AuthService(
             _userRepositoryMock.Object,
             _jwtTokenGeneratorMock.Object,
-            _userSessionRepositoryMock.Object
+            _userSessionRepositoryMock.Object,
+            _unitOfWorkMock.Object
         );
     }
 
@@ -52,6 +61,23 @@ public class AuthServiceTests
 
         _userRepositoryMock.Verify(r => r.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Once);
         _userSessionRepositoryMock.Verify(s => s.AddAsync(It.IsAny<UserSession>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_ShouldUseTransaction_ToAtomicallyCreateUserAndSession()
+    {
+        // Arrange
+        var request = new RegisterRequest("Atomic User", "atomic@example.com", "Password123!");
+        _userRepositoryMock.Setup(r => r.ExistsByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        _jwtTokenGeneratorMock.Setup(g => g.GenerateToken(It.IsAny<User>(), It.IsAny<Guid?>()))
+            .Returns("atomic-jwt-token");
+
+        // Act
+        var result = await _authService.RegisterAsync(request);
+
+        // Assert: Unit of work transaction must be used
+        _unitOfWorkMock.Verify(u => u.ExecuteInTransactionAsync(It.IsAny<Func<Task<AuthResponse>>>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -88,6 +114,8 @@ public class AuthServiceTests
 
         var request = new LoginRequest("valid@example.com", password);
 
+        _userRepositoryMock.Setup(r => r.GetByEmailForUpdateAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
         _userRepositoryMock.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
@@ -104,11 +132,40 @@ public class AuthServiceTests
     }
 
     [Fact]
+    public async Task LoginAsync_ShouldUseTransaction_AndRowLockWithGetByEmailForUpdate()
+    {
+        // Arrange
+        var password = "Password123!";
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            FullName = "Locked User",
+            Email = "locked@example.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+            Role = UserRole.User,
+            IsActive = true
+        };
+
+        var request = new LoginRequest("locked@example.com", password);
+        _userRepositoryMock.Setup(r => r.GetByEmailForUpdateAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        // Act
+        await _authService.LoginAsync(request);
+
+        // Assert: Unit of work transaction and SELECT ... FOR UPDATE must be used
+        _unitOfWorkMock.Verify(u => u.ExecuteInTransactionAsync(It.IsAny<Func<Task<AuthResponse>>>(), It.IsAny<CancellationToken>()), Times.Once);
+        _userRepositoryMock.Verify(r => r.GetByEmailForUpdateAsync(request.Email, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task LoginAsync_ShouldThrowUnauthorizedAccessException_WhenUserNotFound()
     {
         // Arrange
         var request = new LoginRequest("nonexistent@example.com", "Password123!");
 
+        _userRepositoryMock.Setup(r => r.GetByEmailForUpdateAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
         _userRepositoryMock.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync((User?)null);
 
@@ -124,6 +181,8 @@ public class AuthServiceTests
     public async Task LoginAsync_ShouldRejectPasswordLogin_ForProviderOnlyAccount()
     {
         var request = new LoginRequest("google@example.com", "Password123!");
+        _userRepositoryMock.Setup(repository => repository.GetByEmailForUpdateAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Email = request.Email, PasswordHash = null });
         _userRepositoryMock.Setup(repository => repository.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Email = request.Email, PasswordHash = null });
         var act = () => _authService.LoginAsync(request);
@@ -147,6 +206,8 @@ public class AuthServiceTests
         };
 
         var request = new LoginRequest("inactive@example.com", password);
+        _userRepositoryMock.Setup(r => r.GetByEmailForUpdateAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(inactiveUser);
         _userRepositoryMock.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync(inactiveUser);
 
@@ -175,6 +236,8 @@ public class AuthServiceTests
         };
 
         var request = new LoginRequest("active@example.com", password);
+        _userRepositoryMock.Setup(r => r.GetByEmailForUpdateAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
         _userRepositoryMock.Setup(r => r.GetByEmailAsync(request.Email, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
         _jwtTokenGeneratorMock.Setup(g => g.GenerateToken(user, It.IsAny<Guid?>())).Returns("token-123");
@@ -190,15 +253,17 @@ public class AuthServiceTests
     }
 
     [Fact]
-    public async Task LogoutAsync_ShouldRevokeAllSessionsForUser()
+    public async Task LogoutAsync_ShouldRevokeOnlyCurrentSession_WithUserIdAndSessionId()
     {
         // Arrange
         var userId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
 
         // Act
-        await _authService.LogoutAsync(userId);
+        await _authService.LogoutAsync(userId, sessionId);
 
-        // Assert
-        _userSessionRepositoryMock.Verify(s => s.RevokeAllSessionsByUserIdAsync(userId, It.IsAny<CancellationToken>()), Times.Once);
+        // Assert: Must revoke only the specific session, NOT all sessions
+        _userSessionRepositoryMock.Verify(s => s.RevokeSessionAsync(userId, sessionId, It.IsAny<CancellationToken>()), Times.Once);
+        _userSessionRepositoryMock.Verify(s => s.RevokeAllSessionsByUserIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

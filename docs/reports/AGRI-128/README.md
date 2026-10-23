@@ -7,6 +7,7 @@ rộng kết quả một hạng mục thành nghiệm thu toàn bộ S3-01 đế
 | Hạng mục | Task | Báo cáo | Trạng thái |
 | --- | --- | --- | --- |
 | S3-05 — Guest diagnosis, backend | AGRI-118, story AGRI-110 | [Contract, kiểm thử và giới hạn](guest_diagnosis.md) | Local: 90 test đạt, branch coverage 62.64%; chưa nghiệm thu UI/CI/PR. |
+| S3-01/S3-02 — Auth improvement (PR #42) | AGRI-128 | [Khắc phục 3 vấn đề auth & test hồi quy](auth_improvement.md) | Local: 91/91 unit test đạt, 0 build warning/error; 9 test tích hợp TDD đã bổ sung. |
 
 - [Chuẩn triển khai](../../plans/AGRI-128-implementation-rules.md).
 - [Kế hoạch Guest backend](../../plans/AGRI-128-guest-diagnosis-plan.md).

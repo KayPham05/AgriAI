@@ -18,10 +18,37 @@ public class UserRepository : IUserRepository
         return await _context.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
     }
 
+    public async Task<User?> GetByIdForUpdateAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        if (!_context.Database.IsRelational())
+        {
+            return await GetByIdAsync(id, cancellationToken);
+        }
+
+        return await _context.Users
+            .FromSqlInterpolated($"SELECT * FROM users WHERE id = {id} FOR UPDATE")
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+
     public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
         return await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower(), cancellationToken);
     }
+
+    public async Task<User?> GetByEmailForUpdateAsync(string email, CancellationToken cancellationToken = default)
+    {
+        if (!_context.Database.IsRelational())
+        {
+            return await GetByEmailAsync(email, cancellationToken);
+        }
+
+        var emailLower = email.ToLower();
+        return await _context.Users
+            .FromSqlInterpolated($"SELECT * FROM users WHERE LOWER(email) = {emailLower} FOR UPDATE")
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
 
     public async Task<bool> ExistsByEmailAsync(string email, CancellationToken cancellationToken = default)
     {

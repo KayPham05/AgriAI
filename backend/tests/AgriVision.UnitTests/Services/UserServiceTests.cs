@@ -156,6 +156,8 @@ public class UserServiceTests
             PasswordHash = currentHash
         };
 
+        _userRepositoryMock.Setup(r => r.GetByIdForUpdateAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
         _userRepositoryMock.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
@@ -213,6 +215,8 @@ public class UserServiceTests
             PasswordHash = currentHash
         };
 
+        _userRepositoryMock.Setup(r => r.GetByIdForUpdateAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
         _userRepositoryMock.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
@@ -258,6 +262,8 @@ public class UserServiceTests
             PasswordHash = currentHash
         };
 
+        _userRepositoryMock.Setup(r => r.GetByIdForUpdateAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
         _userRepositoryMock.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
 
@@ -270,5 +276,32 @@ public class UserServiceTests
         _unitOfWorkMock.Verify(u => u.ExecuteInTransactionAsync(It.IsAny<Func<Task>>(), It.IsAny<CancellationToken>()), Times.Once);
         _userRepositoryMock.Verify(r => r.UpdateAsync(user, It.IsAny<CancellationToken>()), Times.Once);
         _userSessionRepositoryMock.Verify(s => s.RevokeAllSessionsByUserIdAsync(userId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+    [Fact]
+    public async Task ChangePasswordAsync_ShouldLockUserRow_WithGetByIdForUpdateAsync()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var currentPassword = "OldPassword123!";
+        var newPassword = "NewPassword456!";
+        var user = new User
+        {
+            Id = userId,
+            Email = "user@example.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(currentPassword)
+        };
+
+        var request = new ChangePasswordRequest(currentPassword, newPassword, newPassword);
+
+        _userRepositoryMock.Setup(r => r.GetByIdForUpdateAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        _userRepositoryMock.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        // Act
+        await _userService.ChangePasswordAsync(userId, request);
+
+        // Assert: Must use GetByIdForUpdateAsync to lock the row in transaction
+        _userRepositoryMock.Verify(r => r.GetByIdForUpdateAsync(userId, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

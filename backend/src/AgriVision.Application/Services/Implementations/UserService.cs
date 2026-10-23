@@ -102,22 +102,22 @@ public class UserService : IUserService
             throw new ArgumentException("Mật khẩu mới không được trùng với mật khẩu hiện tại.");
         }
 
-        var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
-        if (user == null)
-        {
-            throw new KeyNotFoundException($"User with ID '{userId}' not found.");
-        }
-
-        if (user.PasswordHash == null || !BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
-        {
-            throw new ArgumentException("Mật khẩu hiện tại không chính xác.");
-        }
-
-        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
-        user.UpdatedAt = DateTime.UtcNow;
-
         await _unitOfWork.ExecuteInTransactionAsync(async () =>
         {
+            var user = await _userRepository.GetByIdForUpdateAsync(userId, cancellationToken);
+            if (user == null)
+            {
+                throw new KeyNotFoundException($"User with ID '{userId}' not found.");
+            }
+
+            if (user.PasswordHash == null || !BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
+            {
+                throw new ArgumentException("Mật khẩu hiện tại không chính xác.");
+            }
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            user.UpdatedAt = DateTime.UtcNow;
+
             await _userRepository.UpdateAsync(user, cancellationToken);
 
             // Invalidate active sessions to enforce fresh login or updated security state

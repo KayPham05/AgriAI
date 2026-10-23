@@ -216,3 +216,54 @@ nhánh nền AGRI-128 là Jira của task hồ sơ.
 ### Kết quả kiểm thử
 - `dotnet build backend/AgriVision.sln`: Thành công, 0 warning, 0 error.
 - `dotnet test backend/tests/AgriVision.UnitTests/AgriVision.UnitTests.csproj`: **88/88 unit tests passed (100%)**.
+
+---
+
+## 2026-10-23 — Sửa 3 Vấn Đề Auth Của PR #42 & Bổ Sung Test Hồi Quy (TDD)
+
+### 1. Logout chỉ thu hồi phiên hiện tại
+- **Vấn đề:** Trước đây `AuthService.LogoutAsync(userId)` gọi `RevokeAllSessionsByUserIdAsync`, làm thu hồi toàn bộ các phiên hoạt động khác của người dùng khi chỉ đăng xuất trên một thiết bị.
+- **Khắc phục:**
+  - Controller `AuthController.Logout`: Trích xuất `userId` và `sid` từ JWT đã xác thực; nếu thiếu hoặc sai định dạng claim `sid` thì từ chối ngay với mã `401 Unauthorized`.
+  - Thay đổi chữ ký `IAuthService.LogoutAsync(Guid userId, Guid sessionId, CancellationToken cancellationToken = default)`.
+  - Thêm phương thức `IUserSessionRepository.RevokeSessionAsync(Guid userId, Guid sessionId, CancellationToken cancellationToken = default)`. Triển khai tại `UserSessionRepository` bằng một câu lệnh `ExecuteUpdateAsync` duy nhất với điều kiện `s.UserId == userId && s.Id == sessionId && s.RevokedAt == null`. Tránh ghi đè thời điểm `RevokedAt` khi có 2 request logout đồng thời và ngăn chặn sửa phiên của tài khoản khác.
+  - Phản hồi endpoint giữ nguyên mã thành công `204 NoContent`. Token bị thu hồi bị middleware từ chối bằng `401 Unauthorized`.
+  - Đổi mật khẩu, khóa tài khoản và đổi quyền admin vẫn giữ nguyên việc thu hồi mọi phiên (`RevokeAllSessionsByUserIdAsync`).
+
+### 2. Đồng bộ login với đổi mật khẩu (Loại bỏ Race Condition)
+- **Vấn đề:** Khi login và đổi mật khẩu diễn ra đồng thời trên cùng tài khoản, login có thể cấp token bằng mật khẩu cũ sau khi đổi mật khẩu hoàn tất, hoặc token mới tạo không bị thu hồi.
+- **Khắc phục:**
+  - Thêm `GetByIdForUpdateAsync(Guid id, ...)` và `GetByEmailForUpdateAsync(string email, ...)` vào `IUserRepository` và `UserRepository`, thực thi câu lệnh SQL tham số hóa `SELECT ... FOR UPDATE` khóa hàng user ở mức PostgreSQL `ReadCommitted`.
+  - `AuthService.LoginAsync`: Mở transaction qua `IUnitOfWork.ExecuteInTransactionAsync`, đọc và khóa user bằng `GetByEmailForUpdateAsync`, xác thực mật khẩu BCrypt và trạng thái `IsActive`, tạo phiên và phát hành token bên trong transaction, chỉ commit khi hoàn tất.
+  - `UserService.ChangePasswordAsync`: Thực hiện validation DTO trước transaction; bên trong transaction đọc và khóa user bằng `GetByIdForUpdateAsync`, xác thực mật khẩu hiện tại, cập nhật hash mật khẩu mới, cập nhật `UpdatedAt` và thu hồi toàn bộ phiên qua `RevokeAllSessionsByUserIdAsync`.
+  - Kết quả: Thao tác nào vào trước sẽ giữ khóa hàng; thao tác sau phải chờ ở tầng database. Nếu đổi mật khẩu trước, login bằng mật khẩu cũ bị từ chối 401. Nếu login trước, phiên mới cấp sẽ bị thao tác đổi mật khẩu thu hồi ngay sau đó.
+
+### 3. Đăng ký nguyên tử (Atomic Registration)
+- **Vấn đề:** Trước đây việc tạo user, tạo session và tạo token diễn ra rời rạc không qua transaction. Nếu lưu session lỗi hoặc tạo token thất bại, bản ghi user đã tồn tại trong DB, dẫn đến rác dữ liệu và không thể đăng ký lại cùng email.
+- **Khắc phục:**
+  - Tiêm `IUnitOfWork` vào `AuthService`.
+  - Bọc việc tạo user, tạo session và phát hành JWT token trong cùng transaction `_unitOfWork.ExecuteInTransactionAsync`. Chỉ trả về `AuthResponse` sau khi commit thành công.
+  - Lỗi khi lưu session, lỗi tạo token hoặc cancellation trước commit đều rollback toàn bộ user và session, cho phép đăng ký lại cùng email thành công.
+  - Cập nhật `UnitOfWork.cs`: Sử dụng `CancellationToken.None` cho `await transaction.RollbackAsync(CancellationToken.None)` trong khối catch để bảo đảm rollback hoàn tất dứt điểm khi có yêu cầu hủy request.
+
+### 4. Quy trình TDD & Bộ 9 Kịch Bản Test Hồi Quy
+- **Giai đoạn Đỏ (Red Phase):**
+  - Viết 4 bài test đơn vị mới trong `AuthServiceTests` và `UserServiceTests` xác nhận thất bại đúng nguyên nhân trước khi sửa code: `RegisterAsync` không dùng transaction (FAIL), `LogoutAsync` thu hồi toàn bộ phiên (FAIL), `LoginAsync` không khóa hàng `GetByEmailForUpdateAsync` (FAIL), `ChangePasswordAsync` không gọi `GetByIdForUpdateAsync` (FAIL).
+- **Giai đoạn Xanh (Green Phase):**
+  - Triển khai toàn diện code sửa lỗi, toàn bộ **91/91 unit tests passed (100%)**.
+- **Bộ 9 kịch bản Integration Tests (`AuthImprovementTests.cs`):**
+  1. *Logout nhiều thiết bị:* Logout phiên A (204), token A nhận 401, token B nhận 200, DB chỉ đánh dấu A bị thu hồi.
+  2. *Phạm vi phiên:* Token sai owner/session hoặc thiếu/sai `sid` nhận 401 ở cả endpoint logout và `/me`; phiên của tài khoản khác không bị ảnh hưởng.
+  3. *Logout đồng thời:* Hai request logout cùng phiên hoàn tất 204 mà không xung đột ghi đè `RevokedAt`.
+  4. *Đổi mật khẩu:* Mọi token cũ nhận 401 sau đổi mật khẩu; đăng nhập mật khẩu mới thành công 200 OK.
+  5. *Race: Đổi mật khẩu trước:* Giữ transaction sau cập nhật hash qua `GateDbCommandInterceptor`, Scope 2 login mật khẩu cũ bị chặn tại PostgreSQL (thăm dò `pg_stat_activity` với wait_event_type = 'Lock', timeout 30s). Scope 1 commit, Scope 2 unblock và nhận 401, không tạo phiên rác.
+  6. *Race: Login trước:* Giữ login sau `SELECT ... FOR UPDATE`, Scope 2 đổi mật khẩu bị chặn tại PostgreSQL. Scope 1 commit cấp token, Scope 2 unblock và thu hồi mọi phiên; token vừa cấp nhận 401.
+  7. *Đăng ký thành công:* Tạo đúng 1 user, 1 session tương ứng có `sid` khớp JWT payload, gọi `/me` thành công 200 OK.
+  8. *Đăng ký thất bại:* Chèn lỗi khi lưu session (`FaultInjectionDbCommandInterceptor`) và khi tạo token (`FaultyJwtTokenGenerator`), transaction rollback hoàn toàn không còn user/session, đăng ký lại cùng email thành công.
+  9. *Cancellation:* Hủy request qua `CancelOnCommandDbCommandInterceptor`, transaction rollback bằng `CancellationToken.None`, DB hoàn toàn sạch dữ liệu.
+
+### 5. Kết quả kiểm chứng
+- `dotnet build backend/AgriVision.sln`: Thành công, 0 warning, 0 error.
+- `dotnet test backend/tests/AgriVision.UnitTests/AgriVision.UnitTests.csproj`: **91/91 unit tests passed (100%)**.
+- Kiểm tra diff: Không thay đổi migration, dataset, checkpoint, secret hay code R2.
+- Tuân thủ quy định: Chưa thực hiện commit hoặc push khi chưa có yêu cầu từ người dùng.

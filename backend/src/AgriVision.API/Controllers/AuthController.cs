@@ -55,7 +55,13 @@ public class AuthController : ControllerBase
             return Unauthorized();
         }
 
-        await _authService.LogoutAsync(userId, cancellationToken);
+        var sidClaim = User.FindFirst("sid")?.Value ?? User.FindFirstValue("sid");
+        if (string.IsNullOrEmpty(sidClaim) || !Guid.TryParse(sidClaim, out var sessionId))
+        {
+            return Unauthorized();
+        }
+
+        await _authService.LogoutAsync(userId, sessionId, cancellationToken);
         return NoContent();
     }
 }

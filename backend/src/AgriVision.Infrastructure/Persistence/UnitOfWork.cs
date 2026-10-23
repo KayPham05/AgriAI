@@ -28,7 +28,7 @@ public class UnitOfWork : IUnitOfWork
         }
         catch
         {
-            await transaction.RollbackAsync(cancellationToken);
+            await transaction.RollbackAsync(CancellationToken.None);
             throw;
         }
     }
@@ -49,7 +49,7 @@ public class UnitOfWork : IUnitOfWork
         }
         catch
         {
-            await transaction.RollbackAsync(cancellationToken);
+            await transaction.RollbackAsync(CancellationToken.None);
             throw;
         }
     }
