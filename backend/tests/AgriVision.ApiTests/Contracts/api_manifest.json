@@ -310,7 +310,8 @@
       "predictions.image_formats_contract",
       "predictions.dependency_failure_no_persistence",
       "predictions.rate_same_user_sessions",
-      "predictions.unexpected_error_redaction"
+      "predictions.unexpected_error_redaction",
+      "predictions.exact_upload_limit"
     ]
   },
   {

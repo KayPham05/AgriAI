@@ -45,12 +45,58 @@ public class PredictionContractTests(AgriVisionFactory factory) : IClassFixture<
     public async Task MultipartSection_Over15MiB_IsRejectedBeforeInference()
     {
         var predictor = new PredictDouble();
-        using var app = App(predictor, new StorageDouble());
+        var storage = new StorageDouble();
+        using var app = App(predictor, storage);
         using var client = app.CreateClient();
         using var form = Image("leaf.png", new byte[15 * 1024 * 1024 + 1]);
         using var response = await client.PostAsync("/api/predictions", form);
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         predictor.Calls.Should().Be(0);
+        storage.Uploads.Should().Be(0);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    [Trait("ApiCase", "predictions.exact_upload_limit")]
+    public async Task MultipartSection_Exactly15MiB_IsAccepted(bool authenticated)
+    {
+        var predictor = new PredictDouble();
+        var storage = new StorageDouble();
+        using var app = App(predictor, storage);
+        using var client = app.CreateClient();
+        if (authenticated) await ApiTestClient.Register(client);
+        using var scope = app.Services.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var before = await database.Predictions.CountAsync();
+        var bytes = new byte[15 * 1024 * 1024];
+        bytes[0] = 0x18;
+        bytes[^1] = 0x29;
+        using var form = Image("leaf.png", bytes);
+        using var response = await client.PostAsync("/api/predictions", form);
+        response.StatusCode.Should().Be(authenticated ? HttpStatusCode.Created : HttpStatusCode.OK);
+        var result = (await response.Content.ReadFromJsonAsync<PredictionResultDto>())!;
+        result.Confidence.Should().BeApproximately(.94f, .0001f);
+        predictor.Calls.Should().Be(1);
+        if (authenticated)
+        {
+            response.Headers.Location!.AbsolutePath.Should().BeEquivalentTo($"/api/predictions/{result.Id}");
+            response.Headers.Location.GetLeftPart(UriPartial.Authority).Should().Be(client.BaseAddress!.GetLeftPart(UriPartial.Authority));
+            storage.Objects.Should().ContainSingle();
+            var stored = storage.Objects.Single().Value;
+            stored.Length.Should().Be(15 * 1024 * 1024);
+            System.Security.Cryptography.SHA256.HashData(stored).Should().Equal(System.Security.Cryptography.SHA256.HashData(bytes));
+            using var detail = await client.GetAsync(response.Headers.Location);
+            detail.StatusCode.Should().Be(HttpStatusCode.OK);
+            (await detail.Content.ReadFromJsonAsync<PredictionResultDto>())!.Id.Should().Be(result.Id);
+        }
+        else
+        {
+            response.Headers.Location.Should().BeNull();
+            storage.Uploads.Should().Be(0);
+            storage.Objects.Should().BeEmpty();
+            (await database.Predictions.CountAsync()).Should().Be(before);
+        }
     }
 
     [Theory]
