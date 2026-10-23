@@ -13,6 +13,7 @@ Repository-wide guidance. Explicit user instructions take precedence.
 
 - Inspect the current branch, Git status and relevant source before editing. Preserve unrelated work and make the smallest complete change; reuse existing code and dependencies.
 - Read relevant [project rules](.agents/rules/project_rules.md), [directory rules](.agents/rules/directory_structure.md) and applicable skills. Use `coding-standards` for code changes and `git-commit` for requested commits.
+- Follow the root [testing standard](TESTING.md) when planning, writing, running or reviewing tests. Keep behavior coverage, fixture isolation, meaningful assertions and actual execution evidence aligned with that standard.
 - Use `rg` for searches. Batch independent reads; keep edits and dependent operations sequential. Ask only for missing decisions that affect scope; continue work already authorized.
 - Use the [command guides](.agents/commands/README.md). Backend integration requires Docker. Run relevant checks and report passed, unrun or blocked results; local results do not establish GitHub Actions success.
 - Branch coverage target: 80% per component; current CI floors: backend 70%, frontend 65%, Python 40%. See the [current gate report](docs/reports/AGRI-127/README.md) and [historical coverage report](docs/reports/AGRI-75/ci_branch_coverage.md).
