@@ -17,6 +17,7 @@ function setup(role = 'Admin') {
   vi.stubGlobal('innerWidth', 1280);
   saveAuthSession({ token: 'admin-token', user: { ...admin, role } }, true);
   const requests = vi.fn(async (url: string) => {
+    if (url.endsWith('/api/auth/logout')) return { ok: true, status: 204 };
     if (url.endsWith('/api/auth/me'))
       return { ok: true, json: async (): Promise<typeof admin> => ({ ...admin, role }) };
     throw new Error(`Unexpected non-authentication request: ${url}`);
@@ -190,13 +191,24 @@ describe('Admin mock workspace with real authentication', () => {
     await userEvent.click(toggle);
     expect(label).not.toBeVisible();
   });
-  it('logs out locally with the original backend and never calls a logout endpoint', async () => {
+  it('keeps the admin session when server revocation fails', async () => {
+    const requests = setup();
+    render(<AdminCrmPage />);
+    await screen.findByRole('heading', { name: 'Tổng quan vận hành' });
+    requests.mockRejectedValueOnce(new Error('offline'));
+    await userEvent.click(screen.getByRole('button', { name: 'Đăng xuất' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Chưa thể thu hồi phiên');
+    expect(localStorage.getItem('leafai_auth_session')).not.toBeNull();
+    expect(screen.getByRole('heading', { name: 'Tổng quan vận hành' })).toBeVisible();
+  });
+
+  it('revokes the backend session before clearing local authentication', async () => {
     const requests = setup();
     render(<AdminCrmPage />);
     await screen.findByRole('heading', { name: 'Tổng quan vận hành' });
     vi.useFakeTimers();
     router.replace.mockClear();
-    fireEvent.click(screen.getByRole('button', { name: 'Đăng xuất' }));
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Đăng xuất' })));
     expect(screen.getByRole('heading', { name: 'Tạm biệt, Administrator.' })).toBeVisible();
     expect(screen.getByText('HẸN GẶP LẠI')).toBeVisible();
     expect(screen.queryByRole('progressbar')).toBeNull();
@@ -205,7 +217,7 @@ describe('Admin mock workspace with real authentication', () => {
     expect(router.replace).not.toHaveBeenCalled();
     act(() => vi.advanceTimersByTime(1));
     expect(router.replace).toHaveBeenCalledExactlyOnceWith('/');
-    expect(requests.mock.calls.map(([url]) => url)).toEqual(['/api/auth/me']);
+    expect(requests.mock.calls.map(([url]) => url)).toEqual(['/api/auth/me', '/api/auth/logout']);
     expect(localStorage.getItem('leafai_auth_session')).toBeNull();
     expect(sessionStorage.getItem('leafai_auth_session')).toBeNull();
   });

@@ -104,3 +104,14 @@ export async function restoreAuthSession(): Promise<AuthSession | null> {
     return null;
   }
 }
+
+export async function revokeSession(token: string): Promise<void> {
+  const response = await fetch(`${configuredBaseUrl}/api/auth/logout`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!response.ok && response.status !== 401) {
+    throw new Error('Chưa thể thu hồi phiên đăng nhập. Vui lòng thử lại.');
+  }
+}
