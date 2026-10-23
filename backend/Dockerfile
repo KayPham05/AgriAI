@@ -6,7 +6,6 @@ RUN dotnet publish src/AgriVision.API/AgriVision.API.csproj -c Release -o /publi
 FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine
 WORKDIR /app
 COPY --from=build /publish .
-RUN mkdir -p /app/wwwroot/uploads/predictions && chown -R "$APP_UID:$APP_UID" /app/wwwroot
 USER $APP_UID
 ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080

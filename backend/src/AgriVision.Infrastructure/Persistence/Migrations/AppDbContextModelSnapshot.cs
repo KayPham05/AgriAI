@@ -365,6 +365,30 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("AgriVision.Domain.Entities.PendingImageUpload", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("object_key");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Key");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("pending_image_uploads", (string)null);
+                });
+
             modelBuilder.Entity("AgriVision.Domain.Entities.Plant", b =>
                 {
                     b.Property<Guid>("Id")

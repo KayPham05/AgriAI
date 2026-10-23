@@ -66,7 +66,7 @@ public class MigrationTests
             """);
         await database.Database.MigrateAsync();
         await database.Database.MigrateAsync();
-        (await database.Database.GetAppliedMigrationsAsync()).Should().HaveCount(5);
+        (await database.Database.GetAppliedMigrationsAsync()).Should().HaveCount(6);
         database.Database.HasPendingModelChanges().Should().BeFalse();
         var legacy = await database.Predictions.Include(prediction => prediction.Images).SingleAsync();
         legacy.Id.Should().Be(predictionId);

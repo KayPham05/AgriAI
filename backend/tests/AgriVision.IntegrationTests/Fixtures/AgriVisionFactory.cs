@@ -27,6 +27,9 @@ public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        builder.UseSetting("TrafficLimits:PredictionRequestsPerMinute", "10000");
+        builder.UseSetting("TrafficLimits:ImageRequestsPerMinute", "10000");
+        builder.UseSetting("TrafficLimits:AuthRequestsPerMinute", "10000");
         builder.UseSetting("ConnectionStrings:DefaultConnection", _dbContainer.GetConnectionString());
         builder.UseSetting("JwtSettings:Secret", new string('x', 32));
         builder.UseSetting("AiService:BaseUrl", "http://127.0.0.1:1");
@@ -67,17 +70,19 @@ public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     private sealed class FakeImageStorage : IImageStorage
     {
+        public Task<ImageDownloadResult?> ReadImageAsync(string publicId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<ImageDownloadResult?>(new([1, 2, 3], "image/jpeg"));
         public Task<ImageUploadResult> UploadImageAsync(
             IFormFile file,
-            CancellationToken cancellationToken = default)
+            ImageStorageContext context, CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(CreateResult(file.FileName));
+            return Task.FromResult(CreateResult(file.FileName, context));
         }
 
         public async Task<ImageUploadResult> UploadImageAsync(
             Stream imageStream,
             string fileName,
-            CancellationToken cancellationToken = default)
+            ImageStorageContext context, CancellationToken cancellationToken = default)
         {
             using var buffer = new MemoryStream();
             await imageStream.CopyToAsync(buffer, cancellationToken);
@@ -87,7 +92,7 @@ public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
                 throw new InvalidOperationException("The uploaded image is empty.");
             }
 
-            return CreateResult(fileName);
+            return CreateResult(fileName, context);
         }
 
         public Task<bool> DeleteImageAsync(
@@ -97,12 +102,11 @@ public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
             return Task.FromResult(true);
         }
 
-        private static ImageUploadResult CreateResult(string fileName)
+        private static ImageUploadResult CreateResult(string fileName, ImageStorageContext context)
         {
             var safeFileName = Path.GetFileName(fileName);
             return new ImageUploadResult(
-                $"integration/{safeFileName}",
-                $"https://images.test/{safeFileName}");
+                ImageStorageKey.Create(context, Path.GetExtension(safeFileName).ToLowerInvariant()), string.Empty);
         }
     }
 

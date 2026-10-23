@@ -109,6 +109,7 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
+builder.Services.AddStorageTrafficLimits(builder.Configuration);
 
 // 4. Configure Swagger / OpenAPI with JWT Support
 builder.Services.AddEndpointsApiExplorer();
@@ -179,12 +180,14 @@ if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
 
 app.UseCors("AllowAll");
 
+app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
+app.UseRequestTimeouts();
 
 app.MapGet("/", () => Results.Redirect("/swagger"));
 

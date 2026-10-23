@@ -259,10 +259,12 @@ public class GuestPredictionsControllerTests : IClassFixture<AgriVisionFactory>
     {
         public int Calls { get; private set; }
 
-        public Task<ImageUploadResult> UploadImageAsync(IFormFile file, CancellationToken cancellationToken = default) =>
+        public Task<ImageDownloadResult?> ReadImageAsync(string publicId, CancellationToken cancellationToken = default) => UnexpectedCall<ImageDownloadResult?>();
+
+        public Task<ImageUploadResult> UploadImageAsync(IFormFile file, ImageStorageContext context, CancellationToken cancellationToken = default) =>
             UnexpectedCall<ImageUploadResult>();
 
-        public Task<ImageUploadResult> UploadImageAsync(Stream stream, string fileName, CancellationToken cancellationToken = default) =>
+        public Task<ImageUploadResult> UploadImageAsync(Stream stream, string fileName, ImageStorageContext context, CancellationToken cancellationToken = default) =>
             UnexpectedCall<ImageUploadResult>();
 
         public Task<bool> DeleteImageAsync(string publicId, CancellationToken cancellationToken = default) =>
