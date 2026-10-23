@@ -1,3 +1,5 @@
+using AgriVision.Application.DTOs.Prediction;
+using AgriVision.Infrastructure.Persistence.Repositories;
 using AgriVision.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -427,5 +429,76 @@ public class DatabaseImprovementTests : IAsyncLifetime
                 AND u.label_directions = 'Changed instructions' AS "Value"
             FROM medicines m JOIN medicine_uses u ON u.medicine_id = m.id WHERE m.id = {medicine}
             """).SingleAsync()).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task UnitOfWork_ShouldRollbackAllOperations_WhenExceptionThrownMidTransaction()
+    {
+        await using var database = CreateDatabase();
+        var userId = await CreateUserAsync(database);
+        var sessionId = await CreateSessionAsync(database, userId);
+
+        var initialPasswordHash = "initial-hash";
+        await database.Database.ExecuteSqlInterpolatedAsync($"UPDATE users SET password_hash = {initialPasswordHash} WHERE id = {userId}");
+
+        var unitOfWork = new UnitOfWork(database);
+
+        var act = async () =>
+        {
+            await unitOfWork.ExecuteInTransactionAsync(async () =>
+            {
+                // Step 1: Update password hash in users table
+                await database.Database.ExecuteSqlInterpolatedAsync($"UPDATE users SET password_hash = 'new-hash-midway' WHERE id = {userId}");
+
+                // Step 2: Mid-transaction failure before session revocation
+                throw new InvalidOperationException("Simulated mid-transaction failure during session revocation");
+            });
+        };
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Simulated mid-transaction failure during session revocation");
+
+        // Verify in PostgreSQL that Step 1 was rolled back and password hash is untouched
+        var currentPasswordHash = await database.Database.SqlQuery<string>($"""
+            SELECT password_hash AS "Value" FROM users WHERE id = {userId}
+            """).SingleAsync();
+        currentPasswordHash.Should().Be(initialPasswordHash);
+
+        // Verify that the session was NOT revoked
+        var sessionRevoked = await database.Database.SqlQuery<bool>($"""
+            SELECT revoked_at IS NOT NULL AS "Value" FROM user_sessions WHERE id = {sessionId}
+            """).SingleAsync();
+        sessionRevoked.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task PredictionRepository_ShouldFilterByUnspecifiedDateTimeKind_WithoutTimezoneException()
+    {
+        await using var database = CreateDatabase();
+        var userId = await CreateUserAsync(database);
+        var predictionId = await CreatePredictionAsync(database, userId, null);
+
+        var repository = new PredictionRepository(database);
+
+        // Pass dates with DateTimeKind.Unspecified (mimicking ASP.NET Core query parameter model binding)
+        var fromDate = DateTime.SpecifyKind(DateTime.UtcNow.AddDays(-1), DateTimeKind.Unspecified);
+        var toDate = DateTime.SpecifyKind(DateTime.UtcNow.AddDays(1), DateTimeKind.Unspecified);
+
+        var filter = new PredictionFilterParams(FromDate: fromDate, ToDate: toDate);
+
+        // Must execute cleanly against real PostgreSQL timestamptz column without Npgsql exception
+        var (items, totalCount) = await repository.GetFilteredByUserIdAsync(userId, filter);
+
+        totalCount.Should().Be(1);
+        items.Should().ContainSingle(p => p.Id == predictionId);
+
+        // Verify out-of-range date filter returns 0
+        var futureFilter = new PredictionFilterParams(
+            FromDate: DateTime.SpecifyKind(DateTime.UtcNow.AddDays(2), DateTimeKind.Unspecified),
+            ToDate: DateTime.SpecifyKind(DateTime.UtcNow.AddDays(3), DateTimeKind.Unspecified));
+
+        var (futureItems, futureCount) = await repository.GetFilteredByUserIdAsync(userId, futureFilter);
+        futureCount.Should().Be(0);
+        futureItems.Should().BeEmpty();
     }
 }

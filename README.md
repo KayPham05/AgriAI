@@ -118,6 +118,7 @@ AgriAI/
 | Nội dung | Tài liệu tham khảo |
 |---|---|
 | **Cơ sở Dữ liệu & Schema chi tiết** | [docs/notes/database_details.md](docs/notes/database_details.md) |
+| **API Hồ sơ nông nghiệp (AGRI-116)** | [Contract, nghiệp vụ và kiểm thử](docs/reports/AGRI-116/agricultural_profiles.md) |
 | **Hướng dẫn chạy Docker toàn diện** | [docs/notes/docker_run_guide.md](docs/notes/docker_run_guide.md) |
 | **Báo cáo Mô hình AI & Dataset v1.4** | [docs/reports/AGRI-21/README.md](docs/reports/AGRI-21/README.md) |
 | **Sơ đồ thiết kế hệ thống (Architecture)** | [docs/system_design_diagrams.md](docs/system_design_diagrams.md) |

@@ -4,6 +4,11 @@ Nhánh: `AGRI-128-backend-improvement`
 Căn cứ: `database_details.md`, `writing-block.md` (Sprint 3 Jira Backlog S3-01 -> S3-10), mã nguồn hiện tại của Backend .NET 9.  
 Quy ước triển khai chung: Xem [Quy ước triển khai Backend (Implementation Rules)](AGRI-128-implementation-rules.md).
 
+Cập nhật 2026-10-21: task hồ sơ được người dùng xác nhận là **AGRI-116**, triển khai
+backend S3-03 và chọn hồ sơ tùy chọn S3-06; giao diện ngoài phạm vi theo yêu cầu.
+Xem [contract và bằng chứng AGRI-116](../reports/AGRI-116/agricultural_profiles.md).
+Bảng hiện trạng bên dưới giữ baseline lập kế hoạch; không dùng làm trạng thái source mới nhất.
+
 ---
 
 ## 1. Bảng Đối chiếu Pipeline với 10 Task Backlog (S3-01 -> S3-10)

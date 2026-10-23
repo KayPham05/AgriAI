@@ -275,4 +275,20 @@ public class PredictionsControllerTests : IClassFixture<AgriVisionFactory>
         request.Add(imageContent, "file", fileName);
         return request;
     }
+
+    [Fact]
+    public async Task GetFilteredHistory_WithUnspecifiedTimezoneQueryParams_ShouldSucceed()
+    {
+        await LoginAsync(_client);
+        using var response = await _client.GetAsync("/api/predictions?fromDate=2026-01-01&toDate=2026-12-31");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task GetFilteredHistory_ShouldReturnBadRequest_WhenFromDateGreaterThanToDate()
+    {
+        await LoginAsync(_client);
+        using var response = await _client.GetAsync("/api/predictions?fromDate=2026-12-31&toDate=2026-01-01");
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }

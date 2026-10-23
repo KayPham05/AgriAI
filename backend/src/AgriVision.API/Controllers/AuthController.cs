@@ -44,4 +44,24 @@ public class AuthController : ControllerBase
         var result = await _authService.GetCurrentUserAsync(userId, cancellationToken);
         return Ok(result);
     }
+
+    [Authorize]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout(CancellationToken cancellationToken)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        var sidClaim = User.FindFirst("sid")?.Value ?? User.FindFirstValue("sid");
+        if (string.IsNullOrEmpty(sidClaim) || !Guid.TryParse(sidClaim, out var sessionId))
+        {
+            return Unauthorized();
+        }
+
+        await _authService.LogoutAsync(userId, sessionId, cancellationToken);
+        return NoContent();
+    }
 }

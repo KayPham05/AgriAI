@@ -24,13 +24,21 @@ public class PredictionsController : ControllerBase
     public async Task<ActionResult<PredictionResultDto>> Predict([FromForm] PredictRequest request, CancellationToken cancellationToken)
     {
         Guid? userId = null;
-        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-        if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out var parsedUserId))
+        var isAuthenticated = User.Identity?.IsAuthenticated == true;
+        // Invalid credentials must not silently turn a user's request into an unsaved guest prediction.
+        if (Request.Headers.ContainsKey("Authorization") && !isAuthenticated)
         {
+            return Unauthorized();
+        }
+
+        if (isAuthenticated)
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+            if (!Guid.TryParse(userIdClaim, out var parsedUserId)) return Unauthorized();
             userId = parsedUserId;
         }
 
-        var result = await _predictionService.PredictAsync(request.File, userId, cancellationToken);
+        var result = await _predictionService.PredictAsync(request.File, userId, request.AgriculturalProfileId, cancellationToken);
         if (!userId.HasValue) return Ok(result);
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
@@ -38,8 +46,7 @@ public class PredictionsController : ControllerBase
     [Authorize]
     [HttpGet]
     public async Task<ActionResult<PagedResult<PredictionHistoryDto>>> GetHistory(
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 10,
+        [FromQuery] PredictionFilterParams filterParams,
         CancellationToken cancellationToken = default)
     {
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
@@ -48,7 +55,7 @@ public class PredictionsController : ControllerBase
             return Unauthorized();
         }
 
-        var result = await _predictionService.GetPredictionHistoryAsync(userId, pageNumber, pageSize, cancellationToken);
+        var result = await _predictionService.GetFilteredHistoryAsync(userId, filterParams, cancellationToken);
         return Ok(result);
     }
 

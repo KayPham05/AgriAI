@@ -32,11 +32,18 @@ public class SecurityAuthorizationTests(AgriVisionFactory factory) : IClassFixtu
     [InlineData("wrong-audience")]
     [InlineData("unsigned")]
     [InlineData("tampered-role")]
+    [InlineData("missing-sid")]
+    [InlineData("nonexistent-sid")]
     public async Task ProtectedEndpoints_ShouldRejectInvalidBearer(string variant)
     {
         using var client = factory.CreateClient();
         var auth = await RegisterAsync(client);
-        var token = CreateToken(auth.User.Id, variant);
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(auth.Token);
+        var sidClaim = jwt.Claims.FirstOrDefault(c => c.Type == "sid")?.Value;
+        Guid? validSessionId = Guid.TryParse(sidClaim, out var parsedSid) ? parsedSid : null;
+
+        var token = CreateToken(auth.User.Id, variant, validSessionId);
         client.DefaultRequestHeaders.Authorization = variant == "missing"
             ? null : new AuthenticationHeaderValue("Bearer", token);
 
@@ -198,7 +205,87 @@ public class SecurityAuthorizationTests(AgriVisionFactory factory) : IClassFixtu
         return (await response.Content.ReadFromJsonAsync<AuthResponse>())!;
     }
 
-    private string CreateToken(Guid userId, string variant)
+    [Fact]
+    public async Task LegacyTokenWithoutSid_ShouldBeRejected_EvenWhenNewActiveSessionExists()
+    {
+        using var client = factory.CreateClient();
+        var auth = await RegisterAsync(client);
+
+        // User logs in again, generating a second active session
+        using var login = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(auth.User.Email, "Password123!"));
+        login.EnsureSuccessStatusCode();
+
+        // Create an old/legacy token for this user without any 'sid' claim
+        var legacyToken = CreateToken(auth.User.Id, "missing-sid");
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", legacyToken);
+        using var response = await client.GetAsync("/api/auth/me");
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task SessionRevocation_AfterLogout_ShouldRejectSubsequentRequestsWithSameToken()
+    {
+        using var client = factory.CreateClient();
+        var auth = await RegisterAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.Token);
+
+        // Before logout: authorized
+        using var beforeLogout = await client.GetAsync("/api/auth/me");
+        beforeLogout.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Perform logout
+        using var logoutResponse = await client.PostAsync("/api/auth/logout", null);
+        logoutResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        // After logout: token's session is revoked, subsequent calls must return 401
+        using var afterLogout = await client.GetAsync("/api/auth/me");
+        afterLogout.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task SessionRevocation_AfterUserDeactivation_ShouldRejectSubsequentRequests()
+    {
+        using var client = factory.CreateClient();
+        var auth = await RegisterAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.Token);
+
+        using var beforeDeactivation = await client.GetAsync("/api/auth/me");
+        beforeDeactivation.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Deactivate user in database
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Users.Where(u => u.Id == auth.User.Id)
+            .ExecuteUpdateAsync(u => u.SetProperty(x => x.IsActive, false));
+
+        // Subsequent request must be rejected with 401
+        using var afterDeactivation = await client.GetAsync("/api/auth/me");
+        afterDeactivation.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task SessionRevocation_AfterRoleChange_ShouldRejectSubsequentRequests()
+    {
+        using var client = factory.CreateClient();
+        var auth = await RegisterAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.Token);
+
+        using var beforeChange = await client.GetAsync("/api/auth/me");
+        beforeChange.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Change role in database (e.g. role change)
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Users.Where(u => u.Id == auth.User.Id)
+            .ExecuteUpdateAsync(u => u.SetProperty(x => x.Role, "Admin"));
+
+        // Subsequent request with old token (which has role=User) must be rejected with 401
+        using var afterChange = await client.GetAsync("/api/auth/me");
+        afterChange.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    private string CreateToken(Guid userId, string variant, Guid? sessionId = null)
     {
         if (variant == "malformed") return "invalid.jwt.payload";
         var configuration = factory.Services.GetRequiredService<IConfiguration>();
@@ -206,10 +293,26 @@ public class SecurityAuthorizationTests(AgriVisionFactory factory) : IClassFixtu
         var credentials = variant == "unsigned" ? null : new SigningCredentials(
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)), SecurityAlgorithms.HmacSha256);
         var now = DateTime.UtcNow;
+
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub, userId.ToString()),
+            new(ClaimTypes.Role, "User")
+        };
+
+        if (variant == "nonexistent-sid")
+        {
+            claims.Add(new Claim("sid", Guid.NewGuid().ToString()));
+        }
+        else if (variant != "missing-sid" && sessionId.HasValue)
+        {
+            claims.Add(new Claim("sid", sessionId.Value.ToString()));
+        }
+
         var token = new JwtSecurityToken(
             issuer: variant == "wrong-issuer" ? "UntrustedIssuer" : configuration["JwtSettings:Issuer"] ?? "AgriVisionAPI",
             audience: variant == "wrong-audience" ? "UntrustedAudience" : configuration["JwtSettings:Audience"] ?? "AgriVisionApp",
-            claims: [new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()), new Claim(ClaimTypes.Role, "User")],
+            claims: claims,
             notBefore: variant == "future" ? now.AddHours(1) : now.AddHours(-2),
             expires: variant == "expired" ? now.AddHours(-1) : now.AddHours(2),
             signingCredentials: credentials);
@@ -219,5 +322,21 @@ public class SecurityAuthorizationTests(AgriVisionFactory factory) : IClassFixtu
         var payload = JsonNode.Parse(Base64UrlEncoder.Decode(parts[1]))!.AsObject();
         payload[ClaimTypes.Role] = "Admin";
         return $"{parts[0]}.{Base64UrlEncoder.Encode(payload.ToJsonString())}.{parts[2]}";
+    }
+
+    [Fact]
+    public async Task UpdateProfile_ShouldRejectNameExceeding60Characters()
+    {
+        using var client = factory.CreateClient();
+        var auth = await RegisterAsync(client);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.Token);
+
+        var longName = new string('A', 61);
+        using var response = await client.PutAsJsonAsync("/api/users/profile", new { fullName = longName });
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var validName = new string('A', 60);
+        using var validResponse = await client.PutAsJsonAsync("/api/users/profile", new { fullName = validName });
+        validResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 }
