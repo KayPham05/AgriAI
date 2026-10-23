@@ -6,7 +6,7 @@
         <Configuration>
           <Format>cobertura</Format>
           <Include>[AgriVision.*]*</Include>
-          <Exclude>[*.UnitTests]*,[*.IntegrationTests]*</Exclude>
+          <Exclude>[*.UnitTests]*,[*.IntegrationTests]*,[*.ApiTests]*</Exclude>
           <ExcludeByFile>**/Migrations/*.cs</ExcludeByFile>
           <IncludeTestAssembly>false</IncludeTestAssembly>
         </Configuration>

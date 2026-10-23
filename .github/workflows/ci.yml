@@ -192,17 +192,22 @@ jobs:
       - name: Run unit tests with coverage
         id: unit
         run: dotnet test backend/tests/AgriVision.UnitTests/AgriVision.UnitTests.csproj --no-build --no-restore --settings backend/coverage.runsettings --collect:"XPlat Code Coverage" --logger "trx;LogFileName=unit.trx" --results-directory .cache/coverage/backend/unit --verbosity quiet
-      - name: Run API and PostgreSQL integration tests with coverage
+      - name: Run PostgreSQL and adapter integration tests with coverage
         id: integration
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: |
           docker info --format '{{.ServerVersion}}'
           dotnet test backend/tests/AgriVision.IntegrationTests/AgriVision.IntegrationTests.csproj --no-build --no-restore --filter 'Category!=RealCheckpoint&Category!=RealR2' --settings backend/coverage.runsettings --collect:"XPlat Code Coverage" --logger "trx;LogFileName=integration.trx" --results-directory .cache/coverage/backend/integration --verbosity quiet
+      - name: Run API tests with coverage
+        id: api
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: dotnet test backend/tests/AgriVision.ApiTests/AgriVision.ApiTests.csproj --no-build --no-restore --settings backend/coverage.runsettings --collect:"XPlat Code Coverage" --logger "trx;LogFileName=api.trx" --results-directory .cache/coverage/backend/api --verbosity quiet
       - name: Verify suites and merge backend coverage
-        if: ${{ !cancelled() && steps.unit.outcome == 'success' && steps.integration.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.unit.outcome == 'success' && steps.integration.outcome == 'success' && steps.api.outcome == 'success' }}
         run: |
           python3 .github/scripts/check_dotnet_test_results.py .cache/coverage/backend/unit
           python3 .github/scripts/check_dotnet_test_results.py .cache/coverage/backend/integration
+          python3 .github/scripts/check_dotnet_test_results.py .cache/coverage/backend/api
           dotnet tool install dotnet-reportgenerator-globaltool --tool-path .cache/dotnet-tools --version 5.5.4
           .cache/dotnet-tools/reportgenerator '-reports:.cache/coverage/backend/**/coverage.cobertura.xml' '-targetdir:.cache/coverage/backend/merged' '-reporttypes:Html;Cobertura'
           python3 .github/scripts/check_coverage.py .cache/coverage/backend/merged/Cobertura.xml --minimum-branches 70 --label Backend
@@ -211,6 +216,13 @@ jobs:
         with:
           name: backend-test-results
           path: .cache/coverage/backend/
+          retention-days: 14
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: backend-api-test-results
+          path: .cache/coverage/backend/api/
           retention-days: 14
 
   frontend:
