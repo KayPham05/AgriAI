@@ -109,3 +109,19 @@ Triển khai toàn bộ 9 kịch bản kiểm thử tích hợp theo đúng yêu
 - Môi trường Windows host cục bộ hiện không kích hoạt Docker Desktop Engine daemon (`npipe:////./pipe/dockerDesktopLinuxEngine`), do đó các integration test dùng Testcontainers PostgreSQL không thể chạy trực tiếp trên máy cục bộ; các test này sẽ được thực thi đầy đủ trên GitHub Actions CI với Docker daemon sẵn sàng.
 - Không thay đổi schema database (không thêm migration mới, không thêm cột `version`), tuân thủ chặt chẽ yêu cầu khóa hàng PostgreSQL nguyên bản ở isolation mặc định `ReadCommitted`.
 - Chưa thực hiện `git commit` hay `git push` theo đúng chỉ thị người dùng.
+
+## 2026-10-23 — Kiểm chứng tiếp trên ba89f19
+
+Theo lựa chọn của người dùng, lượt này kiểm tra và bổ sung trên HEAD
+ba89f19 (sau nền 0035c15), không dựng lại hoặc đảo code nghiệp vụ đã có.
+Kết quả mới và giới hạn được ghi tại
+[auth_verification_2026_10_23.md](auth_verification_2026_10_23.md).
+Kết quả unit/build trong các phần trước là lịch sử, không thay thế lượt chạy mới.
+
+- Sửa test setup: resolve JWT generator trong DI scope, giữ response đổi mật khẩu 204.
+- Sửa interceptor Reader cho lỗi lưu session/cancellation và assert rollback theo user ID trong context mới.
+- Gate logout sau xác thực, kiểm tra RevokedAt không bị ghi lại; race qua HTTP và hai scope/connection riêng, chờ đúng cặp PID PostgreSQL, timeout 30 giây, không sleep cố định.
+- Red mới: baseline 4/9 pass; sau sửa setup còn 2 test fail do hook không kích hoạt. Bản sao cô lập tái đưa ba lỗi auth có 5/9 fail đúng các ràng buộc liên quan.
+- Green mới: nhóm auth/transaction 10/10; unit 91/91; integration 140/140; không skip. Filter CI Category!=RealCheckpoint. Coverage gộp 364/552 = 65.94%, vượt gate 60%, chưa đạt target 80%.
+- GitHub CI run #67 của ba89f19 vẫn failure ở backend integration; không suy rộng kết quả local thành remote CI pass.
+- Không thay đổi implementation, schema/migration, JWT/lifetime, R2, dataset/checkpoint hoặc secret. Chưa commit/push.

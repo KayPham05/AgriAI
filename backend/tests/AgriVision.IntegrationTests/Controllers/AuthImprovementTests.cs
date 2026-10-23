@@ -9,6 +9,7 @@ using AgriVision.Application.Common.Interfaces.Persistence;
 using AgriVision.Application.DTOs.Auth;
 using AgriVision.Application.DTOs.User;
 using AgriVision.Application.Services.Implementations;
+using AgriVision.Application.Services.Interfaces;
 using AgriVision.Domain.Entities;
 using AgriVision.Domain.Enums;
 using AgriVision.Infrastructure.Persistence;
@@ -17,8 +18,10 @@ using AgriVision.IntegrationTests.Fixtures;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using System.Data.Common;
@@ -27,18 +30,30 @@ using Xunit;
 namespace AgriVision.IntegrationTests.Controllers;
 
 [Trait("Category", "Security")]
-public class AuthImprovementTests : IClassFixture<AgriVisionFactory>
+public class AuthImprovementTests : IClassFixture<AgriVisionFactory>, IDisposable
 {
     private readonly AgriVisionFactory _factory;
     private readonly string _connectionString;
+    private readonly IServiceScope _services;
 
     public AuthImprovementTests(AgriVisionFactory factory)
     {
         _factory = factory;
+        _services = factory.Services.CreateScope();
         var config = factory.Services.GetRequiredService<IConfiguration>();
         _connectionString = config.GetConnectionString("DefaultConnection") 
             ?? config["ConnectionStrings:DefaultConnection"]!;
     }
+
+    public void Dispose() => _services.Dispose();
+
+    private WebApplicationFactory<Program> CreateRaceFactory(DbCommandInterceptor interceptor)
+        => _factory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+        {
+            services.RemoveAll<DbContextOptions<AppDbContext>>();
+            services.AddDbContext<AppDbContext>(options =>
+                options.UseNpgsql(_connectionString).AddInterceptors(interceptor));
+        }));
 
     private AppDbContext CreateDbContext(DbCommandInterceptor? interceptor = null)
     {
@@ -81,7 +96,7 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    private static async Task WaitForLockWaitAsync(string connectionString, TimeSpan timeout)
+    private static async Task WaitForLockWaitAsync(string connectionString, int waiterPid, int blockerPid, TimeSpan timeout)
     {
         using var cts = new CancellationTokenSource(timeout);
         await using var conn = new NpgsqlConnection(connectionString);
@@ -90,14 +105,16 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>
         while (!cts.Token.IsCancellationRequested)
         {
             await using var cmd = new NpgsqlCommand(
-                "SELECT COUNT(*)::int FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND state = 'active';",
+                "SELECT COUNT(*)::int FROM pg_stat_activity WHERE pid = @waiter AND wait_event_type = 'Lock' AND @blocker = ANY(pg_blocking_pids(pid));",
                 conn);
+            cmd.Parameters.AddWithValue("waiter", waiterPid);
+            cmd.Parameters.AddWithValue("blocker", blockerPid);
             var count = (int)(await cmd.ExecuteScalarAsync(cts.Token) ?? 0);
             if (count > 0)
             {
                 return;
             }
-            await Task.Delay(25, cts.Token);
+            await Task.Yield();
         }
         throw new TimeoutException("Timed out waiting for PostgreSQL lock wait state.");
     }
@@ -213,8 +230,15 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>
     [Fact]
     public async Task Scenario3_ConcurrentLogout_ShouldNotCorruptOrThrow_AndEndInRevokedState()
     {
-        using var client1 = _factory.CreateClient();
-        using var client2 = _factory.CreateClient();
+        var gate = new LogoutGate();
+        using var gatedFactory = _factory.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+        {
+            services.RemoveAll<IAuthService>();
+            services.AddScoped<AuthService>();
+            services.AddScoped<IAuthService>(sp => new GatedAuthService(sp.GetRequiredService<AuthService>(), gate));
+        }));
+        using var client1 = gatedFactory.CreateClient();
+        using var client2 = gatedFactory.CreateClient();
         var email = $"concurrent_logout_{Guid.NewGuid():N}@example.test";
 
         var reg = await client1.PostAsJsonAsync("/api/auth/register", new RegisterRequest("Concurrent User", email, "Password123!"));
@@ -232,7 +256,15 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>
         var task1 = client1.SendAsync(req1);
         var task2 = client2.SendAsync(req2);
 
-        await Task.WhenAll(task1, task2);
+        await gate.BothAuthenticated.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        gate.First.TrySetResult(true);
+        await gate.FirstRevoked.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        await using var snapshot = CreateDbContext();
+        var firstRevokedAt = await snapshot.UserSessions.AsNoTracking()
+            .Where(s => s.Id == sid).Select(s => s.RevokedAt).SingleAsync();
+        firstRevokedAt.Should().NotBeNull();
+        gate.Second.TrySetResult(true);
+        await Task.WhenAll(task1, task2).WaitAsync(TimeSpan.FromSeconds(30));
 
         var resp1 = await task1;
         resp1.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -242,6 +274,7 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>
         await using var db = CreateDbContext();
         var session = await db.UserSessions.AsNoTracking().SingleAsync(s => s.Id == sid);
         session.RevokedAt.Should().NotBeNull();
+        session.RevokedAt.Should().Be(firstRevokedAt, "the second authenticated logout must not overwrite the first revocation");
     }
 
     // 4. Đổi mật khẩu: Sau thành công, mọi token cũ nhận 401; đăng nhập bằng mật khẩu mới thành công.
@@ -268,7 +301,7 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>
         };
         changeReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", auth1.Token);
         using var changeResp = await client.SendAsync(changeReq);
-        changeResp.StatusCode.Should().Be(HttpStatusCode.OK);
+        changeResp.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // Both Session 1 and Session 2 tokens must now get 401
         using var me1 = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
@@ -292,150 +325,106 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>
     [Fact]
     public async Task Scenario5_Race_PasswordChangeBeforeLogin_ShouldRejectLoginWithOldPassword()
     {
+        using var client = _factory.CreateClient();
         var email = $"race_pwd_first_{Guid.NewGuid():N}@example.test";
-        var oldPassword = "Password123!";
-        var newPassword = "NewPassword456!";
+        const string oldPassword = "Password123!";
+        const string newPassword = "NewPassword456!";
+        using var registration = await client.PostAsJsonAsync("/api/auth/register",
+            new RegisterRequest("Race User", email, oldPassword));
+        registration.StatusCode.Should().Be(HttpStatusCode.OK);
+        var auth = (await registration.Content.ReadFromJsonAsync<AuthResponse>())!;
 
-        Guid userId;
-        await using (var seedDb = CreateDbContext())
+        var blocker = new GateDbCommandInterceptor("UPDATE users", pauseAfterExecution: true);
+        var waiter = new GateDbCommandInterceptor("FOR UPDATE");
+        using var changeFactory = CreateRaceFactory(blocker);
+        using var loginFactory = CreateRaceFactory(waiter);
+        using var changeClient = changeFactory.CreateClient();
+        using var loginClient = loginFactory.CreateClient();
+        using var changeRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/change-password")
         {
-            var user = new User
-            {
-                Id = Guid.NewGuid(),
-                FullName = "Race User 1",
-                Email = email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(oldPassword),
-                Role = UserRole.User,
-                CreatedAt = DateTime.UtcNow
-            };
-            seedDb.Users.Add(user);
-            await seedDb.SaveChangesAsync();
-            userId = user.Id;
+            Content = JsonContent.Create(new ChangePasswordRequest(oldPassword, newPassword, newPassword))
+        };
+        changeRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", auth.Token);
+        var changeTask = changeClient.SendAsync(changeRequest);
+        try
+        {
+            await blocker.CommandExecutedEvent.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            var loginTask = loginClient.PostAsJsonAsync("/api/auth/login", new LoginRequest(email, oldPassword));
+            var waiterPid = await waiter.CommandStarted.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            var blockerPid = await blocker.CommandStarted.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            await WaitForLockWaitAsync(_connectionString, waiterPid, blockerPid, TimeSpan.FromSeconds(30));
+            blocker.Release();
+
+            using var changeResponse = await changeTask.WaitAsync(TimeSpan.FromSeconds(30));
+            changeResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+            using var loginResponse = await loginTask.WaitAsync(TimeSpan.FromSeconds(30));
+            loginResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+            await using var freshDb = CreateDbContext();
+            var sessions = await freshDb.UserSessions.AsNoTracking().Where(s => s.UserId == auth.User.Id).ToListAsync();
+            sessions.Should().ContainSingle("the rejected login must not create a session");
+            sessions.Should().OnlyContain(s => s.RevokedAt != null);
         }
-
-        var interceptor = new GateDbCommandInterceptor("UPDATE users", pauseAfterExecution: true);
-
-        await using var dbScope1 = CreateDbContext(interceptor);
-        var unitOfWork1 = new UnitOfWork(dbScope1);
-        var userRepo1 = new UserRepository(dbScope1);
-        var sessionRepo1 = new UserSessionRepository(dbScope1);
-        var userService1 = new UserService(userRepo1, sessionRepo1, unitOfWork1);
-
-        // Start password change in Scope 1 (it will pause after executing UPDATE users)
-        var changePwdTask = Task.Run(async () =>
+        finally
         {
-            await userService1.ChangePasswordAsync(userId, new ChangePasswordRequest(oldPassword, newPassword, newPassword));
-        });
-
-        // Wait until Scope 1 executes UPDATE users and pauses
-        await interceptor.CommandExecutedEvent.Task.WaitAsync(TimeSpan.FromSeconds(30));
-
-        // Now start login in Scope 2 using old password
-        await using var dbScope2 = CreateDbContext();
-        var unitOfWork2 = new UnitOfWork(dbScope2);
-        var userRepo2 = new UserRepository(dbScope2);
-        var sessionRepo2 = new UserSessionRepository(dbScope2);
-        var jwtGen = _factory.Services.GetRequiredService<IJwtTokenGenerator>();
-        var authService2 = new AuthService(userRepo2, jwtGen, sessionRepo2, unitOfWork2);
-
-        var loginTask = Task.Run(async () =>
-        {
-            return await authService2.LoginAsync(new LoginRequest(email, oldPassword));
-        });
-
-        // Verify Scope 2 blocks on PostgreSQL row lock
-        await WaitForLockWaitAsync(_connectionString, TimeSpan.FromSeconds(30));
-
-        // Release Scope 1 to commit its transaction
-        interceptor.Release();
-        await changePwdTask;
-
-        // Scope 2 unblocks, reads updated hash, and must throw UnauthorizedAccessException
-        Func<Task> act = async () => await loginTask;
-        await act.Should().ThrowAsync<UnauthorizedAccessException>();
-
-        // Verify no new active session was created in DB
-        await using (var freshDb = CreateDbContext())
-        {
-            var sessions = await freshDb.UserSessions.Where(s => s.UserId == userId && s.RevokedAt == null).ToListAsync();
-            sessions.Should().BeEmpty();
+            blocker.Release();
+            await changeTask.WaitAsync(TimeSpan.FromSeconds(30));
         }
     }
 
-    // 6. Race: login trước: Giữ login trước lúc lưu session, khởi chạy đổi mật khẩu rồi giải phóng login; sau khi đổi mật khẩu hoàn tất, token vừa cấp phải nhận 401.
     [Fact]
     public async Task Scenario6_Race_LoginBeforePasswordChange_ShouldRevokeNewlyIssuedToken()
     {
-        var email = $"race_login_first_{Guid.NewGuid():N}@example.test";
-        var oldPassword = "Password123!";
-        var newPassword = "NewPassword456!";
-
-        Guid userId;
-        await using (var seedDb = CreateDbContext())
-        {
-            var user = new User
-            {
-                Id = Guid.NewGuid(),
-                FullName = "Race User 2",
-                Email = email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(oldPassword),
-                Role = UserRole.User,
-                CreatedAt = DateTime.UtcNow
-            };
-            seedDb.Users.Add(user);
-            await seedDb.SaveChangesAsync();
-            userId = user.Id;
-        }
-
-        // Intercept Scope 1 login: pause right after SELECT ... FOR UPDATE (holding the row lock)
-        var interceptor = new GateDbCommandInterceptor("FOR UPDATE", pauseAfterExecution: true);
-
-        await using var dbScope1 = CreateDbContext(interceptor);
-        var unitOfWork1 = new UnitOfWork(dbScope1);
-        var userRepo1 = new UserRepository(dbScope1);
-        var sessionRepo1 = new UserSessionRepository(dbScope1);
-        var jwtGen = _factory.Services.GetRequiredService<IJwtTokenGenerator>();
-        var authService1 = new AuthService(userRepo1, jwtGen, sessionRepo1, unitOfWork1);
-
-        var loginTask = Task.Run(async () =>
-        {
-            return await authService1.LoginAsync(new LoginRequest(email, oldPassword));
-        });
-
-        // Wait until Scope 1 executes SELECT ... FOR UPDATE and pauses
-        await interceptor.CommandExecutedEvent.Task.WaitAsync(TimeSpan.FromSeconds(30));
-
-        // Now start password change in Scope 2
-        await using var dbScope2 = CreateDbContext();
-        var unitOfWork2 = new UnitOfWork(dbScope2);
-        var userRepo2 = new UserRepository(dbScope2);
-        var sessionRepo2 = new UserSessionRepository(dbScope2);
-        var userService2 = new UserService(userRepo2, sessionRepo2, unitOfWork2);
-
-        var changePwdTask = Task.Run(async () =>
-        {
-            await userService2.ChangePasswordAsync(userId, new ChangePasswordRequest(oldPassword, newPassword, newPassword));
-        });
-
-        // Verify Scope 2 blocks on PostgreSQL row lock waiting for Scope 1
-        await WaitForLockWaitAsync(_connectionString, TimeSpan.FromSeconds(30));
-
-        // Release Scope 1 to save session and commit
-        interceptor.Release();
-        var authResponse = await loginTask;
-        authResponse.Should().NotBeNull();
-
-        // Scope 2 now proceeds, revokes all sessions (including the one just created by Scope 1), and commits
-        await changePwdTask;
-
-        // Verify token issued by Scope 1 receives 401 when calling /api/auth/me
         using var client = _factory.CreateClient();
-        using var meReq = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
-        meReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", authResponse.Token);
-        var meResp = await client.SendAsync(meReq);
-        meResp.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
+        var email = $"race_login_first_{Guid.NewGuid():N}@example.test";
+        const string oldPassword = "Password123!";
+        const string newPassword = "NewPassword456!";
+        using var registration = await client.PostAsJsonAsync("/api/auth/register",
+            new RegisterRequest("Race User", email, oldPassword));
+        registration.StatusCode.Should().Be(HttpStatusCode.OK);
+        var auth = (await registration.Content.ReadFromJsonAsync<AuthResponse>())!;
 
+        var blocker = new GateDbCommandInterceptor("FOR UPDATE", pauseAfterExecution: true);
+        var waiter = new GateDbCommandInterceptor("FOR UPDATE");
+        using var loginFactory = CreateRaceFactory(blocker);
+        using var changeFactory = CreateRaceFactory(waiter);
+        using var loginClient = loginFactory.CreateClient();
+        using var changeClient = changeFactory.CreateClient();
+        var loginTask = loginClient.PostAsJsonAsync("/api/auth/login", new LoginRequest(email, oldPassword));
+        try
+        {
+            await blocker.CommandExecutedEvent.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            using var changeRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/change-password")
+            {
+                Content = JsonContent.Create(new ChangePasswordRequest(oldPassword, newPassword, newPassword))
+            };
+            changeRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", auth.Token);
+            var changeTask = changeClient.SendAsync(changeRequest);
+            var waiterPid = await waiter.CommandStarted.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            var blockerPid = await blocker.CommandStarted.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            await WaitForLockWaitAsync(_connectionString, waiterPid, blockerPid, TimeSpan.FromSeconds(30));
+            blocker.Release();
+
+            using var loginResponse = await loginTask.WaitAsync(TimeSpan.FromSeconds(30));
+            loginResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+            var issued = (await loginResponse.Content.ReadFromJsonAsync<AuthResponse>())!;
+            using var changeResponse = await changeTask.WaitAsync(TimeSpan.FromSeconds(30));
+            changeResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+            using var me = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
+            me.Headers.Authorization = new AuthenticationHeaderValue("Bearer", issued.Token);
+            using var meResponse = await client.SendAsync(me);
+            meResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+            await using var freshDb = CreateDbContext();
+            var sessions = await freshDb.UserSessions.AsNoTracking().Where(s => s.UserId == auth.User.Id).ToListAsync();
+            sessions.Should().HaveCount(2);
+            sessions.Should().OnlyContain(s => s.RevokedAt != null);
+        }
+        finally
+        {
+            blocker.Release();
+            await loginTask.WaitAsync(TimeSpan.FromSeconds(30));
+        }
+    }
     // 7. Đăng ký thành công: Có đúng một user và một session tương ứng; JWT chứa đúng sid, dùng được với /me.
     [Fact]
     public async Task Scenario7_RegisterAtomic_Success_ShouldCreateExactlyOneUserAndSession()
@@ -479,17 +468,19 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>
         var password = "Password123!";
 
         // Case A: Fault injection during session save
+        Guid failedUserId;
         var faultInterceptor = new FaultInjectionDbCommandInterceptor("INSERT INTO user_sessions");
         await using (var db = CreateDbContext(faultInterceptor))
         {
             var unitOfWork = new UnitOfWork(db);
             var userRepo = new UserRepository(db);
             var sessionRepo = new UserSessionRepository(db);
-            var jwtGen = _factory.Services.GetRequiredService<IJwtTokenGenerator>();
+            var jwtGen = _services.ServiceProvider.GetRequiredService<IJwtTokenGenerator>();
             var authService = new AuthService(userRepo, jwtGen, sessionRepo, unitOfWork);
 
             Func<Task> act = async () => await authService.RegisterAsync(new RegisterRequest("Fault User", email, password));
             await act.Should().ThrowAsync<DbUpdateException>();
+            failedUserId = db.ChangeTracker.Entries<User>().Single().Entity.Id;
         }
 
         // Verify rollback: no user, no session
@@ -497,6 +488,7 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>
         {
             var userExists = await freshDb.Users.AnyAsync(u => u.Email == email);
             userExists.Should().BeFalse("User must be rolled back after session save failure");
+            (await freshDb.UserSessions.AnyAsync(s => s.UserId == failedUserId)).Should().BeFalse();
         }
 
         // Retry registration with same email succeeds!
@@ -508,6 +500,7 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>
         // Case B: Fault injection during token generation
         var emailB = $"atomic_fail_token_{Guid.NewGuid():N}@example.test";
         var faultyTokenGen = new FaultyJwtTokenGenerator();
+        Guid failedTokenUserId;
 
         await using (var db = CreateDbContext())
         {
@@ -519,6 +512,7 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>
             Func<Task> act = async () => await authService.RegisterAsync(new RegisterRequest("Fault Token User", emailB, password));
             await act.Should().ThrowAsync<InvalidOperationException>()
                 .WithMessage("Simulated token generation failure");
+            failedTokenUserId = db.ChangeTracker.Entries<User>().Single().Entity.Id;
         }
 
         // Verify rollback for Case B: no user and no session in DB
@@ -526,12 +520,7 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>
         {
             var userExists = await freshDb.Users.AnyAsync(u => u.Email == emailB);
             userExists.Should().BeFalse("User must be rolled back after token generation failure");
-            var userObj = await freshDb.Users.FirstOrDefaultAsync(u => u.Email == emailB);
-            if (userObj != null)
-            {
-                var sessions = await freshDb.UserSessions.Where(s => s.UserId == userObj.Id).ToListAsync();
-                sessions.Should().BeEmpty();
-            }
+            (await freshDb.UserSessions.AnyAsync(s => s.UserId == failedTokenUserId)).Should().BeFalse();
         }
 
         // Retry registration for Case B with same email succeeds!
@@ -546,6 +535,7 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>
     {
         var email = $"cancel_reg_{Guid.NewGuid():N}@example.test";
         using var cts = new CancellationTokenSource();
+        Guid cancelledUserId;
 
         // Interceptor that cancels the token right after INSERT INTO users
         var cancelInterceptor = new CancelOnCommandDbCommandInterceptor("INSERT INTO users", cts);
@@ -555,13 +545,14 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>
             var unitOfWork = new UnitOfWork(db);
             var userRepo = new UserRepository(db);
             var sessionRepo = new UserSessionRepository(db);
-            var jwtGen = _factory.Services.GetRequiredService<IJwtTokenGenerator>();
+            var jwtGen = _services.ServiceProvider.GetRequiredService<IJwtTokenGenerator>();
             var authService = new AuthService(userRepo, jwtGen, sessionRepo, unitOfWork);
 
             Func<Task> act = async () => await authService.RegisterAsync(
                 new RegisterRequest("Cancel User", email, "Password123!"), cts.Token);
 
             await act.Should().ThrowAsync<OperationCanceledException>();
+            cancelledUserId = db.ChangeTracker.Entries<User>().Single().Entity.Id;
         }
 
         // Verify in fresh DB scope: no user and no session
@@ -569,7 +560,37 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>
         {
             var userExists = await freshDb.Users.AnyAsync(u => u.Email == email);
             userExists.Should().BeFalse("User must not exist after cancelled transaction");
-            var sessionCount = await freshDb.UserSessions.CountAsync();
+            (await freshDb.UserSessions.AnyAsync(s => s.UserId == cancelledUserId)).Should().BeFalse();
+        }
+    }
+
+    private sealed class LogoutGate
+    {
+        public int Arrivals;
+        public TaskCompletionSource<bool> BothAuthenticated { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource<bool> First { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource<bool> Second { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource<bool> FirstRevoked { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+
+    private sealed class GatedAuthService(AuthService inner, LogoutGate gate) : IAuthService
+    {
+        public Task<AuthResponse> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
+            => inner.RegisterAsync(request, cancellationToken);
+
+        public Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
+            => inner.LoginAsync(request, cancellationToken);
+
+        public Task<UserDto> GetCurrentUserAsync(Guid userId, CancellationToken cancellationToken = default)
+            => inner.GetCurrentUserAsync(userId, cancellationToken);
+
+        public async Task LogoutAsync(Guid userId, Guid sessionId, CancellationToken cancellationToken = default)
+        {
+            var first = Interlocked.Increment(ref gate.Arrivals) == 1;
+            if (!first) gate.BothAuthenticated.TrySetResult(true);
+            await (first ? gate.First : gate.Second).Task.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken);
+            await inner.LogoutAsync(userId, sessionId, cancellationToken);
+            if (first) gate.FirstRevoked.TrySetResult(true);
         }
     }
 
@@ -588,6 +609,7 @@ public class GateDbCommandInterceptor : DbCommandInterceptor
     private readonly string _targetSubstring;
     private readonly bool _pauseAfterExecution;
     private readonly SemaphoreSlim _gate = new(0, 1);
+    public TaskCompletionSource<int> CommandStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
     public TaskCompletionSource<bool> CommandExecutedEvent { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public GateDbCommandInterceptor(string targetSubstring, bool pauseAfterExecution = false)
@@ -596,7 +618,20 @@ public class GateDbCommandInterceptor : DbCommandInterceptor
         _pauseAfterExecution = pauseAfterExecution;
     }
 
-    public void Release() => _gate.Release();
+    private int _released;
+    public void Release()
+    {
+        if (Interlocked.Exchange(ref _released, 1) == 0) _gate.Release();
+    }
+
+    public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+        DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result,
+        CancellationToken cancellationToken = default)
+    {
+        if (command.CommandText.Contains(_targetSubstring, StringComparison.OrdinalIgnoreCase))
+            CommandStarted.TrySetResult(((NpgsqlConnection)command.Connection!).ProcessID);
+        return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
+    }
 
     public override async ValueTask<DbDataReader> ReaderExecutedAsync(
         DbCommand command,
@@ -609,7 +644,8 @@ public class GateDbCommandInterceptor : DbCommandInterceptor
             CommandExecutedEvent.TrySetResult(true);
             if (_pauseAfterExecution)
             {
-                await _gate.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken);
+                if (!await _gate.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken))
+                    throw new TimeoutException("The test did not release the database command gate.");
             }
         }
         return await base.ReaderExecutedAsync(command, eventData, result, cancellationToken);
@@ -626,7 +662,8 @@ public class GateDbCommandInterceptor : DbCommandInterceptor
             CommandExecutedEvent.TrySetResult(true);
             if (_pauseAfterExecution)
             {
-                await _gate.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken);
+                if (!await _gate.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken))
+                    throw new TimeoutException("The test did not release the database command gate.");
             }
         }
         return await base.NonQueryExecutedAsync(command, eventData, result, cancellationToken);
@@ -640,6 +677,15 @@ public class FaultInjectionDbCommandInterceptor : DbCommandInterceptor
     public FaultInjectionDbCommandInterceptor(string targetSubstring)
     {
         _targetSubstring = targetSubstring;
+    }
+
+    public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+        DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result,
+        CancellationToken cancellationToken = default)
+    {
+        if (command.CommandText.Contains(_targetSubstring, StringComparison.OrdinalIgnoreCase))
+            throw new DbUpdateException("Fault injected during session save", (Exception?)null);
+        return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
     }
 
     public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
@@ -665,6 +711,15 @@ public class CancelOnCommandDbCommandInterceptor : DbCommandInterceptor
     {
         _targetSubstring = targetSubstring;
         _cts = cts;
+    }
+
+    public override ValueTask<DbDataReader> ReaderExecutedAsync(
+        DbCommand command, CommandExecutedEventData eventData, DbDataReader result,
+        CancellationToken cancellationToken = default)
+    {
+        if (command.CommandText.Contains(_targetSubstring, StringComparison.OrdinalIgnoreCase))
+            _cts.Cancel();
+        return base.ReaderExecutedAsync(command, eventData, result, cancellationToken);
     }
 
     public override ValueTask<int> NonQueryExecutedAsync(

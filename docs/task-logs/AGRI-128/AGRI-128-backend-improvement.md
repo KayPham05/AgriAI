@@ -267,3 +267,41 @@ nhánh nền AGRI-128 là Jira của task hồ sơ.
 - `dotnet test backend/tests/AgriVision.UnitTests/AgriVision.UnitTests.csproj`: **91/91 unit tests passed (100%)**.
 - Kiểm tra diff: Không thay đổi migration, dataset, checkpoint, secret hay code R2.
 - Tuân thủ quy định: Chưa thực hiện commit hoặc push khi chưa có yêu cầu từ người dùng.
+
+## 2026-10-23 — Kiểm tra lại auth PR #42 trên ba89f19
+
+- Nhánh: AGRI-128-backend-improvement. Người dùng xác nhận tiếp tục trên
+  ba89f19f28f4eb5486b771d0c57c85c956fb0153, thay vì triển khai lại từ 0035c15.
+- Phạm vi thay đổi: AuthImprovementTests.cs và report/task log AGRI-128.
+  Ba sửa nghiệp vụ đã có trong HEAD được kiểm tra, không đảo hoặc sửa lại.
+  Giữ IAuthService.LogoutAsync(userId, sessionId, cancellationToken),
+  IUnitOfWork, hai locking read của IUserRepository và rollback với CancellationToken.None.
+- Khắc phục lỗi test: scoped JWT resolution, kỳ vọng đổi mật khẩu 204,
+  fault/cancellation interceptor bắt Reader; assert session rollback theo ID.
+- Bổ sung gate cho hai logout đã qua xác thực và so sánh RevokedAt trước/sau;
+  race qua HTTP, hai request DI scope/connection riêng, xác nhận đúng blocker/waiter PID
+  bằng pg_blocking_pids, timeout 30 giây, không dùng sleep cố định.
+- Red/green mới: baseline 4 pass/5 fail; sửa setup còn 7 pass/2 fail do interceptor
+  không kích hoạt. Sau sửa hook và tăng cường test, auth/transaction 10/10 pass.
+  Bản sao cô lập tái đưa ba lỗi auth: 4 pass/5 fail đúng ràng buộc, không sửa
+  code trên nhánh để lấy bằng chứng red.
+- Lượt cuối: unit 91/91, integration 140/140, không skip, filter
+  Category!=RealCheckpoint. Script kiểm tra TRX của CI pass cho cả hai suite.
+  ReportGenerator 5.5.4 gộp branch coverage 364/552 = 65.94%;
+  gate 60% pass, target 80% chưa đạt.
+- Lệnh, paths bằng chứng và giới hạn:
+  [báo cáo kiểm chứng mới](../../reports/AGRI-128/auth_verification_2026_10_23.md).
+  TRX/log/Cobertura nằm trong .cache/verification/AGRI-128/, không đưa vào Git.
+- GitHub: CI run 39902453660 (#67) cho ba89f19 completed/failure ở bước
+  backend integration; bước merge coverage bị skip, ci-gate failure.
+  Chưa có GitHub CI cho các thay đổi local chưa commit/push.
+- Diff chỉ gồm test và docs; giữ nguyên migration, dataset, checkpoint, secret,
+  HTTP/JWT contract và R2. Không commit/push hoặc thay đổi remote workflow/PR.
+  Nghiệm thu local auth đã đạt; chưa kết luận toàn bộ AGRI-128 hoặc remote CI hoàn tất.
+
+## 2026-10-23 — Delivery authorization
+
+- User requested committing and pushing the verified auth regression follow-up to AGRI-128-backend-improvement.
+- Delivery includes only the auth integration test and its AGRI-128 reports/task log. Unrelated untracked files remain excluded.
+- Revalidated existing TRX and merged coverage before delivery: 91 unit and 140 integration passed; 65.94% branch coverage. No new test execution is claimed by this delivery entry.
+- GitHub CI for the new commit must be checked separately after push; the earlier ba89f19 CI result remains historical.
