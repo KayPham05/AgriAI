@@ -236,7 +236,7 @@ public class SecurityAuthorizationTests(AgriVisionFactory factory) : IClassFixtu
 
         // Perform logout
         using var logoutResponse = await client.PostAsync("/api/auth/logout", null);
-        logoutResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        logoutResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // After logout: token's session is revoked, subsequent calls must return 401
         using var afterLogout = await client.GetAsync("/api/auth/me");
