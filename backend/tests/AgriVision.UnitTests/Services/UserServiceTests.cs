@@ -12,16 +12,22 @@ public class UserServiceTests
 {
     private readonly Mock<IUserRepository> _userRepositoryMock;
     private readonly Mock<IUserSessionRepository> _userSessionRepositoryMock;
+    private readonly Mock<IUnitOfWork> _unitOfWorkMock;
     private readonly UserService _userService;
 
     public UserServiceTests()
     {
         _userRepositoryMock = new Mock<IUserRepository>();
         _userSessionRepositoryMock = new Mock<IUserSessionRepository>();
+        _unitOfWorkMock = new Mock<IUnitOfWork>();
+
+        _unitOfWorkMock.Setup(u => u.ExecuteInTransactionAsync(It.IsAny<Func<Task>>(), It.IsAny<CancellationToken>()))
+            .Returns<Func<Task>, CancellationToken>((action, _) => action());
 
         _userService = new UserService(
             _userRepositoryMock.Object,
-            _userSessionRepositoryMock.Object
+            _userSessionRepositoryMock.Object,
+            _unitOfWorkMock.Object
         );
     }
 
@@ -218,6 +224,50 @@ public class UserServiceTests
         // Assert
         BCrypt.Net.BCrypt.Verify("BrandNewPassword123!", user.PasswordHash).Should().BeTrue();
         user.UpdatedAt.Should().NotBeNull();
+        _userRepositoryMock.Verify(r => r.UpdateAsync(user, It.IsAny<CancellationToken>()), Times.Once);
+        _userSessionRepositoryMock.Verify(s => s.RevokeAllSessionsByUserIdAsync(userId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateProfileAsync_ShouldThrowArgumentException_WhenFullNameExceeds150Chars()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var longName = new string('A', 151);
+        var request = new UpdateProfileRequest(longName);
+
+        // Act
+        var act = async () => await _userService.UpdateProfileAsync(userId, request);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*không được vượt quá 150 ký tự*");
+        _userRepositoryMock.Verify(r => r.UpdateProfileAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ChangePasswordAsync_ShouldExecuteInsideTransaction()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var currentHash = BCrypt.Net.BCrypt.HashPassword("CurrentPassword123!");
+        var user = new User
+        {
+            Id = userId,
+            Email = "user@example.com",
+            PasswordHash = currentHash
+        };
+
+        _userRepositoryMock.Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+
+        var request = new ChangePasswordRequest("CurrentPassword123!", "NewPassword123!", "NewPassword123!");
+
+        // Act
+        await _userService.ChangePasswordAsync(userId, request);
+
+        // Assert
+        _unitOfWorkMock.Verify(u => u.ExecuteInTransactionAsync(It.IsAny<Func<Task>>(), It.IsAny<CancellationToken>()), Times.Once);
         _userRepositoryMock.Verify(r => r.UpdateAsync(user, It.IsAny<CancellationToken>()), Times.Once);
         _userSessionRepositoryMock.Verify(s => s.RevokeAllSessionsByUserIdAsync(userId, It.IsAny<CancellationToken>()), Times.Once);
     }

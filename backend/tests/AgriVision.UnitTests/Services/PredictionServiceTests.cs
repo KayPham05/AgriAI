@@ -447,6 +447,19 @@ public class PredictionServiceTests
         result.Items.Should().HaveCount(1);
     }
 
+    [Fact]
+    public async Task GetFilteredHistoryAsync_ShouldThrowArgumentException_WhenFromDateGreaterThanToDate()
+    {
+        var userId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        var filter = new PredictionFilterParams(FromDate: now.AddDays(5), ToDate: now);
+
+        var act = () => _predictionService.GetFilteredHistoryAsync(userId, filter);
+
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*Từ ngày không được lớn hơn đến ngày*");
+    }
+
     private void ConfigureHealthyClass() => _plantDiseaseRepository.PlantDiseases =
     [new PlantDisease { ClassIndex = 0, ClassName = "Tomato___Healthy", Plant = new Plant { Name = "Tomato" }, Disease = new Disease { Name = "Healthy" } }];
 

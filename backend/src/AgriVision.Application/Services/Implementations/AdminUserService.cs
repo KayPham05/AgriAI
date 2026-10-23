@@ -13,17 +13,20 @@ public class AdminUserService : IAdminUserService
     private readonly IUserSessionRepository _userSessionRepository;
     private readonly IAdminAuditLogRepository _auditLogRepository;
     private readonly IPredictionRepository _predictionRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
     public AdminUserService(
         IUserRepository userRepository,
         IUserSessionRepository userSessionRepository,
         IAdminAuditLogRepository auditLogRepository,
-        IPredictionRepository predictionRepository)
+        IPredictionRepository predictionRepository,
+        IUnitOfWork unitOfWork)
     {
         _userRepository = userRepository;
         _userSessionRepository = userSessionRepository;
         _auditLogRepository = auditLogRepository;
         _predictionRepository = predictionRepository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<PagedResult<AdminUserListItemDto>> GetUsersAsync(AdminUserFilterParams filterParams, CancellationToken cancellationToken = default)
@@ -73,22 +76,25 @@ public class AdminUserService : IAdminUserService
 
         if (user.IsActive != isActive)
         {
-            user.IsActive = isActive;
-            user.UpdatedAt = DateTime.UtcNow;
-            await _userRepository.UpdateAsync(user, cancellationToken);
-
-            if (!isActive)
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                await _userSessionRepository.RevokeAllSessionsByUserIdAsync(targetUserId, cancellationToken);
-            }
+                user.IsActive = isActive;
+                user.UpdatedAt = DateTime.UtcNow;
+                await _userRepository.UpdateAsync(user, cancellationToken);
 
-            await _auditLogRepository.AddAsync(new AdminAuditLog
-            {
-                Id = Guid.NewGuid(),
-                ActorUserId = adminId,
-                TargetUserId = targetUserId,
-                Action = isActive ? "ActivateUser" : "DeactivateUser",
-                OccurredAt = DateTime.UtcNow
+                if (!isActive)
+                {
+                    await _userSessionRepository.RevokeAllSessionsByUserIdAsync(targetUserId, cancellationToken);
+                }
+
+                await _auditLogRepository.AddAsync(new AdminAuditLog
+                {
+                    Id = Guid.NewGuid(),
+                    ActorUserId = adminId,
+                    TargetUserId = targetUserId,
+                    Action = isActive ? "ActivateUser" : "DeactivateUser",
+                    OccurredAt = DateTime.UtcNow
+                }, cancellationToken);
             }, cancellationToken);
         }
 
@@ -116,20 +122,23 @@ public class AdminUserService : IAdminUserService
 
         if (user.Role != role)
         {
-            user.Role = role;
-            user.UpdatedAt = DateTime.UtcNow;
-            await _userRepository.UpdateAsync(user, cancellationToken);
-
-            // Invalidate active sessions to enforce role change immediately
-            await _userSessionRepository.RevokeAllSessionsByUserIdAsync(targetUserId, cancellationToken);
-
-            await _auditLogRepository.AddAsync(new AdminAuditLog
+            await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
-                Id = Guid.NewGuid(),
-                ActorUserId = adminId,
-                TargetUserId = targetUserId,
-                Action = $"ChangeRoleTo_{role}",
-                OccurredAt = DateTime.UtcNow
+                user.Role = role;
+                user.UpdatedAt = DateTime.UtcNow;
+                await _userRepository.UpdateAsync(user, cancellationToken);
+
+                // Invalidate active sessions to enforce role change immediately
+                await _userSessionRepository.RevokeAllSessionsByUserIdAsync(targetUserId, cancellationToken);
+
+                await _auditLogRepository.AddAsync(new AdminAuditLog
+                {
+                    Id = Guid.NewGuid(),
+                    ActorUserId = adminId,
+                    TargetUserId = targetUserId,
+                    Action = $"ChangeRoleTo_{role}",
+                    OccurredAt = DateTime.UtcNow
+                }, cancellationToken);
             }, cancellationToken);
         }
 

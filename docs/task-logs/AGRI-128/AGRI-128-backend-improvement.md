@@ -183,3 +183,29 @@ nhánh nền AGRI-128 là Jira của task hồ sơ.
 - **Kiểm chứng:**
   - `dotnet build backend/AgriVision.sln`: Thành công, 0 warning, 0 error.
   - `dotnet test backend/tests/AgriVision.UnitTests/AgriVision.UnitTests.csproj`: **85/85 unit tests passed (100%)**.
+
+---
+
+## 2026-10-23 — Xử Lý 4 Vấn Đề Review: Transaction, Timezone & Validation Họ Tên
+
+### 1. Transaction cho Đổi mật khẩu và Thu hồi phiên
+- **Vấn đề:** Trong `UserService.ChangePasswordAsync`, cập nhật password hash trước khi thu hồi phiên. Nếu request bị hủy hoặc thao tác thu hồi lỗi, mật khẩu đã đổi nhưng phiên cũ vẫn hoạt động.
+- **Khắc phục:** Tạo `IUnitOfWork` và `UnitOfWork` bọc cả hai thao tác `_userRepository.UpdateAsync` và `_userSessionRepository.RevokeAllSessionsByUserIdAsync` trong một transaction (`ExecuteInTransactionAsync`), bảo đảm cùng thành công hoặc cùng rollback.
+
+### 2. Transaction cho Thao tác Admin và Audit Log
+- **Vấn đề:** Trong `AdminUserService.SetUserStatusAsync` và `SetUserRoleAsync`, trạng thái/vai trò được lưu trước khi ghi audit log. Nếu ghi log thất bại, dữ liệu người dùng đã đổi mà thiếu log truy vết.
+- **Khắc phục:** Bọc cập nhật trạng thái/vai trò, thu hồi phiên và ghi `AdminAuditLog` trong một transaction nguyên tử qua `_unitOfWork.ExecuteInTransactionAsync`.
+
+### 3. Chuẩn hóa Timezone cho Bộ lọc Ngày
+- **Vấn đề:** `PredictionRepository.GetFilteredByUserIdAsync` truyền trực tiếp `FromDate` / `ToDate` dạng `DateTimeKind.Unspecified` xuống cột `timestamptz` của PostgreSQL, dẫn đến lỗi Npgsql không tương thích kiểu dữ liệu.
+- **Khắc phục:**
+  - Chuẩn hóa `FromDate` và `ToDate` về UTC (`DateTimeKind.Utc`) thông qua hàm chuyển đổi `ToUtc` trước khi bind query EF Core.
+  - Thêm xác thực logic `FromDate <= ToDate` trong `PredictionService.GetFilteredHistoryAsync`, quăng `ArgumentException` nếu khoảng ngày không hợp lệ.
+
+### 4. Giới hạn độ dài Họ tên khi Cập nhật Profile
+- **Vấn đề:** `UserService.UpdateProfileAsync` chỉ kiểm tra rỗng, chưa kiểm tra độ dài tối đa 150 ký tự theo schema `varchar(150)`, khiến chuỗi > 150 ký tự gây lỗi database 500 thay vì 400.
+- **Khắc phục:** Thêm kiểm tra `trimmedName.Length > 150` quăng `ArgumentException` với thông báo `"Họ và tên không được vượt quá 150 ký tự."` để API trả về mã lỗi 400 Bad Request hợp lệ.
+
+### Kết quả kiểm thử
+- `dotnet build backend/AgriVision.sln`: Thành công, 0 warning, 0 error.
+- `dotnet test backend/tests/AgriVision.UnitTests/AgriVision.UnitTests.csproj`: **88/88 unit tests passed (100%)**.

@@ -8,13 +8,16 @@ public class UserService : IUserService
 {
     private readonly IUserRepository _userRepository;
     private readonly IUserSessionRepository _userSessionRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
     public UserService(
         IUserRepository userRepository,
-        IUserSessionRepository userSessionRepository)
+        IUserSessionRepository userSessionRepository,
+        IUnitOfWork unitOfWork)
     {
         _userRepository = userRepository;
         _userSessionRepository = userSessionRepository;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<UserProfileDto> GetProfileAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -39,12 +42,17 @@ public class UserService : IUserService
 
     public async Task<UserProfileDto> UpdateProfileAsync(Guid userId, UpdateProfileRequest request, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(request.FullName))
+        var trimmedName = request.FullName?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(trimmedName))
         {
             throw new ArgumentException("Họ và tên không được để trống.");
         }
 
-        var trimmedName = request.FullName.Trim();
+        if (trimmedName.Length > 150)
+        {
+            throw new ArgumentException("Họ và tên không được vượt quá 150 ký tự.");
+        }
+
         var now = DateTime.UtcNow;
 
         await _userRepository.UpdateProfileAsync(userId, trimmedName, now, cancellationToken);
@@ -108,9 +116,12 @@ public class UserService : IUserService
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
         user.UpdatedAt = DateTime.UtcNow;
 
-        await _userRepository.UpdateAsync(user, cancellationToken);
+        await _unitOfWork.ExecuteInTransactionAsync(async () =>
+        {
+            await _userRepository.UpdateAsync(user, cancellationToken);
 
-        // Invalidate active sessions to enforce fresh login or updated security state
-        await _userSessionRepository.RevokeAllSessionsByUserIdAsync(userId, cancellationToken);
+            // Invalidate active sessions to enforce fresh login or updated security state
+            await _userSessionRepository.RevokeAllSessionsByUserIdAsync(userId, cancellationToken);
+        }, cancellationToken);
     }
 }

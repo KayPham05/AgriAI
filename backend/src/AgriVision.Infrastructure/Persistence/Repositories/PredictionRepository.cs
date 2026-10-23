@@ -51,8 +51,7 @@ public class PredictionRepository : IPredictionRepository
 
     public async Task<int> GetCountByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        return await _context.Predictions
-            .CountAsync(p => p.UserId == userId, cancellationToken);
+        return await _context.Predictions.CountAsync(p => p.UserId == userId, cancellationToken);
     }
 
     public async Task<(IEnumerable<Prediction> Items, int TotalCount)> GetFilteredByUserIdAsync(
@@ -81,12 +80,14 @@ public class PredictionRepository : IPredictionRepository
 
         if (filterParams.FromDate.HasValue)
         {
-            query = query.Where(p => p.CreatedAt >= filterParams.FromDate.Value);
+            var fromDate = ToUtc(filterParams.FromDate.Value);
+            query = query.Where(p => p.CreatedAt >= fromDate);
         }
 
         if (filterParams.ToDate.HasValue)
         {
-            query = query.Where(p => p.CreatedAt <= filterParams.ToDate.Value);
+            var toDate = ToUtc(filterParams.ToDate.Value);
+            query = query.Where(p => p.CreatedAt <= toDate);
         }
 
         var totalCount = await query.CountAsync(cancellationToken);
@@ -110,6 +111,13 @@ public class PredictionRepository : IPredictionRepository
 
         return (items, totalCount);
     }
+
+    private static DateTime ToUtc(DateTime dt) => dt.Kind switch
+    {
+        DateTimeKind.Utc => dt,
+        DateTimeKind.Local => dt.ToUniversalTime(),
+        _ => DateTime.SpecifyKind(dt, DateTimeKind.Utc)
+    };
 
     public async Task AddAsync(Prediction prediction, CancellationToken cancellationToken = default)
     {

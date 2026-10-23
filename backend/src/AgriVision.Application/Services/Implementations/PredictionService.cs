@@ -178,6 +178,11 @@ public class PredictionService : IPredictionService
             throw new ArgumentException("Page number and page size must be positive.");
         }
 
+        if (filterParams.FromDate.HasValue && filterParams.ToDate.HasValue && filterParams.FromDate.Value > filterParams.ToDate.Value)
+        {
+            throw new ArgumentException("Từ ngày không được lớn hơn đến ngày.");
+        }
+
         var (predictions, totalCount) = await _predictionRepository.GetFilteredByUserIdAsync(userId, filterParams, cancellationToken);
 
         var historyItems = predictions.Select(p =>

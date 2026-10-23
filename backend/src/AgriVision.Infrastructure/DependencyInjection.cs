@@ -24,7 +24,7 @@ public static class DependencyInjection
         // Register Authentication Services
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
 
-        // Register Repositories
+        // Register Repositories & Unit of Work
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserSessionRepository, UserSessionRepository>();
         services.AddScoped<IPlantRepository, PlantRepository>();
@@ -33,6 +33,7 @@ public static class DependencyInjection
         services.AddScoped<IPredictionRepository, PredictionRepository>();
         services.AddScoped<IAdminAuditLogRepository, AdminAuditLogRepository>();
         services.AddScoped<IAgriculturalProfileRepository, AgriculturalProfileRepository>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Register Image Storage Service
         services.AddScoped<IImageStorage, CloudinaryImageStorage>();
