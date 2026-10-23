@@ -36,7 +36,7 @@ public class UserSessionRepository : IUserSessionRepository
         var now = DateTime.UtcNow;
         await _context.UserSessions
             .Where(s => s.Id == sessionId && s.RevokedAt == null)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(s => s.RevokedAt, now), cancellationToken);
+            .ExecuteUpdateAsync(setters => setters.SetProperty(s => s.RevokedAt, s => s.CreatedAt > now ? s.CreatedAt : now), cancellationToken);
     }
 
     public async Task RevokeSessionAsync(Guid userId, Guid sessionId, CancellationToken cancellationToken = default)
@@ -44,7 +44,7 @@ public class UserSessionRepository : IUserSessionRepository
         var now = DateTime.UtcNow;
         await _context.UserSessions
             .Where(s => s.UserId == userId && s.Id == sessionId && s.RevokedAt == null)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(s => s.RevokedAt, now), cancellationToken);
+            .ExecuteUpdateAsync(setters => setters.SetProperty(s => s.RevokedAt, s => s.CreatedAt > now ? s.CreatedAt : now), cancellationToken);
     }
 
     public async Task RevokeAllSessionsByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -58,7 +58,7 @@ public class UserSessionRepository : IUserSessionRepository
             var now = DateTime.UtcNow;
             foreach (var s in activeSessions)
             {
-                s.RevokedAt = now;
+                s.RevokedAt = s.CreatedAt > now ? s.CreatedAt : now;
             }
             await _context.SaveChangesAsync(cancellationToken);
         }
