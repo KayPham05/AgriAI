@@ -5,6 +5,7 @@
   `origin/AGRI-128-backend-improvement`.
 - Phạm vi: backend History, tích hợp CRUD S3-03 đã có; AGRI-122 để sau.
 - Trạng thái: backend kiểm chứng local đạt 254/254 test, branch coverage 66.61%; chờ nghiệm thu thủ công và chốt chính sách Guest chọn hồ sơ.
+- PR: [#45](https://github.com/KayPham05/AgriAI/pull/45), target `AGRI-128-backend-improvement`; đã yêu cầu reviewer backend, CI đang chạy tại thời điểm ghi nhận.
 - [Kế hoạch A/B](../../plans/AGRI-128-history-integration-plan.md),
   [bằng chứng phần A trước đồng bộ](history_part_a.md),
   [task log](../../task-logs/AGRI-128/AGRI-128-history-integration.md).

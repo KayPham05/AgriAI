@@ -4,7 +4,7 @@
 - Nhánh: `AGRI-128-history-integration`.
 - Base/đích tích hợp theo người dùng: `AGRI-128-backend-improvement`.
 - Owner: chưa xác minh; reviewer backend theo rules: Tran Trung Thong.
-- Trạng thái hiện tại: backend A/B đã triển khai trên CRUD S3-03; người dùng yêu cầu tạo PR ngày 2026-10-24. Đang kiểm chứng lại để gửi review; chưa nghiệm thu thủ công hoặc hoàn tất Jira.
+- Trạng thái hiện tại: backend A/B đã kiểm chứng lại và gửi [PR #45](https://github.com/KayPham05/AgriAI/pull/45) ngày 2026-10-24; chờ CI, review và nghiệm thu thủ công, chưa hoàn tất Jira.
 
 ## 2026-10-21 — Tạo nhánh và khảo sát
 
@@ -133,3 +133,12 @@
 - Manual History chưa thực hiện theo người dùng; giữ 401 khi Guest gửi profile của base.
   Race hồ sơ bị xóa vẫn có thể trả 500 nhưng rollback/cleanup được kiểm thử. Ghi rõ trong PR.
 - PR đang được chuẩn bị từ kết quả trên; chưa xác nhận CI hoặc chuyển Jira Done.
+
+### PR đã tạo
+
+- [PR #45 — AGRI-119 Complete diagnosis history and profile integration](https://github.com/KayPham05/AgriAI/pull/45).
+- Head `AGRI-128-history-integration` → base `AGRI-128-backend-improvement`.
+- Commit code/test: `6e88927`; chỉ 8 file History. Đã push và yêu cầu review từ
+  `trunthong09012005`; không tự approve hoặc merge.
+- GitHub Actions đã khởi chạy khi tạo PR; chưa ghi nhận thành công, giữ checklist CI
+  chưa tick. Cập nhật đường dẫn PR là thay đổi tài liệu, không thay code đã kiểm chứng.
