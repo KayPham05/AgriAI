@@ -460,6 +460,114 @@ public class PredictionServiceTests
             .WithMessage("*Từ ngày không được lớn hơn đến ngày*");
     }
 
+    [Fact]
+    public async Task LegacyHistory_ShouldReturnTopKInSavedRankOrder()
+    {
+        ConfigureHealthyClass();
+        var primary = _plantDiseaseRepository.PlantDiseases.Single();
+        var alternative = new PlantDisease
+        {
+            ClassIndex = 1, ClassName = "Tomato___Disease", Plant = primary.Plant,
+            Disease = new Disease { Name = "Disease" }
+        };
+        var owner = Guid.NewGuid();
+        var prediction = new Prediction
+        {
+            UserId = owner, PredictedPlantDisease = primary, Confidence = 0.9,
+            // Collection/database enumeration order must not replace the persisted rank.
+            PredictionDetails =
+            [
+                new() { Rank = 2, Probability = 0.1, PlantDisease = alternative },
+                new() { Rank = 1, Probability = 0.9, PlantDisease = primary }
+            ]
+        };
+        _predictionRepository.AddedPredictions.Add(prediction);
+
+        var result = await _predictionService.GetPredictionByIdAsync(prediction.Id, userId: owner);
+
+        result!.HasHistoricalSnapshot.Should().BeFalse();
+        result.PredictionDetails.Select(item => item.ClassIndex).Should().Equal(0, 1);
+        result.PredictionDetails.Select(item => item.Confidence).Should().Equal(0.9, 0.1);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UploadFailure_ShouldNotPersistHistory_AndShouldDisposeStreams(bool cancelled)
+    {
+        ConfigureHealthyClass();
+        _imageStorage.UploadError = cancelled
+            ? new OperationCanceledException("Upload cancelled.")
+            : new IOException("Upload failed.");
+
+        var act = () => _predictionService.PredictAsync(CreateFile(), Guid.NewGuid());
+
+        (await act.Should().ThrowAsync<Exception>()).Which.Should().BeSameAs(_imageStorage.UploadError);
+        _predictionRepository.AddedPredictions.Should().BeEmpty();
+        _imageStorage.DeletedPublicIds.Should().BeEmpty("the upload never returned an image identifier");
+        _imageStorage.ReceivedStream!.CanRead.Should().BeFalse();
+        _diseasePredictor.ReceivedStream!.CanRead.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CancelledDatabaseWrite_ShouldCleanUploadedImage_UsingAnUncancelledToken()
+    {
+        ConfigureHealthyClass();
+        using var cancellation = new CancellationTokenSource();
+        _imageStorage.AfterUpload = cancellation.Cancel;
+        var writeError = new OperationCanceledException(cancellation.Token);
+        _predictionRepository.WriteError = writeError;
+
+        var act = () => _predictionService.PredictAsync(CreateFile(), Guid.NewGuid(), cancellationToken: cancellation.Token);
+
+        (await act.Should().ThrowAsync<OperationCanceledException>()).Which.Should().BeSameAs(writeError);
+        _predictionRepository.AddedPredictions.Should().BeEmpty();
+        _imageStorage.DeletedPublicIds.Should().Equal("test/image");
+        _imageStorage.CleanupToken.IsCancellationRequested.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task FailedImageCleanup_ShouldPreserveDatabaseFailure_WhenStorageReturnsFalse()
+    {
+        ConfigureHealthyClass();
+        var writeError = new IOException("Database unavailable.");
+        _predictionRepository.WriteError = writeError;
+        _imageStorage.DeleteResult = false;
+
+        var act = () => _predictionService.PredictAsync(CreateFile(), Guid.NewGuid());
+
+        (await act.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(writeError);
+        _predictionRepository.AddedPredictions.Should().BeEmpty();
+        _imageStorage.DeletedPublicIds.Should().Equal("test/image");
+    }
+
+    [Theory]
+    [InlineData(1, false)]
+    [InlineData(31, true)]
+    public async Task LegacyHistoryWithoutImageRows_ShouldApplyTtlToListAndDetail(int ageDays, bool expired)
+    {
+        ConfigureHealthyClass();
+        var owner = Guid.NewGuid();
+        var prediction = new Prediction
+        {
+            UserId = owner, PredictedPlantDisease = _plantDiseaseRepository.PlantDiseases.Single(),
+            CreatedAt = DateTime.UtcNow.AddDays(-ageDays), Confidence = 0.9,
+            ImagePath = "https://images.test/legacy.jpg", ImagePublicId = "legacy/image"
+        };
+        _predictionRepository.AddedPredictions.Add(prediction);
+
+        var detail = await _predictionService.GetPredictionByIdAsync(prediction.Id, userId: owner);
+        var history = await _predictionService.GetPredictionHistoryAsync(owner);
+
+        detail!.ImagePath.Should().Be(expired ? string.Empty : "https://images.test/legacy.jpg");
+        detail.ImagePublicId.Should().Be(expired ? null : "legacy/image");
+        detail.HasHistoricalSnapshot.Should().BeFalse();
+        detail.Images.Should().BeEmpty();
+        history.TotalCount.Should().Be(1);
+        history.Items.Should().ContainSingle().Which.ImagePath.Should().Be(detail.ImagePath);
+        prediction.ImagePath.Should().Be("https://images.test/legacy.jpg", "reading history does not delete stored metadata");
+    }
+
     private void ConfigureHealthyClass() => _plantDiseaseRepository.PlantDiseases =
     [new PlantDisease { ClassIndex = 0, ClassName = "Tomato___Healthy", Plant = new Plant { Name = "Tomato" }, Disease = new Disease { Name = "Healthy" } }];
 
@@ -577,7 +685,11 @@ public class PredictionServiceTests
 
     private sealed class RecordingImageStorage : IImageStorage
     {
+        public Exception? UploadError { get; set; }
         public Exception? DeleteError { get; set; }
+        public bool DeleteResult { get; set; } = true;
+        public Action? AfterUpload { get; set; }
+        public CancellationToken CleanupToken { get; private set; }
         public List<string> DeletedPublicIds { get; } = [];
         public ImageUploadResult UploadResult { get; set; } =
             new("test/image", "https://images.test/leaf.jpg");
@@ -599,14 +711,17 @@ public class PredictionServiceTests
             UploadCount++;
             ReceivedStream = imageStream;
             UploadedImageBytes = ReadAllBytes(imageStream);
+            if (UploadError != null) throw UploadError;
+            AfterUpload?.Invoke();
             return Task.FromResult(UploadResult);
         }
 
         public Task<bool> DeleteImageAsync(string publicId, CancellationToken cancellationToken = default)
         {
+            CleanupToken = cancellationToken;
             if (DeleteError != null) throw DeleteError;
             DeletedPublicIds.Add(publicId);
-            return Task.FromResult(true);
+            return Task.FromResult(DeleteResult);
         }
     }
 
