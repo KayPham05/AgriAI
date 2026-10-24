@@ -25,7 +25,7 @@ builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // 2. Configure Controllers & CORS
-builder.Services.AddControllers();
+builder.Services.AddControllers(options => options.Filters.Add<RequestValidationFilter>());
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>

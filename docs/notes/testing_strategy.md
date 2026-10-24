@@ -1,5 +1,7 @@
 # Kế hoạch kiểm thử AgriVision AI
 
+> Quy chuẩn hiện hành: [TESTING.md tại root](../../TESTING.md). Tài liệu bên dưới giữ kế hoạch và bằng chứng lịch sử; không thay thế quy chuẩn hoặc CI hiện tại.
+
 > Layout hiện hành từ 2026-10-17: tất cả test AI ở `ai/tests/`; xem
 > [hướng dẫn chạy](../../ai/tests/README.md) và [QA AGRI-127](../reports/AGRI-127/system_qa.md).
 > Các đường dẫn và kết quả bên dưới được giữ làm ghi chép lịch sử.

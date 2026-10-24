@@ -1,0 +1,375 @@
+[
+  {
+    "method": "POST",
+    "route": "/api/auth/register",
+    "cases": [
+      "auth.register.contract",
+      "auth.register.validation",
+      "auth.register.name_boundary",
+      "auth.register.duplicate",
+      "auth.malformed_body",
+      "existing.AuthControllerTests.RegisterAndLogin_ShouldSucceed_WhenValidDataProvided",
+      "existing.AuthImprovementTests.Scenario7_RegisterAtomic_Success_ShouldCreateExactlyOneUserAndSession",
+      "existing.SecurityAuthorizationTests.Registration_ShouldIgnoreInjectedRole_AndNeverExposePasswordHash"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/auth/login",
+    "cases": [
+      "auth.login.validation",
+      "auth.malformed_body",
+      "existing.SecurityAuthorizationTests.Login_ShouldRejectWrongPasswordAndUnknownAccount_WithSamePublicError",
+      "existing.AuthImprovementTests.Scenario5_Race_PasswordChangeBeforeLogin_ShouldRejectLoginWithOldPassword",
+      "existing.AuthImprovementTests.Scenario6_Race_LoginBeforePasswordChange_ShouldRevokeNewlyIssuedToken",
+      "auth.rate_limit"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/auth/me",
+    "cases": [
+      "auth.register.contract",
+      "existing.SecurityAuthorizationTests.ProtectedEndpoints_ShouldRejectInvalidBearer",
+      "existing.SecurityAuthorizationTests.LegacyTokenWithoutSid_ShouldBeRejected_EvenWhenNewActiveSessionExists",
+      "existing.SecurityAuthorizationTests.SessionRevocation_AfterLogout_ShouldRejectSubsequentRequestsWithSameToken",
+      "existing.SecurityAuthorizationTests.SessionRevocation_AfterUserDeactivation_ShouldRejectSubsequentRequests",
+      "existing.SecurityAuthorizationTests.SessionRevocation_AfterRoleChange_ShouldRejectSubsequentRequests",
+      "existing.AuthImprovementTests.Scenario2_SessionScope_ShouldRejectInvalidOrCrossUserSid"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/auth/logout",
+    "cases": [
+      "existing.AuthImprovementTests.Scenario1_MultiDeviceLogout_ShouldRevokeOnlyCurrentSession_AndKeepOtherSessionActive",
+      "existing.AuthImprovementTests.Scenario3_ConcurrentLogout_ShouldNotCorruptOrThrow_AndEndInRevokedState",
+      "auth.revocation_ahead_clock"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/users/profile",
+    "cases": [
+      "users.profile.contract",
+      "existing.GuestPredictionsControllerTests.Guest_ShouldNotAccessPersonalOrAdminEndpoints"
+    ]
+  },
+  {
+    "method": "PUT",
+    "route": "/api/users/profile",
+    "cases": [
+      "users.profile.contract",
+      "users.profile.name_boundary",
+      "existing.SecurityAuthorizationTests.UpdateProfile_ShouldRejectNameExceeding60Characters"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/users/change-password",
+    "cases": [
+      "users.password.invalid",
+      "users.password.minimum",
+      "existing.AuthImprovementTests.Scenario4_ChangePassword_ShouldRevokeAllExistingSessions_AndRequireNewPassword",
+      "auth.revocation_ahead_clock"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/plants",
+    "cases": [
+      "catalog.soft_delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/plants/{id:guid}",
+    "cases": [
+      "catalog.create_and_read",
+      "catalog.missing_id",
+      "catalog.soft_delete"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/plants",
+    "cases": [
+      "catalog.create_and_read",
+      "catalog.create_empty_name",
+      "catalog.create_name_boundary",
+      "catalog.write_authorization",
+      "existing.SecurityAuthorizationTests.CatalogWrites_ShouldRejectGuestAndRegularUser",
+      "catalog.plant_duplicate",
+      "existing.SecurityAuthorizationTests.AdminCatalogWrite_ShouldWork_WithTokenIssuedAfterRoleAssignment",
+      "catalog.optional_field_boundaries"
+    ]
+  },
+  {
+    "method": "PUT",
+    "route": "/api/plants/{id:guid}",
+    "cases": [
+      "catalog.update",
+      "catalog.update_invalid_name",
+      "catalog.missing_id",
+      "catalog.write_authorization",
+      "catalog.duplicate_update",
+      "catalog.optional_field_boundaries"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/plants/{id:guid}",
+    "cases": [
+      "catalog.soft_delete",
+      "catalog.missing_id",
+      "catalog.write_authorization"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/diseases",
+    "cases": [
+      "catalog.soft_delete"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/diseases/{id:guid}",
+    "cases": [
+      "catalog.create_and_read",
+      "catalog.missing_id",
+      "catalog.soft_delete"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/diseases",
+    "cases": [
+      "catalog.create_and_read",
+      "catalog.create_empty_name",
+      "catalog.create_name_boundary",
+      "catalog.write_authorization",
+      "existing.SecurityAuthorizationTests.CatalogWrites_ShouldRejectGuestAndRegularUser",
+      "catalog.disease_duplicate",
+      "catalog.optional_field_boundaries"
+    ]
+  },
+  {
+    "method": "PUT",
+    "route": "/api/diseases/{id:guid}",
+    "cases": [
+      "catalog.update",
+      "catalog.update_invalid_name",
+      "catalog.missing_id",
+      "catalog.write_authorization",
+      "catalog.optional_field_boundaries",
+      "catalog.duplicate_update"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/diseases/{id:guid}",
+    "cases": [
+      "catalog.soft_delete",
+      "catalog.missing_id",
+      "catalog.write_authorization"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/admin/users",
+    "cases": [
+      "admin.authorization",
+      "admin.list_filters_paging",
+      "admin.invalid_paging"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/admin/users/{id:guid}",
+    "cases": [
+      "admin.authorization",
+      "admin.detail",
+      "admin.missing_user"
+    ]
+  },
+  {
+    "method": "PUT",
+    "route": "/api/admin/users/{id:guid}/status",
+    "cases": [
+      "admin.authorization",
+      "admin.self_protection",
+      "admin.noop",
+      "admin.change_revokes_and_audits",
+      "admin.reactivate",
+      "admin.missing_user"
+    ]
+  },
+  {
+    "method": "PUT",
+    "route": "/api/admin/users/{id:guid}/role",
+    "cases": [
+      "admin.authorization",
+      "admin.invalid_role",
+      "admin.self_protection",
+      "admin.noop",
+      "admin.change_revokes_and_audits",
+      "admin.missing_user"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/admin/users/audit-logs",
+    "cases": [
+      "admin.authorization",
+      "admin.invalid_paging",
+      "admin.noop",
+      "admin.change_revokes_and_audits"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/admin/audit-logs",
+    "cases": [
+      "admin.authorization",
+      "admin.invalid_paging",
+      "admin.noop",
+      "admin.change_revokes_and_audits"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/agricultural-profiles",
+    "cases": [
+      "existing.AgriculturalProfilesControllerTests.Owner_CanCreateListReadUpdateAndDeleteProfile",
+      "existing.AgriculturalProfilesControllerTests.Guest_CannotManageProfiles"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/agricultural-profiles/{id:guid}",
+    "cases": [
+      "existing.AgriculturalProfilesControllerTests.Owner_CanCreateListReadUpdateAndDeleteProfile",
+      "existing.AgriculturalProfilesControllerTests.Guest_CannotManageProfiles",
+      "existing.AgriculturalProfilesControllerTests.OtherUserOrAdmin_CannotReadChangeOrDeleteProfile"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/agricultural-profiles",
+    "cases": [
+      "existing.AgriculturalProfilesControllerTests.Owner_CanCreateListReadUpdateAndDeleteProfile",
+      "existing.AgriculturalProfilesControllerTests.Guest_CannotManageProfiles",
+      "existing.AgriculturalProfilesControllerTests.CreateAndUpdate_RejectEmptyNames",
+      "existing.AgriculturalProfilesControllerTests.NameBoundary_Allows150CharactersAndRejects151"
+    ]
+  },
+  {
+    "method": "PUT",
+    "route": "/api/agricultural-profiles/{id:guid}",
+    "cases": [
+      "existing.AgriculturalProfilesControllerTests.Owner_CanCreateListReadUpdateAndDeleteProfile",
+      "existing.AgriculturalProfilesControllerTests.Guest_CannotManageProfiles",
+      "existing.AgriculturalProfilesControllerTests.OtherUserOrAdmin_CannotReadChangeOrDeleteProfile",
+      "existing.AgriculturalProfilesControllerTests.CreateAndUpdate_RejectEmptyNames",
+      "existing.AgriculturalProfilesControllerTests.NameBoundary_Allows150CharactersAndRejects151"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/agricultural-profiles/{id:guid}",
+    "cases": [
+      "existing.AgriculturalProfilesControllerTests.Owner_CanCreateListReadUpdateAndDeleteProfile",
+      "existing.AgriculturalProfilesControllerTests.Guest_CannotManageProfiles",
+      "existing.AgriculturalProfilesControllerTests.OtherUserOrAdmin_CannotReadChangeOrDeleteProfile"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/predictions",
+    "cases": [
+      "predictions.server.request_limit",
+      "predictions.server.timeout",
+      "existing.GuestPredictionsControllerTests.Prediction_ShouldRejectInvalidCredentials_InsteadOfRunningAsGuest",
+      "existing.GuestPredictionsControllerTests.GuestPrediction_ShouldReturnFullResult_WithoutStorageOrChangesToUserHistory",
+      "existing.GuestPredictionsControllerTests.InvalidGuestUpload_ShouldFailBeforeInferenceOrStorage",
+      "existing.GuestPredictionsControllerTests.GuestAiFailure_ShouldNotReturnSuccessOrPersistData",
+      "existing.GuestPredictionsControllerTests.GuestMappingMismatch_ShouldNotPersistData",
+      "existing.PredictionsControllerTests.CreatePrediction_ShouldReturnCreatedAndPersistPrediction_WhenImageIsValid",
+      "existing.PredictionsControllerTests.GuestPrediction_ShouldNotCreatePersonalHistory",
+      "existing.PredictionsControllerTests.CreatePrediction_ShouldReturnBadRequest_WhenFileExtensionIsInvalid",
+      "existing.PredictionsControllerTests.CreatePrediction_ShouldReturn503_WhenAiIsUnavailable",
+      "existing.AgriculturalProfilesControllerTests.Diagnosis_CanSelectOwnedProfile_AndDeletionPreservesHistorySnapshotAndImages",
+      "existing.AgriculturalProfilesControllerTests.Diagnosis_RejectsForeignOrMissingProfile_WithoutPersisting",
+      "existing.AgriculturalProfilesControllerTests.Guest_CannotSelectProfileForDiagnosis",
+      "existing.StorageSecurityTests.GuestBudget_RejectsSecondRequest_WithRetryAfter",
+      "existing.StorageSecurityTests.ConcurrencyBudget_RejectsNinthInference_AndReleasesPermits",
+      "existing.StorageSecurityTests.Quota_RejectsSecondStoredImage_WithoutLeavingPendingUpload",
+      "predictions.invalid_multipart",
+      "predictions.multipart_section_limit",
+      "predictions.image_formats_contract",
+      "predictions.dependency_failure_no_persistence",
+      "predictions.rate_same_user_sessions",
+      "predictions.unexpected_error_redaction",
+      "predictions.exact_upload_limit"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/predictions",
+    "cases": [
+      "existing.GuestPredictionsControllerTests.MissingUserIdentity_ShouldNotAccessHistory",
+      "existing.PredictionsControllerTests.GetFilteredHistory_WithUnspecifiedTimezoneQueryParams_ShouldSucceed",
+      "existing.PredictionsControllerTests.GetFilteredHistory_ShouldReturnBadRequest_WhenFromDateGreaterThanToDate",
+      "existing.SecurityAuthorizationTests.History_ShouldIsolateAccounts_AndRejectForeignOrGuestDeletion",
+      "predictions.history_filters_and_pagination",
+      "predictions.history_invalid_filter"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/predictions/{id:guid}",
+    "cases": [
+      "existing.PredictionsControllerTests.StoredSnapshot_ShouldSurviveCatalogChangesAndExpiry_AndRequireOwner",
+      "existing.SecurityAuthorizationTests.ProtectedEndpoints_ShouldRejectInvalidBearer",
+      "predictions.admin_delete_without_read",
+      "predictions.missing_object"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/predictions/{id:guid}",
+    "cases": [
+      "existing.SecurityAuthorizationTests.History_ShouldIsolateAccounts_AndRejectForeignOrGuestDeletion",
+      "predictions.admin_delete_without_read"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/predictions/{id:guid}/images/{imageid:guid}",
+    "cases": [
+      "existing.PredictionsControllerTests.PrivateImage_RequiresOwnerAndLiveImage_AndDisablesCaching",
+      "existing.StorageSecurityTests.DownloadBudget_IsPerOwner_AndLogoutRevokesOnlyCurrentSession",
+      "predictions.image_formats_contract",
+      "predictions.missing_object",
+      "predictions.deleted_image",
+      "predictions.admin_delete_without_read"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/health",
+    "cases": [
+      "existing.HealthControllerTests.GetHealth_ShouldReportDatabaseReady_WithoutAiService",
+      "health.database.unavailable"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/health/deps",
+    "cases": [
+      "existing.HealthControllerTests.GetDependencies_ShouldReportUnavailableAi",
+      "health.dependencies.states"
+    ]
+  }
+]

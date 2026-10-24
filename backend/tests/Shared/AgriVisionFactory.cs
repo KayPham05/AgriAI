@@ -9,7 +9,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Testcontainers.PostgreSql;
 using Xunit;
 
-namespace AgriVision.IntegrationTests.Fixtures;
+namespace AgriVision.TestSupport;
 
 public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
@@ -26,7 +26,8 @@ public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseEnvironment("Development");
+        builder.UseEnvironment("Testing");
+        ConfigureR2(builder);
         builder.UseSetting("TrafficLimits:PredictionRequestsPerMinute", "10000");
         builder.UseSetting("TrafficLimits:ImageRequestsPerMinute", "10000");
         builder.UseSetting("TrafficLimits:AuthRequestsPerMinute", "10000");
@@ -48,13 +49,14 @@ public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
                 options.UseNpgsql(_dbContainer.GetConnectionString());
             });
 
+            services.ConfigureHttpClientDefaults(http => http.ConfigurePrimaryHttpMessageHandler(() => new DenyOutboundHandler()));
             services.RemoveAll<IImageStorage>();
             services.RemoveAll<IPlantDiseasePredictor>();
             services.AddSingleton<IImageStorage, FakeImageStorage>();
             services.AddSingleton<IPlantDiseasePredictor, FakePlantDiseasePredictor>();
 
             // Ensure database schema is created
-            var sp = services.BuildServiceProvider();
+            using var sp = services.BuildServiceProvider();
             using var scope = sp.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             db.Database.Migrate();
@@ -62,10 +64,24 @@ public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
         });
     }
 
-    public new async Task DisposeAsync()
+    protected virtual void ConfigureR2(IWebHostBuilder builder)
     {
-        await _dbContainer.StopAsync();
-        await _dbContainer.DisposeAsync();
+        builder.UseSetting("R2:ServiceUrl", "https://test.invalid");
+        builder.UseSetting("R2:BucketName", "test-bucket");
+        builder.UseSetting("R2:AccessKeyId", "synthetic-key");
+        builder.UseSetting("R2:SecretAccessKey", "synthetic-secret");
+    }
+
+    public new virtual async Task DisposeAsync()
+    {
+        try { await base.DisposeAsync(); }
+        finally { await _dbContainer.DisposeAsync(); }
+    }
+
+    private sealed class DenyOutboundHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromException<HttpResponseMessage>(new HttpRequestException("Outbound HTTP is disabled in the isolated test fixture."));
     }
 
     private sealed class FakeImageStorage : IImageStorage

@@ -67,6 +67,63 @@ public class DatabaseImprovementTests : IAsyncLifetime
         return id;
     }
 
+    [Theory]
+    [InlineData("scoped")]
+    [InlineData("by-id")]
+    [InlineData("all")]
+    public async Task RepositoryRevocation_HandlesSessionsCreatedOnAnAheadClock(string operation)
+    {
+        await using var database = CreateDatabase();
+        var userId = await CreateUserAsync(database);
+        var id = Guid.NewGuid();
+        var created = DateTime.UtcNow.AddMinutes(5);
+        await database.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO user_sessions (id, user_id, created_at, expires_at)
+            VALUES ({id}, {userId}, {created}, {created.AddDays(1)});
+            """);
+        var other = await CreateSessionAsync(database, userId);
+        var repository = new UserSessionRepository(database);
+        if (operation == "scoped") await repository.RevokeSessionAsync(userId, id);
+        else if (operation == "by-id") await repository.RevokeSessionAsync(id);
+        else await repository.RevokeAllSessionsByUserIdAsync(userId);
+        var session = await database.UserSessions.AsNoTracking().SingleAsync(x => x.Id == id);
+        session.RevokedAt.Should().NotBeNull();
+        session.RevokedAt!.Value.Should().BeOnOrAfter(session.CreatedAt);
+        var otherSession = await database.UserSessions.AsNoTracking().SingleAsync(x => x.Id == other);
+        if (operation == "all") otherSession.RevokedAt.Should().NotBeNull();
+        else otherSession.RevokedAt.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("role")]
+    [InlineData("status")]
+    public async Task AccountChanges_RevokeSessionsEvenWhenApplicationClockWasAhead(string change)
+    {
+        await using var database = CreateDatabase();
+        var userId = await CreateUserAsync(database);
+        var created = DateTime.UtcNow.AddMinutes(5);
+        var futureSession = Guid.NewGuid();
+        var priorSession = Guid.NewGuid();
+        await database.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO user_sessions (id, user_id, created_at, expires_at)
+            VALUES ({futureSession}, {userId}, {created}, {created.AddDays(1)});
+            """);
+        await database.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO user_sessions (id, user_id, created_at, expires_at, revoked_at)
+            VALUES ({priorSession}, {userId}, now() - interval '1 day', now() + interval '1 day', now() - interval '1 hour');
+            """);
+        var revokedBefore = (await database.UserSessions.AsNoTracking().SingleAsync(x => x.Id == priorSession)).RevokedAt;
+        if (change == "role") await database.Database.ExecuteSqlInterpolatedAsync($"UPDATE users SET role = 'Admin' WHERE id = {userId}");
+        else await database.Database.ExecuteSqlInterpolatedAsync($"UPDATE users SET is_active = false WHERE id = {userId}");
+        var affected = await database.UserSessions.AsNoTracking().SingleAsync(x => x.Id == futureSession);
+        affected.RevokedAt.Should().NotBeNull();
+        affected.RevokedAt!.Value.Should().BeOnOrAfter(affected.CreatedAt);
+        (await database.UserSessions.AsNoTracking().SingleAsync(x => x.Id == priorSession)).RevokedAt.Should().Be(revokedBefore);
+        var user = await database.Users.AsNoTracking().SingleAsync(x => x.Id == userId);
+        if (change == "role") user.Role.Should().Be("Admin");
+        else user.IsActive.Should().BeFalse();
+    }
+
     [Fact]
     public async Task Profiles_ShouldBeOptional_AndDeletingProfileShouldPreserveHistoryAndSnapshot()
     {
