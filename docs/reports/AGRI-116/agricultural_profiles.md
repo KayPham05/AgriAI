@@ -164,3 +164,16 @@ Các giới hạn đã rà: action controller chưa có hậu tố Async, helper
 có giá trị mặc định cho CancellationToken; kiểm tra JWT theo trạng thái tài khoản/
 session tại mỗi request vẫn là khoảng trống xác thực có sẵn. Đợt push này giữ
 nguyên phạm vi code đã triển khai, không tự mở rộng sang sửa xác thực toàn hệ thống.
+
+## Docker local verification — 2026-10-25
+
+`docker compose build` hoàn tất cho ba image ứng dụng. Frontend image xác nhận route
+`/agricultural-profiles` trong danh sách production routes. PostgreSQL volume được giữ
+nguyên; role local `agrivision_user` được cập nhật credential theo `.env` sau khi người
+dùng xác nhận. Migration explicit hoàn tất cho `PrivateImageUploadJournal` và
+`SessionRevocationClockSafety`.
+
+Trạng thái sau khởi động lại: PostgreSQL, AI service, backend và frontend đều healthy;
+backend `/api/health` và AI `/health` trả về OK. Route hồ sơ được phục vụ và chuyển user
+chưa đăng nhập về trang giới thiệu. Đây là bằng chứng local Docker, không phải kết quả
+CI, remote hoặc production.

@@ -29,3 +29,54 @@ Source chính:
 [repository](../../../backend/src/AgriVision.Infrastructure/Persistence/Repositories/AgriculturalProfileRepository.cs),
 [prediction service](../../../backend/src/AgriVision.Application/Services/Implementations/PredictionService.cs).
 Không thay đổi source `ai/`, dataset hoặc checkpoint trong hạng mục này.
+
+## UI completion on 2026-10-25
+
+Nhánh thực hiện: `AGRI-116-agricultural-profile-ui`, tách từ `main` tại
+`018bf32`. Phần giao diện trước đây được loại khỏi phạm vi backend nay đã được
+triển khai theo file Figma hồ sơ nông nghiệp:
+
+- Thêm API client và state context cho danh sách, tạo, sửa và xóa hồ sơ.
+- Thêm route `/agricultural-profiles` với trạng thái danh sách, rỗng, loading,
+  tạo mới, chỉnh sửa, chi tiết và xác nhận xóa.
+- Thêm liên kết từ hồ sơ tài khoản và bộ chọn hồ sơ trong luồng chẩn đoán;
+  request chẩn đoán gửi `agriculturalProfileId` tùy chọn.
+- Giữ quy tắc backend: chỉ user đã đăng nhập quản lý hồ sơ; xóa hồ sơ giữ lại
+  lịch sử chẩn đoán theo FK `SET NULL`.
+
+Kiểm chứng mới trên nhánh UI:
+
+- `tsc --noEmit`: pass.
+- Biome lint: pass, không warning/error.
+- Webpack production build: pass; route `/agricultural-profiles` được tạo.
+- API client, prediction profile field và form validation: **36/36 test pass**.
+- Full Vitest/unit suite: chưa xác nhận; sandbox worker của Vitest/jsdom báo
+  `ENOENT` khi đọc file tạm. Đây là giới hạn môi trường chạy hiện tại, không được
+  ghi nhận là test pass.
+
+## Docker local verification on 2026-10-25
+
+Đã rebuild Compose trên nhánh `AGRI-116-agricultural-profile-ui` bằng
+`docker compose build`. Frontend build trong image tạo route
+`/agricultural-profiles`; backend và AI image cũng build thành công.
+
+Database volume local giữ nguyên. Khi recreate stack, backend phát hiện credential
+trong volume cũ khác `.env`; theo xác nhận của người dùng, role local
+`agrivision_user` được đồng bộ lại mật khẩu với `.env`. Sau đó migration được chạy
+tường minh bằng `docker compose run --rm --no-deps backend --migrate`, áp dụng:
+
+- `20261023080635_PrivateImageUploadJournal`;
+- `20261023130623_SessionRevocationClockSafety`.
+
+Kiểm chứng sau khi khởi động lại:
+
+- `agriai-postgres-1`: healthy;
+- `agriai-ai-service-1`: healthy;
+- `agriai-backend-1`: healthy;
+- `agriai-frontend-1`: healthy;
+- `/api/health` backend: OK;
+- `/health` AI service: OK;
+- `/agricultural-profiles`: route phục vụ được; user chưa đăng nhập sẽ được chuyển
+  về trang giới thiệu theo quy tắc bảo vệ tài khoản.
+
+Đây là kiểm chứng local Docker, không đại diện cho môi trường remote hoặc production.
