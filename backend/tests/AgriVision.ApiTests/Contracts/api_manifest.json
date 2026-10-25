@@ -371,5 +371,21 @@
       "existing.HealthControllerTests.GetDependencies_ShouldReportUnavailableAi",
       "health.dependencies.states"
     ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/users/avatar",
+    "cases": [
+      "user.avatar.lifecycle",
+      "user.avatar.validation",
+      "user.avatar.storage_failure"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/users/avatar/{*key}",
+    "cases": [
+      "user.avatar.lifecycle"
+    ]
   }
 ]

@@ -5,6 +5,19 @@ namespace AgriVision.UnitTests.Services;
 
 public class ImageStorageKeyTests
 {
+    [Fact]
+    public void AvatarKeys_AreIsolatedFromPredictionsAndOtherOwners()
+    {
+        var owner = Guid.NewGuid();
+        var image = Guid.NewGuid();
+        var key = ImageStorageKey.Create(new(owner, Guid.Empty, image, IsAvatar: true), ".png");
+        key.Should().Be($"users/{owner:D}/avatars/{image:D}.png");
+        ImageStorageKey.IsAvatarForUser(key, owner).Should().BeTrue();
+        ImageStorageKey.IsAvatarForUser(key, Guid.NewGuid()).Should().BeFalse();
+        ImageStorageKey.Matches(key, new(owner, Guid.NewGuid(), image)).Should().BeFalse();
+        ImageStorageKey.IsSupported(key.Replace(".png", ".svg")).Should().BeFalse();
+        ImageStorageKey.IsSupported(key.Replace("/avatars/", "/avatars/../")).Should().BeFalse();
+    }
     [Theory]
     [InlineData(null)]
     [InlineData("")]

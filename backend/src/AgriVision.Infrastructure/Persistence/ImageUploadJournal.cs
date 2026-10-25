@@ -19,6 +19,7 @@ public sealed class ImageUploadJournal(AppDbContext database, IConfiguration con
         var limit = configuration.GetValue("StorageLimits:MaxImagesPerUser", 100);
         if (limit < 1) throw new InvalidOperationException("Storage quota must be positive.");
         var stored = await database.PredictionImages.CountAsync(image => image.Prediction.UserId == context.UserId && image.DeletedAt == null, cancellationToken);
+        if (!context.IsAvatar && user.AvatarUrl != null) stored++;
         var pending = await database.PendingImageUploads.CountAsync(item => item.UserId == context.UserId, cancellationToken);
         if (stored + pending >= limit) throw new ArgumentException("Image storage quota reached. Delete saved images before uploading more.");
         database.PendingImageUploads.Add(new PendingImageUpload { Key = key, UserId = context.UserId });
@@ -28,4 +29,12 @@ public sealed class ImageUploadJournal(AppDbContext database, IConfiguration con
 
     public async Task CompleteAsync(string key, CancellationToken cancellationToken) =>
         await database.PendingImageUploads.Where(item => item.Key == key).ExecuteDeleteAsync(cancellationToken);
+
+    public async Task RetireAvatarAsync(Guid userId, string key, CancellationToken cancellationToken)
+    {
+        if (!ImageStorageKey.IsAvatarForUser(key, userId)) throw new ArgumentException("Invalid retired avatar key.");
+        if (await database.PendingImageUploads.AnyAsync(item => item.Key == key, cancellationToken)) return;
+        database.PendingImageUploads.Add(new PendingImageUpload { Key = key, UserId = userId });
+        await database.SaveChangesAsync(cancellationToken);
+    }
 }

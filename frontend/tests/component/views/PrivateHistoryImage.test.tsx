@@ -39,6 +39,7 @@ function show(token: string | null) {
         profile: { name: 'User' } as never,
         logout: vi.fn(),
         updateProfile: vi.fn(),
+        updateAccount: vi.fn(),
         openAuthentication: vi.fn(),
       }}
     >

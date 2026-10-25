@@ -5,7 +5,7 @@ namespace AgriVision.Application.Common.Interfaces.Services;
 public record ImageUploadResult(string PublicId, string SecureUrl);
 public record ImageDownloadResult(byte[] Content, string ContentType);
 
-public record ImageStorageContext(Guid UserId, Guid PredictionId, Guid ImageId);
+public record ImageStorageContext(Guid UserId, Guid PredictionId, Guid ImageId, bool IsAvatar = false);
 
 public interface IImageStorage
 {

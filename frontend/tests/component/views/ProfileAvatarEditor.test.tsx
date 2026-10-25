@@ -44,6 +44,28 @@ function showEditor() {
 }
 
 describe('ProfileAvatarEditor', () => {
+  it('uploads only after confirmation and keeps the preview available after a server error', async () => {
+    const onChange = vi.fn();
+    const onUpload = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Không thể lưu ảnh.'))
+      .mockResolvedValueOnce(undefined);
+    render(
+      <ProfileAvatarEditor name="Tài khoản" avatarUrl="" onChange={onChange} onUpload={onUpload} />,
+    );
+    const file = new File(['portrait'], 'portrait.png', { type: 'image/png' });
+    await userEvent.upload(screen.getByLabelText('Chọn ảnh đại diện'), file);
+    await waitFor(() => expect(images).toHaveLength(1));
+    act(() => images[0].onload?.());
+    expect(onUpload).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: 'Lưu ảnh' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Không thể lưu ảnh.');
+    expect(onChange).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: 'Lưu ảnh' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(onUpload).toHaveBeenLastCalledWith(file, expect.any(AbortSignal));
+    expect(screen.getByRole('status')).toHaveTextContent('Đã lưu ảnh đại diện vào tài khoản.');
+  });
   it('leaves the current avatar unchanged when the file picker is cancelled', () => {
     const { onChange } = showEditor();
     fireEvent.change(screen.getByLabelText('Chọn ảnh đại diện'), { target: { files: [] } });

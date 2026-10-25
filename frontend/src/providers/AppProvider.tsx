@@ -13,9 +13,11 @@ import type {
 import { SUPPORTED_PLANTS, ALL_DISEASES } from '@/data/plantData';
 import {
   type AuthSession,
+  type AuthUser,
   clearAuthSession,
   restoreAuthSession,
   revokeSession,
+  updateStoredAuthUser,
 } from '@/services/authApi';
 import { getPlants, getDiseases } from '@/services/catalogApi';
 import {
@@ -313,6 +315,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setHistory((current) => [result, ...current.filter((item) => item.id !== result.id)]),
     [],
   );
+  const updateAccount = useCallback((user: AuthUser) => {
+    setAuthSession((current) => (current?.user.id === user.id ? { ...current, user } : current));
+    setUserProfile((current) => ({
+      ...current,
+      name: user.fullName,
+      email: user.email,
+      avatarUrl: user.avatarUrl ?? '',
+    }));
+    updateStoredAuthUser(user);
+  }, []);
   const openNotifications = useCallback(() => setIsNotificationsOpen(true), []);
   const catalog = useMemo(() => ({ plants, diseases }), [plants, diseases]);
   const auth = useMemo(
@@ -322,8 +334,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       openAuthentication,
       logout,
       updateProfile,
+      updateAccount,
     }),
-    [authSession, userProfile, openAuthentication, logout, updateProfile],
+    [authSession, userProfile, openAuthentication, logout, updateProfile, updateAccount],
   );
   const historyState = useMemo(
     () => ({

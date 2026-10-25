@@ -4,6 +4,7 @@ export interface AuthUser {
   email: string;
   role: string;
   createdAt: string;
+  avatarUrl?: string | null;
 }
 
 export interface AuthSession {
@@ -84,6 +85,21 @@ export function saveAuthSession(session: AuthSession, remember: boolean): void {
 export function clearAuthSession(): void {
   localStorage.removeItem(AUTH_STORAGE_KEY);
   sessionStorage.removeItem(AUTH_STORAGE_KEY);
+}
+
+export function updateStoredAuthUser(user: AuthUser): void {
+  for (const storage of [localStorage, sessionStorage]) {
+    try {
+      const serialized = storage.getItem(AUTH_STORAGE_KEY);
+      if (!serialized) continue;
+      const session = JSON.parse(serialized) as AuthSession;
+      if (session.user.id === user.id) {
+        storage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ ...session, user }));
+      }
+    } catch {
+      // A stale local cache must not turn a successful account update into a failed save.
+    }
+  }
 }
 
 export async function restoreAuthSession(): Promise<AuthSession | null> {

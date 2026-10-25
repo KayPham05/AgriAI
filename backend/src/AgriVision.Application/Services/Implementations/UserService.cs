@@ -36,7 +36,8 @@ public class UserService : IUserService
             user.IsActive,
             user.CreatedAt,
             user.UpdatedAt,
-            user.EmailVerifiedAt
+            user.EmailVerifiedAt,
+            user.AvatarUrl
         );
     }
 
@@ -71,7 +72,8 @@ public class UserService : IUserService
             user.IsActive,
             user.CreatedAt,
             user.UpdatedAt,
-            user.EmailVerifiedAt
+            user.EmailVerifiedAt,
+            user.AvatarUrl
         );
     }
 

@@ -18,6 +18,29 @@ namespace AgriVision.IntegrationTests.Persistence;
 
 public class UploadJournalIntegrationTests(AgriVisionFactory factory) : IClassFixture<AgriVisionFactory>
 {
+    [Fact]
+    public async Task AvatarCleanup_RetainsCurrentAvatar_AndDeletesOnlyRetiredObject()
+    {
+        using var client = factory.CreateClient();
+        var auth = await Register(client);
+        var storage = new RecordingStorage();
+        using var app = factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services => {
+            services.RemoveAll<IImageStorage>(); services.AddSingleton<IImageStorage>(storage);
+        }));
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var current = ImageStorageKey.Create(new(auth.User.Id, Guid.Empty, Guid.NewGuid(), IsAvatar: true), ".png");
+        var retired = ImageStorageKey.Create(new(auth.User.Id, Guid.Empty, Guid.NewGuid(), IsAvatar: true), ".png");
+        await db.Users.Where(user => user.Id == auth.User.Id).ExecuteUpdateAsync(update => update.SetProperty(user => user.AvatarUrl, ImageStorageKey.AvatarUrlPrefix + current));
+        db.PendingImageUploads.AddRange(
+            new PendingImageUpload { Key = current, UserId = auth.User.Id, CreatedAt = DateTime.UtcNow.AddHours(-2) },
+            new PendingImageUpload { Key = retired, UserId = auth.User.Id, CreatedAt = DateTime.UtcNow.AddHours(-2) });
+        await db.SaveChangesAsync();
+        (await ImageExpiryCleanup.RunAsync(app.Services)).Should().Be(0);
+        storage.Deleted.Should().Contain(retired).And.NotContain(current);
+        (await db.Users.Where(user => user.Id == auth.User.Id).Select(user => user.AvatarUrl).SingleAsync()).Should().Be(ImageStorageKey.AvatarUrlPrefix + current);
+        (await db.PendingImageUploads.AnyAsync(item => item.UserId == auth.User.Id)).Should().BeFalse();
+    }
 
 
 

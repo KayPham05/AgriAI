@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import NextImage from 'next/image';
+import { PrivateImage } from '@/components/common/PrivateImage';
 import { Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,13 +19,23 @@ interface ProfileAvatarEditorProps {
   name: string;
   avatarUrl: string;
   onChange: (avatarUrl: string) => void;
+  onUpload?: (file: File, signal: AbortSignal) => Promise<void>;
 }
 
-export function ProfileAvatarEditor({ name, avatarUrl, onChange }: ProfileAvatarEditorProps) {
+export function ProfileAvatarEditor({
+  name,
+  avatarUrl,
+  onChange,
+  onUpload,
+}: ProfileAvatarEditorProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLButtonElement>(null);
   const cancelReadRef = useRef<(() => void) | null>(null);
   const onChangeRef = useRef(onChange);
+  const pendingFile = useRef<File | null>(null);
+  const uploadRequest = useRef<AbortController | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [uploadFailed, setUploadFailed] = useState(false);
   const [isReading, setIsReading] = useState(false);
   const [error, setError] = useState('');
   const [hasChanged, setHasChanged] = useState(false);
@@ -42,6 +53,41 @@ export function ProfileAvatarEditor({ name, avatarUrl, onChange }: ProfileAvatar
     onChangeRef.current = onChange;
   }, [onChange]);
   useEffect(() => () => cancelReadRef.current?.(), []);
+  useEffect(() => () => uploadRequest.current?.abort(), []);
+
+  const saveAvatar = async () => {
+    if (uploadRequest.current || !pendingFile.current) return;
+    if (!onUpload) {
+      onChangeRef.current(pendingAvatar);
+      setPendingAvatar('');
+      setHasChanged(true);
+      return;
+    }
+    const controller = new AbortController();
+    uploadRequest.current = controller;
+    setIsSaving(true);
+    setError('');
+    setUploadFailed(false);
+    try {
+      await onUpload(pendingFile.current, controller.signal);
+      if (controller.signal.aborted) return;
+      setPendingAvatar('');
+      pendingFile.current = null;
+      setHasChanged(true);
+    } catch (cause) {
+      if (!controller.signal.aborted) {
+        setUploadFailed(true);
+        setError(
+          cause instanceof Error ? cause.message : 'Không thể tải ảnh lên. Vui lòng thử lại.',
+        );
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        uploadRequest.current = null;
+        setIsSaving(false);
+      }
+    }
+  };
 
   const selectAvatar = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0];
@@ -49,6 +95,7 @@ export function ProfileAvatarEditor({ name, avatarUrl, onChange }: ProfileAvatar
     if (!file) return;
     cancelReadRef.current?.();
     setHasChanged(false);
+    setUploadFailed(false);
     const validationError = getImageFileError(file);
     setError(validationError || '');
     if (validationError) return;
@@ -83,6 +130,7 @@ export function ProfileAvatarEditor({ name, avatarUrl, onChange }: ProfileAvatar
         }
         cleanup();
         setIsReading(false);
+        pendingFile.current = file;
         setPendingAvatar(result);
       };
       image.src = result;
@@ -94,7 +142,7 @@ export function ProfileAvatarEditor({ name, avatarUrl, onChange }: ProfileAvatar
     <div className="flex w-24 shrink-0 flex-col items-center gap-3 lg:w-full">
       <div className="relative size-16 lg:size-24">
         {avatarUrl ? (
-          <NextImage
+          <PrivateImage
             unoptimized
             src={avatarUrl}
             alt={`Ảnh đại diện của ${name}`}
@@ -116,7 +164,7 @@ export function ProfileAvatarEditor({ name, avatarUrl, onChange }: ProfileAvatar
           variant="ghost"
           size="icon"
           className="absolute -right-2 -bottom-2 rounded-full"
-          disabled={isReading}
+          disabled={isReading || isSaving}
           aria-label={isReading ? 'Đang đọc ảnh' : 'Đổi ảnh đại diện'}
           title={isReading ? 'Đang đọc ảnh' : 'Đổi ảnh đại diện'}
           onClick={() => inputRef.current?.click()}
@@ -134,7 +182,7 @@ export function ProfileAvatarEditor({ name, avatarUrl, onChange }: ProfileAvatar
         aria-describedby="profile-avatar-help"
         className="sr-only"
         tabIndex={-1}
-        disabled={isReading}
+        disabled={isReading || isSaving}
         onChange={selectAvatar}
       />
       {error && !pendingAvatar && (
@@ -144,12 +192,13 @@ export function ProfileAvatarEditor({ name, avatarUrl, onChange }: ProfileAvatar
       )}
       {hasChanged && (
         <p role="status" className="sr-only">
-          Đã đổi ảnh đại diện trong phiên này.
+          {onUpload ? 'Đã lưu ảnh đại diện vào tài khoản.' : 'Đã đổi ảnh đại diện trong phiên này.'}
         </p>
       )}
       <Dialog
         open={Boolean(pendingAvatar)}
         onOpenChange={(open) => {
+          if (isSaving) return;
           if (!open) {
             cancelReadRef.current?.();
             setPendingAvatar('');
@@ -167,7 +216,9 @@ export function ProfileAvatarEditor({ name, avatarUrl, onChange }: ProfileAvatar
           <DialogHeader>
             <DialogTitle>Lưu ảnh đại diện mới?</DialogTitle>
             <DialogDescription>
-              Xem trước ảnh và xác nhận trước khi thay đổi. Ảnh chỉ được giữ trong phiên hiện tại.
+              {onUpload
+                ? 'Xem trước và xác nhận để lưu ảnh đại diện vào tài khoản.'
+                : 'Xem trước ảnh và xác nhận trước khi thay đổi. Ảnh chỉ được giữ trong phiên hiện tại.'}
             </DialogDescription>
           </DialogHeader>
           {pendingAvatar && (
@@ -180,7 +231,11 @@ export function ProfileAvatarEditor({ name, avatarUrl, onChange }: ProfileAvatar
               className="mx-auto my-4 size-40 rounded-full bg-surface-muted object-cover"
             />
           )}
-          <Button variant="outline" disabled={isReading} onClick={() => inputRef.current?.click()}>
+          <Button
+            variant="outline"
+            disabled={isReading || isSaving}
+            onClick={() => inputRef.current?.click()}
+          >
             <Camera data-icon="inline-start" />
             {isReading ? 'Đang đọc ảnh' : 'Chọn ảnh khác'}
           </Button>
@@ -192,6 +247,7 @@ export function ProfileAvatarEditor({ name, avatarUrl, onChange }: ProfileAvatar
           <DialogFooter>
             <Button
               variant="outline"
+              disabled={isSaving}
               onClick={() => {
                 cancelReadRef.current?.();
                 setPendingAvatar('');
@@ -202,14 +258,10 @@ export function ProfileAvatarEditor({ name, avatarUrl, onChange }: ProfileAvatar
               Không lưu
             </Button>
             <Button
-              disabled={isReading || Boolean(error)}
-              onClick={() => {
-                onChangeRef.current(pendingAvatar);
-                setPendingAvatar('');
-                setHasChanged(true);
-              }}
+              disabled={isReading || isSaving || (Boolean(error) && !uploadFailed)}
+              onClick={() => void saveAvatar()}
             >
-              Lưu ảnh
+              {isSaving ? 'Đang tải ảnh…' : 'Lưu ảnh'}
             </Button>
           </DialogFooter>
         </DialogContent>

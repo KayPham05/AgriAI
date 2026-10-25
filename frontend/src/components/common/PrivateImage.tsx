@@ -6,10 +6,13 @@ import { AuthContext } from '@/providers/AppContexts';
 
 const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, '') ?? '';
 const protectedPath = /^\/api\/predictions\/[a-f0-9-]{36}\/images\/[a-f0-9-]{36}$/i;
+const avatarPath =
+  /^\/api\/users\/avatar\/users\/[a-f0-9-]{36}\/avatars\/[a-f0-9-]{36}\.(png|jpe?g)$/i;
 
 export function PrivateImage({ src, alt, ...props }: ImageProps) {
   const token = use(AuthContext)?.session?.token;
-  const path = typeof src === 'string' && protectedPath.test(src) ? src : null;
+  const path =
+    typeof src === 'string' && (protectedPath.test(src) || avatarPath.test(src)) ? src : null;
   const [loaded, setLoaded] = useState<{ path: string; token: string; url: string } | null>(null);
 
   useEffect(() => {
