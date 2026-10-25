@@ -20,7 +20,7 @@ public class PlantsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<PlantDto>>> GetAll([FromQuery] bool includeInactive = false, CancellationToken cancellationToken = default)
     {
-        var plants = await _plantService.GetAllAsync(includeInactive, cancellationToken);
+        var plants = await _plantService.GetAllAsync(includeInactive && User.IsInRole(UserRole.Admin), cancellationToken);
         return Ok(plants);
     }
 
@@ -28,7 +28,7 @@ public class PlantsController : ControllerBase
     public async Task<ActionResult<PlantDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
         var plant = await _plantService.GetByIdAsync(id, cancellationToken);
-        if (plant == null)
+        if (plant == null || (!plant.IsActive && !User.IsInRole(UserRole.Admin)))
         {
             return NotFound();
         }

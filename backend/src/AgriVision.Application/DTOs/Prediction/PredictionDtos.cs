@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using AgriVision.Application.DTOs.PlantDisease;
+using AgriVision.Application.DTOs.Medicine;
 
 namespace AgriVision.Application.DTOs.Prediction;
 
@@ -31,6 +32,7 @@ public record PredictionResultDto(
     public string? Warning { get; init; }
     public bool InformationPending { get; init; }
     public string? Medication { get; init; }
+    public IReadOnlyList<RecommendedMedicineDto> RecommendedMedicines { get; init; } = [];
     public Guid? AgriculturalProfileId { get; init; }
 }
 

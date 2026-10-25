@@ -21,6 +21,7 @@ public class PredictionService : IPredictionService
     private readonly IImageStorage _imageStorage;
     private readonly IPlantDiseasePredictor _diseasePredictor;
     private readonly IAgriculturalProfileRepository _profileRepository;
+    private readonly IMedicineService _medicineService;
     private readonly ILogger<PredictionService> _logger;
 
     private static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png" };
@@ -32,6 +33,7 @@ public class PredictionService : IPredictionService
         IImageStorage imageStorage,
         IPlantDiseasePredictor diseasePredictor,
         IAgriculturalProfileRepository profileRepository,
+        IMedicineService medicineService,
         ILogger<PredictionService>? logger = null)
     {
         _predictionRepository = predictionRepository;
@@ -39,6 +41,7 @@ public class PredictionService : IPredictionService
         _imageStorage = imageStorage;
         _diseasePredictor = diseasePredictor;
         _profileRepository = profileRepository;
+        _medicineService = medicineService;
         _logger = logger ?? NullLogger<PredictionService>.Instance;
     }
 
@@ -115,6 +118,9 @@ public class PredictionService : IPredictionService
             });
         }
 
+        // Resolve recommendations before upload so a catalog failure cannot leave an orphan image.
+        var medicines = await _medicineService.RecommendAsync(primaryPlantDisease.Id, aiResult.Confidence, cancellationToken);
+
         if (userId.HasValue)
         {
             await using var storageStream = new MemoryStream(imageBytes, writable: false);
@@ -130,7 +136,14 @@ public class PredictionService : IPredictionService
             });
         }
 
-        var result = MapToResultDto(prediction, primaryPlantDisease) with { HasHistoricalSnapshot = userId.HasValue };
+        var result = MapToResultDto(prediction, primaryPlantDisease) with
+        {
+            HasHistoricalSnapshot = userId.HasValue,
+            RecommendedMedicines = medicines,
+            // Preserve the string contract while sourcing new advice only from verified catalog uses.
+            Medication = medicines.Count == 0 ? null : string.Join("\n\n", medicines.Select(m =>
+                $"{m.ProductName} ({m.ActiveIngredient})\n{m.LabelDirections}\n{m.SafetyWarning}\nNguồn: {m.SourceUrl}\nNhãn: {m.LabelReference}"))
+        };
         prediction.ResultSnapshotJson = JsonSerializer.Serialize(result, SnapshotJsonOptions);
         if (userId.HasValue)
         {
@@ -238,6 +251,7 @@ public class PredictionService : IPredictionService
                 approved ? disease.Symptoms ?? pending : pending,
                 approved ? disease.Treatment ?? pending : pending,
                 approved ? disease.Prevention ?? pending : pending, disease.IsActive, disease.CreatedAt)
+                { IsContentApproved = disease.IsContentApproved, ConditionType = disease.ConditionType }
             : new DiseaseDto(Guid.Empty, "Unknown", "Chưa xác định", null, null, null, null, true, DateTime.UtcNow);
 
         var primaryPlantDiseaseDto = new PlantDiseaseDto(
@@ -260,7 +274,8 @@ public class PredictionService : IPredictionService
                 pd.Disease.IsContentApproved ? pd.Disease.Symptoms ?? pending : pending,
                 pd.Disease.IsContentApproved ? pd.Disease.Treatment ?? pending : pending,
                 pd.Disease.IsContentApproved ? pd.Disease.Prevention ?? pending : pending,
-                pd.Disease.IsActive, pd.Disease.CreatedAt) : diseaseDto;
+                pd.Disease.IsActive, pd.Disease.CreatedAt)
+                { IsContentApproved = pd.Disease.IsContentApproved, ConditionType = pd.Disease.ConditionType } : diseaseDto;
 
             var pdDto = new PlantDiseaseDto(pd.Id, pd.PlantId, pd.DiseaseId, pd.ClassName, pd.ClassIndex, pd.IsActive, pdPlant, pdDisease);
             return new PredictionDetailDto(pd.ClassIndex, pd.ClassName, d.Probability, pdDto);
