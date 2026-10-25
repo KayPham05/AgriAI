@@ -35,6 +35,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         <footer className="mt-10 border-t border-border bg-surface">
           <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-6 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-12">
             <p className="text-sm font-semibold text-primary">AgriAI · Vì cây trồng Việt</p>
+            <Link
+              href="/knowledge"
+              className="inline-flex min-h-11 items-center font-semibold text-primary underline"
+            >
+              Tra cứu bài viết và thuốc
+            </Link>
             <Button asChild variant="link" className="self-start px-0">
               <Link href="/about">
                 Về dự án <ArrowUpRight aria-hidden="true" />

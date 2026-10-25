@@ -4,6 +4,7 @@ import { useRef } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 import Image from 'next/image';
+import Link from 'next/link';
 import { ArrowRight, Camera, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -127,6 +128,9 @@ export function IntroPage({ onLogin, onRegister }: IntroPageProps) {
             </span>
           </a>
           <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+            <Button asChild variant="ghost" className="px-2 sm:px-5">
+              <Link href="/knowledge">Tra cứu</Link>
+            </Button>
             <Button type="button" variant="ghost" className="px-2 sm:px-5" onClick={onLogin}>
               Đăng nhập
             </Button>

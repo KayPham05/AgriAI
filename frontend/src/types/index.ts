@@ -5,6 +5,8 @@ export type NavigationTab =
   | 'plant-detail'
   | 'diseases'
   | 'disease-detail'
+  | 'knowledge'
+  | 'medicines'
   | 'history'
   | 'about'
   | 'profile';

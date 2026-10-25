@@ -146,6 +146,36 @@ describe('URL-driven app navigation', () => {
     expect(screen.getByRole('button', { name: 'Đăng nhập' })).toBeVisible();
   });
 
+  it('keeps guest catalog URLs accessible without requesting private history', async () => {
+    vi.mocked(restoreAuthSession).mockResolvedValue(null);
+    window.history.replaceState({}, '', '/plants');
+    render(
+      <App>
+        <p>Danh mục công khai</p>
+      </App>,
+    );
+    expect(await screen.findByText('Danh mục công khai')).toBeVisible();
+    expect(window.location.pathname).toBe('/plants');
+    expect(getPredictionHistory).not.toHaveBeenCalled();
+  });
+
+  it('defers private startup while a signed-in user reads public content', async () => {
+    window.history.replaceState({}, '', '/plants');
+    render(
+      <App>
+        <p>Tra cứu độc lập</p>
+      </App>,
+    );
+    await act(async () => {});
+    expect(screen.getByText('Tra cứu độc lập')).toBeVisible();
+    expect(getPredictionHistory).not.toHaveBeenCalled();
+    act(() => {
+      window.history.replaceState({}, '', '/history');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await waitFor(() => expect(getPredictionHistory).toHaveBeenCalledWith('test'));
+  });
+
   it('opens home at its canonical URL after restoring a session on the introduction', async () => {
     window.history.replaceState({}, '', '/');
     render(<App />);
