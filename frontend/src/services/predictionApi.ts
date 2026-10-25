@@ -83,6 +83,7 @@ export interface PredictionResponse {
 
 interface PredictionOptions {
   token?: string;
+  agriculturalProfileId?: string;
   signal?: AbortSignal;
   onUploadProgress?: (percentage: number) => void;
   onUploadComplete?: () => void;
@@ -282,6 +283,9 @@ export function createPrediction(
     options.signal?.addEventListener('abort', abortRequest, { once: true });
     const form = new FormData();
     form.append('file', image, image.name);
+    if (options.agriculturalProfileId) {
+      form.append('agriculturalProfileId', options.agriculturalProfileId);
+    }
     xhr.send(form);
   });
 }
