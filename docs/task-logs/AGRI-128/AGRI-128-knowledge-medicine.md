@@ -3,7 +3,7 @@
 - Cập nhật: 2026-10-25; A/B và frontend C đã có code/kiểm chứng local; DoD Jira còn chờ UAT/CI/review. Các mốc bên dưới được giữ riêng theo ngày.
 - Owner: chưa xác nhận; không tự gán.
 - Nhánh: `AGRI-128-knowledge-medicine`, base `a43797d`.
-- PR: đang chuẩn bị theo yêu cầu 2026-10-25; có xung đột với base mới, xem mốc cuối.
+- PR: [#46](https://github.com/KayPham05/AgriAI/pull/46), đã mở; có xung đột với base mới, chưa merge.
 
 ## Phạm vi đã triển khai
 
@@ -134,3 +134,13 @@ Kế hoạch: [A/B](../../plans/AGRI-128-knowledge-medicine-plan.md).
 - Rà staged paths và diff, `git diff --cached --check` đạt cho hai commit code;
   chỉ có credential giả trong test. Không đưa cache/runtime secrets vào Git.
 - DoD vẫn chờ tích hợp, CI và domain review. URL PR được bổ sung sau khi tạo.
+
+## 2026-10-25 — PR đã tạo
+
+- PR [#46 — AGRI-122 Implement knowledge and medicine management A/B/C](https://github.com/KayPham05/AgriAI/pull/46).
+- Head `AGRI-128-knowledge-medicine`, base `AGRI-128-backend-improvement`.
+- Đã push code và tài liệu; đã yêu cầu review `trunthong09012005` và `kats205`.
+- Không chạy lại tests theo yêu cầu người dùng; PR ghi riêng kết quả lịch sử và xác
+  nhận test tay của người dùng. Chưa xác minh GitHub Actions; chưa merge.
+- Vẫn còn các xung đột với base mới đã ghi ở mốc trước; cần tích hợp và kiểm chứng
+  trước khi merge. Không tự sửa code hoặc giảm điều kiện CI trong lượt tạo PR.

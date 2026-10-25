@@ -430,3 +430,13 @@ localhost:3000; quan sát `/plants` tự cập nhật URL và kết quả sau nh
 - Rà staged paths và diff, `git diff --cached --check` đạt cho hai commit code;
   chỉ có credential giả trong test. Không đưa cache/runtime secrets vào Git.
 - DoD vẫn chờ tích hợp, CI và domain review. URL PR được bổ sung sau khi tạo.
+
+## 2026-10-25 — PR đã tạo
+
+- PR [#46 — AGRI-122 Implement knowledge and medicine management A/B/C](https://github.com/KayPham05/AgriAI/pull/46).
+- Head `AGRI-128-knowledge-medicine`, base `AGRI-128-backend-improvement`.
+- Đã push code và tài liệu; đã yêu cầu review `trunthong09012005` và `kats205`.
+- Không chạy lại tests theo yêu cầu người dùng; PR ghi riêng kết quả lịch sử và xác
+  nhận test tay của người dùng. Chưa xác minh GitHub Actions; chưa merge.
+- Vẫn còn các xung đột với base mới đã ghi ở mốc trước; cần tích hợp và kiểm chứng
+  trước khi merge. Không tự sửa code hoặc giảm điều kiện CI trong lượt tạo PR.
