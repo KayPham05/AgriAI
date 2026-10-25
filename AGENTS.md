@@ -13,11 +13,13 @@ Repository-wide guidance. Explicit user instructions take precedence.
 
 - Inspect the current branch, Git status and relevant source before editing. Preserve unrelated work and make the smallest complete change; reuse existing code and dependencies.
 - Read relevant [project rules](.agents/rules/project_rules.md), [directory rules](.agents/rules/directory_structure.md) and applicable skills. Use `coding-standards` for code changes and `git-commit` for requested commits.
+- Follow the root [testing standard](TESTING.md) when planning, writing, running or reviewing tests. Keep behavior coverage, fixture isolation, meaningful assertions and actual execution evidence aligned with that standard.
 - Use `rg` for searches. Batch independent reads; keep edits and dependent operations sequential. Ask only for missing decisions that affect scope; continue work already authorized.
 - Use the [command guides](.agents/commands/README.md). Backend integration requires Docker. Run relevant checks and report passed, unrun or blocked results; local results do not establish GitHub Actions success.
-- Branch coverage target: 80% per component; current CI floors: backend 60%, frontend 60%, Python 40%. See the [current gate report](docs/reports/AGRI-127/README.md) and [historical coverage report](docs/reports/AGRI-75/ci_branch_coverage.md).
+- Branch coverage target: 80% per component; current CI floors: backend 70%, frontend 65%, Python 40%. See the [current gate report](docs/reports/AGRI-127/README.md) and [historical coverage report](docs/reports/AGRI-75/ci_branch_coverage.md).
 - Keep secrets, datasets, checkpoints, uploads, backups and generated artifacts out of Git. Keep User Story drafts/interview notes local as specified in `.gitignore`; keep migrations, tests and task logs tracked.
-- Put evidence in `docs/reports/AGRI-XXX/` and completion logs in `docs/task-logs/`. Do not invent Jira keys, owners, reviewers or results.
+- For every request or task associated with a confirmed Jira key, create or reuse a directory named exactly after that key in the relevant documentation location: `docs/reports/AGRI-XXX/` for technical evidence and `docs/task-logs/AGRI-XXX/` for task logs. Keep related documents together; do not invent Jira keys, owners, reviewers or results.
+- Keep every task-log `.md` short and focused on the main changes, actual verification, and remaining work. Link detailed evidence instead of copying command output or lengthy narratives. Never create `docs/task-logs/<JIRA-KEY>/README.md` (for example, `docs/task-logs/AGRI-129/README.md`), or any other README file inside task-log directories. These task-log rules take precedence over older path/template instructions in project and directory rules; the technical-report README requirement remains unchanged.
 
 ## Git and delivery
 

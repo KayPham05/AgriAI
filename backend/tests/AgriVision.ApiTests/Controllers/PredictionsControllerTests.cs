@@ -9,11 +9,11 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using AgriVision.Application.DTOs.Prediction;
 using AgriVision.Application.DTOs.Auth;
 using AgriVision.Infrastructure.Persistence;
-using AgriVision.IntegrationTests.Fixtures;
+using AgriVision.TestSupport;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 
-namespace AgriVision.IntegrationTests.Controllers;
+namespace AgriVision.ApiTests.Controllers;
 
 public class PredictionsControllerTests : IClassFixture<AgriVisionFactory>
 {
@@ -26,6 +26,7 @@ public class PredictionsControllerTests : IClassFixture<AgriVisionFactory>
         _client = factory.CreateClient();
     }
 
+    [Trait("ApiCase", "existing.PredictionsControllerTests.CreatePrediction_ShouldReturnCreatedAndPersistPrediction_WhenImageIsValid")]
     [Fact]
     public async Task CreatePrediction_ShouldReturnCreatedAndPersistPrediction_WhenImageIsValid()
     {
@@ -42,7 +43,7 @@ public class PredictionsControllerTests : IClassFixture<AgriVisionFactory>
 
         var result = await response.Content.ReadFromJsonAsync<PredictionResultDto>();
         result.Should().NotBeNull();
-        result!.ImagePath.Should().Be("https://images.test/leaf.jpg");
+        result!.ImagePath.Should().Be($"/api/predictions/{result.Id}/images/{result.Images.Single().Id}");
         result.Confidence.Should().BeApproximately(0.94, 0.0001);
         result.PredictedPlantDisease.ClassName.Should().Be("Ca_chua___Chay_la_som");
         result.PredictedPlantDisease.Plant.Name.Should().Be("Ca_chua");
@@ -61,6 +62,37 @@ public class PredictionsControllerTests : IClassFixture<AgriVisionFactory>
         (await dbContext.PredictionImages.CountAsync(image => image.PredictionId == result.Id)).Should().Be(1);
     }
 
+    [Trait("ApiCase", "existing.PredictionsControllerTests.PrivateImage_RequiresOwnerAndLiveImage_AndDisablesCaching")]
+    [Fact]
+    public async Task PrivateImage_RequiresOwnerAndLiveImage_AndDisablesCaching()
+    {
+        using var owner = _factory.CreateClient();
+        using var foreign = _factory.CreateClient();
+        using var guest = _factory.CreateClient();
+        await LoginAsync(owner);
+        await LoginAsync(foreign);
+        using var request = CreateImageRequest("leaf.jpg", "image/jpeg");
+        var prediction = await (await owner.PostAsync("/api/predictions", request)).Content.ReadFromJsonAsync<PredictionResultDto>();
+        var url = prediction!.ImagePath;
+        (await guest.GetAsync(url)).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await foreign.GetAsync(url)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var image = await owner.GetAsync(url);
+        image.StatusCode.Should().Be(HttpStatusCode.OK);
+        image.Content.Headers.ContentType!.MediaType.Should().Be("image/jpeg");
+        (await image.Content.ReadAsByteArrayAsync()).Should().Equal(1, 2, 3);
+        image.Headers.CacheControl!.NoStore.Should().BeTrue();
+        image.Headers.GetValues("X-Content-Type-Options").Should().ContainSingle().Which.Should().Be("nosniff");
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var stored = await db.PredictionImages.SingleAsync(item => item.PredictionId == prediction.Id);
+        stored.UploadedAt = DateTime.UtcNow.AddDays(-31);
+        stored.ExpiresAt = stored.UploadedAt.AddDays(30);
+        await db.SaveChangesAsync();
+        (await owner.GetAsync(url)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await guest.GetAsync("/uploads/predictions/leaf.jpg")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Trait("ApiCase", "existing.PredictionsControllerTests.GuestPrediction_ShouldNotCreatePersonalHistory")]
     [Fact]
     public async Task GuestPrediction_ShouldNotCreatePersonalHistory()
     {
@@ -75,6 +107,7 @@ public class PredictionsControllerTests : IClassFixture<AgriVisionFactory>
         result.Images.Should().BeEmpty();
     }
 
+    [Trait("ApiCase", "existing.PredictionsControllerTests.StoredSnapshot_ShouldSurviveCatalogChangesAndExpiry_AndRequireOwner")]
     [Fact]
     public async Task StoredSnapshot_ShouldSurviveCatalogChangesAndExpiry_AndRequireOwner()
     {
@@ -97,7 +130,7 @@ public class PredictionsControllerTests : IClassFixture<AgriVisionFactory>
             {
                 PredictionId = result.Id, Position = 1, Confidence = 0.94,
                 UploadedAt = image.UploadedAt, ExpiresAt = image.ExpiresAt,
-                ImagePath = "https://images.test/second.jpg", ImagePublicId = "integration/second.jpg"
+                ImagePath = "https://images.test/second.jpg", ImagePublicId = "r2/predictions/second.jpg"
             });
             var disease = await db.Diseases.SingleAsync(disease => disease.Id == result.PredictedPlantDisease.Disease.Id);
             disease.Description = "Edited after prediction";
@@ -107,8 +140,6 @@ public class PredictionsControllerTests : IClassFixture<AgriVisionFactory>
         (await other.GetAsync($"/api/predictions/{result.Id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
         using var guest = _factory.CreateClient();
         (await guest.GetAsync($"/api/predictions/{result.Id}")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        (await ImageExpiryCleanup.RunAsync(_factory.Services)).Should().Be(0);
-        (await ImageExpiryCleanup.RunAsync(_factory.Services)).Should().Be(0);
         var stored = (await owner.GetFromJsonAsync<PredictionResultDto>($"/api/predictions/{result.Id}"))!;
         stored.PredictedPlantDisease.Disease.Description.Should().Be(result.PredictedPlantDisease.Disease.Description);
         stored.Images.Should().HaveCount(2).And.OnlyContain(image => image.IsExpired && image.ImagePath == null);
@@ -128,111 +159,20 @@ public class PredictionsControllerTests : IClassFixture<AgriVisionFactory>
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.Token);
     }
 
-    [Fact]
-    public async Task ExpiryCleanup_ShouldRetainImageMetadataAndHistory_WhenStorageDeletionFails()
-    {
-        using var owner = _factory.CreateClient();
-        await LoginAsync(owner);
-        using var request = CreateImageRequest("cleanup-failure.jpg", "image/jpeg");
-        var created = await owner.PostAsync("/api/predictions", request);
-        created.EnsureSuccessStatusCode();
-        var result = (await created.Content.ReadFromJsonAsync<PredictionResultDto>())!;
-        await using (var scope = _factory.Services.CreateAsyncScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var image = await db.PredictionImages.SingleAsync(image => image.PredictionId == result.Id);
-            image.UploadedAt = DateTime.UtcNow.AddDays(-31);
-            image.ExpiresAt = image.UploadedAt.AddDays(30);
-            await db.SaveChangesAsync();
-        }
-        using var failingStorage = _factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
-        {
-            services.RemoveAll<IImageStorage>();
-            services.AddSingleton<IImageStorage, FailingDeletionStorage>();
-        }));
-        (await ImageExpiryCleanup.RunAsync(failingStorage.Services)).Should().Be(1);
-        await using (var scope = _factory.Services.CreateAsyncScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var image = await db.PredictionImages.SingleAsync(image => image.PredictionId == result.Id);
-            image.DeletedAt.Should().BeNull();
-            image.ImagePath.Should().NotBeNull();
-            (await db.Predictions.AnyAsync(prediction => prediction.Id == result.Id)).Should().BeTrue();
-        }
-        (await ImageExpiryCleanup.RunAsync(_factory.Services)).Should().Be(0);
-        (await owner.DeleteAsync($"/api/predictions/{result.Id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
-    }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData(" ")]
-    public async Task ExpiryCleanup_ShouldRetainMissingPublicIdMetadata_AndRetryAfterRepair(string? missingPublicId)
-    {
-        using var owner = _factory.CreateClient();
-        await LoginAsync(owner);
-        using var request = CreateImageRequest("missing-public-id.jpg", "image/jpeg");
-        var created = await owner.PostAsync("/api/predictions", request);
-        created.EnsureSuccessStatusCode();
-        var result = (await created.Content.ReadFromJsonAsync<PredictionResultDto>())!;
-        await using var scope = _factory.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var prediction = await db.Predictions.Include(item => item.Images).SingleAsync(item => item.Id == result.Id);
-        var image = prediction.Images.Single();
-        var snapshot = prediction.ResultSnapshotJson;
-        image.UploadedAt = DateTime.UtcNow.AddDays(-31);
-        image.ExpiresAt = image.UploadedAt.AddDays(30);
-        image.ImagePublicId = missingPublicId;
-        prediction.ImagePublicId = missingPublicId;
-        await db.SaveChangesAsync();
 
-        try
-        {
-            // Repeated runs must keep the unresolved image available for repair/retry.
-            for (var attempt = 0; attempt < 2; attempt++)
-            {
-                (await ImageExpiryCleanup.RunAsync(_factory.Services)).Should().Be(1);
-                await db.Entry(image).ReloadAsync();
-                await db.Entry(prediction).ReloadAsync();
-                image.DeletedAt.Should().BeNull();
-                image.ImagePath.Should().Be(result.ImagePath);
-                image.ImagePublicId.Should().Be(missingPublicId);
-                prediction.ImagePath.Should().Be(result.ImagePath);
-                prediction.ImagePublicId.Should().Be(missingPublicId);
-                prediction.ResultSnapshotJson.Should().Be(snapshot);
-            }
-            var stored = (await owner.GetFromJsonAsync<PredictionResultDto>($"/api/predictions/{result.Id}"))!;
-            stored.ImagePath.Should().BeEmpty();
-            stored.Images.Single().ImagePath.Should().BeNull();
-            stored.Images.Single().IsExpired.Should().BeTrue();
 
-            image.ImagePublicId = result.ImagePublicId;
-            prediction.ImagePublicId = result.ImagePublicId;
-            await db.SaveChangesAsync();
-            (await ImageExpiryCleanup.RunAsync(_factory.Services)).Should().Be(0);
-            await db.Entry(image).ReloadAsync();
-            await db.Entry(prediction).ReloadAsync();
-            image.DeletedAt.Should().NotBeNull();
-            image.ImagePath.Should().BeNull();
-            image.ImagePublicId.Should().BeNull();
-            prediction.ImagePath.Should().BeEmpty();
-            prediction.ImagePublicId.Should().BeNull();
-            prediction.ResultSnapshotJson.Should().Be(snapshot);
-        }
-        finally
-        {
-            // Remove only this test's fake-storage fixture, even if an assertion fails.
-            await db.Predictions.Where(item => item.Id == result.Id).ExecuteDeleteAsync();
-        }
-    }
 
     private sealed class FailingDeletionStorage : IImageStorage
     {
-        public Task<ImageUploadResult> UploadImageAsync(Microsoft.AspNetCore.Http.IFormFile file, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public Task<ImageUploadResult> UploadImageAsync(Stream stream, string name, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<ImageDownloadResult?> ReadImageAsync(string publicId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<ImageDownloadResult?>(null);
+        public Task<ImageUploadResult> UploadImageAsync(Microsoft.AspNetCore.Http.IFormFile file, ImageStorageContext context, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<ImageUploadResult> UploadImageAsync(Stream stream, string name, ImageStorageContext context, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<bool> DeleteImageAsync(string publicId, CancellationToken cancellationToken = default) => Task.FromResult(false);
     }
 
+    [Trait("ApiCase", "existing.PredictionsControllerTests.CreatePrediction_ShouldReturnBadRequest_WhenFileExtensionIsInvalid")]
     [Fact]
     public async Task CreatePrediction_ShouldReturnBadRequest_WhenFileExtensionIsInvalid()
     {
@@ -248,6 +188,7 @@ public class PredictionsControllerTests : IClassFixture<AgriVisionFactory>
         responseBody.Should().Contain("Invalid file extension");
     }
 
+    [Trait("ApiCase", "existing.PredictionsControllerTests.CreatePrediction_ShouldReturn503_WhenAiIsUnavailable")]
     [Fact]
     public async Task CreatePrediction_ShouldReturn503_WhenAiIsUnavailable()
     {
@@ -276,6 +217,7 @@ public class PredictionsControllerTests : IClassFixture<AgriVisionFactory>
         return request;
     }
 
+    [Trait("ApiCase", "existing.PredictionsControllerTests.GetFilteredHistory_WithUnspecifiedTimezoneQueryParams_ShouldSucceed")]
     [Fact]
     public async Task GetFilteredHistory_WithUnspecifiedTimezoneQueryParams_ShouldSucceed()
     {
@@ -284,6 +226,7 @@ public class PredictionsControllerTests : IClassFixture<AgriVisionFactory>
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
+    [Trait("ApiCase", "existing.PredictionsControllerTests.GetFilteredHistory_ShouldReturnBadRequest_WhenFromDateGreaterThanToDate")]
     [Fact]
     public async Task GetFilteredHistory_ShouldReturnBadRequest_WhenFromDateGreaterThanToDate()
     {

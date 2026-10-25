@@ -25,7 +25,7 @@ builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // 2. Configure Controllers & CORS
-builder.Services.AddControllers();
+builder.Services.AddControllers(options => options.Filters.Add<RequestValidationFilter>());
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -109,6 +109,7 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
+builder.Services.AddStorageTrafficLimits(builder.Configuration);
 
 // 4. Configure Swagger / OpenAPI with JWT Support
 builder.Services.AddEndpointsApiExplorer();
@@ -179,12 +180,14 @@ if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
 
 app.UseCors("AllowAll");
 
+app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
+app.UseRequestTimeouts();
 
 app.MapGet("/", () => Results.Redirect("/swagger"));
 

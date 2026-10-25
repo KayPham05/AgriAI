@@ -87,6 +87,16 @@ public class UserRepository : IUserRepository
         }
     }
 
+    public async Task<string?> GetAvatarUrlAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        await _context.Users.Where(user => user.Id == userId).Select(user => user.AvatarUrl).FirstOrDefaultAsync(cancellationToken);
+
+    public async Task UpdateAvatarAsync(Guid userId, string avatarUrl, DateTime updatedAt, CancellationToken cancellationToken = default)
+    {
+        var rows = await _context.Users.Where(user => user.Id == userId).ExecuteUpdateAsync(update => update
+            .SetProperty(user => user.AvatarUrl, avatarUrl).SetProperty(user => user.UpdatedAt, updatedAt), cancellationToken);
+        if (rows == 0) throw new KeyNotFoundException("User not found.");
+    }
+
     public async Task<(IEnumerable<User> Users, int TotalCount)> GetPagedUsersAsync(
         string? search = null,
         string? role = null,

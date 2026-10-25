@@ -6,7 +6,7 @@ using AgriVision.Application.Common.Interfaces.Services;
 using AgriVision.Application.DTOs.Auth;
 using AgriVision.Infrastructure.Persistence;
 using AgriVision.Infrastructure.Persistence.Repositories;
-using AgriVision.IntegrationTests.Fixtures;
+using AgriVision.TestSupport;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
@@ -14,13 +14,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace AgriVision.IntegrationTests.Controllers;
+namespace AgriVision.ApiTests.Controllers;
 
 public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<AgriVisionFactory>
 {
     [Theory]
     [InlineData("medicines")]
     [InlineData("knowledge-documents")]
+    [Trait("ApiCase", "knowledge.lifecycle")]
     public async Task AdminLifecycle_ShouldProtectDrafts_RequireReviewAfterEdit_AndSoftDelete(string resource)
     {
         using var admin = await CreateAccountAsync(true);
@@ -29,6 +30,8 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
         var id = await CreateAsync(admin, resource, pair.Id);
         (await guest.GetAsync($"/api/{resource}/{id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
         var draft = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/{resource}/{id}");
+        var adminList = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/{resource}?search=Fixture");
+        adminList.GetProperty("items").EnumerateArray().Should().Contain(item => item.GetProperty("id").GetGuid() == id);
         draft.GetProperty("isApproved").GetBoolean().Should().BeFalse();
 
         using var invalidPublish = await admin.PutAsJsonAsync($"/api/admin/{resource}/{id}/publication",
@@ -78,6 +81,7 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
     [InlineData("knowledge-documents", false)]
     [InlineData("medicines", true)]
     [InlineData("knowledge-documents", true)]
+    [Trait("ApiCase", "knowledge.authorization")]
     public async Task NonAdmin_ShouldNotReadOrMutateAdminResources(string resource, bool loggedIn)
     {
         using var client = loggedIn ? await CreateAccountAsync(false) : factory.CreateClient();
@@ -92,11 +96,19 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
         using var publish = await client.PutAsJsonAsync($"/api/admin/{resource}/{Guid.NewGuid()}/publication",
             new { isApproved = true, isPublic = true, isActive = true });
         publish.StatusCode.Should().Be(expected);
+        (await client.GetAsync($"/api/admin/{resource}/{Guid.NewGuid()}")).StatusCode.Should().Be(expected);
+        if (resource == "medicines")
+        {
+            var usePath = $"/api/admin/medicines/{Guid.NewGuid()}/uses/{Guid.NewGuid()}";
+            (await client.PutAsJsonAsync(usePath, new { })).StatusCode.Should().Be(expected);
+            (await client.DeleteAsync(usePath)).StatusCode.Should().Be(expected);
+        }
     }
 
     [Theory]
     [InlineData("medicines")]
     [InlineData("knowledge-documents")]
+    [Trait("ApiCase", "knowledge.validation")]
     public async Task InvalidContent_ShouldBeRejected_AndPaginationValidated(string resource)
     {
         using var admin = await CreateAccountAsync(true);
@@ -110,6 +122,7 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
     }
 
     [Fact]
+    [Trait("ApiCase", "knowledge.relations")]
     public async Task Relations_ShouldRejectUnknownPairs_AndRequireVerifiedApprovedUses()
     {
         using var admin = await CreateAccountAsync(true);
@@ -142,6 +155,7 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
     [InlineData(0.95f, "NutrientDeficiency", true, true, 0)]
     [InlineData(0.95f, "Disease", false, true, 0)]
     [InlineData(0.95f, "Disease", true, false, 0)]
+    [Trait("ApiCase", "knowledge.prediction_snapshot")]
     public async Task Diagnosis_ShouldUseOnlyEligibleMedicines_AndPreserveSnapshot(
         float confidence, string condition, bool verified, bool published, int expected)
     {
@@ -207,6 +221,7 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
     [Theory]
     [InlineData("plants")]
     [InlineData("diseases")]
+    [Trait("ApiCase", "knowledge.catalog_visibility")]
     public async Task ExistingCatalog_ShouldValidateNames_AndHideInactiveItemsFromGuest(string resource)
     {
         using var admin = await CreateAccountAsync(true);
@@ -224,6 +239,7 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
     }
 
     [Fact]
+    [Trait("ApiCase", "knowledge.disease_approval")]
     public async Task PublicDisease_ShouldNotExposeUnreviewedKnowledge()
     {
         using var admin = await CreateAccountAsync(true);
@@ -253,11 +269,19 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
     }
 
     [Fact]
+    [Trait("ApiCase", "knowledge.pair_availability")]
     public async Task ExistingPlantDiseaseMapping_ShouldBeDiscoverable_AndAdminCanChangeOnlyAvailability()
     {
         using var admin = await CreateAccountAsync(true);
         using var guest = factory.CreateClient();
         var pair = await PairAsync();
+        var adminList = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/plant-diseases?plantId={pair.PlantId}");
+        adminList.GetProperty("items").EnumerateArray().Should().Contain(p => p.GetProperty("id").GetGuid() == pair.Id);
+        (await guest.GetAsync("/api/admin/plant-diseases")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        using var user = await CreateAccountAsync(false);
+        (await user.GetAsync("/api/admin/plant-diseases")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await user.PutAsJsonAsync($"/api/admin/plant-diseases/{pair.Id}/availability", new { isActive = false }))
+            .StatusCode.Should().Be(HttpStatusCode.Forbidden);
         var list = await guest.GetFromJsonAsync<JsonElement>($"/api/plant-diseases?plantId={pair.PlantId}&diseaseId={pair.DiseaseId}");
         list.GetProperty("items").EnumerateArray().Should().Contain(p => p.GetProperty("id").GetGuid() == pair.Id);
         (await guest.PutAsJsonAsync($"/api/admin/plant-diseases/{pair.Id}/availability", new { isActive = false }))
@@ -283,6 +307,7 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
     }
 
     [Fact]
+    [Trait("ApiCase", "knowledge.label_review")]
     public async Task LabelEdit_ShouldRevokeApprovalEvenWhenTrueFlagsAreSubmitted_AndAllowSeparateReview()
     {
         using var admin = await CreateAccountAsync(true);
@@ -307,6 +332,7 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
     }
 
     [Fact]
+    [Trait("ApiCase", "knowledge.document_links")]
     public async Task DocumentLinkEdit_ShouldReturnRevokedPublication_WithoutChangingArticleText()
     {
         using var admin = await CreateAccountAsync(true);
@@ -377,6 +403,7 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
     }
 
     [Fact]
+    [Trait("ApiCase", "knowledge.document_atomicity")]
     public async Task DocumentUpdate_ShouldRejectInvalidLinksWithoutPartiallySavingContent()
     {
         using var admin = await CreateAccountAsync(true);

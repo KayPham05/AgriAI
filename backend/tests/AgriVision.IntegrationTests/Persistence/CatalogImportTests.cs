@@ -289,14 +289,17 @@ public class CatalogImportTests
         (await database.PlantDiseases.OrderBy(p => p.ClassIndex).Select(p => p.Id).ToListAsync()).Should().Equal(afterIds);
         (await database.PlantDiseases.Where(p => p.IsActive).OrderBy(p => p.ClassIndex).Select(p => p.ClassName).ToListAsync())
             .Should().Equal(ExpectedLabels);
-        (await database.Database.GetAppliedMigrationsAsync()).Should().HaveCount(5)
+        (await database.Database.GetAppliedMigrationsAsync()).Should().HaveCount(8)
             .And.Contain("20261007032722_DatasetV14Catalog");
 
+        // AvatarUrl is a new reversible column; the catalog/data migrations retain their protected boundary.
+        await database.GetService<IMigrator>().MigrateAsync("20261023130623_SessionRevocationClockSafety");
         var state = await CaptureStateAsync(database);
         var downgrade = () => MigrateToPreCatalogAsync(database);
         await downgrade.Should().ThrowAsync<NotSupportedException>().WithMessage("*forward-only*");
         (await CaptureStateAsync(database)).Should().Be(state);
-        (await database.Database.GetAppliedMigrationsAsync()).Should().HaveCount(5);
+        await database.Database.MigrateAsync();
+        (await database.Database.GetAppliedMigrationsAsync()).Should().HaveCount(8);
     }
 
     private static Task MigrateToPreCatalogAsync(AppDbContext database) =>

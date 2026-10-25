@@ -11,7 +11,14 @@ import type {
   NotificationItem,
 } from '@/types';
 import { SUPPORTED_PLANTS, ALL_DISEASES } from '@/data/plantData';
-import { type AuthSession, clearAuthSession, restoreAuthSession } from '@/services/authApi';
+import {
+  type AuthSession,
+  type AuthUser,
+  clearAuthSession,
+  restoreAuthSession,
+  revokeSession,
+  updateStoredAuthUser,
+} from '@/services/authApi';
 import { getPlants, getDiseases } from '@/services/catalogApi';
 import {
   getPredictionHistory,
@@ -277,8 +284,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIsLoginOpen(false);
   }, []);
 
-  const logout = useCallback(() => {
-    setLogoutName(authSession?.user.fullName ?? '');
+  const logoutPending = useRef(false);
+  const logout = useCallback(async () => {
+    if (logoutPending.current) return;
+    const session = authSession ?? loginPendingSession;
+    logoutPending.current = true;
+    try {
+      if (session) await revokeSession(session.token);
+    } catch {
+      addToast({
+        type: 'error',
+        title: 'Chưa thể đăng xuất',
+        message: 'Không thể thu hồi phiên. Vui lòng kiểm tra kết nối và thử lại.',
+      });
+      return;
+    } finally {
+      logoutPending.current = false;
+    }
+    setLogoutName(session?.user.fullName ?? '');
     clearAuthSession();
     setAuthSession(null);
     setLoginPendingSession(null);
@@ -288,7 +311,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     returnPathRef.current = null;
     router.replace('/');
     setHasEnteredApp(false);
-  }, [router, authSession]);
+  }, [router, authSession, loginPendingSession, addToast]);
   const updateProfile = useCallback(
     (updated: UserProfile) => {
       setUserProfile(updated);
@@ -305,6 +328,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setHistory((current) => [result, ...current.filter((item) => item.id !== result.id)]),
     [],
   );
+  const updateAccount = useCallback((user: AuthUser) => {
+    setAuthSession((current) => (current?.user.id === user.id ? { ...current, user } : current));
+    setUserProfile((current) => ({
+      ...current,
+      name: user.fullName,
+      email: user.email,
+      avatarUrl: user.avatarUrl ?? '',
+    }));
+    updateStoredAuthUser(user);
+  }, []);
   const openNotifications = useCallback(() => setIsNotificationsOpen(true), []);
   const catalog = useMemo(() => ({ plants, diseases }), [plants, diseases]);
   const auth = useMemo(
@@ -317,6 +350,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       openAuthentication,
       logout,
       updateProfile,
+      updateAccount,
     }),
     [
       authSession,
@@ -326,6 +360,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       openAuthentication,
       logout,
       updateProfile,
+      updateAccount,
     ],
   );
   const historyState = useMemo(
@@ -349,7 +384,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       userName: loginPendingSession.user.fullName,
       error: startupError,
       onRetry: () => setLoginPendingSession((session) => (session ? { ...session } : null)),
-      onCancel: () => {
+      onCancel: async () => {
+        try {
+          await revokeSession(loginPendingSession.token);
+        } catch {
+          setStartupError('Chưa thể thu hồi phiên. Vui lòng thử lại.');
+          return;
+        }
         clearAuthSession();
         restoredStartupRef.current = false;
         setLoginPendingSession(null);

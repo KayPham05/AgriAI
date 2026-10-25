@@ -2,8 +2,8 @@
 
 - Cập nhật: 2026-10-25; A/B và frontend C đã có code/kiểm chứng local; DoD Jira còn chờ UAT/CI/review. Các mốc bên dưới được giữ riêng theo ngày.
 - Owner: chưa xác nhận; không tự gán.
-- Nhánh: `AGRI-128-knowledge-medicine`, base `a43797d`.
-- PR: [#46](https://github.com/KayPham05/AgriAI/pull/46), đã mở; có xung đột với base mới, chưa merge.
+- Nhánh: `AGRI-128-knowledge-medicine`, base tích hợp `e1197ce`.
+- PR: [#46](https://github.com/KayPham05/AgriAI/pull/46), đã giải quyết xung đột local với base e1197ce; chờ CI/review, chưa merge PR.
 
 ## Phạm vi đã triển khai
 
@@ -144,3 +144,15 @@ Kế hoạch: [A/B](../../plans/AGRI-128-knowledge-medicine-plan.md).
   nhận test tay của người dùng. Chưa xác minh GitHub Actions; chưa merge.
 - Vẫn còn các xung đột với base mới đã ghi ở mốc trước; cần tích hợp và kiểm chứng
   trước khi merge. Không tự sửa code hoặc giảm điều kiện CI trong lượt tạo PR.
+
+## 2026-10-26 — Giải quyết xung đột PR #46
+
+- Tích hợp base e1197ce: giữ R2/upload journal cùng thuốc đã xác minh, cập nhật
+  PredictionService/fixture và chuyển KnowledgeMedicineTests sang bộ ApiTests mới.
+- Giữ public catalog và profile update trong AppProvider; regression phát hiện và
+  sửa logout của restored pending session để luôn revoke server trước clear local.
+- Cập nhật manifest 59 routes/11 ApiCase AGRI-122, test quyền và inactive visibility;
+  hai test upstream chỉ sửa format. Không migration mới, không E2E, không đổi DB thật.
+- Chi tiết thay đổi, các lần test thất bại và kết quả cuối: [báo cáo](../../reports/AGRI-128/knowledge_medicine.md).
+
+- Kiểm chứng cuối 2026-10-26: backend 460/460 (156 unit + 65 integration + 239 API), branch 83.56%; frontend 440/440, branch 72.37%; typecheck/lint/build và format bản sao LF đạt. Không skip trong bộ lọc CI. Không chạy E2E/RealR2/RealCheckpoint hay migrate DB ứng dụng. Git không còn unmerged; CI remote chưa xác minh.

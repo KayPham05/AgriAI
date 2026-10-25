@@ -18,7 +18,7 @@ export default defineConfig({
       reportsDirectory: '../.cache/coverage/frontend',
       reporter: ['text', 'html', 'cobertura', 'json-summary'],
       reportOnFailure: true,
-      thresholds: { branches: 60 },
+      thresholds: { branches: 65 },
     },
   },
 });

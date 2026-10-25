@@ -3,8 +3,10 @@ import {
   clearAuthSession,
   login,
   register,
+  revokeSession,
   restoreAuthSession,
   saveAuthSession,
+  updateStoredAuthUser,
 } from '@/services/authApi';
 
 const user = {
@@ -17,6 +19,19 @@ const user = {
 const session = { token: 'jwt-token', user };
 
 describe('authentication API', () => {
+  it.each([true, false])(
+    'updates the same saved identity while preserving remember=%s',
+    (remember) => {
+      saveAuthSession(session, remember);
+      updateStoredAuthUser({ ...user, fullName: 'Tên đã lưu' });
+      const storage = remember ? localStorage : sessionStorage;
+      expect(JSON.parse(storage.getItem('leafai_auth_session') ?? '{}')).toMatchObject({
+        token: session.token,
+        user: { fullName: 'Tên đã lưu' },
+      });
+      expect((remember ? sessionStorage : localStorage).getItem('leafai_auth_session')).toBeNull();
+    },
+  );
   afterEach(() => {
     vi.unstubAllGlobals();
     clearAuthSession();
@@ -86,4 +101,22 @@ describe('authentication API', () => {
     expect(localStorage.length).toBe(0);
     expect(sessionStorage.getItem('leafai_auth_session')).toContain('jwt-token');
   });
+});
+
+it('revokes only the current bearer session and accepts an already expired session', async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce({ ok: true, status: 204 })
+    .mockResolvedValueOnce({ ok: false, status: 401 });
+  vi.stubGlobal('fetch', fetchMock);
+  await expect(revokeSession('current')).resolves.toBeUndefined();
+  expect(fetchMock).toHaveBeenCalledWith(
+    '/api/auth/logout',
+    expect.objectContaining({
+      method: 'POST',
+      headers: { Authorization: 'Bearer current' },
+      signal: expect.any(AbortSignal),
+    }),
+  );
+  await expect(revokeSession('expired')).resolves.toBeUndefined();
 });

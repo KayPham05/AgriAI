@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useRef, useState } from 'react';
 import { AdminMockProvider } from './AdminMockProvider';
-import { clearAuthSession, type AuthSession } from '@/services/authApi';
+import { clearAuthSession, revokeSession, type AuthSession } from '@/services/authApi';
 import { useRouter } from 'next/navigation';
 import { AdminAccess } from './AdminAccess';
 import { AdminLoginSuccessScreen } from './AdminLoginSuccessScreen';
@@ -132,9 +132,21 @@ function AdminWorkspace({ session }: { session: AuthSession }) {
   const { rootRef, railOpen, toggleRail } = useAdminRail();
   const [loggingOut, setLoggingOut] = useState(false);
   const finishLogout = useCallback(() => router.replace('/'), [router]);
-  function logout() {
-    clearAuthSession();
-    setLoggingOut(true);
+  const logoutPending = useRef(false);
+  const [logoutError, setLogoutError] = useState('');
+  async function logout() {
+    if (logoutPending.current) return;
+    logoutPending.current = true;
+    setLogoutError('');
+    try {
+      await revokeSession(session.token);
+      clearAuthSession();
+      setLoggingOut(true);
+    } catch {
+      setLogoutError('Chưa thể thu hồi phiên. Vui lòng kiểm tra kết nối và thử lại.');
+    } finally {
+      logoutPending.current = false;
+    }
   }
   const [view, setView] = useState<CrmView>('overview');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -158,6 +170,7 @@ function AdminWorkspace({ session }: { session: AuthSession }) {
   }
   return (
     <div className="admin-dashboard h-dvh overflow-hidden bg-surface-muted p-0 text-foreground sm:p-4 lg:p-6">
+      {logoutError && <p role="alert">{logoutError}</p>}
       <a className="skip-link" href="#admin-main">
         Đến nội dung quản trị
       </a>

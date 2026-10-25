@@ -1,11 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
 using AgriVision.Application.DTOs.Auth;
-using AgriVision.IntegrationTests.Fixtures;
+using AgriVision.TestSupport;
 using FluentAssertions;
 using Xunit;
 
-namespace AgriVision.IntegrationTests.Controllers;
+namespace AgriVision.ApiTests.Controllers;
 
 public class AuthControllerTests : IClassFixture<AgriVisionFactory>
 {
@@ -16,6 +16,7 @@ public class AuthControllerTests : IClassFixture<AgriVisionFactory>
         _client = factory.CreateClient();
     }
 
+    [Trait("ApiCase", "existing.AuthControllerTests.RegisterAndLogin_ShouldSucceed_WhenValidDataProvided")]
     [Fact]
     public async Task RegisterAndLogin_ShouldSucceed_WhenValidDataProvided()
     {

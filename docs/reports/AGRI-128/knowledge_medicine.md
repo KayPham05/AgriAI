@@ -1,10 +1,9 @@
 # AGRI-122 — Knowledge and medicine A/B/C
 
-- Ngày cập nhật: 2026-10-25. Các mục backend bên dưới giữ bằng chứng ngày 2026-10-24; kết quả C được ghi riêng cuối báo cáo.
+- Ngày cập nhật: 2026-10-26. Kết quả tích hợp mới nhất nằm cuối báo cáo; các mốc 2026-10-24/25 giữ nguyên là lịch sử.
 - Task: AGRI-122, story AGRI-114, hạng mục S3-09 của AGRI-128.
-- Nhánh: `AGRI-128-knowledge-medicine`, base `a43797d` từ `AGRI-128-backend-improvement`.
-- Backend A/B đã triển khai và kiểm chứng local; DoD Jira **chưa hoàn tất** vì còn test
-  thủ công, GitHub Actions và review/PR. Coverage đạt sàn 60%, chưa đạt target 80%.
+- Nhánh: `AGRI-128-knowledge-medicine`; đã tích hợp base `e1197ce` từ `AGRI-128-backend-improvement` cho [PR #46](https://github.com/KayPham05/AgriAI/pull/46).
+- A/B/C và tích hợp đã kiểm chứng local (460 backend, 440 frontend tests). DoD Jira **chưa hoàn tất**: còn CI, domain review và xác nhận giao diện sau tích hợp; backend branch 83.56%, frontend 72.37%.
 - Phạm vi ban đầu: backend A/B; ngày 2026-10-25 người dùng giao thêm UI phần C trên cùng nhánh. Không có upload tài liệu hay OpenAI advisor.
 
 ## Phần A — Danh mục và quản trị
@@ -440,3 +439,59 @@ localhost:3000; quan sát `/plants` tự cập nhật URL và kết quả sau nh
   nhận test tay của người dùng. Chưa xác minh GitHub Actions; chưa merge.
 - Vẫn còn các xung đột với base mới đã ghi ở mốc trước; cần tích hợp và kiểm chứng
   trước khi merge. Không tự sửa code hoặc giảm điều kiện CI trong lượt tạo PR.
+
+## 2026-10-26 — Tích hợp nhánh gốc và giải quyết xung đột PR #46
+
+- Merge base `e1197ce` vào `AGRI-128-knowledge-medicine` theo yêu cầu sửa conflict.
+  Git ghi 4 mục unmerged; việc đổi vị trí KnowledgeMedicineTests liên quan cả đường
+  dẫn cũ IntegrationTests/Controllers và đường dẫn mới ApiTests/Controllers.
+- PredictionService giữ cả IMedicineService và IImageUploadJournal: giải quyết
+  danh mục thuốc trước reserve/upload, giữ private image route, upload journal,
+  cleanup R2 và snapshot chứa thuốc đã xác minh. Unit fixture truyền đủ hai dependency.
+- AppProvider giữ public catalog và cập nhật tài khoản/avatar từ base. Phát hiện
+  lỗi kết hợp: logout khi session còn ở loginPendingSession không gọi revoke server.
+  Regression public-catalog logout thất bại trước sửa; sau sửa chọn phiên hiện hành
+  hoặc phiên restored pending và giữ local login nếu revoke lỗi. 5/5 ca logout đạt.
+- KnowledgeMedicineTests chuyển sang ApiTests và shared TestSupport; bổ sung 11 ApiCase,
+  22 route mới vào manifest (tổng 59), kiểm Admin list và Guest/User denial cho uses/pairs.
+  [Ma trận API AGRI-122](knowledge_api_matrix.md) ghi mapping từ contract đã kiểm.
+- Bốn ca CatalogContractTests của base kỳ vọng Guest đọc inactive khác với yêu cầu
+  AGRI-122. Cập nhật thành Guest 404/list ẩn, Admin đọc retained detail/list và kiểm
+  nguyên vẹn quan hệ. Không mở quyền, đổi nghiệp vụ hoặc bỏ assertion dữ liệu.
+- Hai test R2/profile nhập từ base chỉ sửa format theo Biome, không đổi assertion.
+- Không thêm/sửa migration; migration R2/profile có sẵn được nhận nguyên từ base,
+  chỉ chạy qua PostgreSQL Testcontainers. Không migrate database ứng dụng hay gọi R2 thật.
+- Lượt đầu: unit 156/156 và integration 65/65 đạt; API 234/239 (manifest và bốn ca
+  inactive nói trên). Frontend có 6 timeout lúc máy quá tải; cùng ba file chạy riêng
+  đạt 18/18 sau dọn 60 worker MSBuild mồ côi của lần build bị chặn. Không tăng timeout.
+- Kiểm chứng cuối và trạng thái push/CI sẽ ghi riêng bên dưới; kết quả cũ không thay
+  thế kiểm chứng phiên bản tích hợp. Không viết E2E.
+
+### Kiểm chứng cuối bản tích hợp — 2026-10-26
+
+- Backend: `dotnet test backend/AgriVision.sln --no-restore -m:1 --filter
+  'Category!=RealCheckpoint&Category!=RealR2' --settings backend/coverage.runsettings
+  --collect 'XPlat Code Coverage' --logger trx`: **156 unit + 65 integration +
+  239 API = 460/460 đạt**, không skip trong phạm vi lọc; các project biên dịch thành công.
+  Runtime inventory/mapping guards đạt, bao gồm toàn bộ 59 controller routes.
+- Backend coverage gộp bằng ReportGenerator: **879/1052 = 83.56%**, vượt floor 70%
+  và target 80%. Bằng chứng `D:/AgriAI/.cache/knowledge-merge-verified/` (3 TRX,
+  3 Cobertura), `knowledge-merge-verified.log` và
+  `D:/AgriAI/.cache/knowledge-merge-coverage/Cobertura.xml`.
+- Frontend: `pnpm exec vitest run --coverage --maxWorkers=2`: **440/440 tests**, 63
+  files; branch **2002/2766 = 72.37%**, vượt floor 65%, chưa đạt target 80%.
+  Hai worker là giới hạn tài nguyên local; giữ nguyên assertions/timeouts/coverage gate.
+  Log `D:/AgriAI/.cache/knowledge-merge-frontend-final.log` và Cobertura ở
+  `.cache/coverage/frontend/` trong worktree. Lần trung gian `frontend-verified`
+  có timeout Admin và regression logout đỏ; không dùng làm bằng chứng nghiệm thu.
+- Typecheck, lint, production build Next.js 16.4.1 đạt. Biome kiểm 234 file trên bản
+  sao LF đạt; workspace Windows vẫn giữ newline baseline, không format hàng loạt.
+  Logs `knowledge-merge-typecheck-final.log`, `knowledge-merge-lint-final.log`,
+  `knowledge-merge-build-frontend.log`, `knowledge-merge-format-final.log` dưới cache root.
+- Regression logout: log `knowledge-merge-logout-red.log` tái hiện lỗi không revoke
+  phiên public, `knowledge-merge-logout-green.log` đạt 5/5; fixture reset mock giữa ca
+  để callback/rejection chờ không ảnh hưởng ca sau.
+- Git: không còn đường dẫn unmerged hoặc conflict markers; staged whitespace check đạt.
+  Remote target vẫn e1197ce khi kiểm trước commit. PR #46 giữ hai reviewer ban đầu.
+- Các kết quả trên là local, chưa xác minh GitHub Actions. Không chạy E2E, RealR2,
+  RealCheckpoint, không test tay lại bản tích hợp hoặc migrate database ứng dụng.

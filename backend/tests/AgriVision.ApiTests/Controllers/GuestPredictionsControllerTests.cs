@@ -9,7 +9,7 @@ using AgriVision.Application.DTOs.Auth;
 using AgriVision.Application.DTOs.Prediction;
 using AgriVision.Infrastructure.Persistence;
 using AgriVision.Infrastructure.Services;
-using AgriVision.IntegrationTests.Fixtures;
+using AgriVision.TestSupport;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -19,7 +19,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 
-namespace AgriVision.IntegrationTests.Controllers;
+namespace AgriVision.ApiTests.Controllers;
 
 public class GuestPredictionsControllerTests : IClassFixture<AgriVisionFactory>
 {
@@ -30,6 +30,7 @@ public class GuestPredictionsControllerTests : IClassFixture<AgriVisionFactory>
         _factory = factory;
     }
 
+    [Trait("ApiCase", "existing.GuestPredictionsControllerTests.Prediction_ShouldRejectInvalidCredentials_InsteadOfRunningAsGuest")]
     [Theory]
     [InlineData("malformed")]
     [InlineData("expired")]
@@ -54,6 +55,7 @@ public class GuestPredictionsControllerTests : IClassFixture<AgriVisionFactory>
         (await ReadStoredIdsAsync()).Should().BeEquivalentTo(before);
     }
 
+    [Trait("ApiCase", "existing.GuestPredictionsControllerTests.GuestPrediction_ShouldReturnFullResult_WithoutStorageOrChangesToUserHistory")]
     [Fact]
     public async Task GuestPrediction_ShouldReturnFullResult_WithoutStorageOrChangesToUserHistory()
     {
@@ -103,6 +105,7 @@ public class GuestPredictionsControllerTests : IClassFixture<AgriVisionFactory>
         lookup.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
+    [Trait("ApiCase", "existing.GuestPredictionsControllerTests.Guest_ShouldNotAccessPersonalOrAdminEndpoints")]
     [Theory]
     [InlineData("GET", "/api/auth/me")]
     [InlineData("GET", "/api/predictions")]
@@ -122,6 +125,7 @@ public class GuestPredictionsControllerTests : IClassFixture<AgriVisionFactory>
         (await ReadStoredIdsAsync()).Should().BeEquivalentTo(before);
     }
 
+    [Trait("ApiCase", "existing.GuestPredictionsControllerTests.MissingUserIdentity_ShouldNotAccessHistory")]
     [Theory]
     [InlineData("GET", "/api/predictions")]
     [InlineData("DELETE", "/api/predictions/11111111-1111-1111-1111-111111111111")]
@@ -136,6 +140,7 @@ public class GuestPredictionsControllerTests : IClassFixture<AgriVisionFactory>
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    [Trait("ApiCase", "existing.GuestPredictionsControllerTests.InvalidGuestUpload_ShouldFailBeforeInferenceOrStorage")]
     [Theory]
     [InlineData("leaf.txt", false)]
     [InlineData("leaf.jpg", true)]
@@ -157,6 +162,7 @@ public class GuestPredictionsControllerTests : IClassFixture<AgriVisionFactory>
         (await ReadStoredIdsAsync()).Should().BeEquivalentTo(before);
     }
 
+    [Trait("ApiCase", "existing.GuestPredictionsControllerTests.GuestAiFailure_ShouldNotReturnSuccessOrPersistData")]
     [Theory]
     [InlineData(HttpStatusCode.ServiceUnavailable)]
     [InlineData(HttpStatusCode.BadGateway)]
@@ -178,6 +184,7 @@ public class GuestPredictionsControllerTests : IClassFixture<AgriVisionFactory>
         (await ReadStoredIdsAsync()).Should().BeEquivalentTo(before);
     }
 
+    [Trait("ApiCase", "existing.GuestPredictionsControllerTests.GuestMappingMismatch_ShouldNotPersistData")]
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -259,10 +266,12 @@ public class GuestPredictionsControllerTests : IClassFixture<AgriVisionFactory>
     {
         public int Calls { get; private set; }
 
-        public Task<ImageUploadResult> UploadImageAsync(IFormFile file, CancellationToken cancellationToken = default) =>
+        public Task<ImageDownloadResult?> ReadImageAsync(string publicId, CancellationToken cancellationToken = default) => UnexpectedCall<ImageDownloadResult?>();
+
+        public Task<ImageUploadResult> UploadImageAsync(IFormFile file, ImageStorageContext context, CancellationToken cancellationToken = default) =>
             UnexpectedCall<ImageUploadResult>();
 
-        public Task<ImageUploadResult> UploadImageAsync(Stream stream, string fileName, CancellationToken cancellationToken = default) =>
+        public Task<ImageUploadResult> UploadImageAsync(Stream stream, string fileName, ImageStorageContext context, CancellationToken cancellationToken = default) =>
             UnexpectedCall<ImageUploadResult>();
 
         public Task<bool> DeleteImageAsync(string publicId, CancellationToken cancellationToken = default) =>

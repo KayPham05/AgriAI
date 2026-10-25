@@ -7,7 +7,7 @@ using AgriVision.Application.DTOs.Auth;
 using AgriVision.Application.DTOs.Prediction;
 using AgriVision.Infrastructure.Persistence;
 using AgriVision.Infrastructure.Services;
-using AgriVision.IntegrationTests.Fixtures;
+using AgriVision.TestSupport;
 using FluentAssertions;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
@@ -41,7 +41,8 @@ public class RealCheckpointApiTests(AgriVisionFactory factory) : IClassFixture<A
             {
                 services.RemoveAll<IPlantDiseasePredictor>();
                 services.AddHttpClient<IPlantDiseasePredictor, FastApiPlantDiseasePredictor>(client =>
-                    client.Timeout = TimeSpan.FromSeconds(60));
+                    client.Timeout = TimeSpan.FromSeconds(60))
+                    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler());
             });
         });
         using var owner = application.CreateClient();
