@@ -80,3 +80,20 @@ Kiểm chứng sau khi khởi động lại:
   về trang giới thiệu theo quy tắc bảo vệ tài khoản.
 
 Đây là kiểm chứng local Docker, không đại diện cho môi trường remote hoặc production.
+
+## Rebase integration verification on 2026-10-26
+
+Sau khi AGRI-122 được tích hợp vào `origin/AGRI-128-backend-improvement`, branch
+`AGRI-116-agricultural-profile-ui` được rebase lên base `7aa28c9`. Conflict tại
+`frontend/src/providers/AppContexts.ts` và `frontend/src/providers/AppProvider.tsx`
+được gộp bằng cách giữ đồng thời auth changes của base và agricultural profile state,
+CRUD callbacks của AGRI-116.
+
+Kiểm chứng trên revision sau rebase `9afb350`:
+
+- TypeScript `--noEmit`: pass.
+- Biome lint: pass, không warning/error.
+- Test mục tiêu AGRI-116: **36/36 pass**.
+- Webpack production build: pass; route `/agricultural-profiles` được tạo.
+
+Đây là kiểm chứng local sau rebase; chưa phải kết quả GitHub Actions.

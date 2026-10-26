@@ -58,5 +58,16 @@ báo cáo; UI, inference/storage thật và review/PR còn ngoài phạm vi đ�
 - Route `/agricultural-profiles` có trong frontend image và được phục vụ; khi chưa
   đăng nhập route chuyển về trang giới thiệu theo middleware xác thực.
 
-Đợt này chỉ kiểm chứng Docker local. Không xóa volume, không thay đổi remote database,
-không commit/push và không đụng vào source hoặc artifact trong `ai/`.
+Đợt này chỉ kiểm chứng Docker local. Không xóa volume, không thay đổi remote database
+và không đụng vào source hoặc artifact trong `ai/`.
+
+## Rebase verification — 2026-10-26
+
+- Rebase branch AGRI-116 lên `origin/AGRI-128-backend-improvement` tại `7aa28c9`,
+  sau khi base đã tích hợp AGRI-122.
+- Resolve conflict tại hai provider frontend, giữ auth changes của base và CRUD
+  agricultural profile của AGRI-116.
+- Revision sau rebase: `9afb350`.
+- Typecheck, Biome lint, Webpack production build và **36/36 test mục tiêu** pass.
+- Đã tạo backup local `backup/AGRI-116-before-rebase-20261026`; file AI untracked
+  vẫn được giữ ngoài commit.

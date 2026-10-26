@@ -177,3 +177,13 @@ Trạng thái sau khởi động lại: PostgreSQL, AI service, backend và fron
 backend `/api/health` và AI `/health` trả về OK. Route hồ sơ được phục vụ và chuyển user
 chưa đăng nhập về trang giới thiệu. Đây là bằng chứng local Docker, không phải kết quả
 CI, remote hoặc production.
+
+## Rebase integration verification — 2026-10-26
+
+Branch AGRI-116 được rebase lên `origin/AGRI-128-backend-improvement` tại `7aa28c9`,
+sau khi base đã tích hợp AGRI-122. Conflict ở hai provider frontend được resolve bằng
+cách giữ auth changes của base cùng state và CRUD callbacks hồ sơ của AGRI-116.
+
+Revision sau rebase là `9afb350`. Typecheck, Biome lint, Webpack production build và
+36/36 test mục tiêu AGRI-116 đều pass. Đây là kiểm chứng local sau rebase, chưa phải
+bằng chứng GitHub Actions.
