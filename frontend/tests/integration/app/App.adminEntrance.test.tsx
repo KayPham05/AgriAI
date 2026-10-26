@@ -15,6 +15,12 @@ vi.mock('@/services/authApi', () => ({
   clearAuthSession: vi.fn(),
 }));
 vi.mock('@/services/catalogApi', () => ({ getPlants: vi.fn(), getDiseases: vi.fn() }));
+vi.mock('@/services/agriculturalProfileApi', () => ({
+  getAgriculturalProfiles: vi.fn().mockResolvedValue([]),
+  createAgriculturalProfile: vi.fn(),
+  updateAgriculturalProfile: vi.fn(),
+  deleteAgriculturalProfile: vi.fn(),
+}));
 vi.mock('@/services/predictionApi', () => ({
   getPredictionHistory: vi.fn(),
   deletePrediction: vi.fn(),

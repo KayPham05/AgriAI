@@ -97,3 +97,25 @@ Kiểm chứng trên revision sau rebase `9afb350`:
 - Webpack production build: pass; route `/agricultural-profiles` được tạo.
 
 Đây là kiểm chứng local sau rebase; chưa phải kết quả GitHub Actions.
+
+## Frontend CI URL regression verification — 2026-10-26
+
+Nguyên nhân lỗi CI là `AppProvider` gọi thêm `getAgriculturalProfiles` trong startup,
+nhưng năm integration suites dùng `AppProvider` chưa mock module mới. Vitest chạy trong
+Node nên request relative `/api/agricultural-profiles` ném `Failed to parse URL`, làm
+startup và routing tests fail dây chuyền.
+
+Đã sửa bằng cách mock đầy đủ agricultural profile API trong năm AppProvider integration
+suites. Selector hồ sơ trên `DiagnosePage` chỉ hiển thị khi có hồ sơ để chọn, giữ thứ tự
+keyboard hiện có khi danh sách rỗng.
+
+Kiểm chứng local sau fix:
+
+- AppProvider integration suites: **26/26 pass**.
+- Full frontend suite serial: **447/447 pass**.
+- Coverage serial: branch **70,30% (2031/2889)**, vượt floor frontend 65%.
+- TypeScript, Biome lint và Webpack production build: pass.
+
+Default parallel run trên máy Windows còn 4 test timeout do cạnh tranh worker tài nguyên;
+đây là giới hạn môi trường local, không phải lỗi URL profile. GitHub Actions chưa được
+xác nhận lại trên revision sửa.

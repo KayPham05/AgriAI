@@ -71,3 +71,13 @@ và không đụng vào source hoặc artifact trong `ai/`.
 - Typecheck, Biome lint, Webpack production build và **36/36 test mục tiêu** pass.
 - Đã tạo backup local `backup/AGRI-116-before-rebase-20261026`; file AI untracked
   vẫn được giữ ngoài commit.
+
+## Frontend CI regression — 2026-10-26
+
+- Root cause: năm AppProvider integration suites chưa mock startup dependency
+  `getAgriculturalProfiles`, khiến Node/Vitest parse lỗi URL relative.
+- Đã thêm mock API vào năm suites và chỉ hiển thị profile selector khi có profile.
+- AppProvider suites: **26/26 pass**; full frontend serial: **447/447 pass**.
+- Coverage serial: branch **70,30% (2031/2889)**; typecheck, lint và production build pass.
+- Default parallel local còn 4 timeout do worker contention; GitHub Actions chưa chạy lại
+  trên revision sửa.

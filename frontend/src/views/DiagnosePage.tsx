@@ -338,7 +338,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
               </div>
             )}
           </div>
-          {authToken && (
+          {authToken && agriculturalProfiles.length > 0 && (
             <div className="border-b border-border bg-surface-muted p-5 sm:px-6">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
                 <div>
@@ -367,11 +367,6 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
                   </SelectContent>
                 </Select>
               </div>
-              {agriculturalProfiles.length === 0 && (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Bạn có thể tạo hồ sơ trong mục Hồ sơ nông nghiệp trước khi chẩn đoán.
-                </p>
-              )}
             </div>
           )}
           <div className="p-5 sm:p-6">

@@ -187,3 +187,14 @@ cách giữ auth changes của base cùng state và CRUD callbacks hồ sơ củ
 Revision sau rebase là `9afb350`. Typecheck, Biome lint, Webpack production build và
 36/36 test mục tiêu AGRI-116 đều pass. Đây là kiểm chứng local sau rebase, chưa phải
 bằng chứng GitHub Actions.
+
+## Frontend CI URL regression verification — 2026-10-26
+
+Lỗi CI xuất phát từ startup thêm `getAgriculturalProfiles` nhưng năm AppProvider
+integration suites chưa mock dependency này. Vitest chạy Node không có origin cho URL
+relative `/api/agricultural-profiles`, làm startup/routing fail dây chuyền.
+
+Đã mock API trong năm suites và chỉ render profile selector khi có profile. Local
+verification: AppProvider **26/26 pass**, full frontend serial **447/447 pass**, branch
+coverage **70,30% (2031/2889)**, typecheck/lint/build pass. Default parallel Windows còn
+timeout do worker contention; chưa xác nhận GitHub Actions trên revision sửa.
