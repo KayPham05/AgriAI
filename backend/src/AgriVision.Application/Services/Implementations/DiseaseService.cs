@@ -14,16 +14,16 @@ public class DiseaseService : IDiseaseService
         _diseaseRepository = diseaseRepository;
     }
 
-    public async Task<IEnumerable<DiseaseDto>> GetAllAsync(bool includeInactive = false, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<DiseaseDto>> GetAllAsync(bool includeInactive = false, bool includeUnapproved = false, CancellationToken cancellationToken = default)
     {
         var diseases = await _diseaseRepository.GetAllAsync(includeInactive, cancellationToken);
-        return diseases.Select(MapToDto);
+        return diseases.Select(d => MapToDto(d, includeUnapproved));
     }
 
-    public async Task<DiseaseDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<DiseaseDto?> GetByIdAsync(Guid id, bool includeUnapproved = false, CancellationToken cancellationToken = default)
     {
         var disease = await _diseaseRepository.GetByIdAsync(id, cancellationToken);
-        return disease != null ? MapToDto(disease) : null;
+        return disease != null ? MapToDto(disease, includeUnapproved) : null;
     }
 
     public async Task<DiseaseDto> CreateAsync(CreateDiseaseRequest request, CancellationToken cancellationToken = default)
@@ -31,7 +31,7 @@ public class DiseaseService : IDiseaseService
         var disease = new Disease
         {
             Id = Guid.NewGuid(),
-            Name = request.Name,
+            Name = CatalogValidation.Text(request.Name, "Name", 150),
             VietnameseName = request.VietnameseName,
             Description = request.Description,
             Symptoms = request.Symptoms,
@@ -42,7 +42,7 @@ public class DiseaseService : IDiseaseService
         };
 
         await _diseaseRepository.AddAsync(disease, cancellationToken);
-        return MapToDto(disease);
+        return MapToDto(disease, true);
     }
 
     public async Task<DiseaseDto> UpdateAsync(Guid id, UpdateDiseaseRequest request, CancellationToken cancellationToken = default)
@@ -53,7 +53,13 @@ public class DiseaseService : IDiseaseService
             throw new KeyNotFoundException($"Disease with ID '{id}' not found.");
         }
 
-        disease.Name = request.Name;
+        var name = CatalogValidation.Text(request.Name, "Name", 150);
+        if (disease.Name != name || disease.VietnameseName != request.VietnameseName ||
+            disease.Description != request.Description || disease.Symptoms != request.Symptoms ||
+            disease.Treatment != request.Treatment || disease.Prevention != request.Prevention ||
+            disease.IsActive != request.IsActive)
+            disease.IsContentApproved = false;
+        disease.Name = name;
         disease.VietnameseName = request.VietnameseName;
         disease.Description = request.Description;
         disease.Symptoms = request.Symptoms;
@@ -63,7 +69,17 @@ public class DiseaseService : IDiseaseService
         disease.UpdatedAt = DateTime.UtcNow;
 
         await _diseaseRepository.UpdateAsync(disease, cancellationToken);
-        return MapToDto(disease);
+        return MapToDto(disease, true);
+    }
+
+    public async Task<DiseaseDto> SetApprovalAsync(Guid id, bool approved, CancellationToken cancellationToken = default)
+    {
+        var disease = await _diseaseRepository.GetByIdAsync(id, cancellationToken)
+            ?? throw new KeyNotFoundException("Disease not found.");
+        disease.IsContentApproved = approved;
+        disease.UpdatedAt = DateTime.UtcNow;
+        await _diseaseRepository.UpdateAsync(disease, cancellationToken);
+        return MapToDto(disease, true);
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
@@ -77,18 +93,20 @@ public class DiseaseService : IDiseaseService
         await _diseaseRepository.DeleteAsync(disease, cancellationToken);
     }
 
-    private static DiseaseDto MapToDto(Disease disease)
+    private static DiseaseDto MapToDto(Disease disease, bool includeUnapproved = false)
     {
+        var visible = includeUnapproved || disease.IsContentApproved;
+        const string pending = "Thông tin đang được cập nhật";
         return new DiseaseDto(
             disease.Id,
             disease.Name,
             disease.VietnameseName,
-            disease.Description,
-            disease.Symptoms,
-            disease.Treatment,
-            disease.Prevention,
+            visible ? disease.Description : pending,
+            visible ? disease.Symptoms : pending,
+            visible ? disease.Treatment : pending,
+            visible ? disease.Prevention : pending,
             disease.IsActive,
             disease.CreatedAt
-        );
+        ) { IsContentApproved = disease.IsContentApproved, ConditionType = disease.ConditionType };
     }
 }

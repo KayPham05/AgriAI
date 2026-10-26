@@ -9,13 +9,11 @@ import {
 afterEach(() => vi.unstubAllGlobals());
 describe('user API mapping', () => {
   it('uploads a file with authorization and browser-generated multipart headers', async () => {
-    const fetcher = vi
-      .fn()
-      .mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => ({ avatarUrl: '/api/users/avatar/example' }),
-      });
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ avatarUrl: '/api/users/avatar/example' }),
+    });
     vi.stubGlobal('fetch', fetcher);
     const file = new File(['avatar'], 'avatar.png', { type: 'image/png' });
     await uploadUserAvatar('token', file);

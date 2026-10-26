@@ -34,15 +34,42 @@ import { AdminOverview } from './AdminOverview';
 import { AdminUsers } from './AdminUsers';
 import { AdminImages } from './AdminImages';
 import { AdminSessions } from './AdminSessions';
+import dynamic from 'next/dynamic';
+import { BookOpen, Leaf, Pill, Link2, Bug } from 'lucide-react';
+const KnowledgeAdmin = dynamic(() =>
+  import('@/features/knowledge/KnowledgeAdmin').then((module) => module.KnowledgeAdmin),
+);
+const PlantDiseaseManager = dynamic(() =>
+  import('@/features/knowledge/PlantDiseaseManager').then((module) => module.PlantDiseaseManager),
+);
 
-type CrmView = 'overview' | 'users' | 'images' | 'sessions';
+type CrmView =
+  | 'overview'
+  | 'users'
+  | 'images'
+  | 'sessions'
+  | 'plants'
+  | 'diseases'
+  | 'medicines'
+  | 'knowledge-documents'
+  | 'plant-diseases';
 const NAVIGATION = [
   { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
   { id: 'users', label: 'Người dùng', icon: Users },
   { id: 'images', label: 'Ảnh đã tải lên', icon: Images },
   { id: 'sessions', label: 'Phiên đăng nhập', icon: Monitor },
+  { id: 'plants', label: 'Cây trồng', icon: Leaf },
+  { id: 'diseases', label: 'Bệnh cây', icon: Bug },
+  { id: 'medicines', label: 'Thuốc', icon: Pill },
+  { id: 'knowledge-documents', label: 'Bài viết', icon: BookOpen },
+  { id: 'plant-diseases', label: 'Liên kết cây và bệnh', icon: Link2 },
 ] as const;
 const VIEW_COPY = {
+  plants: { title: 'Quản lý cây trồng' },
+  diseases: { title: 'Quản lý bệnh cây' },
+  medicines: { title: 'Quản lý thuốc' },
+  'knowledge-documents': { title: 'Quản lý bài viết' },
+  'plant-diseases': { title: 'Liên kết cây và bệnh' },
   overview: {
     title: 'Tổng quan vận hành',
   },
@@ -288,11 +315,21 @@ function AdminWorkspace({ session }: { session: AuthSession }) {
               {view === 'users' && <AdminUsers key={userSearch} initialQuery={userSearch} />}
               {view === 'images' && <AdminImages />}
               {view === 'sessions' && <AdminSessions />}
+              {(view === 'plants' ||
+                view === 'diseases' ||
+                view === 'medicines' ||
+                view === 'knowledge-documents') && (
+                <KnowledgeAdmin key={view} kind={view} token={session.token} />
+              )}
+              {view === 'plant-diseases' && <PlantDiseaseManager token={session.token} />}
             </AdminMotion>
             {view !== 'overview' && (
               <footer className="mt-2 flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border pt-2 text-xs text-muted-foreground">
-                <p>AgriAI Quản trị / Giao diện quản trị người dùng</p>
-                <p>Nguồn dữ liệu: Mock frontend</p>
+                <p>AgriAI Quản trị</p>
+                <p>
+                  Nguồn dữ liệu:{' '}
+                  {['users', 'images', 'sessions'].includes(view) ? 'Mock frontend' : 'API AgriAI'}
+                </p>
               </footer>
             )}
           </main>

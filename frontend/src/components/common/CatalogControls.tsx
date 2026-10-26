@@ -17,62 +17,83 @@ export function SearchField({
   label,
   value,
   onChange,
+  submitLabel,
+  resetKey,
 }: {
   id: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
+  submitLabel?: string;
+  resetKey?: string;
 }) {
   const [draft, setDraft] = useState(value);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: navigation must cancel a pending draft even when the applied value is unchanged.
   useEffect(() => {
     setDraft(value);
     clearTimeout(timer.current);
     return () => clearTimeout(timer.current);
-  }, [value]);
+  }, [value, resetKey]);
+
+  function submitSearch() {
+    clearTimeout(timer.current);
+    onChangeRef.current(draft);
+  }
 
   function changeSearch(nextValue: string) {
     setDraft(nextValue);
     clearTimeout(timer.current);
     if (!nextValue) onChange('');
-    else timer.current = setTimeout(() => onChange(nextValue), 500);
+    else timer.current = setTimeout(() => onChangeRef.current(nextValue), 500);
   }
 
   return (
-    <div className="min-w-0 flex-1 space-y-2">
-      <Label htmlFor={id}>{label}</Label>
-      <div className="relative">
-        <Search
-          className="pointer-events-none absolute left-3 top-3 size-5 text-muted-foreground"
-          aria-hidden="true"
-        />
-        <Input
-          id={id}
-          type="search"
-          value={draft}
-          onChange={(e) => changeSearch(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
-            e.preventDefault();
-            clearTimeout(timer.current);
-            onChange(draft);
-          }}
-          className="pl-10 pr-12"
-          placeholder={label}
-        />
-        {draft && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-0 top-0"
-            aria-label="Xóa từ khóa"
-            onClick={() => changeSearch('')}
-          >
-            <X />
-          </Button>
-        )}
+    <div className="flex min-w-0 flex-1 flex-wrap items-end gap-3">
+      <div className="min-w-0 flex-1 space-y-2">
+        <Label htmlFor={id}>{label}</Label>
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute left-3 top-3 size-5 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            id={id}
+            type="search"
+            value={draft}
+            onChange={(e) => changeSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
+              e.preventDefault();
+              submitSearch();
+            }}
+            className="pl-10 pr-12"
+            placeholder={label}
+          />
+          {draft && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-0 top-0"
+              aria-label="Xóa từ khóa"
+              type="button"
+              onClick={() => changeSearch('')}
+            >
+              <X />
+            </Button>
+          )}
+        </div>
       </div>
+      {submitLabel && (
+        <Button type="button" onClick={submitSearch}>
+          {submitLabel}
+        </Button>
+      )}
     </div>
   );
 }

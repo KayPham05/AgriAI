@@ -143,7 +143,7 @@ public class CatalogContractTests(AgriVisionFactory factory) : IClassFixture<Agr
     [InlineData("plants")]
     [InlineData("diseases")]
     [Trait("ApiCase", "catalog.update")]
-    public async Task Update_PersistsFieldsReadableByGuest(string resource)
+    public async Task Update_PersistsInactiveFieldsForAdmin_AndHidesFromGuest(string resource)
     {
         using var admin = factory.CreateClient();
         await ApiTestClient.Admin(admin, factory);
@@ -156,7 +156,9 @@ public class CatalogContractTests(AgriVisionFactory factory) : IClassFixture<Agr
         });
         update.StatusCode.Should().Be(HttpStatusCode.OK);
         using var guest = factory.CreateClient();
-        using var read = await guest.GetAsync($"/api/{resource}/{id}");
+        using var hidden = await guest.GetAsync($"/api/{resource}/{id}");
+        hidden.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        using var read = await admin.GetAsync($"/api/{resource}/{id}");
         read.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await ApiTestClient.Json(read);
         body.GetProperty("name").GetString().Should().Be(name);
@@ -195,7 +197,7 @@ public class CatalogContractTests(AgriVisionFactory factory) : IClassFixture<Agr
     [InlineData("plants")]
     [InlineData("diseases")]
     [Trait("ApiCase", "catalog.soft_delete")]
-    public async Task Delete_HidesFromDefaultListAndKeepsDetailAndReferences(string resource)
+    public async Task Delete_HidesFromGuestAndKeepsAdminDetailAndReferences(string resource)
     {
         using var admin = factory.CreateClient();
         await ApiTestClient.Admin(admin, factory);
@@ -218,7 +220,9 @@ public class CatalogContractTests(AgriVisionFactory factory) : IClassFixture<Agr
         using var deleted = await admin.DeleteAsync($"/api/{resource}/{id}");
         deleted.StatusCode.Should().Be(HttpStatusCode.NoContent);
         using var guest = factory.CreateClient();
-        using var detail = await guest.GetAsync($"/api/{resource}/{id}");
+        using var hidden = await guest.GetAsync($"/api/{resource}/{id}");
+        hidden.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        using var detail = await admin.GetAsync($"/api/{resource}/{id}");
         detail.StatusCode.Should().Be(HttpStatusCode.OK);
         (await ApiTestClient.Json(detail)).GetProperty("isActive").GetBoolean().Should().BeFalse();
         using var active = await guest.GetAsync($"/api/{resource}");
@@ -226,7 +230,10 @@ public class CatalogContractTests(AgriVisionFactory factory) : IClassFixture<Agr
         active.StatusCode.Should().Be(HttpStatusCode.OK);
         all.StatusCode.Should().Be(HttpStatusCode.OK);
         (await ApiTestClient.Json(active)).EnumerateArray().Select(x => x.GetProperty("id").GetGuid()).Should().NotContain(id);
-        (await ApiTestClient.Json(all)).EnumerateArray().Select(x => x.GetProperty("id").GetGuid()).Should().Contain(id);
+        (await ApiTestClient.Json(all)).EnumerateArray().Select(x => x.GetProperty("id").GetGuid()).Should().NotContain(id);
+        using var adminList = await admin.GetAsync($"/api/{resource}?includeInactive=true");
+        adminList.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await ApiTestClient.Json(adminList)).EnumerateArray().Select(x => x.GetProperty("id").GetGuid()).Should().Contain(id);
         using var verifyScope = factory.Services.CreateScope();
         var stored = await verifyScope.ServiceProvider.GetRequiredService<AppDbContext>().PlantDiseases.SingleAsync(x => x.Id == mappingId);
         stored.PlantId.Should().Be(plantId);

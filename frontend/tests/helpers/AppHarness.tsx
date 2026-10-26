@@ -14,6 +14,7 @@ import { DiseaseDetailRoute } from '@/features/diseases/DiseaseDetailRoute';
 import { HistoryRoute } from '@/features/history/HistoryRoute';
 import { AboutRoute } from '@/features/about/AboutRoute';
 import { ProfileRoute } from '@/features/profile/ProfileRoute';
+import { PublicCatalog } from '@/features/knowledge/PublicCatalog';
 
 // jsdom has no Next server. Compose real provider/shell/features; URL history
 // comes from each test's Next navigation adapter.
@@ -32,6 +33,8 @@ function TestRoute({ children }: { children?: ReactNode }) {
     profile: <ProfileRoute />,
     'plant-detail': null,
     'disease-detail': null,
+    knowledge: <PublicCatalog kind="knowledge-documents" id={detailId ?? undefined} />,
+    medicines: <PublicCatalog kind="medicines" id={detailId ?? undefined} />,
   };
   return <AppShell>{children ?? pages[tab]}</AppShell>;
 }

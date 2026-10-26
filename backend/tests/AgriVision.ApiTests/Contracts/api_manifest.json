@@ -78,7 +78,8 @@
     "method": "GET",
     "route": "/api/plants",
     "cases": [
-      "catalog.soft_delete"
+      "catalog.soft_delete",
+      "knowledge.catalog_visibility"
     ]
   },
   {
@@ -87,7 +88,8 @@
     "cases": [
       "catalog.create_and_read",
       "catalog.missing_id",
-      "catalog.soft_delete"
+      "catalog.soft_delete",
+      "knowledge.catalog_visibility"
     ]
   },
   {
@@ -101,7 +103,8 @@
       "existing.SecurityAuthorizationTests.CatalogWrites_ShouldRejectGuestAndRegularUser",
       "catalog.plant_duplicate",
       "existing.SecurityAuthorizationTests.AdminCatalogWrite_ShouldWork_WithTokenIssuedAfterRoleAssignment",
-      "catalog.optional_field_boundaries"
+      "catalog.optional_field_boundaries",
+      "knowledge.catalog_visibility"
     ]
   },
   {
@@ -113,7 +116,8 @@
       "catalog.missing_id",
       "catalog.write_authorization",
       "catalog.duplicate_update",
-      "catalog.optional_field_boundaries"
+      "catalog.optional_field_boundaries",
+      "knowledge.catalog_visibility"
     ]
   },
   {
@@ -122,14 +126,16 @@
     "cases": [
       "catalog.soft_delete",
       "catalog.missing_id",
-      "catalog.write_authorization"
+      "catalog.write_authorization",
+      "knowledge.catalog_visibility"
     ]
   },
   {
     "method": "GET",
     "route": "/api/diseases",
     "cases": [
-      "catalog.soft_delete"
+      "catalog.soft_delete",
+      "knowledge.catalog_visibility"
     ]
   },
   {
@@ -138,7 +144,8 @@
     "cases": [
       "catalog.create_and_read",
       "catalog.missing_id",
-      "catalog.soft_delete"
+      "catalog.soft_delete",
+      "knowledge.catalog_visibility"
     ]
   },
   {
@@ -151,7 +158,8 @@
       "catalog.write_authorization",
       "existing.SecurityAuthorizationTests.CatalogWrites_ShouldRejectGuestAndRegularUser",
       "catalog.disease_duplicate",
-      "catalog.optional_field_boundaries"
+      "catalog.optional_field_boundaries",
+      "knowledge.catalog_visibility"
     ]
   },
   {
@@ -163,7 +171,8 @@
       "catalog.missing_id",
       "catalog.write_authorization",
       "catalog.optional_field_boundaries",
-      "catalog.duplicate_update"
+      "catalog.duplicate_update",
+      "knowledge.catalog_visibility"
     ]
   },
   {
@@ -172,7 +181,8 @@
     "cases": [
       "catalog.soft_delete",
       "catalog.missing_id",
-      "catalog.write_authorization"
+      "catalog.write_authorization",
+      "knowledge.catalog_visibility"
     ]
   },
   {
@@ -311,7 +321,8 @@
       "predictions.dependency_failure_no_persistence",
       "predictions.rate_same_user_sessions",
       "predictions.unexpected_error_redaction",
-      "predictions.exact_upload_limit"
+      "predictions.exact_upload_limit",
+      "knowledge.prediction_snapshot"
     ]
   },
   {
@@ -333,7 +344,8 @@
       "existing.PredictionsControllerTests.StoredSnapshot_ShouldSurviveCatalogChangesAndExpiry_AndRequireOwner",
       "existing.SecurityAuthorizationTests.ProtectedEndpoints_ShouldRejectInvalidBearer",
       "predictions.admin_delete_without_read",
-      "predictions.missing_object"
+      "predictions.missing_object",
+      "knowledge.prediction_snapshot"
     ]
   },
   {
@@ -386,6 +398,183 @@
     "route": "/api/users/avatar/{*key}",
     "cases": [
       "user.avatar.lifecycle"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/admin/medicines",
+    "cases": [
+      "knowledge.lifecycle",
+      "knowledge.authorization"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/admin/medicines/{id:guid}",
+    "cases": [
+      "knowledge.lifecycle",
+      "knowledge.authorization",
+      "knowledge.validation"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/admin/medicines",
+    "cases": [
+      "knowledge.lifecycle",
+      "knowledge.authorization",
+      "knowledge.validation"
+    ]
+  },
+  {
+    "method": "PUT",
+    "route": "/api/admin/medicines/{id:guid}",
+    "cases": [
+      "knowledge.lifecycle",
+      "knowledge.authorization"
+    ]
+  },
+  {
+    "method": "PUT",
+    "route": "/api/admin/medicines/{id:guid}/publication",
+    "cases": [
+      "knowledge.lifecycle",
+      "knowledge.authorization"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/admin/medicines/{id:guid}",
+    "cases": [
+      "knowledge.lifecycle",
+      "knowledge.authorization"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/medicines",
+    "cases": [
+      "knowledge.lifecycle",
+      "knowledge.validation"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/medicines/{id:guid}",
+    "cases": [
+      "knowledge.lifecycle"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/admin/knowledge-documents",
+    "cases": [
+      "knowledge.lifecycle",
+      "knowledge.authorization"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/admin/knowledge-documents/{id:guid}",
+    "cases": [
+      "knowledge.lifecycle",
+      "knowledge.authorization",
+      "knowledge.validation"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/admin/knowledge-documents",
+    "cases": [
+      "knowledge.lifecycle",
+      "knowledge.authorization",
+      "knowledge.validation"
+    ]
+  },
+  {
+    "method": "PUT",
+    "route": "/api/admin/knowledge-documents/{id:guid}",
+    "cases": [
+      "knowledge.lifecycle",
+      "knowledge.authorization",
+      "knowledge.document_links",
+      "knowledge.document_atomicity"
+    ]
+  },
+  {
+    "method": "PUT",
+    "route": "/api/admin/knowledge-documents/{id:guid}/publication",
+    "cases": [
+      "knowledge.lifecycle",
+      "knowledge.authorization"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/admin/knowledge-documents/{id:guid}",
+    "cases": [
+      "knowledge.lifecycle",
+      "knowledge.authorization"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/knowledge-documents",
+    "cases": [
+      "knowledge.lifecycle",
+      "knowledge.validation"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/knowledge-documents/{id:guid}",
+    "cases": [
+      "knowledge.lifecycle"
+    ]
+  },
+  {
+    "method": "PUT",
+    "route": "/api/admin/medicines/{id:guid}/uses/{plantDiseaseId:guid}",
+    "cases": [
+      "knowledge.authorization",
+      "knowledge.relations",
+      "knowledge.label_review"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/admin/medicines/{id:guid}/uses/{plantDiseaseId:guid}",
+    "cases": [
+      "knowledge.authorization",
+      "knowledge.relations"
+    ]
+  },
+  {
+    "method": "PUT",
+    "route": "/api/admin/diseases/{id:guid}/approval",
+    "cases": [
+      "knowledge.disease_approval"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/plant-diseases",
+    "cases": [
+      "knowledge.pair_availability"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/admin/plant-diseases",
+    "cases": [
+      "knowledge.pair_availability"
+    ]
+  },
+  {
+    "method": "PUT",
+    "route": "/api/admin/plant-diseases/{id:guid}/availability",
+    "cases": [
+      "knowledge.pair_availability"
     ]
   }
 ]

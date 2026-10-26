@@ -8,6 +8,8 @@ using AgriVision.Infrastructure.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Moq;
+using AgriVision.Application.Services.Interfaces;
+using AgriVision.Application.DTOs.Medicine;
 
 namespace AgriVision.UnitTests.Services;
 
@@ -27,6 +29,9 @@ public class PredictionServiceTests
         _plantDiseaseRepository = new StubPlantDiseaseRepository();
         _imageStorage = new RecordingImageStorage();
         _diseasePredictor = new RecordingPlantDiseasePredictor();
+        var medicines = new Mock<IMedicineService>();
+        medicines.Setup(m => m.RecommendAsync(It.IsAny<Guid>(), It.IsAny<float>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<RecommendedMedicineDto>());
 
         _predictionService = new PredictionService(
             _predictionRepository,
@@ -34,6 +39,7 @@ public class PredictionServiceTests
             _imageStorage,
             _diseasePredictor,
             _profileRepository.Object,
+            medicines.Object,
             _journal.Object
         );
     }
@@ -343,6 +349,8 @@ public class PredictionServiceTests
         disease.IsContentApproved = approved;
         disease.Medication = "Medication must not be shown";
         var result = await _predictionService.PredictAsync(CreateFile(), null);
+        result.PredictedPlantDisease.Disease.IsContentApproved.Should().Be(approved);
+        result.PredictedPlantDisease.Disease.ConditionType.Should().Be(condition);
         result.Medication.Should().BeNull();
         if (!approved) result.PredictedPlantDisease.Disease.Description.Should().Be("Thông tin đang được cập nhật");
     }
@@ -369,7 +377,7 @@ public class PredictionServiceTests
     [Theory]
     [InlineData(0.8f, true)]
     [InlineData(0.81f, false)]
-    public async Task ConfidenceBoundary_ShouldControlWarningAndMedication(float confidence, bool warning)
+    public async Task ConfidenceBoundary_ShouldControlWarning_WithoutUsingUnverifiedLegacyMedication(float confidence, bool warning)
     {
         ConfigureHealthyClass();
         var disease = _plantDiseaseRepository.PlantDiseases.Single().Disease;
@@ -379,7 +387,7 @@ public class PredictionServiceTests
         _diseasePredictor.Result = new(0, "Tomato___Healthy", confidence, []);
         var result = await _predictionService.PredictAsync(CreateFile(), null);
         (result.Warning != null).Should().Be(warning);
-        (result.Medication != null).Should().Be(!warning);
+        result.Medication.Should().BeNull("legacy disease text alone is not a verified medicine use");
     }
 
     [Fact]
@@ -633,6 +641,12 @@ public class PredictionServiceTests
     private sealed class StubPlantDiseaseRepository : IPlantDiseaseRepository
     {
         public IReadOnlyCollection<PlantDisease> PlantDiseases { get; set; } = [];
+
+        public Task<(IReadOnlyList<PlantDisease> Items, int Total)> SearchAsync(
+            AgriVision.Application.DTOs.Knowledge.CatalogFilterParams filter,
+            bool publicOnly,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
 
         public Task<PlantDisease?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult(PlantDiseases.SingleOrDefault(item => item.Id == id));

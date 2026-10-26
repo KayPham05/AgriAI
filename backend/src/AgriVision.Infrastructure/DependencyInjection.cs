@@ -36,6 +36,8 @@ public static class DependencyInjection
         services.AddScoped<IAdminAuditLogRepository, AdminAuditLogRepository>();
         services.AddScoped<IAgriculturalProfileRepository, AgriculturalProfileRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IMedicineRepository, MedicineRepository>();
+        services.AddScoped<IKnowledgeDocumentRepository, KnowledgeDocumentRepository>();
 
         // Register Image Storage Service
         services.AddSingleton<IAmazonS3>(_ =>
