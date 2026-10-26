@@ -1,6 +1,6 @@
 'use client';
 import { createContext, use } from 'react';
-import type { AuthSession } from '@/services/authApi';
+import type { AuthSession, AuthUser } from '@/services/authApi';
 import type { Plant, Disease, DiagnosisResult, UserProfile, NotificationItem } from '@/types';
 
 interface AuthState {
@@ -9,6 +9,7 @@ interface AuthState {
   openAuthentication: (mode: 'login' | 'register') => void;
   logout: () => void;
   updateProfile: (profile: UserProfile) => void;
+  updateAccount: (user: AuthUser) => void;
 }
 interface CatalogState {
   plants: Plant[];

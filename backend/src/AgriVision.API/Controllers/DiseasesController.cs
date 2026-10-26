@@ -20,15 +20,16 @@ public class DiseasesController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<DiseaseDto>>> GetAll([FromQuery] bool includeInactive = false, CancellationToken cancellationToken = default)
     {
-        var diseases = await _diseaseService.GetAllAsync(includeInactive, cancellationToken);
+        var isAdmin = User.IsInRole(UserRole.Admin);
+        var diseases = await _diseaseService.GetAllAsync(includeInactive && isAdmin, isAdmin, cancellationToken);
         return Ok(diseases);
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<DiseaseDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
-        var disease = await _diseaseService.GetByIdAsync(id, cancellationToken);
-        if (disease == null)
+        var disease = await _diseaseService.GetByIdAsync(id, User.IsInRole(UserRole.Admin), cancellationToken);
+        if (disease == null || (!disease.IsActive && !User.IsInRole(UserRole.Admin)))
         {
             return NotFound();
         }
@@ -51,6 +52,11 @@ public class DiseasesController : ControllerBase
         var result = await _diseaseService.UpdateAsync(id, request, cancellationToken);
         return Ok(result);
     }
+
+    [Authorize(Roles = UserRole.Admin)]
+    [HttpPut("~/api/admin/diseases/{id:guid}/approval")]
+    public async Task<ActionResult<DiseaseDto>> SetApproval(Guid id, DiseaseApprovalRequest request, CancellationToken cancellationToken = default) =>
+        Ok(await _diseaseService.SetApprovalAsync(id, request.IsContentApproved, cancellationToken));
 
     [Authorize(Roles = UserRole.Admin)]
     [HttpDelete("{id:guid}")]

@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useRef, useState } from 'react';
 import { AdminMockProvider } from './AdminMockProvider';
-import { clearAuthSession, type AuthSession } from '@/services/authApi';
+import { clearAuthSession, revokeSession, type AuthSession } from '@/services/authApi';
 import { useRouter } from 'next/navigation';
 import { AdminAccess } from './AdminAccess';
 import { AdminLoginSuccessScreen } from './AdminLoginSuccessScreen';
@@ -34,15 +34,42 @@ import { AdminOverview } from './AdminOverview';
 import { AdminUsers } from './AdminUsers';
 import { AdminImages } from './AdminImages';
 import { AdminSessions } from './AdminSessions';
+import dynamic from 'next/dynamic';
+import { BookOpen, Leaf, Pill, Link2, Bug } from 'lucide-react';
+const KnowledgeAdmin = dynamic(() =>
+  import('@/features/knowledge/KnowledgeAdmin').then((module) => module.KnowledgeAdmin),
+);
+const PlantDiseaseManager = dynamic(() =>
+  import('@/features/knowledge/PlantDiseaseManager').then((module) => module.PlantDiseaseManager),
+);
 
-type CrmView = 'overview' | 'users' | 'images' | 'sessions';
+type CrmView =
+  | 'overview'
+  | 'users'
+  | 'images'
+  | 'sessions'
+  | 'plants'
+  | 'diseases'
+  | 'medicines'
+  | 'knowledge-documents'
+  | 'plant-diseases';
 const NAVIGATION = [
   { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
   { id: 'users', label: 'Người dùng', icon: Users },
   { id: 'images', label: 'Ảnh đã tải lên', icon: Images },
   { id: 'sessions', label: 'Phiên đăng nhập', icon: Monitor },
+  { id: 'plants', label: 'Cây trồng', icon: Leaf },
+  { id: 'diseases', label: 'Bệnh cây', icon: Bug },
+  { id: 'medicines', label: 'Thuốc', icon: Pill },
+  { id: 'knowledge-documents', label: 'Bài viết', icon: BookOpen },
+  { id: 'plant-diseases', label: 'Liên kết cây và bệnh', icon: Link2 },
 ] as const;
 const VIEW_COPY = {
+  plants: { title: 'Quản lý cây trồng' },
+  diseases: { title: 'Quản lý bệnh cây' },
+  medicines: { title: 'Quản lý thuốc' },
+  'knowledge-documents': { title: 'Quản lý bài viết' },
+  'plant-diseases': { title: 'Liên kết cây và bệnh' },
   overview: {
     title: 'Tổng quan vận hành',
   },
@@ -105,9 +132,21 @@ function AdminWorkspace({ session }: { session: AuthSession }) {
   const { rootRef, railOpen, toggleRail } = useAdminRail();
   const [loggingOut, setLoggingOut] = useState(false);
   const finishLogout = useCallback(() => router.replace('/'), [router]);
-  function logout() {
-    clearAuthSession();
-    setLoggingOut(true);
+  const logoutPending = useRef(false);
+  const [logoutError, setLogoutError] = useState('');
+  async function logout() {
+    if (logoutPending.current) return;
+    logoutPending.current = true;
+    setLogoutError('');
+    try {
+      await revokeSession(session.token);
+      clearAuthSession();
+      setLoggingOut(true);
+    } catch {
+      setLogoutError('Chưa thể thu hồi phiên. Vui lòng kiểm tra kết nối và thử lại.');
+    } finally {
+      logoutPending.current = false;
+    }
   }
   const [view, setView] = useState<CrmView>('overview');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -131,6 +170,7 @@ function AdminWorkspace({ session }: { session: AuthSession }) {
   }
   return (
     <div className="admin-dashboard h-dvh overflow-hidden bg-surface-muted p-0 text-foreground sm:p-4 lg:p-6">
+      {logoutError && <p role="alert">{logoutError}</p>}
       <a className="skip-link" href="#admin-main">
         Đến nội dung quản trị
       </a>
@@ -275,11 +315,21 @@ function AdminWorkspace({ session }: { session: AuthSession }) {
               {view === 'users' && <AdminUsers key={userSearch} initialQuery={userSearch} />}
               {view === 'images' && <AdminImages />}
               {view === 'sessions' && <AdminSessions />}
+              {(view === 'plants' ||
+                view === 'diseases' ||
+                view === 'medicines' ||
+                view === 'knowledge-documents') && (
+                <KnowledgeAdmin key={view} kind={view} token={session.token} />
+              )}
+              {view === 'plant-diseases' && <PlantDiseaseManager token={session.token} />}
             </AdminMotion>
             {view !== 'overview' && (
               <footer className="mt-2 flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border pt-2 text-xs text-muted-foreground">
-                <p>AgriAI Quản trị / Giao diện quản trị người dùng</p>
-                <p>Nguồn dữ liệu: Mock frontend</p>
+                <p>AgriAI Quản trị</p>
+                <p>
+                  Nguồn dữ liệu:{' '}
+                  {['users', 'images', 'sessions'].includes(view) ? 'Mock frontend' : 'API AgriAI'}
+                </p>
               </footer>
             )}
           </main>

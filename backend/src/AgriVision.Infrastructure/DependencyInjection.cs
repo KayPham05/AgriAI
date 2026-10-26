@@ -8,6 +8,8 @@ using AgriVision.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Amazon.S3;
+using Amazon.Runtime;
 
 namespace AgriVision.Infrastructure;
 
@@ -34,9 +36,29 @@ public static class DependencyInjection
         services.AddScoped<IAdminAuditLogRepository, AdminAuditLogRepository>();
         services.AddScoped<IAgriculturalProfileRepository, AgriculturalProfileRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IMedicineRepository, MedicineRepository>();
+        services.AddScoped<IKnowledgeDocumentRepository, KnowledgeDocumentRepository>();
 
         // Register Image Storage Service
-        services.AddScoped<IImageStorage, CloudinaryImageStorage>();
+        services.AddSingleton<IAmazonS3>(_ =>
+        {
+            var endpoint = configuration["R2:ServiceUrl"];
+            var accessKey = configuration["R2:AccessKeyId"];
+            var secretKey = configuration["R2:SecretAccessKey"];
+            if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) || uri.Scheme != "https" ||
+                !uri.Host.EndsWith(".r2.cloudflarestorage.com", StringComparison.OrdinalIgnoreCase) ||
+                uri.AbsolutePath != "/" || !uri.IsDefaultPort || !string.IsNullOrEmpty(uri.Fragment) ||
+                !string.IsNullOrEmpty(uri.Query) || !string.IsNullOrEmpty(uri.UserInfo) ||
+                string.IsNullOrWhiteSpace(accessKey) || string.IsNullOrWhiteSpace(secretKey) ||
+                string.IsNullOrWhiteSpace(configuration["R2:BucketName"]))
+                throw new ImageStorageException("Configure R2 ServiceUrl, BucketName, AccessKeyId and SecretAccessKey on the backend.");
+            return new AmazonS3Client(new BasicAWSCredentials(accessKey, secretKey), new AmazonS3Config
+            {
+                ServiceURL = endpoint, AuthenticationRegion = "auto", ForcePathStyle = true
+            });
+        });
+        services.AddScoped<IImageStorage, R2ImageStorage>();
+        services.AddScoped<IImageUploadJournal, ImageUploadJournal>();
 
         // Register AI Disease Predictor HTTP Client & Service
         services.AddHttpClient<IPlantDiseasePredictor, FastApiPlantDiseasePredictor>(client =>

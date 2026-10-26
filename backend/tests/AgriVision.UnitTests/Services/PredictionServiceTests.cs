@@ -8,6 +8,8 @@ using AgriVision.Infrastructure.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Moq;
+using AgriVision.Application.Services.Interfaces;
+using AgriVision.Application.DTOs.Medicine;
 
 namespace AgriVision.UnitTests.Services;
 
@@ -18,6 +20,7 @@ public class PredictionServiceTests
     private readonly RecordingImageStorage _imageStorage;
     private readonly RecordingPlantDiseasePredictor _diseasePredictor;
     private readonly PredictionService _predictionService;
+    private readonly Mock<IImageUploadJournal> _journal = new();
     private readonly Mock<IAgriculturalProfileRepository> _profileRepository = new();
 
     public PredictionServiceTests()
@@ -26,13 +29,18 @@ public class PredictionServiceTests
         _plantDiseaseRepository = new StubPlantDiseaseRepository();
         _imageStorage = new RecordingImageStorage();
         _diseasePredictor = new RecordingPlantDiseasePredictor();
+        var medicines = new Mock<IMedicineService>();
+        medicines.Setup(m => m.RecommendAsync(It.IsAny<Guid>(), It.IsAny<float>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<RecommendedMedicineDto>());
 
         _predictionService = new PredictionService(
             _predictionRepository,
             _plantDiseaseRepository,
             _imageStorage,
             _diseasePredictor,
-            _profileRepository.Object
+            _profileRepository.Object,
+            medicines.Object,
+            _journal.Object
         );
     }
 
@@ -46,7 +54,7 @@ public class PredictionServiceTests
         var stream = new MemoryStream(expectedImageBytes);
         var formFile = new FormFile(stream, 0, stream.Length, "file", fileName);
 
-        var uploadResult = new ImageUploadResult("public_id_123", "http://cloudinary.com/image.jpg");
+        var uploadResult = new ImageUploadResult("r2/predictions/leaf.jpeg", string.Empty);
         _imageStorage.UploadResult = uploadResult;
 
         var aiPredictionResult = new AiPredictionResult(
@@ -85,7 +93,7 @@ public class PredictionServiceTests
 
         // Assert
         result.Should().NotBeNull();
-        result.ImagePath.Should().Be("http://cloudinary.com/image.jpg");
+        result.ImagePath.Should().Be($"/api/predictions/{result.Id}/images/{result.Images.Single().Id}");
         result.Confidence.Should().Be(0.958f);
         result.PredictedPlantDisease.ClassName.Should().Be("Tomato___Bacterial_spot");
         result.PredictedPlantDisease.Plant.Name.Should().Be("Tomato");
@@ -267,6 +275,29 @@ public class PredictionServiceTests
     }
 
     [Fact]
+    public async Task OversizedImage_IsRejectedBeforeInferenceOrStorage()
+    {
+        using var bytes = new MemoryStream([1]);
+        var file = new FormFile(bytes, 0, 15L * 1024 * 1024 + 1, "file", "leaf.png");
+        await FluentActions.Invoking(() => _predictionService.PredictAsync(file, Guid.NewGuid()))
+            .Should().ThrowAsync<ArgumentException>().WithMessage("*15 MB*");
+        _diseasePredictor.PredictCount.Should().Be(0);
+        _imageStorage.UploadCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task AmbiguousUploadCancellation_ShouldCleanKnownKey_WithoutSavingPrediction()
+    {
+        ConfigureHealthyClass();
+        _imageStorage.UploadError = new TaskCanceledException();
+        await FluentActions.Invoking(() => _predictionService.PredictAsync(CreateFile(), Guid.NewGuid()))
+            .Should().ThrowAsync<OperationCanceledException>();
+        _imageStorage.DeletedPublicIds.Should().ContainSingle().Which.Should().StartWith("users/");
+        _journal.Verify(journal => journal.CompleteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _predictionRepository.AddedPredictions.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task DatabaseWriteFailure_ShouldCleanUploadedImage()
     {
         ConfigureHealthyClass();
@@ -318,6 +349,8 @@ public class PredictionServiceTests
         disease.IsContentApproved = approved;
         disease.Medication = "Medication must not be shown";
         var result = await _predictionService.PredictAsync(CreateFile(), null);
+        result.PredictedPlantDisease.Disease.IsContentApproved.Should().Be(approved);
+        result.PredictedPlantDisease.Disease.ConditionType.Should().Be(condition);
         result.Medication.Should().BeNull();
         if (!approved) result.PredictedPlantDisease.Disease.Description.Should().Be("Thông tin đang được cập nhật");
     }
@@ -344,7 +377,7 @@ public class PredictionServiceTests
     [Theory]
     [InlineData(0.8f, true)]
     [InlineData(0.81f, false)]
-    public async Task ConfidenceBoundary_ShouldControlWarningAndMedication(float confidence, bool warning)
+    public async Task ConfidenceBoundary_ShouldControlWarning_WithoutUsingUnverifiedLegacyMedication(float confidence, bool warning)
     {
         ConfigureHealthyClass();
         var disease = _plantDiseaseRepository.PlantDiseases.Single().Disease;
@@ -354,7 +387,7 @@ public class PredictionServiceTests
         _diseasePredictor.Result = new(0, "Tomato___Healthy", confidence, []);
         var result = await _predictionService.PredictAsync(CreateFile(), null);
         (result.Warning != null).Should().Be(warning);
-        (result.Medication != null).Should().Be(!warning);
+        result.Medication.Should().BeNull("legacy disease text alone is not a verified medicine use");
     }
 
     [Fact]
@@ -584,6 +617,73 @@ public class PredictionServiceTests
         return buffer.ToArray();
     }
 
+    [Fact]
+    public async Task LegacyImages_AreHiddenUntilMigrated_WithoutChangingStoredHistory()
+    {
+        ConfigureHealthyClass();
+        var owner = Guid.NewGuid();
+        var result = await _predictionService.PredictAsync(CreateFile(), owner);
+        var entity = _predictionRepository.AddedPredictions.Single();
+        entity.ImagePath = "https://legacy.example/public.jpg";
+        entity.ImagePublicId = "legacy/image";
+        entity.Images.Single().ImagePath = entity.ImagePath;
+        entity.Images.Single().ImagePublicId = entity.ImagePublicId;
+        var stored = await _predictionService.GetPredictionByIdAsync(result.Id, userId: owner);
+        stored!.ImagePath.Should().BeEmpty();
+        stored.Images.Single().ImagePath.Should().BeNull();
+        entity.ImagePath.Should().Be("https://legacy.example/public.jpg");
+    }
+
+    [Fact]
+    public async Task ReadImage_RequiresOwnerAndLiveImage_AndDoesNotReadOtherKeys()
+    {
+        ConfigureHealthyClass();
+        var userId = Guid.NewGuid();
+        var result = await _predictionService.PredictAsync(CreateFile(), userId);
+        var image = result.Images.Single();
+        (await _predictionService.ReadImageAsync(result.Id, image.Id, Guid.NewGuid())).Should().BeNull();
+        (await _predictionService.ReadImageAsync(result.Id, Guid.NewGuid(), userId)).Should().BeNull();
+        _imageStorage.ReadCount.Should().Be(0);
+        (await _predictionService.ReadImageAsync(result.Id, image.Id, userId))!.Content.Should().Equal(1, 2);
+        _imageStorage.ReadCount.Should().Be(1);
+        var entity = _predictionRepository.AddedPredictions.Single().Images.Single();
+        entity.ExpiresAt = DateTime.UtcNow.AddMinutes(-1);
+        (await _predictionService.ReadImageAsync(result.Id, image.Id, userId)).Should().BeNull();
+        entity.ExpiresAt = DateTime.UtcNow.AddDays(1);
+        entity.DeletedAt = DateTime.UtcNow;
+        (await _predictionService.ReadImageAsync(result.Id, image.Id, userId)).Should().BeNull();
+        entity.DeletedAt = null;
+        entity.ImagePublicId = "local_old.png";
+        (await _predictionService.ReadImageAsync(result.Id, image.Id, userId)).Should().BeNull();
+        _imageStorage.ReadCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task NewKeys_RequireMatchingMetadata_ForReadProjectionAndDelete()
+    {
+        ConfigureHealthyClass();
+        var owner = Guid.NewGuid();
+        var result = await _predictionService.PredictAsync(CreateFile(), owner);
+        var entity = _predictionRepository.AddedPredictions.Single();
+        var image = entity.Images.Single();
+        var key = $"users/{owner:D}/predictions/{entity.Id:D}/{image.Id:D}.png";
+        image.ImagePublicId = entity.ImagePublicId = key;
+        (await _predictionService.ReadImageAsync(entity.Id, image.Id, owner)).Should().NotBeNull();
+        (await _predictionService.GetPredictionByIdAsync(entity.Id, userId: owner))!.Images.Single().ImagePath.Should().NotBeNull();
+        image.ImagePublicId = $"users/{Guid.NewGuid():D}/predictions/{entity.Id:D}/{image.Id:D}.png";
+        (await _predictionService.ReadImageAsync(entity.Id, image.Id, owner)).Should().BeNull();
+        (await _predictionService.GetPredictionByIdAsync(entity.Id, userId: owner))!.Images.Single().ImagePath.Should().BeNull();
+        await FluentActions.Invoking(() => _predictionService.DeletePredictionAsync(entity.Id, owner, false)).Should().ThrowAsync<InvalidOperationException>();
+        _imageStorage.DeletedPublicIds.Should().BeEmpty();
+        image.ImagePublicId = key;
+        entity.ImagePublicId = $"users/{Guid.NewGuid():D}/predictions/{entity.Id:D}/{image.Id:D}.png";
+        await FluentActions.Invoking(() => _predictionService.DeletePredictionAsync(entity.Id, owner, false)).Should().ThrowAsync<InvalidOperationException>();
+        _imageStorage.DeletedPublicIds.Should().BeEmpty();
+        entity.ImagePublicId = key;
+        await _predictionService.DeletePredictionAsync(entity.Id, owner, false);
+        _imageStorage.DeletedPublicIds.Should().ContainSingle().Which.Should().Be(key);
+    }
+
     private sealed class RecordingPredictionRepository : IPredictionRepository
     {
         public Exception? WriteError { get; set; }
@@ -650,6 +750,12 @@ public class PredictionServiceTests
     {
         public IReadOnlyCollection<PlantDisease> PlantDiseases { get; set; } = [];
 
+        public Task<(IReadOnlyList<PlantDisease> Items, int Total)> SearchAsync(
+            AgriVision.Application.DTOs.Knowledge.CatalogFilterParams filter,
+            bool publicOnly,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public Task<PlantDisease?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult(PlantDiseases.SingleOrDefault(item => item.Id == id));
 
@@ -692,7 +798,14 @@ public class PredictionServiceTests
         public CancellationToken CleanupToken { get; private set; }
         public List<string> DeletedPublicIds { get; } = [];
         public ImageUploadResult UploadResult { get; set; } =
-            new("test/image", "https://images.test/leaf.jpg");
+            new("r2/predictions/leaf.jpg", string.Empty);
+
+        public int ReadCount { get; private set; }
+        public Task<ImageDownloadResult?> ReadImageAsync(string publicId, CancellationToken cancellationToken = default)
+        {
+            ReadCount++;
+            return Task.FromResult<ImageDownloadResult?>(new([1, 2], "image/jpeg"));
+        }
 
         public int UploadCount { get; private set; }
         public Stream? ReceivedStream { get; private set; }
@@ -700,15 +813,16 @@ public class PredictionServiceTests
 
         public Task<ImageUploadResult> UploadImageAsync(
             IFormFile file,
-            CancellationToken cancellationToken = default) =>
+            ImageStorageContext context, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
         public Task<ImageUploadResult> UploadImageAsync(
             Stream imageStream,
             string fileName,
-            CancellationToken cancellationToken = default)
+            ImageStorageContext context, CancellationToken cancellationToken = default)
         {
             UploadCount++;
+            if (UploadError != null) throw UploadError;
             ReceivedStream = imageStream;
             UploadedImageBytes = ReadAllBytes(imageStream);
             if (UploadError != null) throw UploadError;

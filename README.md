@@ -70,10 +70,11 @@ Yêu cầu môi trường: Đã cài đặt **Docker** và **Docker Compose**.
 
 ### 1. Chuẩn bị file cấu hình & Checkpoint
 ```powershell
-# Tạo file môi trường từ mẫu
-Copy-Item .env.example .env
+# Tạo file môi trường từ mẫu nếu chưa có, giữ cấu hình local hiện tại
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 ```
 > Cấu hình `POSTGRES_PASSWORD` và `JWT_SECRET` trong `.env`.  
+> Cấu hình `R2_SERVICE_URL`, `R2_BUCKET_NAME`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` cho kho ảnh R2 private theo [hướng dẫn R2](docs/reports/AGRI-129/r2_storage.md). Không commit credential; backend không còn Cloudinary/local fallback. Health không chứng minh kết nối storage.
 > Đặt các file checkpoint mô hình `best_convnext_tiny.pth` vào đúng thư mục `ai/models/checkpoints/plant/` và `ai/models/checkpoints/disease/`.
 
 ### 2. Khởi chạy hệ thống

@@ -3,6 +3,7 @@
 import type React from 'react';
 import { useState } from 'react';
 import Image from 'next/image';
+import { PrivateImage } from '@/components/common/PrivateImage';
 import Link from 'next/link';
 import { getTabPath } from '@/lib/appRoutes';
 import { Bell, Leaf, LogIn, Menu } from 'lucide-react';
@@ -121,7 +122,17 @@ export const Navbar: React.FC<NavbarProps> = ({
           {isAuthenticated ? (
             <Button asChild variant="secondary" size="icon">
               <Link href="/profile" aria-label={`Mở hồ sơ của ${userProfile.name}`}>
-                {userProfile.name.slice(0, 1).toUpperCase()}
+                {userProfile.avatarUrl ? (
+                  <PrivateImage
+                    src={userProfile.avatarUrl}
+                    width={44}
+                    height={44}
+                    alt="Ảnh đại diện tài khoản"
+                    className="size-11 rounded-full object-cover"
+                  />
+                ) : (
+                  userProfile.name.slice(0, 1).toUpperCase()
+                )}
               </Link>
             </Button>
           ) : (

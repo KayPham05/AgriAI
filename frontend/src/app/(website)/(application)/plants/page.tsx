@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import { PlantsRoute } from '@/features/plants/PlantsRoute';
+import { CatalogRoute } from '@/features/knowledge/CatalogRoute';
 export const metadata: Metadata = { title: 'Cây trồng | AgriAI' };
 export default function Page() {
-  return <PlantsRoute />;
+  return <CatalogRoute kind="plants" />;
 }

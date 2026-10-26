@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import Image from 'next/image';
+import { PrivateImage } from '@/components/common/PrivateImage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -60,7 +61,7 @@ export function GradCamViewer({
         </TabsList>
       </Tabs>
       <div className="relative aspect-[4/3] overflow-hidden rounded-media bg-surface-muted">
-        <Image
+        <PrivateImage
           unoptimized
           width={640}
           height={480}

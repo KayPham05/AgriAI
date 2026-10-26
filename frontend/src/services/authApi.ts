@@ -4,6 +4,7 @@ export interface AuthUser {
   email: string;
   role: string;
   createdAt: string;
+  avatarUrl?: string | null;
 }
 
 export interface AuthSession {
@@ -86,6 +87,21 @@ export function clearAuthSession(): void {
   sessionStorage.removeItem(AUTH_STORAGE_KEY);
 }
 
+export function updateStoredAuthUser(user: AuthUser): void {
+  for (const storage of [localStorage, sessionStorage]) {
+    try {
+      const serialized = storage.getItem(AUTH_STORAGE_KEY);
+      if (!serialized) continue;
+      const session = JSON.parse(serialized) as AuthSession;
+      if (session.user.id === user.id) {
+        storage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ ...session, user }));
+      }
+    } catch {
+      // A stale local cache must not turn a successful account update into a failed save.
+    }
+  }
+}
+
 export async function restoreAuthSession(): Promise<AuthSession | null> {
   const serialized =
     localStorage.getItem(AUTH_STORAGE_KEY) ?? sessionStorage.getItem(AUTH_STORAGE_KEY);
@@ -102,5 +118,16 @@ export async function restoreAuthSession(): Promise<AuthSession | null> {
   } catch {
     clearAuthSession();
     return null;
+  }
+}
+
+export async function revokeSession(token: string): Promise<void> {
+  const response = await fetch(`${configuredBaseUrl}/api/auth/logout`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!response.ok && response.status !== 401) {
+    throw new Error('Chưa thể thu hồi phiên đăng nhập. Vui lòng thử lại.');
   }
 }

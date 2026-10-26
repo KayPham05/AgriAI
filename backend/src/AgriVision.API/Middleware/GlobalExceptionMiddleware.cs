@@ -1,6 +1,8 @@
 using System.Net;
 using System.Text.Json;
 using AgriVision.Infrastructure.Services;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace AgriVision.API.Middleware;
 
@@ -34,7 +36,9 @@ public class GlobalExceptionMiddleware
 
         var statusCode = exception switch
         {
+            DbUpdateException { InnerException: PostgresException { SqlState: "23505", ConstraintName: "ix_plants_name" or "ix_diseases_name" } } => HttpStatusCode.BadRequest,
             AiServiceException aiServiceException => aiServiceException.StatusCode,
+            ImageStorageException => HttpStatusCode.ServiceUnavailable,
             KeyNotFoundException => HttpStatusCode.NotFound,
             UnauthorizedAccessException => HttpStatusCode.Unauthorized,
             ArgumentException or InvalidOperationException => HttpStatusCode.BadRequest,
@@ -52,7 +56,12 @@ public class GlobalExceptionMiddleware
         }
         else
         {
-            response = new { StatusCode = (int)statusCode, Message = exception.Message };
+            var message = exception is DbUpdateException && statusCode == HttpStatusCode.BadRequest
+                ? "A record with that name already exists."
+                : statusCode == HttpStatusCode.InternalServerError
+                    ? "An unexpected error occurred. Please try again later."
+                    : exception.Message;
+            response = new { StatusCode = (int)statusCode, Message = message };
         }
 
         var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };

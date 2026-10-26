@@ -19,8 +19,10 @@ public class PredictionService : IPredictionService
     private readonly IPredictionRepository _predictionRepository;
     private readonly IPlantDiseaseRepository _plantDiseaseRepository;
     private readonly IImageStorage _imageStorage;
+    private readonly IImageUploadJournal _uploadJournal;
     private readonly IPlantDiseasePredictor _diseasePredictor;
     private readonly IAgriculturalProfileRepository _profileRepository;
+    private readonly IMedicineService _medicineService;
     private readonly ILogger<PredictionService> _logger;
 
     private static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png" };
@@ -32,13 +34,17 @@ public class PredictionService : IPredictionService
         IImageStorage imageStorage,
         IPlantDiseasePredictor diseasePredictor,
         IAgriculturalProfileRepository profileRepository,
+        IMedicineService medicineService,
+        IImageUploadJournal uploadJournal,
         ILogger<PredictionService>? logger = null)
     {
         _predictionRepository = predictionRepository;
         _plantDiseaseRepository = plantDiseaseRepository;
         _imageStorage = imageStorage;
+        _uploadJournal = uploadJournal;
         _diseasePredictor = diseasePredictor;
         _profileRepository = profileRepository;
+        _medicineService = medicineService;
         _logger = logger ?? NullLogger<PredictionService>.Instance;
     }
 
@@ -59,6 +65,8 @@ public class PredictionService : IPredictionService
         {
             throw new ArgumentException("No image file uploaded.");
         }
+
+        if (file.Length > 15 * 1024 * 1024) throw new ArgumentException("Image exceeds 15 MB.");
 
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!AllowedExtensions.Contains(extension))
@@ -117,44 +125,72 @@ public class PredictionService : IPredictionService
             });
         }
 
-        if (userId.HasValue)
-        {
-            await using var storageStream = new MemoryStream(imageBytes, writable: false);
-            uploadResult = await _imageStorage.UploadImageAsync(storageStream, file.FileName, cancellationToken);
-            prediction.ImagePath = uploadResult.SecureUrl;
-            prediction.ImagePublicId = uploadResult.PublicId;
-            prediction.Images.Add(new PredictionImage
-            {
-                PredictionId = prediction.Id, Position = 0,
-                ImagePath = uploadResult.SecureUrl, ImagePublicId = uploadResult.PublicId,
-                Confidence = prediction.Confidence, UploadedAt = prediction.CreatedAt,
-                ExpiresAt = prediction.CreatedAt.AddDays(30)
-            });
-        }
+        // Resolve recommendations before upload so a catalog failure cannot leave an orphan image.
+        var medicines = await _medicineService.RecommendAsync(primaryPlantDisease.Id, aiResult.Confidence, cancellationToken);
 
-        var result = MapToResultDto(prediction, primaryPlantDisease) with { HasHistoricalSnapshot = userId.HasValue };
-        prediction.ResultSnapshotJson = JsonSerializer.Serialize(result, SnapshotJsonOptions);
-        if (userId.HasValue)
+        string? pendingKey = null;
+        var persisted = false;
+        var uploadAcknowledged = false;
+        try
         {
-            try
+            if (userId.HasValue)
+            {
+                var image = new PredictionImage
+                {
+                    PredictionId = prediction.Id, Position = 0,
+                    Confidence = prediction.Confidence, UploadedAt = prediction.CreatedAt,
+                    ExpiresAt = prediction.CreatedAt.AddDays(30)
+                };
+                var context = new ImageStorageContext(userId.Value, prediction.Id, image.Id);
+                var key = ImageStorageKey.Create(context, extension);
+                await _uploadJournal.ReserveAsync(context, key, cancellationToken);
+                pendingKey = key;
+                await using var storageStream = new MemoryStream(imageBytes, writable: false);
+                uploadResult = await _imageStorage.UploadImageAsync(storageStream, file.FileName, context, cancellationToken);
+                uploadAcknowledged = true;
+                pendingKey = uploadResult.PublicId;
+                prediction.ImagePublicId = image.ImagePublicId = uploadResult.PublicId;
+                image.ImagePath = $"/api/predictions/{prediction.Id}/images/{image.Id}";
+                prediction.ImagePath = image.ImagePath;
+                prediction.Images.Add(image);
+            }
+
+            var result = MapToResultDto(prediction, primaryPlantDisease) with
+            {
+                HasHistoricalSnapshot = userId.HasValue,
+                RecommendedMedicines = medicines,
+                // Preserve the string contract while sourcing new advice only from verified catalog uses.
+                Medication = medicines.Count == 0 ? null : string.Join("\n\n", medicines.Select(m =>
+                    $"{m.ProductName} ({m.ActiveIngredient})\n{m.LabelDirections}\n{m.SafetyWarning}\nNguồn: {m.SourceUrl}\nNhãn: {m.LabelReference}"))
+            };
+            prediction.ResultSnapshotJson = JsonSerializer.Serialize(result, SnapshotJsonOptions);
+            if (userId.HasValue)
             {
                 await _predictionRepository.AddAsync(prediction, cancellationToken);
+                persisted = true;
             }
-            catch
+            return result;
+        }
+        finally
+        {
+            if (pendingKey != null)
             {
+                using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10));
                 try
                 {
-                    if (!await _imageStorage.DeleteImageAsync(uploadResult.PublicId, CancellationToken.None))
-                        _logger.LogError("Could not clean image {PublicId} after prediction persistence failed.", uploadResult.PublicId);
+                    if (!persisted) persisted = await _predictionRepository.GetByIdAsync(prediction.Id, cleanup.Token) != null;
+                    var deleted = !persisted && await _imageStorage.DeleteImageAsync(pendingKey, cleanup.Token);
+                    // An unacknowledged PUT may finish after DELETE; keep the intent for delayed reconciliation.
+                    if (persisted || (deleted && uploadAcknowledged))
+                        await _uploadJournal.CompleteAsync(pendingKey, cleanup.Token);
+                    else _logger.LogWarning("Image cleanup remains pending for {Key}.", pendingKey);
                 }
-                catch (Exception cleanupError)
+                catch (Exception error)
                 {
-                    _logger.LogError(cleanupError, "Image cleanup failed after prediction persistence failed.");
+                    _logger.LogError(error, "Image cleanup remains pending for {Key}.", pendingKey);
                 }
-                throw;
             }
         }
-        return result;
     }
 
     public async Task<PredictionResultDto?> GetPredictionByIdAsync(Guid id, CancellationToken cancellationToken = default, Guid? userId = null)
@@ -213,6 +249,17 @@ public class PredictionService : IPredictionService
             throw new UnauthorizedAccessException("You are not authorized to delete this prediction history record.");
         }
 
+        foreach (var image in prediction.Images.Where(image => image.DeletedAt == null))
+        {
+            if (!prediction.UserId.HasValue || !ImageStorageKey.Matches(image.ImagePublicId,
+                new ImageStorageContext(prediction.UserId.Value, prediction.Id, image.Id)))
+                throw new InvalidOperationException("Image storage key does not match its metadata.");
+        }
+
+        if (!string.IsNullOrEmpty(prediction.ImagePublicId) &&
+            !prediction.Images.Any(image => image.ImagePublicId == prediction.ImagePublicId))
+            throw new InvalidOperationException("Primary image storage key does not match its metadata.");
+
         var publicIds = prediction.Images.Where(image => image.DeletedAt == null)
             .Select(image => image.ImagePublicId).Append(prediction.ImagePublicId)
             .Where(publicId => !string.IsNullOrEmpty(publicId)).Distinct();
@@ -223,6 +270,17 @@ public class PredictionService : IPredictionService
         }
 
         await _predictionRepository.DeleteAsync(prediction, cancellationToken);
+    }
+
+    public async Task<ImageDownloadResult?> ReadImageAsync(Guid id, Guid imageId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        var prediction = await _predictionRepository.GetByIdAsync(id, cancellationToken);
+        if (prediction == null || prediction.UserId != userId) return null;
+        var image = prediction.Images.SingleOrDefault(item => item.Id == imageId);
+        if (image == null || image.DeletedAt.HasValue || image.ExpiresAt <= DateTime.UtcNow ||
+            string.IsNullOrEmpty(image.ImagePublicId) || !ImageStorageKey.Matches(image.ImagePublicId, new ImageStorageContext(userId, id, imageId)))
+            return null;
+        return await _imageStorage.ReadImageAsync(image.ImagePublicId, cancellationToken);
     }
 
     private static PredictionResultDto MapToResultDto(Prediction prediction, PlantDisease primaryPlantDisease)
@@ -240,6 +298,7 @@ public class PredictionService : IPredictionService
                 approved ? disease.Symptoms ?? pending : pending,
                 approved ? disease.Treatment ?? pending : pending,
                 approved ? disease.Prevention ?? pending : pending, disease.IsActive, disease.CreatedAt)
+                { IsContentApproved = disease.IsContentApproved, ConditionType = disease.ConditionType }
             : new DiseaseDto(Guid.Empty, "Unknown", "Chưa xác định", null, null, null, null, true, DateTime.UtcNow);
 
         var primaryPlantDiseaseDto = new PlantDiseaseDto(
@@ -262,7 +321,8 @@ public class PredictionService : IPredictionService
                 pd.Disease.IsContentApproved ? pd.Disease.Symptoms ?? pending : pending,
                 pd.Disease.IsContentApproved ? pd.Disease.Treatment ?? pending : pending,
                 pd.Disease.IsContentApproved ? pd.Disease.Prevention ?? pending : pending,
-                pd.Disease.IsActive, pd.Disease.CreatedAt) : diseaseDto;
+                pd.Disease.IsActive, pd.Disease.CreatedAt)
+                { IsContentApproved = pd.Disease.IsContentApproved, ConditionType = pd.Disease.ConditionType } : diseaseDto;
 
             var pdDto = new PlantDiseaseDto(pd.Id, pd.PlantId, pd.DiseaseId, pd.ClassName, pd.ClassIndex, pd.IsActive, pdPlant, pdDisease);
             return new PredictionDetailDto(pd.ClassIndex, pd.ClassName, d.Probability, pdDto);
@@ -291,7 +351,8 @@ public class PredictionService : IPredictionService
         prediction.Images.OrderBy(image => image.Position).Select(image =>
         {
             var expired = image.DeletedAt.HasValue || image.ExpiresAt <= DateTime.UtcNow;
-            return new PredictionImageDto(image.Id, expired ? null : image.ImagePath,
+            var readable = !expired && prediction.UserId.HasValue && ImageStorageKey.Matches(image.ImagePublicId, new ImageStorageContext(prediction.UserId.Value, prediction.Id, image.Id));
+            return new PredictionImageDto(image.Id, readable ? $"/api/predictions/{prediction.Id}/images/{image.Id}" : null,
                 image.Confidence, image.ExpiresAt, expired);
         }).ToList();
 
@@ -308,8 +369,8 @@ public class PredictionService : IPredictionService
             // Grouping is live metadata; deletion must not restore a stale link from the immutable snapshot.
             AgriculturalProfileId = prediction.AgriculturalProfileId,
             Images = images,
-            ImagePath = expired ? string.Empty : images.FirstOrDefault()?.ImagePath ?? prediction.ImagePath,
-            ImagePublicId = expired ? null : prediction.ImagePublicId,
+            ImagePath = images.FirstOrDefault()?.ImagePath ?? string.Empty,
+            ImagePublicId = expired || images.FirstOrDefault()?.ImagePath == null ? null : prediction.ImagePublicId,
             HasHistoricalSnapshot = prediction.ResultSnapshotJson != null
         };
     }

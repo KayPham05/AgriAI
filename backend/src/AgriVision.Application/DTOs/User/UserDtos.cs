@@ -8,7 +8,8 @@ public record UserProfileDto(
     bool IsActive,
     DateTime CreatedAt,
     DateTime? UpdatedAt,
-    DateTime? EmailVerifiedAt
+    DateTime? EmailVerifiedAt,
+    string? AvatarUrl = null
 );
 
 public record UpdateProfileRequest(string FullName);

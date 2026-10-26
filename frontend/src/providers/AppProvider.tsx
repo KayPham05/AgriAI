@@ -11,7 +11,14 @@ import type {
   NotificationItem,
 } from '@/types';
 import { SUPPORTED_PLANTS, ALL_DISEASES } from '@/data/plantData';
-import { type AuthSession, clearAuthSession, restoreAuthSession } from '@/services/authApi';
+import {
+  type AuthSession,
+  type AuthUser,
+  clearAuthSession,
+  restoreAuthSession,
+  revokeSession,
+  updateStoredAuthUser,
+} from '@/services/authApi';
 import { getPlants, getDiseases } from '@/services/catalogApi';
 import {
   getPredictionHistory,
@@ -27,11 +34,13 @@ import { AdminLoginSuccessScreen } from '@/features/admin/AdminLoginSuccessScree
 import { SeedlingLoadingScreen } from '@/components/common/SeedlingLoadingScreen';
 import { AuthContext, CatalogContext, HistoryContext, FeedbackContext } from './AppContexts';
 import { guestProfile, createUserProfile, readGuestHistory } from './sessionProfile';
+import { isPublicCatalogPath } from '@/features/knowledge/catalogUi';
 
 const AUTH_NOTICE_DURATION_MS = 4000;
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const publicCatalog = isPublicCatalogPath(pathname);
   const router = useRouter();
   const returnPathRef = useRef<string | null>(null);
   const restoredStartupRef = useRef(false);
@@ -109,7 +118,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [loginPendingSession]);
 
   useEffect(() => {
-    if (!loginPendingSession) return;
+    if (!loginPendingSession || publicCatalog) return;
     if (loginPendingSession.user.role === 'Admin' && pathname === '/') {
       return;
     }
@@ -135,7 +144,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isActive = false;
       clearTimeout(timeout);
     };
-  }, [loginPendingSession, pathname]);
+  }, [loginPendingSession, pathname, publicCatalog]);
 
   useEffect(() => {
     if (
@@ -169,7 +178,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isRestoringSession || loginPendingSession || logoutName !== null) return;
-    if (!hasEnteredApp && pathname !== '/') {
+    if (!hasEnteredApp && pathname !== '/' && !publicCatalog) {
       returnPathRef.current = pathname;
       router.replace('/');
     } else if (hasEnteredApp && pathname === '/') {
@@ -177,7 +186,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } else if (hasEnteredApp) {
       returnPathRef.current = null;
     }
-  }, [isRestoringSession, loginPendingSession, logoutName, hasEnteredApp, pathname, router]);
+  }, [
+    isRestoringSession,
+    loginPendingSession,
+    logoutName,
+    hasEnteredApp,
+    pathname,
+    publicCatalog,
+    router,
+  ]);
 
   useEffect(() => {
     if (logoutName === null || pathname !== '/') return;
@@ -267,16 +284,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIsLoginOpen(false);
   }, []);
 
-  const logout = useCallback(() => {
-    setLogoutName(authSession?.user.fullName ?? '');
+  const logoutPending = useRef(false);
+  const logout = useCallback(async () => {
+    if (logoutPending.current) return;
+    const session = authSession ?? loginPendingSession;
+    logoutPending.current = true;
+    try {
+      if (session) await revokeSession(session.token);
+    } catch {
+      addToast({
+        type: 'error',
+        title: 'Chưa thể đăng xuất',
+        message: 'Không thể thu hồi phiên. Vui lòng kiểm tra kết nối và thử lại.',
+      });
+      return;
+    } finally {
+      logoutPending.current = false;
+    }
+    setLogoutName(session?.user.fullName ?? '');
     clearAuthSession();
     setAuthSession(null);
+    setLoginPendingSession(null);
+    setStartupData(null);
     setUserProfile(guestProfile);
     setHistory(readGuestHistory());
     returnPathRef.current = null;
     router.replace('/');
     setHasEnteredApp(false);
-  }, [router, authSession]);
+  }, [router, authSession, loginPendingSession, addToast]);
   const updateProfile = useCallback(
     (updated: UserProfile) => {
       setUserProfile(updated);
@@ -293,17 +328,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setHistory((current) => [result, ...current.filter((item) => item.id !== result.id)]),
     [],
   );
+  const updateAccount = useCallback((user: AuthUser) => {
+    setAuthSession((current) => (current?.user.id === user.id ? { ...current, user } : current));
+    setUserProfile((current) => ({
+      ...current,
+      name: user.fullName,
+      email: user.email,
+      avatarUrl: user.avatarUrl ?? '',
+    }));
+    updateStoredAuthUser(user);
+  }, []);
   const openNotifications = useCallback(() => setIsNotificationsOpen(true), []);
   const catalog = useMemo(() => ({ plants, diseases }), [plants, diseases]);
   const auth = useMemo(
     () => ({
-      session: authSession,
-      profile: userProfile,
+      session: authSession ?? (publicCatalog ? loginPendingSession : null),
+      profile:
+        !authSession && publicCatalog && loginPendingSession
+          ? createUserProfile(loginPendingSession)
+          : userProfile,
       openAuthentication,
       logout,
       updateProfile,
+      updateAccount,
     }),
-    [authSession, userProfile, openAuthentication, logout, updateProfile],
+    [
+      authSession,
+      userProfile,
+      publicCatalog,
+      loginPendingSession,
+      openAuthentication,
+      logout,
+      updateProfile,
+      updateAccount,
+    ],
   );
   const historyState = useMemo(
     () => ({
@@ -320,13 +378,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   if (logoutName !== null) return <SeedlingLoadingScreen mode="logout" userName={logoutName} />;
-  if (isRestoringSession) return <AppSplashScreen />;
-  if (loginPendingSession) {
+  if (isRestoringSession && !publicCatalog) return <AppSplashScreen />;
+  if (loginPendingSession && !publicCatalog) {
     const startupProps = {
       userName: loginPendingSession.user.fullName,
       error: startupError,
       onRetry: () => setLoginPendingSession((session) => (session ? { ...session } : null)),
-      onCancel: () => {
+      onCancel: async () => {
+        try {
+          await revokeSession(loginPendingSession.token);
+        } catch {
+          setStartupError('Chưa thể thu hồi phiên. Vui lòng thử lại.');
+          return;
+        }
         clearAuthSession();
         restoredStartupRef.current = false;
         setLoginPendingSession(null);
@@ -344,7 +408,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   }
   // UI gate only. The API remains responsible for authorization.
-  if (!hasEnteredApp && pathname !== '/') return <AppSplashScreen />;
+  if (!hasEnteredApp && pathname !== '/' && !publicCatalog) return <AppSplashScreen />;
 
   return (
     <AuthContext value={auth}>

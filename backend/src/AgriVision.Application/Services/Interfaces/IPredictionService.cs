@@ -1,4 +1,5 @@
 using AgriVision.Application.DTOs.Common;
+using AgriVision.Application.Common.Interfaces.Services;
 using AgriVision.Application.DTOs.Prediction;
 using Microsoft.AspNetCore.Http;
 
@@ -11,4 +12,5 @@ public interface IPredictionService
     Task<PagedResult<PredictionHistoryDto>> GetPredictionHistoryAsync(Guid userId, int pageNumber = 1, int pageSize = 10, CancellationToken cancellationToken = default);
     Task<PagedResult<PredictionHistoryDto>> GetFilteredHistoryAsync(Guid userId, PredictionFilterParams filterParams, CancellationToken cancellationToken = default);
     Task DeletePredictionAsync(Guid id, Guid userId, bool isAdmin = false, CancellationToken cancellationToken = default);
+    Task<ImageDownloadResult?> ReadImageAsync(Guid id, Guid imageId, Guid userId, CancellationToken cancellationToken = default);
 }

@@ -1,0 +1,156 @@
+using AgriVision.Application.Common.Interfaces.Services;
+using AgriVision.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Testcontainers.PostgreSql;
+using Xunit;
+
+namespace AgriVision.TestSupport;
+
+public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
+{
+    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder("postgres:16-alpine")
+        .WithDatabase("agrivision_test_db")
+        .WithUsername("testuser")
+        .WithPassword("testpassword")
+        .Build();
+
+    public async Task InitializeAsync()
+    {
+        await _dbContainer.StartAsync();
+    }
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.UseEnvironment("Testing");
+        ConfigureR2(builder);
+        builder.UseSetting("TrafficLimits:PredictionRequestsPerMinute", "10000");
+        builder.UseSetting("TrafficLimits:ImageRequestsPerMinute", "10000");
+        builder.UseSetting("TrafficLimits:AuthRequestsPerMinute", "10000");
+        builder.UseSetting("ConnectionStrings:DefaultConnection", _dbContainer.GetConnectionString());
+        builder.UseSetting("JwtSettings:Secret", new string('x', 32));
+        builder.UseSetting("AiService:BaseUrl", "http://127.0.0.1:1");
+        builder.ConfigureServices(services =>
+        {
+            var descriptor = services.SingleOrDefault(
+                d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
+
+            if (descriptor != null)
+            {
+                services.Remove(descriptor);
+            }
+
+            services.AddDbContext<AppDbContext>(options =>
+            {
+                options.UseNpgsql(_dbContainer.GetConnectionString());
+            });
+
+            services.ConfigureHttpClientDefaults(http => http.ConfigurePrimaryHttpMessageHandler(() => new DenyOutboundHandler()));
+            services.RemoveAll<IImageStorage>();
+            services.RemoveAll<IPlantDiseasePredictor>();
+            services.AddSingleton<IImageStorage, FakeImageStorage>();
+            services.AddSingleton<IPlantDiseasePredictor, FakePlantDiseasePredictor>();
+
+            // Ensure database schema is created
+            using var sp = services.BuildServiceProvider();
+            using var scope = sp.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.Database.Migrate();
+            DbInitializer.SeedAsync(scope.ServiceProvider).GetAwaiter().GetResult();
+        });
+    }
+
+    protected virtual void ConfigureR2(IWebHostBuilder builder)
+    {
+        builder.UseSetting("R2:ServiceUrl", "https://test.invalid");
+        builder.UseSetting("R2:BucketName", "test-bucket");
+        builder.UseSetting("R2:AccessKeyId", "synthetic-key");
+        builder.UseSetting("R2:SecretAccessKey", "synthetic-secret");
+    }
+
+    public new virtual async Task DisposeAsync()
+    {
+        try { await base.DisposeAsync(); }
+        finally { await _dbContainer.DisposeAsync(); }
+    }
+
+    private sealed class DenyOutboundHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromException<HttpResponseMessage>(new HttpRequestException("Outbound HTTP is disabled in the isolated test fixture."));
+    }
+
+    private sealed class FakeImageStorage : IImageStorage
+    {
+        public Task<ImageDownloadResult?> ReadImageAsync(string publicId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<ImageDownloadResult?>(new([1, 2, 3], "image/jpeg"));
+        public Task<ImageUploadResult> UploadImageAsync(
+            IFormFile file,
+            ImageStorageContext context, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(CreateResult(file.FileName, context));
+        }
+
+        public async Task<ImageUploadResult> UploadImageAsync(
+            Stream imageStream,
+            string fileName,
+            ImageStorageContext context, CancellationToken cancellationToken = default)
+        {
+            using var buffer = new MemoryStream();
+            await imageStream.CopyToAsync(buffer, cancellationToken);
+
+            if (buffer.Length == 0)
+            {
+                throw new InvalidOperationException("The uploaded image is empty.");
+            }
+
+            return CreateResult(fileName, context);
+        }
+
+        public Task<bool> DeleteImageAsync(
+            string publicId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(true);
+        }
+
+        private static ImageUploadResult CreateResult(string fileName, ImageStorageContext context)
+        {
+            var safeFileName = Path.GetFileName(fileName);
+            return new ImageUploadResult(
+                ImageStorageKey.Create(context, Path.GetExtension(safeFileName).ToLowerInvariant()), string.Empty);
+        }
+    }
+
+    private sealed class FakePlantDiseasePredictor : IPlantDiseasePredictor
+    {
+        private static readonly AiPredictionResult Result = new(
+            ClassIndex: 0,
+            ClassName: "Ca_chua___Chay_la_som",
+            Confidence: 0.94f,
+            TopK:
+            [
+                new AiPredictionTopKItem(0, "Ca_chua___Chay_la_som", 0.94f),
+                new AiPredictionTopKItem(4, "Ca_chua___Khoe_manh", 0.06f)
+            ]);
+
+        public Task<AiPredictionResult> PredictAsync(
+            IFormFile file,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Result);
+        }
+
+        public Task<AiPredictionResult> PredictAsync(
+            Stream imageStream,
+            string fileName,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Result);
+        }
+    }
+}

@@ -43,13 +43,12 @@ services:
       JwtSettings__Secret: ${JWT_SECRET:?Set JWT_SECRET in .env}
       AiService__BaseUrl: http://ai-service:8000
       AiService__TimeoutSeconds: ${AI_TIMEOUT_SECONDS:-15}
-      Cloudinary__CloudName: ${CLOUDINARY_CLOUD_NAME:-}
-      Cloudinary__ApiKey: ${CLOUDINARY_API_KEY:-}
-      Cloudinary__ApiSecret: ${CLOUDINARY_API_SECRET:-}
+      R2__ServiceUrl: ${R2_SERVICE_URL:-}
+      R2__BucketName: ${R2_BUCKET_NAME:-}
+      R2__AccessKeyId: ${R2_ACCESS_KEY_ID:-}
+      R2__SecretAccessKey: ${R2_SECRET_ACCESS_KEY:-}
     ports:
       - "${API_HOST_PORT:-5080}:8080"
-    volumes:
-      - uploads:/app/wwwroot/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -82,4 +81,3 @@ services:
 volumes:
   postgres_data:
     driver: local
-  uploads:

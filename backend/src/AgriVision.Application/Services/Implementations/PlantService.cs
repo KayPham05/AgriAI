@@ -31,7 +31,7 @@ public class PlantService : IPlantService
         var plant = new Plant
         {
             Id = Guid.NewGuid(),
-            Name = request.Name,
+            Name = CatalogValidation.Text(request.Name, "Name", 100),
             VietnameseName = request.VietnameseName,
             ScientificName = request.ScientificName,
             Description = request.Description,
@@ -51,7 +51,7 @@ public class PlantService : IPlantService
             throw new KeyNotFoundException($"Plant with ID '{id}' not found.");
         }
 
-        plant.Name = request.Name;
+        plant.Name = CatalogValidation.Text(request.Name, "Name", 100);
         plant.VietnameseName = request.VietnameseName;
         plant.ScientificName = request.ScientificName;
         plant.Description = request.Description;

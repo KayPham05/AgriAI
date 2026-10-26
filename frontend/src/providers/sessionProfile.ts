@@ -23,7 +23,7 @@ export function createUserProfile(session: AuthSession): UserProfile {
     role: session.user.role === 'Admin' ? 'Quản trị viên' : 'Thành viên AgriAI',
     location: 'Chưa thiết lập',
     joinedDate,
-    avatarUrl: '',
+    avatarUrl: session.user.avatarUrl ?? '',
   };
 }
 

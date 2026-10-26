@@ -59,7 +59,7 @@ public class AuthService : IAuthService
             await _userSessionRepository.AddAsync(session, cancellationToken);
 
             var token = _jwtTokenGenerator.GenerateToken(user, session.Id);
-            var userDto = new UserDto(user.Id, user.FullName, user.Email, user.Role, user.CreatedAt);
+            var userDto = new UserDto(user.Id, user.FullName, user.Email, user.Role, user.CreatedAt, user.AvatarUrl);
 
             return new AuthResponse(token, userDto);
         }, cancellationToken);
@@ -91,7 +91,7 @@ public class AuthService : IAuthService
             await _userSessionRepository.AddAsync(session, cancellationToken);
 
             var token = _jwtTokenGenerator.GenerateToken(user, session.Id);
-            var userDto = new UserDto(user.Id, user.FullName, user.Email, user.Role, user.CreatedAt);
+            var userDto = new UserDto(user.Id, user.FullName, user.Email, user.Role, user.CreatedAt, user.AvatarUrl);
 
             return new AuthResponse(token, userDto);
         }, cancellationToken);
@@ -105,7 +105,7 @@ public class AuthService : IAuthService
             throw new KeyNotFoundException($"User with ID '{userId}' not found.");
         }
 
-        return new UserDto(user.Id, user.FullName, user.Email, user.Role, user.CreatedAt);
+        return new UserDto(user.Id, user.FullName, user.Email, user.Role, user.CreatedAt, user.AvatarUrl);
     }
 
     public async Task LogoutAsync(Guid userId, Guid sessionId, CancellationToken cancellationToken = default)
