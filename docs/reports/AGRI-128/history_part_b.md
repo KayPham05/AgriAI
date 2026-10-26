@@ -1,10 +1,10 @@
 # AGRI-128 / AGRI-119 — History integration with agricultural profile CRUD
 
-- Thực hiện: 2026-10-23–2026-10-24.
+- Thực hiện: 2026-10-23–2026-10-26; kiểm chứng mới nhất ở mục 7, các mốc cũ giữ làm lịch sử.
 - Nhánh: `AGRI-128-history-integration`; base cập nhật `a43797d` từ
   `origin/AGRI-128-backend-improvement`.
 - Phạm vi: backend History, tích hợp CRUD S3-03 đã có; AGRI-122 để sau.
-- Trạng thái: backend kiểm chứng local đạt 254/254 test, branch coverage 66.61%; chờ nghiệm thu thủ công và chốt chính sách Guest chọn hồ sơ.
+- Trạng thái: bản sửa CI sau tích hợp đạt local 483/483 test, branch coverage 83.59%; chờ GitHub Actions, review và nghiệm thu thủ công.
 - PR: [#45](https://github.com/KayPham05/AgriAI/pull/45), target `AGRI-128-backend-improvement`; đã yêu cầu reviewer backend, CI đang chạy tại thời điểm ghi nhận.
 - [Kế hoạch A/B](../../plans/AGRI-128-history-integration-plan.md),
   [bằng chứng phần A trước đồng bộ](history_part_a.md),
@@ -200,3 +200,51 @@ không thấy credential mới. Các mật khẩu trong test là fixture. Đây 
 Gitleaks mới; kết quả Gitleaks ở phần trước là bằng chứng lịch sử. Commit subject được
 commitlint 21.2.3 kiểm: 0 problem, 0 warning. Không chạy formatter toàn repository.
 Manual acceptance và GitHub Actions chưa được tick thay bằng kết quả local.
+
+## 7. Sửa CI sau tích hợp nhánh 128 — 2026-10-26
+
+### Nguyên nhân và phạm vi
+
+- PR #45, head `116205b`, đã nhận base `7aa28c9`. Lượt CI
+  [40330172666, backend-tests](https://github.com/KayPham05/AgriAI/actions/runs/40330172666/job/121597191984)
+  lỗi build với CS0246 (AgriVisionFactory) và CS0535 (IImageStorage). `ci-gate`
+  thất bại theo backend; năm job còn lại đạt ở lượt đó.
+- Upstream chuyển các HTTP test sang `AgriVision.ApiTests`, dùng fixture chung
+  `AgriVision.TestSupport`, và đổi storage sang ảnh private với ImageStorageContext,
+  ReadImageAsync và upload journal. History test vẫn dùng interface/namespace cũ.
+- Chuyển nguyên bộ 16 ca History từ IntegrationTests/Controllers sang
+  `backend/tests/AgriVision.ApiTests/Controllers/HistoryPersistenceTests.cs`;
+  cập nhật namespace, storage double và 11 ApiCase trong `Contracts/api_manifest.json`.
+  Manifest vẫn 59 routes, bổ sung mapping History cho POST/GET predictions,
+  GET prediction detail, PUT/DELETE agricultural-profiles.
+- Sau sửa compile, chạy bộ tập trung: 35/40 PredictionService unit và 14/16 History
+  API đạt; bảy ca lỗi do kỳ vọng storage cũ. Log `D:/AgriAI/.cache/history-ci-red.log`
+  và TRX trong `history-ci-red/` lưu bằng chứng, không dùng làm kết quả nghiệm thu.
+- Đồng bộ kỳ vọng: URL ảnh là route có xác thực; object key gắn owner/prediction/image;
+  upload chưa xác nhận vẫn thử cleanup bằng token độc lập và giữ journal để đối soát.
+  Legacy URL thiếu metadata sở hữu không được trả ra, nhưng lịch sử/metadata vẫn giữ.
+  Storage double ghi stream/context trước khi ném lỗi để kiểm disposal đúng.
+- Giữ toàn bộ kiểm tra quyền, Guest không ghi ba bảng, snapshot, TTL, rollback,
+  profile lifecycle và race xóa profile. Bổ sung kiểm tra journal còn trong PostgreSQL
+  khi upload lỗi và không Complete journal nếu cleanup chưa thành công.
+- Code sửa: HistoryPersistenceTests, PredictionServiceTests và API manifest.
+  Không sửa production code, workflow, coverage gate, migration hoặc dữ liệu ứng dụng.
+  Không chạy E2E, RealCheckpoint hay RealR2. Frontend/Python không thay đổi trong bản sửa.
+
+### Kiểm chứng
+
+- Lệnh ngày 2026-10-26: `dotnet test backend/AgriVision.sln --no-restore -m:1
+  --filter 'Category!=RealCheckpoint&Category!=RealR2' --settings backend/coverage.runsettings
+  --collect 'XPlat Code Coverage' --verbosity minimal --logger trx`.
+- **163 unit + 65 integration + 255 API = 483/483 đạt**, không fail/skip trong bộ lọc.
+  Bao gồm 16 ca History, API manifest runtime/mapping guards và tests storage/auth của base.
+- ReportGenerator gộp ba suite: **881/1054 = 83.59% branch**, checker CI gate 70% PASS,
+  vượt target 80%. Ba checker TRX/Cobertura của CI đều PASS.
+- Bằng chứng: `D:/AgriAI/.cache/history-ci-verified.log`, ba TRX và Cobertura trong
+  `history-ci-verified/`; `history-ci-coverage/Cobertura.xml`, `history-ci-coverage.log`;
+  bản sao theo suite dùng checker trong `history-ci-checks/`. Tất cả là artifact local bỏ qua Git.
+- Các project backend build thành công trong lệnh test; `git diff --check` đạt.
+  Không chạy lại frontend/Python local vì không đổi các phần này; kết quả xanh của
+  chúng ở lượt CI cũ không thay thế kết quả CI trên commit sắp push.
+- CI remote cần chạy lại sau push; chưa đánh dấu GitHub Actions thành công. Manual
+  acceptance vẫn chờ người dùng, không merge PR hoặc tự approve.

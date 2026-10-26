@@ -6,7 +6,7 @@ rộng kết quả một hạng mục thành nghiệm thu toàn bộ S3-01 đế
 
 | Hạng mục | Task | Báo cáo | Trạng thái |
 | --- | --- | --- | --- |
-| S3-06 — History và hồ sơ nông nghiệp | AGRI-119, story AGRI-111 | [Phần A](history_part_a.md), [tích hợp CRUD phần B](history_part_b.md) | Kiểm lại trước [PR #45](https://github.com/KayPham05/AgriAI/pull/45): 98 unit + 156 integration đạt; branch coverage 66.61%, gate 60% PASS. Chờ CI/review/manual; giữ Guest chọn hồ sơ trả 401 của base. |
+| S3-06 — History và hồ sơ nông nghiệp | AGRI-119, story AGRI-111 | [Phần A](history_part_a.md), [tích hợp CRUD phần B](history_part_b.md) | Sửa CI sau merge 116205b, 2026-10-26: 163 unit + 65 integration + 255 API = 483 tests đạt; branch 83.59%, gate 70% PASS local. [PR #45](https://github.com/KayPham05/AgriAI/pull/45) chờ CI/review/manual; giữ Guest chọn hồ sơ trả 401 của base. |
 | S3-09 — Admin và tra cứu frontend C | AGRI-122, story AGRI-114 | [Kế hoạch C](../../plans/AGRI-128-knowledge-medicine-frontend-plan.md), [triển khai và UAT](knowledge_medicine.md) | Tích hợp e1197ce, 2026-10-26: 440/440 tests, branch 72.37%; typecheck/lint/build và format bản sao LF đạt. PR #46 đã xử lý conflict local; CI/review còn chờ. |
 | S3-09 — Knowledge and medicine backend A/B | AGRI-122, story AGRI-114 | [API, kiểm chứng và giới hạn](knowledge_medicine.md), [route matrix](knowledge_api_matrix.md) | Tích hợp e1197ce, 2026-10-26: 156 unit + 65 integration + 239 API = 460 tests; branch 83.56%. Giữ trigger, sửa cần duyệt lại; không migration mới. PR #46 chờ CI/review. |
 | S3-05 — Guest diagnosis, backend | AGRI-118, story AGRI-110 | [Contract, kiểm thử và giới hạn](guest_diagnosis.md) | Local: 90 test đạt, branch coverage 62.64%; chưa nghiệm thu UI/CI/PR. |

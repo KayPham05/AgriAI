@@ -282,7 +282,8 @@
       "existing.AgriculturalProfilesControllerTests.Guest_CannotManageProfiles",
       "existing.AgriculturalProfilesControllerTests.OtherUserOrAdmin_CannotReadChangeOrDeleteProfile",
       "existing.AgriculturalProfilesControllerTests.CreateAndUpdate_RejectEmptyNames",
-      "existing.AgriculturalProfilesControllerTests.NameBoundary_Allows150CharactersAndRejects151"
+      "existing.AgriculturalProfilesControllerTests.NameBoundary_Allows150CharactersAndRejects151",
+      "history.profile_lifecycle"
     ]
   },
   {
@@ -291,7 +292,9 @@
     "cases": [
       "existing.AgriculturalProfilesControllerTests.Owner_CanCreateListReadUpdateAndDeleteProfile",
       "existing.AgriculturalProfilesControllerTests.Guest_CannotManageProfiles",
-      "existing.AgriculturalProfilesControllerTests.OtherUserOrAdmin_CannotReadChangeOrDeleteProfile"
+      "existing.AgriculturalProfilesControllerTests.OtherUserOrAdmin_CannotReadChangeOrDeleteProfile",
+      "history.profile_lifecycle",
+      "history.profile_deleted_during_upload"
     ]
   },
   {
@@ -322,7 +325,17 @@
       "predictions.rate_same_user_sessions",
       "predictions.unexpected_error_redaction",
       "predictions.exact_upload_limit",
-      "knowledge.prediction_snapshot"
+      "knowledge.prediction_snapshot",
+      "history.persistence_reload",
+      "history.snapshot_expiry",
+      "history.guest_no_persistence",
+      "history.upload_failure",
+      "history.ai_failure",
+      "history.atomic_rollback",
+      "history.profile_lifecycle",
+      "history.invalid_profile",
+      "history.unavailable_profile",
+      "history.profile_deleted_during_upload"
     ]
   },
   {
@@ -334,7 +347,14 @@
       "existing.PredictionsControllerTests.GetFilteredHistory_ShouldReturnBadRequest_WhenFromDateGreaterThanToDate",
       "existing.SecurityAuthorizationTests.History_ShouldIsolateAccounts_AndRejectForeignOrGuestDeletion",
       "predictions.history_filters_and_pagination",
-      "predictions.history_invalid_filter"
+      "predictions.history_invalid_filter",
+      "history.persistence_reload",
+      "history.stable_pagination",
+      "history.snapshot_expiry",
+      "history.guest_no_persistence",
+      "history.atomic_rollback",
+      "history.profile_lifecycle",
+      "history.profile_deleted_during_upload"
     ]
   },
   {
@@ -345,7 +365,12 @@
       "existing.SecurityAuthorizationTests.ProtectedEndpoints_ShouldRejectInvalidBearer",
       "predictions.admin_delete_without_read",
       "predictions.missing_object",
-      "knowledge.prediction_snapshot"
+      "knowledge.prediction_snapshot",
+      "history.persistence_reload",
+      "history.stable_pagination",
+      "history.snapshot_expiry",
+      "history.guest_no_persistence",
+      "history.profile_lifecycle"
     ]
   },
   {

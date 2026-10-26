@@ -142,3 +142,15 @@
   `trunthong09012005`; không tự approve hoặc merge.
 - GitHub Actions đã khởi chạy khi tạo PR; chưa ghi nhận thành công, giữ checklist CI
   chưa tick. Cập nhật đường dẫn PR là thay đổi tài liệu, không thay code đã kiểm chứng.
+
+## 2026-10-26 — Sửa CI History sau conflict resolution
+
+- Đồng bộ fast-forward từ `d1e96fe` tới remote `116205b`, giữ phần người dùng đã
+  giải quyết conflict và base `7aa28c9`. Worktree Guest/Knowledge giữ nguyên.
+- Xác minh PR #45 lỗi build do fixture/interface storage cũ; `ci-gate` thất bại theo.
+- Chuyển 16 ca HTTP History vào ApiTests/TestSupport, cập nhật private storage double,
+  11 ApiCase và các kỳ vọng cleanup/journal/legacy image của unit tests.
+- Không đổi code nghiệp vụ, migrations hoặc workflow; không giảm gate, bỏ test hay viết E2E.
+- Bằng chứng, các ca lỗi trung gian và kiểm chứng cuối:
+  [History phần B, mục 7](../../reports/AGRI-128/history_part_b.md#7-sửa-ci-sau-tích-hợp-nhánh-128--2026-10-26).
+- Kiểm chứng cuối local: 163 unit + 65 integration + 255 API = 483/483, không skip trong bộ lọc CI; branch 881/1054 = 83.59%, gate 70% PASS; ba checker TRX/Cobertura đạt. Không E2E/RealR2/RealCheckpoint. Chờ CI remote sau push và review/manual.

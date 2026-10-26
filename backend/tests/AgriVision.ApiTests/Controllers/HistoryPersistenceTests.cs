@@ -9,7 +9,7 @@ using AgriVision.Application.DTOs.Prediction;
 using AgriVision.Domain.Entities;
 using AgriVision.Infrastructure.Persistence;
 using AgriVision.Infrastructure.Services;
-using AgriVision.IntegrationTests.Fixtures;
+using AgriVision.TestSupport;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -18,13 +18,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace AgriVision.IntegrationTests.Controllers;
+namespace AgriVision.ApiTests.Controllers;
 
 public class HistoryPersistenceTests(AgriVisionFactory factory) : IClassFixture<AgriVisionFactory>
 {
     private const string Password = "Password123!";
 
     [Fact]
+    [Trait("ApiCase", "history.persistence_reload")]
     public async Task PredictionWithoutProfile_ShouldPersistCompleteHistory_AndReloadInANewSession()
     {
         using var creator = factory.CreateClient();
@@ -41,12 +42,13 @@ public class HistoryPersistenceTests(AgriVisionFactory factory) : IClassFixture<
             saved.CreatedAt.Should().BeCloseTo(created.CreatedAt, TimeSpan.FromMilliseconds(1));
             saved.Confidence.Should().BeApproximately(0.94, 0.0001);
             saved.PredictedPlantDiseaseId.Should().Be(created.PredictedPlantDisease.Id);
-            saved.ImagePath.Should().Be("https://images.test/history.jpg");
-            saved.ImagePublicId.Should().Be("integration/history.jpg");
             saved.PredictionDetails.OrderBy(item => item.Rank).Select(item => item.Rank).Should().Equal(1, 2);
             saved.PredictionDetails.OrderBy(item => item.Rank).Select(item => item.Probability)
                 .Should().Equal((double)0.94f, (double)0.06f);
             var image = saved.Images.Should().ContainSingle().Subject;
+            saved.ImagePath.Should().Be($"/api/predictions/{saved.Id}/images/{image.Id}");
+            saved.ImagePublicId.Should().Be($"users/{account.User.Id}/predictions/{saved.Id}/{image.Id}.jpg");
+            image.ImagePublicId.Should().Be(saved.ImagePublicId);
             image.UploadedAt.Should().Be(saved.CreatedAt);
             image.ExpiresAt.Should().Be(saved.CreatedAt.AddDays(30));
             image.ImagePath.Should().Be(saved.ImagePath);
@@ -73,6 +75,7 @@ public class HistoryPersistenceTests(AgriVisionFactory factory) : IClassFixture<
     }
 
     [Fact]
+    [Trait("ApiCase", "history.stable_pagination")]
     public async Task HistoryPagination_ShouldUseStableOrder_AndExcludeOtherAccounts()
     {
         using var owner = factory.CreateClient();
@@ -109,6 +112,7 @@ public class HistoryPersistenceTests(AgriVisionFactory factory) : IClassFixture<
     }
 
     [Fact]
+    [Trait("ApiCase", "history.snapshot_expiry")]
     public async Task HistoryListAndDetail_ShouldKeepSnapshotLabels_WhenCatalogChangesAndImageExpires()
     {
         using var owner = factory.CreateClient();
@@ -158,6 +162,7 @@ public class HistoryPersistenceTests(AgriVisionFactory factory) : IClassFixture<
     }
 
     [Fact]
+    [Trait("ApiCase", "history.guest_no_persistence")]
     public async Task GuestPrediction_ShouldLeaveStoredUserHistoryAndStorageUntouched()
     {
         var storage = new RecordingStorage();
@@ -187,12 +192,13 @@ public class HistoryPersistenceTests(AgriVisionFactory factory) : IClassFixture<
     }
 
     [Fact]
+    [Trait("ApiCase", "history.upload_failure")]
     public async Task UploadFailure_ShouldNotCreateAnyHistoryRows()
     {
         var storage = new RecordingStorage { UploadError = new IOException("Test upload failure.") };
         using var application = WithStorage(storage);
         using var owner = application.CreateClient();
-        await RegisterAsync(owner);
+        var account = await RegisterAsync(owner);
         var before = await ReadCountsAsync();
         using var request = CreateImageRequest();
 
@@ -201,13 +207,18 @@ public class HistoryPersistenceTests(AgriVisionFactory factory) : IClassFixture<
         response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
         (await ReadCountsAsync()).Should().Be(before);
         storage.UploadedIds.Should().BeEmpty();
-        storage.DeletedIds.Should().BeEmpty();
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var pending = await db.PendingImageUploads.AsNoTracking().SingleAsync(item => item.UserId == account.User.Id);
+        storage.DeletedIds.Should().Equal(pending.Key);
+        storage.CleanupToken.IsCancellationRequested.Should().BeFalse();
         storage.ReceivedStream!.CanRead.Should().BeFalse();
     }
 
     [Theory]
     [InlineData(HttpStatusCode.ServiceUnavailable)]
     [InlineData(HttpStatusCode.BadGateway)]
+    [Trait("ApiCase", "history.ai_failure")]
     public async Task AiFailure_ShouldNotUploadOrPersistUserHistory(HttpStatusCode status)
     {
         var storage = new RecordingStorage();
@@ -234,6 +245,7 @@ public class HistoryPersistenceTests(AgriVisionFactory factory) : IClassFixture<
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    [Trait("ApiCase", "history.atomic_rollback")]
     public async Task DetailInsertFailure_ShouldRollbackWholeHistory_AndAttemptImageCleanup(bool cleanupFails)
     {
         var storage = new RecordingStorage { CleanupFails = cleanupFails };
@@ -266,6 +278,7 @@ public class HistoryPersistenceTests(AgriVisionFactory factory) : IClassFixture<
     }
 
     [Fact]
+    [Trait("ApiCase", "history.profile_lifecycle")]
     public async Task ProfileLifecycle_ShouldKeepSnapshot_AndExposeOnlyCurrentGrouping()
     {
         using var owner = factory.CreateClient();
@@ -327,6 +340,7 @@ public class HistoryPersistenceTests(AgriVisionFactory factory) : IClassFixture<
     [Theory]
     [InlineData("not-a-guid")]
     [InlineData("00000000-0000-0000-0000-000000000000")]
+    [Trait("ApiCase", "history.invalid_profile")]
     public async Task InvalidProfileId_ShouldReturnBadRequest_BeforeExternalWork(string profileId)
     {
         var storage = new RecordingStorage();
@@ -347,6 +361,7 @@ public class HistoryPersistenceTests(AgriVisionFactory factory) : IClassFixture<
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    [Trait("ApiCase", "history.unavailable_profile")]
     public async Task UnavailableProfile_ShouldReturnNotFound_BeforeExternalWork(bool foreign)
     {
         var storage = new RecordingStorage();
@@ -370,6 +385,7 @@ public class HistoryPersistenceTests(AgriVisionFactory factory) : IClassFixture<
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    [Trait("ApiCase", "history.profile_deleted_during_upload")]
     public async Task ProfileDeletedDuringUpload_ShouldRejectSave_RollbackAndAttemptCleanup(bool cleanupFails)
     {
         using var profileOwner = factory.CreateClient();
@@ -477,19 +493,22 @@ public class HistoryPersistenceTests(AgriVisionFactory factory) : IClassFixture<
         public Stream? ReceivedStream { get; private set; }
         public CancellationToken CleanupToken { get; private set; }
 
-        public Task<ImageUploadResult> UploadImageAsync(IFormFile file, CancellationToken cancellationToken = default) =>
+        public Task<ImageUploadResult> UploadImageAsync(IFormFile file, ImageStorageContext context, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException("The prediction service uploads a stream.");
 
-        public async Task<ImageUploadResult> UploadImageAsync(Stream stream, string fileName, CancellationToken cancellationToken = default)
+        public async Task<ImageUploadResult> UploadImageAsync(Stream stream, string fileName, ImageStorageContext context, CancellationToken cancellationToken = default)
         {
             ReceivedStream = stream;
             await stream.CopyToAsync(Stream.Null, cancellationToken);
             if (UploadError != null) throw UploadError;
-            var id = $"history-test/{Guid.NewGuid():N}";
+            var id = ImageStorageKey.Create(context, Path.GetExtension(fileName).ToLowerInvariant());
             UploadedIds.Add(id);
             if (BeforeUploadReturns != null) await BeforeUploadReturns();
-            return new ImageUploadResult(id, $"https://images.test/{id}.jpg");
+            return new ImageUploadResult(id, string.Empty);
         }
+
+        public Task<ImageDownloadResult?> ReadImageAsync(string publicId, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException("These persistence tests do not download images.");
 
         public Task<bool> DeleteImageAsync(string publicId, CancellationToken cancellationToken = default)
         {

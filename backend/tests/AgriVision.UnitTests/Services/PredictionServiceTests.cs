@@ -537,7 +537,11 @@ public class PredictionServiceTests
 
         (await act.Should().ThrowAsync<Exception>()).Which.Should().BeSameAs(_imageStorage.UploadError);
         _predictionRepository.AddedPredictions.Should().BeEmpty();
-        _imageStorage.DeletedPublicIds.Should().BeEmpty("the upload never returned an image identifier");
+        var context = _imageStorage.UploadContext!;
+        _imageStorage.DeletedPublicIds.Should().Equal($"users/{context.UserId}/predictions/{context.PredictionId}/{context.ImageId}.jpg");
+        _imageStorage.CleanupToken.IsCancellationRequested.Should().BeFalse();
+        _journal.Verify(journal => journal.CompleteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never,
+            "an unacknowledged upload must retain its journal entry for delayed reconciliation");
         _imageStorage.ReceivedStream!.CanRead.Should().BeFalse();
         _diseasePredictor.ReceivedStream!.CanRead.Should().BeFalse();
     }
@@ -555,7 +559,7 @@ public class PredictionServiceTests
 
         (await act.Should().ThrowAsync<OperationCanceledException>()).Which.Should().BeSameAs(writeError);
         _predictionRepository.AddedPredictions.Should().BeEmpty();
-        _imageStorage.DeletedPublicIds.Should().Equal("test/image");
+        _imageStorage.DeletedPublicIds.Should().Equal("r2/predictions/leaf.jpg");
         _imageStorage.CleanupToken.IsCancellationRequested.Should().BeFalse();
     }
 
@@ -571,13 +575,14 @@ public class PredictionServiceTests
 
         (await act.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(writeError);
         _predictionRepository.AddedPredictions.Should().BeEmpty();
-        _imageStorage.DeletedPublicIds.Should().Equal("test/image");
+        _imageStorage.DeletedPublicIds.Should().Equal("r2/predictions/leaf.jpg");
+        _journal.Verify(journal => journal.CompleteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Theory]
-    [InlineData(1, false)]
-    [InlineData(31, true)]
-    public async Task LegacyHistoryWithoutImageRows_ShouldApplyTtlToListAndDetail(int ageDays, bool expired)
+    [InlineData(1)]
+    [InlineData(31)]
+    public async Task LegacyHistoryWithoutImageRows_ShouldHideUnverifiedImageAndRetainHistory(int ageDays)
     {
         ConfigureHealthyClass();
         var owner = Guid.NewGuid();
@@ -592,8 +597,8 @@ public class PredictionServiceTests
         var detail = await _predictionService.GetPredictionByIdAsync(prediction.Id, userId: owner);
         var history = await _predictionService.GetPredictionHistoryAsync(owner);
 
-        detail!.ImagePath.Should().Be(expired ? string.Empty : "https://images.test/legacy.jpg");
-        detail.ImagePublicId.Should().Be(expired ? null : "legacy/image");
+        detail!.ImagePath.Should().BeEmpty("legacy URLs without owned image metadata cannot bypass private image access");
+        detail.ImagePublicId.Should().BeNull();
         detail.HasHistoricalSnapshot.Should().BeFalse();
         detail.Images.Should().BeEmpty();
         history.TotalCount.Should().Be(1);
@@ -808,6 +813,7 @@ public class PredictionServiceTests
         }
 
         public int UploadCount { get; private set; }
+        public ImageStorageContext? UploadContext { get; private set; }
         public Stream? ReceivedStream { get; private set; }
         public byte[]? UploadedImageBytes { get; private set; }
 
@@ -822,7 +828,7 @@ public class PredictionServiceTests
             ImageStorageContext context, CancellationToken cancellationToken = default)
         {
             UploadCount++;
-            if (UploadError != null) throw UploadError;
+            UploadContext = context;
             ReceivedStream = imageStream;
             UploadedImageBytes = ReadAllBytes(imageStream);
             if (UploadError != null) throw UploadError;
