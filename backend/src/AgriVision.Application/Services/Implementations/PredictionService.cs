@@ -54,6 +54,8 @@ public class PredictionService : IPredictionService
         {
             if (!userId.HasValue)
                 throw new UnauthorizedAccessException("Authentication is required to select an agricultural profile.");
+            if (agriculturalProfileId.Value == Guid.Empty)
+                throw new ArgumentException("Agricultural profile ID must not be empty.", nameof(agriculturalProfileId));
             var profile = await _profileRepository.GetByIdAsync(agriculturalProfileId.Value, cancellationToken);
             if (profile == null || profile.UserId != userId.Value)
                 throw new KeyNotFoundException("Agricultural profile not found.");
@@ -310,7 +312,7 @@ public class PredictionService : IPredictionService
             diseaseDto
         );
 
-        var details = prediction.PredictionDetails.Select(d =>
+        var details = prediction.PredictionDetails.OrderBy(d => d.Rank).Select(d =>
         {
             var pd = d.PlantDisease ?? primaryPlantDisease;
             var pdPlant = pd.Plant != null ? new PlantDto(pd.Plant.Id, pd.Plant.Name, pd.Plant.VietnameseName, pd.Plant.ScientificName, pd.Plant.Description, pd.Plant.IsActive, pd.Plant.CreatedAt) : plantDto;
