@@ -179,6 +179,21 @@ describe('createPrediction', () => {
     expect(result.diagnosis.originalImageUrl).toBe('/uploads/predictions/example.jpg');
   });
 
+  it('adds the selected agricultural profile to the multipart request', async () => {
+    const request = createPrediction(
+      new File(['leaf-image'], 'leaf.jpg', { type: 'image/jpeg' }),
+      { token: 'jwt-token', agriculturalProfileId: 'profile-1' },
+    );
+    const xhr = MockXMLHttpRequest.latest;
+
+    assert(xhr);
+    assert(xhr.sentBody instanceof FormData);
+    expect(xhr.sentBody.get('agriculturalProfileId')).toBe('profile-1');
+
+    xhr.respond(201, successfulResponse);
+    await request;
+  });
+
   it('returns the backend error message for an unsuccessful response', async () => {
     const request = createPrediction(new File(['leaf'], 'leaf.png', { type: 'image/png' }));
 

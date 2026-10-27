@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import {
   CalendarDays,
   Check,
@@ -9,6 +10,7 @@ import {
   Leaf,
   LogOut,
   MapPin,
+  Sprout,
   UserRound,
   X,
 } from 'lucide-react';
@@ -233,6 +235,28 @@ export function ProfilePage({
                   Đã cập nhật thông tin trong phiên này.
                 </p>
               )}
+            </div>
+          </section>
+
+          <section
+            className="rounded-card border border-border bg-surface p-6 sm:p-8"
+            aria-labelledby="agricultural-profiles-link-title"
+          >
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-start gap-3">
+                <Sprout className="mt-1 size-5 shrink-0 text-primary" aria-hidden="true" />
+                <div>
+                  <h2 id="agricultural-profiles-link-title" className="text-xl font-bold">
+                    Hồ sơ nông nghiệp
+                  </h2>
+                  <p className="mt-2 max-w-prose text-sm leading-6 text-muted-foreground">
+                    Tổ chức từng khu vực canh tác và gắn kết lịch sử chẩn đoán của bạn.
+                  </p>
+                </div>
+              </div>
+              <Button asChild variant="outline" className="shrink-0">
+                <Link href="/agricultural-profiles">Quản lý hồ sơ</Link>
+              </Button>
             </div>
           </section>
 

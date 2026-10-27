@@ -6,7 +6,15 @@ import { gsap } from 'gsap';
 import { ArrowRight, ImagePlus, RefreshCw, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { AnalysisStepper } from '@/components/diagnosis/AnalysisStepper';
 import { AnalysisResultCard } from '@/components/diagnosis/AnalysisResultCard';
 import { AnalysisIssueNotice } from '@/components/diagnosis/AnalysisIssueNotice';
@@ -28,6 +36,7 @@ import {
 import sampleLeaf from '@/assets/Bệnh lá/cà chua/Cháy lá sớm  đốm vòng.jpg';
 import { createPrediction, type PredictionResponse } from '../services/predictionApi';
 import type { DiagnosisResult, Plant } from '../types';
+import type { AgriculturalProfile } from '@/services/agriculturalProfileApi';
 
 gsap.registerPlugin(useGSAP);
 
@@ -37,12 +46,14 @@ interface DiagnosePageProps {
   authToken?: string;
   onPredictionCreated: (result: DiagnosisResult) => void;
   supportedPlants?: Plant[];
+  agriculturalProfiles?: AgriculturalProfile[];
 }
 
 export const DiagnosePage: React.FC<DiagnosePageProps> = ({
   authToken,
   onPredictionCreated,
   supportedPlants = [],
+  agriculturalProfiles = [],
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -56,6 +67,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
   const [isSample, setIsSample] = useState(false);
   const [isPreparing, setIsPreparing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [selectedAgriculturalProfileId, setSelectedAgriculturalProfileId] = useState<string | undefined>();
   const inputRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<string | null>(null);
   const requestRef = useRef<AbortController | null>(null);
@@ -240,6 +252,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
     try {
       const result = await createPrediction(selectedFile, {
         token: authToken,
+        agriculturalProfileId: selectedAgriculturalProfileId,
         signal: controller.signal,
         onUploadProgress: setProgress,
         onUploadComplete: () => {
@@ -325,6 +338,37 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
               </div>
             )}
           </div>
+          {authToken && agriculturalProfiles.length > 0 && (
+            <div className="border-b border-border bg-surface-muted p-5 sm:px-6">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
+                <div>
+                  <Label htmlFor="diagnosis-agricultural-profile" className="font-semibold">
+                    Hồ sơ nông nghiệp
+                  </Label>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    Gắn kết kết quả với một khu vực canh tác tùy chọn.
+                  </p>
+                </div>
+                <Select
+                  value={selectedAgriculturalProfileId ?? 'none'}
+                  onValueChange={(value) => setSelectedAgriculturalProfileId(value === 'none' ? undefined : value)}
+                  disabled={busy || isPreparing}
+                >
+                  <SelectTrigger id="diagnosis-agricultural-profile" className="w-full sm:w-64">
+                    <SelectValue placeholder="Không gắn hồ sơ" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Không gắn hồ sơ</SelectItem>
+                    {agriculturalProfiles.map((profile) => (
+                      <SelectItem key={profile.id} value={profile.id}>
+                        {profile.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
           <div className="p-5 sm:p-6">
             {inputIssue && (
               <div className="mb-5">

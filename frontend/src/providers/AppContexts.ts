@@ -1,6 +1,7 @@
 'use client';
 import { createContext, use } from 'react';
 import type { AuthSession, AuthUser } from '@/services/authApi';
+import type { AgriculturalProfile, AgriculturalProfileInput } from '@/services/agriculturalProfileApi';
 import type { Plant, Disease, DiagnosisResult, UserProfile, NotificationItem } from '@/types';
 
 interface AuthState {
@@ -21,6 +22,14 @@ interface HistoryState {
   deleteHistoryItem: (id: string) => Promise<void>;
   viewHistoryItem: (result: DiagnosisResult) => Promise<void>;
 }
+interface AgriculturalProfileState {
+  profiles: AgriculturalProfile[];
+  isLoading: boolean;
+  error: string | null;
+  createProfile: (input: AgriculturalProfileInput) => Promise<AgriculturalProfile>;
+  updateProfile: (id: string, input: AgriculturalProfileInput) => Promise<AgriculturalProfile>;
+  deleteProfile: (id: string) => Promise<void>;
+}
 interface FeedbackState {
   notifications: NotificationItem[];
   openNotifications: () => void;
@@ -28,6 +37,7 @@ interface FeedbackState {
 export const AuthContext = createContext<AuthState | null>(null);
 export const CatalogContext = createContext<CatalogState | null>(null);
 export const HistoryContext = createContext<HistoryState | null>(null);
+export const AgriculturalProfileContext = createContext<AgriculturalProfileState | null>(null);
 export const FeedbackContext = createContext<FeedbackState | null>(null);
 function requireProvider<T>(value: T | null): T {
   if (value === null) throw new Error('App context must be used inside AppProvider.');
@@ -41,6 +51,9 @@ export function useCatalog() {
 }
 export function useHistory() {
   return requireProvider(use(HistoryContext));
+}
+export function useAgriculturalProfiles() {
+  return requireProvider(use(AgriculturalProfileContext));
 }
 export function useFeedback() {
   return requireProvider(use(FeedbackContext));

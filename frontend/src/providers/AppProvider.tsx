@@ -21,6 +21,14 @@ import {
 } from '@/services/authApi';
 import { getPlants, getDiseases } from '@/services/catalogApi';
 import {
+  createAgriculturalProfile,
+  deleteAgriculturalProfile,
+  getAgriculturalProfiles,
+  updateAgriculturalProfile,
+  type AgriculturalProfile,
+  type AgriculturalProfileInput,
+} from '@/services/agriculturalProfileApi';
+import {
   getPredictionHistory,
   deletePrediction,
   getPredictionById,
@@ -32,7 +40,13 @@ import { ToastContainer } from '@/components/common/ToastContainer';
 import { AppSplashScreen } from '@/components/common/AppSplashScreen';
 import { AdminLoginSuccessScreen } from '@/features/admin/AdminLoginSuccessScreen';
 import { SeedlingLoadingScreen } from '@/components/common/SeedlingLoadingScreen';
-import { AuthContext, CatalogContext, HistoryContext, FeedbackContext } from './AppContexts';
+import {
+  AgriculturalProfileContext,
+  AuthContext,
+  CatalogContext,
+  FeedbackContext,
+  HistoryContext,
+} from './AppContexts';
 import { guestProfile, createUserProfile, readGuestHistory } from './sessionProfile';
 import { isPublicCatalogPath } from '@/features/knowledge/catalogUi';
 
@@ -51,9 +65,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Wait for startup data and the finite brand entrance before entering the app
   const [loginPendingSession, setLoginPendingSession] = useState<AuthSession | null>(null);
   const [startupError, setStartupError] = useState('');
-  const [startupData, setStartupData] = useState<[Plant[], Disease[], DiagnosisResult[]] | null>(
-    null,
-  );
+  const [startupData, setStartupData] = useState<
+    [Plant[], Disease[], DiagnosisResult[], AgriculturalProfile[]] | null
+  >(null);
   const [entranceReady, setEntranceReady] = useState(false);
   const [noticeReady, setNoticeReady] = useState(false);
   const finishEntrance = useCallback(() => setEntranceReady(true), []);
@@ -66,6 +80,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // User Profile
   const [userProfile, setUserProfile] = useState<UserProfile>(guestProfile);
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
+  const [agriculturalProfiles, setAgriculturalProfiles] = useState<AgriculturalProfile[]>([]);
+  const [agriculturalProfilesLoading, setAgriculturalProfilesLoading] = useState(false);
+  const [agriculturalProfilesError, setAgriculturalProfilesError] = useState<string | null>(null);
 
   // Notifications
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -131,7 +148,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setStartupError('Kết nối quá lâu. Vui lòng thử lại.');
       }
     }, 15000);
-    Promise.all([getPlants(), getDiseases(), getPredictionHistory(loginPendingSession.token)])
+    Promise.all([
+      getPlants(),
+      getDiseases(),
+      getPredictionHistory(loginPendingSession.token),
+      getAgriculturalProfiles(loginPendingSession.token),
+    ])
       .then((data) => {
         if (isActive) setStartupData(data);
       })
@@ -168,6 +190,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setPlants(startupData[0]);
     setDiseases(startupData[1]);
     setHistory(startupData[2]);
+    setAgriculturalProfiles(startupData[3]);
+    setAgriculturalProfilesError(null);
     setAuthSession(loginPendingSession);
     setUserProfile(createUserProfile(loginPendingSession));
     if (pathname === '/') router.replace(returnPathRef.current ?? '/home');
@@ -307,6 +331,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLoginPendingSession(null);
     setStartupData(null);
     setUserProfile(guestProfile);
+    setAgriculturalProfiles([]);
+    setAgriculturalProfilesError(null);
     setHistory(readGuestHistory());
     returnPathRef.current = null;
     router.replace('/');
@@ -338,6 +364,64 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
     updateStoredAuthUser(user);
   }, []);
+  const createProfile = useCallback(
+    async (input: AgriculturalProfileInput) => {
+      if (!authSession) throw new Error('Vui lòng đăng nhập để quản lý hồ sơ nông nghiệp.');
+      setAgriculturalProfilesLoading(true);
+      setAgriculturalProfilesError(null);
+      try {
+        const created = await createAgriculturalProfile(authSession.token, input);
+        setAgriculturalProfiles((current) => [created, ...current]);
+        return created;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Không thể tạo hồ sơ.';
+        setAgriculturalProfilesError(message);
+        throw error;
+      } finally {
+        setAgriculturalProfilesLoading(false);
+      }
+    },
+    [authSession],
+  );
+  const updateAgriculturalProfileState = useCallback(
+    async (id: string, input: AgriculturalProfileInput) => {
+      if (!authSession) throw new Error('Vui lòng đăng nhập để quản lý hồ sơ nông nghiệp.');
+      setAgriculturalProfilesLoading(true);
+      setAgriculturalProfilesError(null);
+      try {
+        const updated = await updateAgriculturalProfile(id, authSession.token, input);
+        setAgriculturalProfiles((current) =>
+          current.map((profile) => (profile.id === id ? updated : profile)),
+        );
+        return updated;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Không thể cập nhật hồ sơ.';
+        setAgriculturalProfilesError(message);
+        throw error;
+      } finally {
+        setAgriculturalProfilesLoading(false);
+      }
+    },
+    [authSession],
+  );
+  const deleteAgriculturalProfileState = useCallback(
+    async (id: string) => {
+      if (!authSession) throw new Error('Vui lòng đăng nhập để quản lý hồ sơ nông nghiệp.');
+      setAgriculturalProfilesLoading(true);
+      setAgriculturalProfilesError(null);
+      try {
+        await deleteAgriculturalProfile(id, authSession.token);
+        setAgriculturalProfiles((current) => current.filter((profile) => profile.id !== id));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Không thể xóa hồ sơ.';
+        setAgriculturalProfilesError(message);
+        throw error;
+      } finally {
+        setAgriculturalProfilesLoading(false);
+      }
+    },
+    [authSession],
+  );
   const openNotifications = useCallback(() => setIsNotificationsOpen(true), []);
   const catalog = useMemo(() => ({ plants, diseases }), [plants, diseases]);
   const auth = useMemo(
@@ -375,6 +459,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const feedback = useMemo(
     () => ({ notifications, openNotifications }),
     [notifications, openNotifications],
+  );
+  const agriculturalProfileState = useMemo(
+    () => ({
+      profiles: agriculturalProfiles,
+      isLoading: agriculturalProfilesLoading,
+      error: agriculturalProfilesError,
+      createProfile,
+      updateProfile: updateAgriculturalProfileState,
+      deleteProfile: deleteAgriculturalProfileState,
+    }),
+    [
+      agriculturalProfiles,
+      agriculturalProfilesLoading,
+      agriculturalProfilesError,
+      createProfile,
+      updateAgriculturalProfileState,
+      deleteAgriculturalProfileState,
+    ],
   );
 
   if (logoutName !== null) return <SeedlingLoadingScreen mode="logout" userName={logoutName} />;
@@ -414,7 +516,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     <AuthContext value={auth}>
       <CatalogContext value={catalog}>
         <HistoryContext value={historyState}>
-          <FeedbackContext value={feedback}>
+          <AgriculturalProfileContext value={agriculturalProfileState}>
+            <FeedbackContext value={feedback}>
             {children}
             <ToastContainer toasts={toasts} onDismiss={removeToast} />
             <LoginModal
@@ -441,7 +544,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 router.push('/diagnose');
               }}
             />
-          </FeedbackContext>
+            </FeedbackContext>
+          </AgriculturalProfileContext>
         </HistoryContext>
       </CatalogContext>
     </AuthContext>
