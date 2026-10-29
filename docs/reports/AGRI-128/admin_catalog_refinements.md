@@ -108,4 +108,3 @@ credentials or Compose. Previous container configuration and the reason earlier
 sessions did not show this error remain unverified. This PR does not fix that issue.
 
 PR: [#50](https://github.com/KayPham05/AgriAI/pull/50), head AGRI-128-knowledge-medicine into AGRI-128-backend-improvement. Implementation commit 7bdcf1f; merge-tree against d565022 reported no conflicts. Review requested from trunthong09012005 and kats205; CI and approval remain pending. No tests rerun for delivery.
-
