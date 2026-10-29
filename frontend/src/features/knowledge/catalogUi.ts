@@ -51,7 +51,6 @@ export const contentFields: Record<CatalogKind, ContentField[]> = {
   medicines: [
     { key: 'productName', label: 'Tên sản phẩm', required: true, maxLength: 200 },
     { key: 'activeIngredient', label: 'Hoạt chất', required: true },
-    { key: 'targetUse', label: 'Đối tượng sử dụng', required: true },
     { key: 'sourceUrl', label: 'Link nguồn', required: true },
     { key: 'safetyWarning', label: 'Cảnh báo an toàn', required: true, multiline: true },
     { key: 'labelReference', label: 'Tham chiếu nhãn', required: true, multiline: true },

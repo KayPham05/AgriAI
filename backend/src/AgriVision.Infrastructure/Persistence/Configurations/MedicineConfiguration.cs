@@ -10,7 +10,7 @@ public class MedicineConfiguration : IEntityTypeConfiguration<Medicine>
     {
         builder.ToTable("medicines", table =>
         {
-            table.HasCheckConstraint("ck_medicines_required", "btrim(product_name) <> '' AND btrim(active_ingredient) <> '' AND btrim(target_use) <> '' AND btrim(source_url) <> '' AND btrim(safety_warning) <> '' AND btrim(label_reference) <> ''");
+            table.HasCheckConstraint("ck_medicines_required", "btrim(product_name) <> '' AND btrim(active_ingredient) <> '' AND btrim(source_url) <> '' AND btrim(safety_warning) <> '' AND btrim(label_reference) <> ''");
             table.HasCheckConstraint("ck_medicines_public", "NOT is_public OR (is_approved AND is_active)");
         });
         builder.HasKey(medicine => medicine.Id);

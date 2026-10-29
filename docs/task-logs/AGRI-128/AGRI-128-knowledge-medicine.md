@@ -156,3 +156,92 @@ Kế hoạch: [A/B](../../plans/AGRI-128-knowledge-medicine-plan.md).
 - Chi tiết thay đổi, các lần test thất bại và kết quả cuối: [báo cáo](../../reports/AGRI-128/knowledge_medicine.md).
 
 - Kiểm chứng cuối 2026-10-26: backend 460/460 (156 unit + 65 integration + 239 API), branch 83.56%; frontend 440/440, branch 72.37%; typecheck/lint/build và format bản sao LF đạt. Không skip trong bộ lọc CI. Không chạy E2E/RealR2/RealCheckpoint hay migrate DB ứng dụng. Git không còn unmerged; CI remote chưa xác minh.
+
+## 2026-10-28 — Khôi phục backend Docker
+
+- Backend lỗi do 5 migration chưa áp dụng. Đã rà migration, sao lưu DB, áp dụng
+  thành công và khởi động backend/frontend; giữ AI nguyên trạng thái tắt.
+- Kiểm chứng mới: DB có 8 migration; backend/frontend/PostgreSQL healthy;
+  API health trực tiếp và qua proxy Healthy, trang chủ HTTP 200.
+- Chỉ đổi report index và task log này; chi tiết backup, lệnh và giới hạn tại
+  [báo cáo](../../reports/AGRI-128/README.md#2026-10-28--khôi-phục-docker-trên-nhánh-knowledge).
+- Chưa chạy lại tests/CI, chưa kiểm inference/storage hoặc thử restore backup;
+  không commit/push. Các kết quả test phía trên là lịch sử.
+
+## 2026-10-28 — Lỗi lưu hướng dẫn thuốc: chẩn đoán
+
+- UI cho chọn `Ca_chua / Chay_la_som` nhưng DB vẫn là Unknown; cả cây/bệnh/cặp active.
+  Backend yêu cầu Disease đúng contract; frontend thiếu thông tin điều kiện và ô phân loại.
+- Kiểm bằng UI thật, source và truy vấn DB; không chạy suite hoặc sửa dữ liệu/source.
+  Chờ người dùng chọn phạm vi xử lý. Chi tiết tại [report index](../../reports/AGRI-128/README.md).
+
+## 2026-10-28 — Triển khai phân loại tình trạng theo xác nhận
+
+- Thêm `conditionType` vào create/update bệnh và selector trong Admin bệnh cây.
+  Giữ ô chọn cặp cây–bệnh của thuốc; lookup có phân loại và trạng thái cây/bệnh.
+  UI giải thích và chặn lưu/xác minh/duyệt cặp không hợp lệ, vẫn cho gỡ liên kết cũ.
+- Backend giữ validation Disease, thu hồi duyệt nội dung khi đổi phân loại; bộ
+  lọc public không trả hướng dẫn đã không còn thuộc Disease. Không migration mới
+  hoặc tự sửa classification dữ liệu thật.
+- Bổ sung regression unit, HTTP, component và cập nhật API manifest/route matrix.
+  Đường dẫn source, lệnh, artifact và kết quả test mới trong
+  [báo cáo](../../reports/AGRI-128/disease_classification.md).
+- Kiểm chứng cuối: 168 unit, 65 integration, 240 API, 447 frontend đều đạt,
+  không skip; typecheck/lint/build và `git diff --check` đạt. Lượt API đầu có
+  một lỗi trùng ApiCase; đã sửa mapping và chạy lại toàn bộ ApiTests đạt 240/240.
+- Build và cập nhật Docker backend/frontend thành công; cả hai healthy, API
+  trực tiếp/proxy Healthy, trang chủ 200. Lookup 59 cặp đủ metadata mới; phân bố
+  vẫn 47 Unknown, 10 Healthy, 2 NutrientDeficiency. Giữ volume PostgreSQL và AI.
+- Chưa UAT Admin trong trình duyệt vì phiên hiện tại ở đăng nhập có CAPTCHA;
+  không coi component/API fixture tests là UAT dữ liệu thật. Không RealR2,
+  RealCheckpoint, đo coverage, kiểm CI, commit hoặc push.
+
+## 2026-10-29 — Bàn giao tìm kiếm cặp trong Đối tượng sử dụng và nhãn
+
+- Triển khai ngày 28 tại `MedicineUses.tsx`, thêm hai regression trong
+  `MedicineUses.test.tsx`: tìm tên cây/bệnh/mã cặp không dấu, lọc liên kết và lựa
+  chọn, giữ cặp/bản nháp khi không khớp, xóa từ khóa khôi phục danh sách.
+- Kết quả ngày 28: 449/449 frontend tests; test liên quan 12/12 sau sửa fixture;
+  typecheck/lint/build đạt. Chỉ build/cập nhật frontend Docker, container healthy.
+- UAT Admin thật trên tab riêng: `lúa bạc_lá` lọc 59 → 1 cặp, chọn đúng liên kết;
+  tìm không có kết quả giữ hướng dẫn, xóa tìm kiếm trả lại 59. Không lưu hoặc duyệt
+  dữ liệu thật. Đã xác nhận vị trí hướng dẫn trên trang chi tiết thuốc công khai.
+- Báo cáo bổ sung ngày 29; không trình bày kết quả test ngày 28 như lần chạy mới.
+  Chi tiết source, artifact và giới hạn tại [báo cáo](../../reports/AGRI-128/disease_classification.md).
+  Chưa commit/push/CI; không sửa backend/AI hay chạy lại backend suites cho ô tìm kiếm.
+
+## 2026-10-29 — Triển khai các điều chỉnh Admin sau xác nhận
+
+- Popup chọn cặp có tìm kiếm bên trong; danh sách liên kết đã gắn không bị lọc.
+  Bỏ ô tìm cũ bên ngoài và trường Đối tượng sử dụng trong nội dung thuốc.
+- Backend DTO/service chấp nhận thiếu TargetUse và giữ giá trị legacy khi cập nhật;
+  migration OptionalMedicineTargetUse chỉ bỏ yêu cầu không rỗng của trường này.
+- KnowledgeAdmin hiển thị danh sách tình trạng dưới hoạt động của cây, phân loại
+  dưới hoạt động của bệnh. PlantDiseaseManager có 20 mục/trang và debounce 500 ms,
+  tìm/xóa tìm đưa về trang đầu. Bổ sung các regression và API manifest/route matrix.
+- Kết quả mới ngày 29: 453 frontend, 168 unit, 241 API đạt; typecheck/lint/build đạt.
+  Integration đầu đạt 63/65; hai lỗi do số migration mong đợi 8 thay vì 9 trong
+  CatalogImportTests đã sửa, chạy lại riêng hai ca đạt 2/2. Không gọi lượt đầu là xanh.
+- Đã sao lưu DB, kiểm pg_restore --list, áp dụng migration riêng, cập nhật Docker
+  backend/frontend healthy. Khi tiếp tục lúc 11:01 frontend đang dừng đã được khởi
+  động lại; API trực tiếp/proxy 200/Healthy. Không sửa dữ liệu thật để kiểm thử.
+- Browser xác nhận hai phần cây/bệnh. Kiểm trực tiếp popup và phân trang chưa hoàn
+  tất do phiên Admin không còn đăng nhập và thao tác trình duyệt timeout; các hành
+  vi này đã được kiểm bằng component/integration tests. AI vẫn ngoài phạm vi.
+- Affected paths, evidence và các giới hạn khác tại
+  [technical report](../../reports/AGRI-128/admin_catalog_refinements.md).
+  Không commit/push, RealCheckpoint/RealR2, đo coverage hoặc xác nhận CI.
+
+## 2026-10-29 — Chuẩn bị PR theo yêu cầu người dùng
+
+- Người dùng yêu cầu PR vào `AGRI-128-backend-improvement`, đồng thời yêu cầu
+  không chạy lại tests. Giữ nguyên các kết quả đã ghi theo thời điểm; không coi
+  chúng là kiểm chứng trên base mới hoặc kết quả GitHub Actions.
+- PR cũ #46 đã MERGED; nhánh đích hiện tại là d565022. Phạm vi PR mới gồm
+  phân loại bệnh, điều kiện hướng dẫn thuốc, popup tìm cặp, thông tin dưới trạng
+  thái, phân trang/debounce và migration bỏ bắt buộc TargetUse.
+- Lỗi R2 khi mở trang user còn tồn tại ngoài phạm vi: backend đang thiếu bốn
+  biến R2, GET lịch sử 503 do khởi tạo storage. Chưa sửa auth, history hay R2;
+  chưa xác định cấu hình container cũ hoặc lý do trước đây không gặp lỗi.
+- Reviewer đã đối chiếu collaborator: trunthong09012005 (backend), kats205
+  (frontend). Không tự approve/merge, không thay cấu hình R2 hoặc dữ liệu thật.

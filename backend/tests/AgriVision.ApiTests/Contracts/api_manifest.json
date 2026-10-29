@@ -167,6 +167,7 @@
     "route": "/api/diseases/{id:guid}",
     "cases": [
       "catalog.update",
+      "knowledge.classification",
       "catalog.update_invalid_name",
       "catalog.missing_id",
       "catalog.write_authorization",
@@ -421,6 +422,7 @@
     "method": "POST",
     "route": "/api/admin/medicines",
     "cases": [
+      "knowledge.medicine_optional_target",
       "knowledge.lifecycle",
       "knowledge.authorization",
       "knowledge.validation"
@@ -430,6 +432,7 @@
     "method": "PUT",
     "route": "/api/admin/medicines/{id:guid}",
     "cases": [
+      "knowledge.medicine_optional_target",
       "knowledge.lifecycle",
       "knowledge.authorization"
     ]
@@ -454,6 +457,7 @@
     "method": "GET",
     "route": "/api/medicines",
     "cases": [
+      "knowledge.classification",
       "knowledge.lifecycle",
       "knowledge.validation"
     ]
@@ -462,6 +466,7 @@
     "method": "GET",
     "route": "/api/medicines/{id:guid}",
     "cases": [
+      "knowledge.classification",
       "knowledge.lifecycle"
     ]
   },
@@ -536,6 +541,7 @@
     "method": "PUT",
     "route": "/api/admin/medicines/{id:guid}/uses/{plantDiseaseId:guid}",
     "cases": [
+      "knowledge.classification",
       "knowledge.authorization",
       "knowledge.relations",
       "knowledge.label_review"
@@ -545,6 +551,7 @@
     "method": "DELETE",
     "route": "/api/admin/medicines/{id:guid}/uses/{plantDiseaseId:guid}",
     "cases": [
+      "knowledge.classification",
       "knowledge.authorization",
       "knowledge.relations"
     ]
@@ -567,6 +574,7 @@
     "method": "GET",
     "route": "/api/admin/plant-diseases",
     "cases": [
+      "knowledge.classification",
       "knowledge.pair_availability"
     ]
   },

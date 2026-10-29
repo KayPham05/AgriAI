@@ -27,5 +27,10 @@ public class PlantDiseaseCatalogService(IPlantDiseaseRepository repository) : IP
     }
 
     private static PlantDiseaseLookupDto Map(PlantDisease pair) => new(pair.Id, pair.PlantId, pair.DiseaseId,
-        pair.Plant.Name, pair.Disease.Name, pair.ClassName, pair.ClassIndex, pair.IsActive);
+        pair.Plant.Name, pair.Disease.Name, pair.ClassName, pair.ClassIndex, pair.IsActive)
+    {
+        ConditionType = pair.Disease.ConditionType,
+        PlantIsActive = pair.Plant.IsActive,
+        DiseaseIsActive = pair.Disease.IsActive
+    };
 }

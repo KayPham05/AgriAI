@@ -27,12 +27,14 @@ export function CatalogSelect({
   onChange,
   options,
   disabled,
+  emptyLabel = 'Tất cả',
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: { value: string; label: string }[];
   disabled?: boolean;
+  emptyLabel?: string | null;
 }) {
   const id = useId();
   return (
@@ -48,7 +50,7 @@ export function CatalogSelect({
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
-            <SelectItem value="all">Tất cả</SelectItem>
+            {emptyLabel !== null && <SelectItem value="all">{emptyLabel}</SelectItem>}
             {options.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}

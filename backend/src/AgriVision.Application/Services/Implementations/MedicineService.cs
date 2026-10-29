@@ -116,13 +116,14 @@ public class MedicineService(IMedicineRepository repository, IPlantDiseaseReposi
     private async Task<Medicine> FindAsync(Guid id, bool tracking, CancellationToken cancellationToken) =>
         await repository.GetAsync(id, tracking, cancellationToken) ?? throw new KeyNotFoundException("Medicine not found.");
 
-    private static void SetContent(Medicine medicine, string productName, string ingredient, string target,
+    private static void SetContent(Medicine medicine, string productName, string ingredient, string? target,
         string source, string warning, string label)
     {
         // Validate all fields before mutating an entity tracked by a unit of work.
         var name = CatalogValidation.Text(productName, "ProductName", 200);
         var activeIngredient = CatalogValidation.Text(ingredient, "ActiveIngredient");
-        var targetUse = CatalogValidation.Text(target, "TargetUse");
+        // Legacy clients may still send this field; content-only edits preserve existing data.
+        var targetUse = target?.Trim() ?? medicine.TargetUse;
         var sourceUrl = CatalogValidation.Source(source);
         var safetyWarning = CatalogValidation.Text(warning, "SafetyWarning");
         var labelReference = CatalogValidation.Text(label, "LabelReference");
@@ -138,6 +139,7 @@ public class MedicineService(IMedicineRepository repository, IPlantDiseaseReposi
         medicine.ProductName, medicine.ActiveIngredient, medicine.TargetUse, medicine.SourceUrl,
         medicine.SafetyWarning, medicine.LabelReference, medicine.IsApproved, medicine.IsPublic,
         medicine.IsActive, medicine.CreatedAt, medicine.UpdatedAt,
-        medicine.Uses.Where(u => !publicOnly || (u.IsApproved && u.IsLabelVerified && CatalogValidation.ActivePair(u.PlantDisease)))
+        medicine.Uses.Where(u => !publicOnly || (u.IsApproved && u.IsLabelVerified && CatalogValidation.ActivePair(u.PlantDisease)
+            && u.PlantDisease.Disease.ConditionType == "Disease"))
             .OrderBy(u => u.PlantDiseaseId).Select(u => new MedicineUseDto(u.PlantDiseaseId, u.LabelDirections, u.IsLabelVerified, u.IsApproved)).ToList());
 }

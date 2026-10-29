@@ -18,6 +18,84 @@ namespace AgriVision.ApiTests.Controllers;
 
 public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<AgriVisionFactory>
 {
+    [Fact]
+    [Trait("ApiCase", "knowledge.medicine_optional_target")]
+    public async Task MedicineContent_ShouldAllowOmittedTarget_AndPreserveLegacyValue()
+    {
+        using var admin = await CreateAccountAsync(true);
+        var body = new { productName = "Optional target fixture", activeIngredient = "Fixture",
+            sourceUrl = "https://example.test/label", safetyWarning = "Fixture warning", labelReference = "Fixture label" };
+        using var created = await admin.PostAsJsonAsync("/api/admin/medicines", body);
+        created.StatusCode.Should().Be(HttpStatusCode.Created);
+        var result = await created.Content.ReadFromJsonAsync<JsonElement>();
+        var id = result.GetProperty("id").GetGuid();
+        result.GetProperty("targetUse").GetString().Should().BeEmpty();
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var entity = await db.Medicines.SingleAsync(m => m.Id == id);
+            entity.TargetUse = "Retain legacy text";
+            await db.SaveChangesAsync();
+        }
+        using var updated = await admin.PutAsJsonAsync($"/api/admin/medicines/{id}", body with { productName = "Edited fixture" });
+        updated.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await updated.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("targetUse").GetString().Should().Be("Retain legacy text");
+    }
+
+    [Fact]
+    [Trait("ApiCase", "knowledge.classification")]
+    public async Task Classification_ShouldControlMedicineUses_AndPreserveLegacyUpdates()
+    {
+        using var admin = await CreateAccountAsync(true);
+        using var user = await CreateAccountAsync(false);
+        using var guest = factory.CreateClient();
+        var disease = new AgriVision.Domain.Entities.Disease { Name = $"Classification_{Guid.NewGuid():N}", IsContentApproved = true };
+        var pair = new AgriVision.Domain.Entities.PlantDisease
+        {
+            Plant = new AgriVision.Domain.Entities.Plant { Name = $"Plant_{Guid.NewGuid():N}" },
+            Disease = disease, ClassName = $"Fixture___{Guid.NewGuid():N}"
+        };
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            pair.ClassIndex = await db.PlantDiseases.MaxAsync(p => p.ClassIndex) + 1;
+            db.PlantDiseases.Add(pair);
+            await db.SaveChangesAsync();
+        }
+        var medicineId = await CreateAsync(admin, "medicines", pair.Id);
+        var path = $"/api/diseases/{disease.Id}";
+        var body = new { name = disease.Name, isActive = true, conditionType = "Disease" };
+        (await guest.PutAsJsonAsync(path, body)).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await user.PutAsJsonAsync(path, body)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await admin.PutAsJsonAsync($"/api/admin/medicines/{medicineId}/uses/{pair.Id}",
+            new { labelDirections = "Synthetic label" })).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await admin.PutAsJsonAsync(path, body with { conditionType = "Invalid" })).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        using var classified = await admin.PutAsJsonAsync(path, body);
+        classified.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await classified.Content.ReadFromJsonAsync<JsonElement>();
+        result.GetProperty("conditionType").GetString().Should().Be("Disease");
+        result.GetProperty("isContentApproved").GetBoolean().Should().BeFalse();
+        // An older client's content-only edit must not reset classification.
+        using var legacy = await admin.PutAsJsonAsync(path, new { name = disease.Name, isActive = true });
+        legacy.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await legacy.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("conditionType").GetString().Should().Be("Disease");
+        var choices = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/plant-diseases?diseaseId={disease.Id}");
+        var choice = choices.GetProperty("items")[0];
+        choice.GetProperty("conditionType").GetString().Should().Be("Disease");
+        choice.GetProperty("plantIsActive").GetBoolean().Should().BeTrue();
+        choice.GetProperty("diseaseIsActive").GetBoolean().Should().BeTrue();
+        await AssignUseAsync(admin, medicineId, pair.Id);
+        await PublishAsync(admin, "medicines", medicineId);
+        using var reclassified = await admin.PutAsJsonAsync(path, body with { conditionType = "Healthy" });
+        reclassified.StatusCode.Should().Be(HttpStatusCode.OK);
+        var publicMedicine = await guest.GetFromJsonAsync<JsonElement>($"/api/medicines/{medicineId}");
+        publicMedicine.GetProperty("uses").GetArrayLength().Should().Be(0);
+        var filtered = await guest.GetFromJsonAsync<JsonElement>($"/api/medicines?diseaseId={disease.Id}");
+        filtered.GetProperty("totalCount").GetInt32().Should().Be(0);
+        (await admin.DeleteAsync($"/api/admin/medicines/{medicineId}/uses/{pair.Id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
     [Theory]
     [InlineData("medicines")]
     [InlineData("knowledge-documents")]

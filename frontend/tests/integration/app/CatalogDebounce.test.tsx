@@ -130,3 +130,33 @@ it('debounces the plant/disease relationship filter without extra requests', asy
   expect(screen.queryByRole('heading', { name: 'Cà chua / Cháy lá' })).not.toBeInTheDocument();
   expect(fetch).toHaveBeenCalledOnce();
 });
+
+it('paginates pairs and returns to page one after the 500ms search delay', async () => {
+  const pairs = Array.from({ length: 25 }, (_, i) => ({
+    ...pair,
+    id: `pair-${i}`,
+    diseaseName: `Bệnh ${i}`,
+  }));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => json({ ...page(pairs), hasNextPage: false })),
+  );
+  render(<PlantDiseaseManager token="admin" />);
+  await act(async () => {});
+  expect(screen.getAllByRole('heading')).toHaveLength(20);
+  fireEvent.click(screen.getByRole('button', { name: 'Trang sau' }));
+  expect(screen.getAllByRole('heading')).toHaveLength(5);
+  vi.useFakeTimers();
+  fireEvent.change(screen.getByLabelText('Tìm cây hoặc bệnh'), { target: { value: 'Bệnh 0' } });
+  await act(async () => {
+    vi.advanceTimersByTime(499);
+  });
+  expect(screen.getAllByRole('heading')).toHaveLength(5);
+  await act(async () => {
+    vi.advanceTimersByTime(1);
+  });
+  expect(screen.getAllByRole('heading')).toHaveLength(1);
+  expect(screen.getByText('1 kết quả · Trang 1/1')).toBeVisible();
+  fireEvent.change(screen.getByLabelText('Tìm cây hoặc bệnh'), { target: { value: '' } });
+  expect(screen.getAllByRole('heading')).toHaveLength(20);
+});

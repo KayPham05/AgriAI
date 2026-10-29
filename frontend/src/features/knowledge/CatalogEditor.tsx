@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { catalogError, contentFields, safeSource } from './catalogUi';
+import { CatalogSelect } from './CatalogControls';
 
 export function CatalogEditor({
   kind,
@@ -28,6 +29,7 @@ export function CatalogEditor({
     Object.fromEntries(contentFields[kind].map(({ key }) => [key, String(record[key] ?? '')])),
   );
   const [selected, setSelected] = useState(record.plantDiseaseIds ?? []);
+  const [conditionType, setConditionType] = useState(record.conditionType ?? 'Unknown');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState('');
   const [pending, setPending] = useState(false);
@@ -52,6 +54,7 @@ export function CatalogEditor({
       Object.entries(draft).map(([key, value]) => [key, value.trim()]),
     );
     if (kind === 'knowledge-documents') body.plantDiseaseIds = selected;
+    if (kind === 'diseases') body.conditionType = conditionType;
     if (record.id && (kind === 'plants' || kind === 'diseases')) body.isActive = record.isActive;
     inFlight.current = true;
     setPending(true);
@@ -98,6 +101,30 @@ export function CatalogEditor({
             </div>
           );
         })}
+        {kind === 'diseases' && (
+          <>
+            <CatalogSelect
+              label="Phân loại tình trạng"
+              value={conditionType}
+              emptyLabel={null}
+              disabled={pending || disabled}
+              onChange={(value) => {
+                setConditionType(value);
+                onDirtyChange?.(true);
+              }}
+              options={[
+                { value: 'Unknown', label: 'Chưa xác định' },
+                { value: 'Healthy', label: 'Khỏe mạnh' },
+                { value: 'NutrientDeficiency', label: 'Thiếu dinh dưỡng' },
+                { value: 'Disease', label: 'Bệnh' },
+              ]}
+            />
+            <p className="text-sm text-muted-foreground">
+              Phân loại áp dụng cho mọi cây liên kết với mục này. Chỉ loại Bệnh được gắn hướng dẫn
+              thuốc. Thay đổi phân loại cần duyệt lại nội dung.
+            </p>
+          </>
+        )}
         {kind === 'knowledge-documents' && (
           <fieldset className="flex flex-col gap-3">
             <legend className="mb-3 font-semibold">Liên kết cây và bệnh (không bắt buộc)</legend>

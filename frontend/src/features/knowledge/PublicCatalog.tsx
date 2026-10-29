@@ -309,7 +309,7 @@ export function PublicCatalog({ kind, id }: { kind: CatalogKind; id?: string }) 
                 </h2>
                 <p className="line-clamp-3 break-words text-muted-foreground">
                   {item.content ??
-                    item.targetUse ??
+                    item.activeIngredient ??
                     item.description ??
                     'Xem thông tin chi tiết trong danh mục.'}
                 </p>

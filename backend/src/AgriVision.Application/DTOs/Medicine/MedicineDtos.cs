@@ -1,8 +1,8 @@
 namespace AgriVision.Application.DTOs.Medicine;
 
-public record CreateMedicineRequest(string ProductName, string ActiveIngredient, string TargetUse,
+public record CreateMedicineRequest(string ProductName, string ActiveIngredient, string? TargetUse,
     string SourceUrl, string SafetyWarning, string LabelReference);
-public record UpdateMedicineRequest(string ProductName, string ActiveIngredient, string TargetUse,
+public record UpdateMedicineRequest(string ProductName, string ActiveIngredient, string? TargetUse,
     string SourceUrl, string SafetyWarning, string LabelReference);
 public record AssignMedicineUseRequest(string LabelDirections, bool? IsLabelVerified = null, bool? IsApproved = null);
 public record MedicineUseDto(Guid PlantDiseaseId, string LabelDirections, bool IsLabelVerified, bool IsApproved);
