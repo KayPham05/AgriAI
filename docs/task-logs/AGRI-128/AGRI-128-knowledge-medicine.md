@@ -245,3 +245,13 @@ Kế hoạch: [A/B](../../plans/AGRI-128-knowledge-medicine-plan.md).
   chưa xác định cấu hình container cũ hoặc lý do trước đây không gặp lỗi.
 - Reviewer đã đối chiếu collaborator: trunthong09012005 (backend), kats205
   (frontend). Không tự approve/merge, không thay cấu hình R2 hoặc dữ liệu thật.
+
+## 2026-10-29 — PR #50 đã tạo
+
+- [PR #50 — AGRI-128 Refine admin catalogs and medicine use selection](https://github.com/KayPham05/AgriAI/pull/50).
+- Head `AGRI-128-knowledge-medicine`, base `AGRI-128-backend-improvement`.
+  Commit triển khai: `7bdcf1f`. Git merge-tree với base d565022 không có xung đột;
+  đây chỉ là kiểm tra Git, không phải chạy hay test bản tích hợp.
+- Đã yêu cầu review `trunthong09012005` và `kats205`. Không chạy lại tests theo
+  yêu cầu; CI/review còn chờ. PR nêu rõ lỗi R2/history chưa được sửa và giới hạn UAT.
+- Không merge PR hoặc sửa nhánh đích trực tiếp.
