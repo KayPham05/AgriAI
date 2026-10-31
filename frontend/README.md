@@ -166,6 +166,30 @@ Authenticated requests include the JWT bearer token, allowing predictions to app
 
 ## Checks
 
+### Shared authentication background media
+
+Login and registration use public UI media from the `agriai-public-assets` R2 bucket:
+
+- `https://pub-5b7b85dc2aa84f1ca62aa18308983f37.r2.dev/auth/field-v1.mp4`
+- `https://pub-5b7b85dc2aa84f1ca62aa18308983f37.r2.dev/auth/field-poster-v1.webp`
+
+The bucket owner must upload these two objects before the shared background is available.
+Teammates then need no local video file or R2 credentials. The original video stays
+ignored locally as a backup; do not add it or tool binaries to Git. User-uploaded
+prediction images remain in the separate private bucket and continue through authenticated APIs.
+
+The public MP4 is H.264, 1280x720 at 30 fps, without audio and with fast-start metadata.
+The component preserves reduced-motion/mobile poster fallback, hidden-tab pause,
+and one video across login/register. Media errors fall back to the existing green surface.
+Update `AUTH_MEDIA_ROOT` in `src/components/modals/AuthPanelVideo.tsx` when moving
+to a production custom domain; Cloudflare's `r2.dev` URL is for development/demo use.
+
+The delivery check is `python tests/browser/auth/auth_panel_video.py` with the app
+running at `http://localhost:3000`; set `AUTH_APP_URL` for a different local port.
+It requires the real public objects and checks playback plus HTTP Range delivery.
+
+### Commands
+
 ```powershell
 cd frontend
 corepack pnpm check:ci
