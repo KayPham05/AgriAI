@@ -333,3 +333,8 @@ User requested removing dated change notes from `DESIGN.md`. Removed 51 dated en
 ## Requested local commits - 2026-10-22
 
 Grouped existing UI/admin work into nine Conventional Commits with verified AGRI-57/AGRI-80 keys. Libraries and generated/private artifacts excluded. Fresh 353 tests, strict lint, production build/typecheck and proposed commitlint passed; 18 untouched format diagnostics remain documented. [Scope, evidence and limits](agri_57_local_commits_2026_10_22.md).
+
+
+## Main synchronization - 2026-10-27
+
+Fast-forwarded AGRI-57 to origin/main `018bf32` (39 incoming commits), preserving local generated declarations and ignored assets. No conflicts or push. Git verification passed; runtime checks not run and locked dependencies need synchronization. [Evidence and limits](agri_57_main_sync_2026_10_27.md). This records synchronization only, not application/CI acceptance.
