@@ -6,6 +6,35 @@ import { article, medicine, pair, page, json } from '../../helpers/knowledge';
 
 describe('knowledge administration with real API adapter', () => {
   it.each(['plants', 'diseases'] as const)(
+    'shows read-only metadata below %s status in list and detail',
+    async (kind) => {
+      const record = {
+        id: kind === 'plants' ? pair.plantId : pair.diseaseId,
+        name: 'Catalog',
+        isActive: true,
+        createdAt: '',
+        conditionType: 'NutrientDeficiency',
+      };
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (url: string) => {
+          if (url.includes('plant-diseases'))
+            return json(
+              page([pair, { ...pair, id: 'other', plantId: 'other', diseaseName: 'Unrelated' }]),
+            );
+          return json(url.endsWith(record.id) ? record : [record]);
+        }),
+      );
+      render(<KnowledgeAdmin kind={kind} token="admin" />);
+      const text = kind === 'plants' ? 'Cháy lá' : 'Phân loại tình trạng: Thiếu dinh dưỡng';
+      expect(await screen.findByText(text)).toBeVisible();
+      expect(screen.queryByText('Unrelated')).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Mở Catalog' }));
+      expect(await screen.findByText(text)).toBeVisible();
+      expect(screen.queryByRole('button', { name: 'Mở chi tiết' })).not.toBeInTheDocument();
+    },
+  );
+  it.each(['plants', 'diseases'] as const)(
     'creates %s through its protected CRUD endpoint',
     async (kind) => {
       const writes: unknown[] = [];

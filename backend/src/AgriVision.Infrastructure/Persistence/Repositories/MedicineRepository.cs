@@ -21,7 +21,8 @@ public class MedicineRepository(AppDbContext context) : IMedicineRepository
                 (!filter.PlantId.HasValue || u.PlantDisease.PlantId == filter.PlantId) &&
                 (!filter.DiseaseId.HasValue || u.PlantDisease.DiseaseId == filter.DiseaseId) &&
                 (!publicOnly || (u.IsApproved && u.IsLabelVerified && u.PlantDisease.IsActive &&
-                    u.PlantDisease.Plant.IsActive && u.PlantDisease.Disease.IsActive))));
+                    u.PlantDisease.Plant.IsActive && u.PlantDisease.Disease.IsActive &&
+                    u.PlantDisease.Disease.ConditionType == "Disease"))));
         if (!string.IsNullOrWhiteSpace(filter.Search))
         {
             var search = filter.Search.Trim().ToLowerInvariant();

@@ -20,6 +20,49 @@ import { CatalogPager, CatalogSelect, ConfirmAction } from './CatalogControls';
 import { MedicineUses } from './MedicineUses';
 import { catalogError, catalogLabels } from './catalogUi';
 
+function RelatedCatalogInfo({
+  kind,
+  record,
+  pairs,
+}: {
+  kind: CatalogKind;
+  record: CatalogRecord;
+  pairs: PlantDiseasePair[];
+}) {
+  if (kind === 'diseases') {
+    const labels: Record<string, string> = {
+      Unknown: 'Chưa xác định',
+      Healthy: 'Khỏe mạnh',
+      NutrientDeficiency: 'Thiếu dinh dưỡng',
+      Disease: 'Bệnh',
+    };
+    return (
+      <p className="mt-2 text-sm text-muted-foreground">
+        Phân loại tình trạng: {labels[record.conditionType ?? 'Unknown'] ?? 'Chưa xác định'}
+      </p>
+    );
+  }
+  if (kind !== 'plants') return null;
+  const linked = pairs.filter((pair) => pair.plantId === record.id);
+  return (
+    <div className="mt-2 flex flex-col gap-1 text-sm">
+      <p className="font-semibold">Bệnh và tình trạng liên quan</p>
+      {linked.length ? (
+        <ul className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground">
+          {linked.map((pair) => (
+            <li key={pair.id}>
+              <span>{pair.diseaseName}</span>
+              {!pair.isActive && ' (liên kết ngừng hoạt động)'}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-muted-foreground">Chưa có bệnh hoặc tình trạng liên kết.</p>
+      )}
+    </div>
+  );
+}
+
 export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: string }) {
   const [filter, setFilter] = useState<CatalogFilter>({ pageNumber: 1 });
   const [page, setPage] = useState<CatalogPage | null>(null);
@@ -285,6 +328,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
                         {item.isActive ? 'Hoạt động' : 'Ngừng hoạt động'}
                         {!catalog && `; ${item.isPublic ? 'công khai' : 'chưa công khai'}`}
                       </p>
+                      <RelatedCatalogInfo kind={kind} record={item} pairs={pairs} />
                     </div>
                     <Button
                       variant="outline"
@@ -334,6 +378,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
                   </Badge>
                 )}
               </div>
+              <RelatedCatalogInfo kind={kind} record={record} pairs={pairs} />
               <div className="flex flex-wrap gap-2">
                 {!record.isActive ? (
                   <Button disabled={pending || dirty} onClick={() => void change('restore')}>

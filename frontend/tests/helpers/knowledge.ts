@@ -9,6 +9,9 @@ export const pair: PlantDiseasePair = {
   classIndex: 0,
   className: 'Ca_chua___Chay_la_som',
   isActive: true,
+  conditionType: 'Disease',
+  plantIsActive: true,
+  diseaseIsActive: true,
 };
 export const article: CatalogRecord = {
   id: 'article-a',

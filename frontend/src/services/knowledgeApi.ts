@@ -46,6 +46,9 @@ export interface PlantDiseasePair {
   className: string;
   classIndex: number;
   isActive: boolean;
+  conditionType?: string | null;
+  plantIsActive?: boolean;
+  diseaseIsActive?: boolean;
 }
 export interface CatalogPage<T = CatalogRecord> {
   items: T[];

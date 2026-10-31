@@ -32,6 +32,7 @@ public class DiseaseService : IDiseaseService
         {
             Id = Guid.NewGuid(),
             Name = CatalogValidation.Text(request.Name, "Name", 150),
+            ConditionType = ValidateCondition(request.ConditionType ?? "Unknown"),
             VietnameseName = request.VietnameseName,
             Description = request.Description,
             Symptoms = request.Symptoms,
@@ -54,12 +55,15 @@ public class DiseaseService : IDiseaseService
         }
 
         var name = CatalogValidation.Text(request.Name, "Name", 150);
+        // Omitted metadata preserves the classification for older clients.
+        var condition = ValidateCondition(request.ConditionType ?? disease.ConditionType);
         if (disease.Name != name || disease.VietnameseName != request.VietnameseName ||
             disease.Description != request.Description || disease.Symptoms != request.Symptoms ||
             disease.Treatment != request.Treatment || disease.Prevention != request.Prevention ||
-            disease.IsActive != request.IsActive)
+            disease.IsActive != request.IsActive || disease.ConditionType != condition)
             disease.IsContentApproved = false;
         disease.Name = name;
+        disease.ConditionType = condition;
         disease.VietnameseName = request.VietnameseName;
         disease.Description = request.Description;
         disease.Symptoms = request.Symptoms;
@@ -92,6 +96,12 @@ public class DiseaseService : IDiseaseService
 
         await _diseaseRepository.DeleteAsync(disease, cancellationToken);
     }
+
+    private static string ValidateCondition(string condition) => condition switch
+    {
+        "Unknown" or "Healthy" or "NutrientDeficiency" or "Disease" => condition,
+        _ => throw new ArgumentException("ConditionType must be Unknown, Healthy, NutrientDeficiency or Disease.")
+    };
 
     private static DiseaseDto MapToDto(Disease disease, bool includeUnapproved = false)
     {
