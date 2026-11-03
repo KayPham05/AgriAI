@@ -303,6 +303,20 @@ export async function getPredictionById(id: string, token: string): Promise<Diag
   return mapPredictionResult(dto);
 }
 
+export async function getProfilePredictionHistory(
+  profileId: string,
+  token: string,
+  pageNumber = 1,
+): Promise<PagedResult<DiagnosisResult>> {
+  const query = new URLSearchParams({
+    agriculturalProfileId: profileId,
+    pageNumber: String(pageNumber),
+    pageSize: '10',
+  });
+  const result = await authenticatedRequest<PagedResult<PredictionHistoryDto>>(`?${query}`, token);
+  return { ...result, items: result.items.map(mapHistoryItem) };
+}
+
 export async function deletePrediction(id: string, token: string): Promise<void> {
   const response = await fetch(`${predictionUrl}/${id}`, {
     method: 'DELETE',
