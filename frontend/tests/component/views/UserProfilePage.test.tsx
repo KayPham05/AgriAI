@@ -40,6 +40,10 @@ describe('Profile Desktop account management', () => {
   it('omits unsupported fields from the profile form', async () => {
     show();
     await screen.findByDisplayValue(dto.fullName);
+    expect(screen.getByRole('link', { name: 'Quản lý hồ sơ' })).toHaveAttribute(
+      'href',
+      '/agricultural-profiles',
+    );
     for (const label of ['Tên hiển thị riêng', 'Số điện thoại', 'Tỉnh / Thành phố'])
       expect(screen.queryByLabelText(label)).not.toBeInTheDocument();
     expect(screen.queryByText('Chưa hỗ trợ')).not.toBeInTheDocument();

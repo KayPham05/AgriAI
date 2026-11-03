@@ -119,3 +119,81 @@ Kiểm chứng local sau fix:
 Default parallel run trên máy Windows còn 4 test timeout do cạnh tranh worker tài nguyên;
 đây là giới hạn môi trường local, không phải lỗi URL profile. GitHub Actions chưa được
 xác nhận lại trên revision sửa.
+
+## Authenticated profile navigation fix — 2026-10-28
+
+Sau khi AGRI-128 đưa user đã đăng nhập sang `UserProfilePage`, link quản lý hồ sơ chỉ
+còn ở `ProfilePage` của luồng cũ nên không hiển thị trên trang hồ sơ cá nhân thực tế.
+Đã thêm section và link `Quản lý hồ sơ` tới `/agricultural-profiles` vào
+`frontend/src/views/UserProfilePage.tsx`, kèm regression test.
+
+Kiểm chứng local: UserProfilePage **9/9 test pass**, TypeScript pass, Biome lint pass và
+`git diff --check` pass. Thay đổi chưa commit/push.
+
+## Figma plugin UI sync — 2026-11-03
+
+Đã đọc design context/screenshot trực tiếp qua plugin và đồng bộ danh sách dạng hàng,
+tìm kiếm, form, chi tiết/lịch sử theo hồ sơ và xác nhận xóa. Link chẩn đoán chọn trước
+hồ sơ sở hữu; giữ contract/backend và toàn bộ file AI.
+
+Full frontend trước điều chỉnh cuối: **455/455 pass**; năm suite liên quan sau chỉnh
+cuối: **56/56 pass**. Typecheck, lint, format các file thay đổi và production Docker
+frontend build pass; frontend local đã recreate và healthy. UI được xem trên browser
+với dữ liệu cô lập ở 375/768/1280px; chưa phải E2E với PostgreSQL, chưa đo coverage mới
+hoặc xác minh CI. Chưa commit/push. Chi tiết nguồn frame, paths, lệnh và giới hạn:
+[Figma sync](figma_sync.md).
+
+## Create profile during diagnosis — 2026-11-03
+
+Thêm lựa chọn `Thêm hồ sơ mới` trong dropdown hồ sơ ở trang chẩn đoán, kể cả khi
+chưa có hồ sơ. Mở form hiện có bằng dialog, gọi `createProfile` của provider và chọn
+hồ sơ vừa tạo; không rời trang hoặc tự gửi chẩn đoán. Ảnh đã chọn và lựa chọn cũ
+được giữ khi hủy/lưu lỗi; request đang lưu chặn gửi trùng và đóng dialog.
+
+Các paths mới: `CreateAgriculturalProfileDialog.tsx` và
+`DiagnoseProfileCreation.test.tsx`; cập nhật `DiagnoseRoute.tsx`, `DiagnosePage.tsx`.
+Bằng chứng kiểm thử và build được ghi trong [báo cáo chi tiết](figma_sync.md).
+
+Kiểm chứng mới sau bổ sung: full frontend **68 file, 463/463 pass**; typecheck,
+lint, format và Docker frontend production build pass. Frontend local đã recreate,
+healthy; `/diagnose` HTTP 200. Chưa commit/push hoặc xác minh GitHub Actions.
+
+## Delivery preparation — 2026-11-03
+
+Theo yêu cầu push của user, đã tạo bốn commit code trên
+`AGRI-116-agricultural-profile-ui`: `04e5852` (điều hướng), `5e3ab09` (lịch sử),
+`0090015` (giao diện Figma), `508faa3` (chọn/tạo hồ sơ khi chẩn đoán). Những ghi chú
+chưa commit/push phía trên mô tả trạng thái ở các lượt trước.
+
+Kiểm lại trước commit: **7 file, 70/70 test pass**, typecheck, lint và format 16 file
+pass. Chỉ chuẩn hóa CRLF sang LF ở hai file trang hồ sơ cá nhân khi format, không đổi
+hành vi. Full suite **463/463** và Docker build là bằng chứng của lượt triển khai
+trước, không chạy lại trong lượt push. Không stage AI, notebook, Compose AI hoặc
+artifact QA. Chưa xác minh GitHub Actions; xem [chi tiết](figma_sync.md).
+
+## Navbar profile entry — 2026-11-03
+
+Thêm `Hồ sơ nông nghiệp` trong `Navbar.tsx`, dùng chung cho thanh desktop và menu
+điện thoại, đích `/agricultural-profiles`. Bổ sung route trong `appRoutes.ts` và
+`NavigationTab` tại `types/index.ts` để đánh dấu đúng trang hiện tại. Giữ link avatar
+tới hồ sơ cá nhân. Test harness được nối với route quản lý hồ sơ thật.
+
+Kiểm chứng mới: regression trước sửa **2 fail/2 pass** do thiếu link; sau sửa,
+`Navbar.test.tsx` + `App.routing.test.tsx` **14/14 pass**, 11,02 giây. Test kiểm href,
+active state, đóng menu sau bấm và chuyển từ trang chẩn đoán sang quản lý hồ sơ qua
+provider/shell thật. Fixture routing lúc đầu thiếu URL khởi tạo đã được sửa; không
+đổi expected của tính năng. Typecheck, lint 246 file, format sáu file thay đổi và
+Docker frontend production build pass. Frontend local recreate riêng và healthy.
+
+Browser preview cô lập dùng component/CSS thật và dữ liệu tổng hợp: desktop 1280px
+có đủ liên kết trên một dòng; mobile 375px mở menu và bấm được link. QA artifact
+ignored: `.cache/qa-verification/agri116/figma-sync/navbar-profile-desktop.jpg`.
+Preview đã dừng và viewport được reset. Chưa chạy lại full suite/coverage/CI hoặc
+E2E với PostgreSQL cho thay đổi nhỏ này; số full suite ở mục trước là lịch sử.
+Không thay backend/AI/DB. Chưa commit/push thay đổi navbar.
+
+Delivery check cùng ngày, theo yêu cầu push: sau `git fetch origin`, nhánh 116
+local/remote **0/0** trước commit. Chạy lại hai suite trên **14/14 pass**, 10,56 giây;
+typecheck/lint/format sáu file pass, diff whitespace sạch. Chuẩn bị commit source,
+test và docs navbar cùng nhau; loại AI/notebook/Compose AI và QA artifact. Không
+chạy lại build/full suite hoặc xác minh GitHub Actions trong lượt push.

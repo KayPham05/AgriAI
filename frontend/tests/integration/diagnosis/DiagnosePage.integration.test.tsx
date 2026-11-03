@@ -42,6 +42,45 @@ async function uploadValidImage(fileInput: HTMLInputElement, fileName = 'leaf.jp
 }
 
 describe('DiagnosePage prediction flow', () => {
+  it.each(['garden', 'foreign'])(
+    'accepts only an owned profile from the diagnosis link (%s)',
+    async (profileId) => {
+      window.history.replaceState({}, '', `/diagnose?profile=${profileId}`);
+      try {
+        render(
+          <DiagnosePage
+            authToken="jwt-token"
+            onPredictionCreated={vi.fn()}
+            agriculturalProfiles={[
+              {
+                id: 'garden',
+                userId: 'owner',
+                name: 'Vườn nhà',
+                description: null,
+                createdAt: '2026-10-01T00:00:00Z',
+                updatedAt: null,
+                predictionCount: 0,
+              },
+            ]}
+          />,
+        );
+        expect(screen.getByRole('combobox', { name: 'Hồ sơ nông nghiệp' })).toHaveTextContent(
+          profileId === 'garden' ? 'Vườn nhà' : 'Không gắn hồ sơ',
+        );
+        const input = screen.getByLabelText(/Chọn ảnh lá cây/i) as HTMLInputElement;
+        await uploadValidImage(input);
+        await userEvent.click(screen.getByRole('button', { name: 'Phân tích ngay' }));
+        expect(createPrediction).toHaveBeenCalledWith(
+          expect.any(File),
+          expect.objectContaining({
+            agriculturalProfileId: profileId === 'garden' ? 'garden' : undefined,
+          }),
+        );
+      } finally {
+        window.history.replaceState({}, '', '/');
+      }
+    },
+  );
   it('decodes an explicitly selected sample without automatically running inference', async () => {
     const fetchSample = vi.fn().mockResolvedValue({
       ok: true,

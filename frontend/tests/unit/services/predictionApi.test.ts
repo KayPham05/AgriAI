@@ -4,6 +4,7 @@ import {
   deletePrediction,
   getPredictionById,
   getPredictionHistory,
+  getProfilePredictionHistory,
   mapPredictionResult,
 } from '@/services/predictionApi';
 import { DIAGNOSIS_ISSUE_CODES } from '@/features/diagnosis/diagnosisIssues';
@@ -180,10 +181,10 @@ describe('createPrediction', () => {
   });
 
   it('adds the selected agricultural profile to the multipart request', async () => {
-    const request = createPrediction(
-      new File(['leaf-image'], 'leaf.jpg', { type: 'image/jpeg' }),
-      { token: 'jwt-token', agriculturalProfileId: 'profile-1' },
-    );
+    const request = createPrediction(new File(['leaf-image'], 'leaf.jpg', { type: 'image/jpeg' }), {
+      token: 'jwt-token',
+      agriculturalProfileId: 'profile-1',
+    });
     const xhr = MockXMLHttpRequest.latest;
 
     assert(xhr);
@@ -303,6 +304,28 @@ describe('createPrediction', () => {
 
 describe('prediction history requests', () => {
   afterEach(() => vi.unstubAllGlobals());
+
+  it('requests the selected profile and requested page without mixing account history', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        items: [],
+        pageNumber: 2,
+        pageSize: 10,
+        hasNextPage: true,
+        hasPreviousPage: true,
+        totalCount: 23,
+        totalPages: 3,
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const page = await getProfilePredictionHistory('garden', 'jwt-token', 2);
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/predictions?agriculturalProfileId=garden&pageNumber=2&pageSize=10',
+      expect.objectContaining({ headers: { Authorization: 'Bearer jwt-token' } }),
+    );
+    expect(page).toMatchObject({ items: [], pageNumber: 2, hasNextPage: true, totalCount: 23 });
+  });
 
   it('loads history with the user token and maps localized labels', async () => {
     const fetchMock = vi.fn().mockResolvedValue({

@@ -11,13 +11,16 @@ import { Progress } from '@/components/ui/progress';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
 import { AnalysisStepper } from '@/components/diagnosis/AnalysisStepper';
 import { AnalysisResultCard } from '@/components/diagnosis/AnalysisResultCard';
 import { AnalysisIssueNotice } from '@/components/diagnosis/AnalysisIssueNotice';
+import { CreateAgriculturalProfileDialog } from '@/components/agricultural-profile/CreateAgriculturalProfileDialog';
 import {
   Dialog,
   DialogContent,
@@ -36,7 +39,10 @@ import {
 import sampleLeaf from '@/assets/Bệnh lá/cà chua/Cháy lá sớm  đốm vòng.jpg';
 import { createPrediction, type PredictionResponse } from '../services/predictionApi';
 import type { DiagnosisResult, Plant } from '../types';
-import type { AgriculturalProfile } from '@/services/agriculturalProfileApi';
+import type {
+  AgriculturalProfile,
+  AgriculturalProfileInput,
+} from '@/services/agriculturalProfileApi';
 
 gsap.registerPlugin(useGSAP);
 
@@ -47,6 +53,8 @@ interface DiagnosePageProps {
   onPredictionCreated: (result: DiagnosisResult) => void;
   supportedPlants?: Plant[];
   agriculturalProfiles?: AgriculturalProfile[];
+  onCreateAgriculturalProfile?: (input: AgriculturalProfileInput) => Promise<AgriculturalProfile>;
+  profileOwnerName?: string;
 }
 
 export const DiagnosePage: React.FC<DiagnosePageProps> = ({
@@ -54,6 +62,8 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
   onPredictionCreated,
   supportedPlants = [],
   agriculturalProfiles = [],
+  onCreateAgriculturalProfile,
+  profileOwnerName = 'Tài khoản của bạn',
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -64,10 +74,20 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
   const [issue, setIssue] = useState<DiagnosisIssue | null>(null);
   const [showComparison, setShowComparison] = useState(false);
   const [showSupported, setShowSupported] = useState(false);
+  const [showCreateProfile, setShowCreateProfile] = useState(false);
   const [isSample, setIsSample] = useState(false);
   const [isPreparing, setIsPreparing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [selectedAgriculturalProfileId, setSelectedAgriculturalProfileId] = useState<string | undefined>();
+  const [selectedAgriculturalProfileId, setSelectedAgriculturalProfileId] = useState<
+    string | undefined
+  >(() => {
+    if (!authToken || typeof window === 'undefined') return undefined;
+    const requested = new URLSearchParams(window.location.search).get('profile');
+    return agriculturalProfiles.find((profile) => profile.id === requested)?.id;
+  });
+  const ownedProfileId = agriculturalProfiles.find(
+    (profile) => profile.id === selectedAgriculturalProfileId,
+  )?.id;
   const inputRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<string | null>(null);
   const requestRef = useRef<AbortController | null>(null);
@@ -252,7 +272,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
     try {
       const result = await createPrediction(selectedFile, {
         token: authToken,
-        agriculturalProfileId: selectedAgriculturalProfileId,
+        agriculturalProfileId: ownedProfileId,
         signal: controller.signal,
         onUploadProgress: setProgress,
         onUploadComplete: () => {
@@ -338,7 +358,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
               </div>
             )}
           </div>
-          {authToken && agriculturalProfiles.length > 0 && (
+          {authToken && (agriculturalProfiles.length > 0 || onCreateAgriculturalProfile) && (
             <div className="border-b border-border bg-surface-muted p-5 sm:px-6">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
                 <div>
@@ -350,24 +370,50 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
                   </p>
                 </div>
                 <Select
-                  value={selectedAgriculturalProfileId ?? 'none'}
-                  onValueChange={(value) => setSelectedAgriculturalProfileId(value === 'none' ? undefined : value)}
+                  value={ownedProfileId ?? 'none'}
+                  onValueChange={(value) => {
+                    if (value === 'create-profile') {
+                      setShowCreateProfile(true);
+                      return;
+                    }
+                    setSelectedAgriculturalProfileId(value === 'none' ? undefined : value);
+                  }}
                   disabled={busy || isPreparing}
                 >
                   <SelectTrigger id="diagnosis-agricultural-profile" className="w-full sm:w-64">
                     <SelectValue placeholder="Không gắn hồ sơ" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Không gắn hồ sơ</SelectItem>
-                    {agriculturalProfiles.map((profile) => (
-                      <SelectItem key={profile.id} value={profile.id}>
-                        {profile.name}
-                      </SelectItem>
-                    ))}
+                  <SelectContent
+                    onCloseAutoFocus={(event) => {
+                      if (showCreateProfile) event.preventDefault();
+                    }}
+                  >
+                    <SelectGroup>
+                      <SelectItem value="none">Không gắn hồ sơ</SelectItem>
+                      {agriculturalProfiles.map((profile) => (
+                        <SelectItem key={profile.id} value={profile.id}>
+                          {profile.name}
+                        </SelectItem>
+                      ))}
+                      {onCreateAgriculturalProfile && (
+                        <>
+                          <SelectSeparator />
+                          <SelectItem value="create-profile">Thêm hồ sơ mới</SelectItem>
+                        </>
+                      )}
+                    </SelectGroup>
                   </SelectContent>
                 </Select>
               </div>
             </div>
+          )}
+          {authToken && showCreateProfile && onCreateAgriculturalProfile && (
+            <CreateAgriculturalProfileDialog
+              ownerName={profileOwnerName}
+              onCreate={onCreateAgriculturalProfile}
+              onCreated={(profile) => setSelectedAgriculturalProfileId(profile.id)}
+              onClose={() => setShowCreateProfile(false)}
+            />
           )}
           <div className="p-5 sm:p-6">
             {inputIssue && (

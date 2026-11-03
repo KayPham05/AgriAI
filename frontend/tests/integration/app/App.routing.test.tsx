@@ -81,6 +81,19 @@ vi.mock('next/navigation', async () => {
 });
 
 describe('URL-driven app navigation', () => {
+  it('opens agricultural profile management from the main navigation', async () => {
+    window.history.replaceState({}, '', '/diagnose');
+    render(<App />);
+    await screen.findByRole('heading', { name: 'Chẩn đoán ảnh lá' });
+    const navigation = within(screen.getByRole('navigation', { name: 'Điều hướng chính' }));
+    await userEvent.click(navigation.getByRole('link', { name: 'Hồ sơ nông nghiệp' }));
+    expect(await screen.findByRole('heading', { name: 'Chưa có hồ sơ' })).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/agricultural-profiles');
+    expect(navigation.getByRole('link', { name: 'Hồ sơ nông nghiệp' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
   beforeEach(() => {
     vi.mocked(restoreAuthSession).mockResolvedValue({
       token: 'test',
