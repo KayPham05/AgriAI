@@ -4,7 +4,7 @@ export const catalogLabels: Record<CatalogKind, string> = {
   plants: 'Cây trồng',
   diseases: 'Bệnh cây',
   medicines: 'Thuốc bảo vệ thực vật',
-  'knowledge-documents': 'Bài viết',
+  'knowledge-documents': 'Trích xuất',
 };
 export function publicPath(kind: CatalogKind): string {
   return kind === 'knowledge-documents' ? '/knowledge' : `/${kind}`;

@@ -156,7 +156,7 @@ export function CatalogEditor({
                 </p>
               ))}
             <p className="text-sm text-muted-foreground">
-              Không chọn cặp nào để tạo bài viết chung.
+              Không chọn cặp nào để tạo trích xuất chung.
             </p>
           </fieldset>
         )}
@@ -172,13 +172,13 @@ export function CatalogEditor({
         </Button>
         {kind === 'knowledge-documents' && (
           <Button type="button" variant="outline" onClick={() => setPreview((value) => !value)}>
-            Xem trước bài viết
+            Xem trước trích xuất
           </Button>
         )}
       </div>
       {preview && (
         <section
-          aria-label="Xem trước bài viết"
+          aria-label="Xem trước trích xuất"
           className="flex flex-col gap-3 border-t border-border pt-4"
         >
           <h3 className="break-words text-xl font-bold">{draft.title}</h3>

@@ -120,7 +120,7 @@ function CatalogContent({
                   className="text-primary underline"
                   href={`/knowledge?plantId=${pair.plantId}&diseaseId=${pair.diseaseId}`}
                 >
-                  Bài viết liên quan
+                  Trích xuất liên quan
                 </Link>
                 <Link
                   className="text-primary underline"

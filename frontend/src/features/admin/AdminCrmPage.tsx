@@ -61,14 +61,14 @@ const NAVIGATION = [
   { id: 'plants', label: 'Cây trồng', icon: Leaf },
   { id: 'diseases', label: 'Bệnh cây', icon: Bug },
   { id: 'medicines', label: 'Thuốc', icon: Pill },
-  { id: 'knowledge-documents', label: 'Bài viết', icon: BookOpen },
+  { id: 'knowledge-documents', label: 'Trích xuất', icon: BookOpen },
   { id: 'plant-diseases', label: 'Liên kết cây và bệnh', icon: Link2 },
 ] as const;
 const VIEW_COPY = {
   plants: { title: 'Quản lý cây trồng' },
   diseases: { title: 'Quản lý bệnh cây' },
   medicines: { title: 'Quản lý thuốc' },
-  'knowledge-documents': { title: 'Quản lý bài viết' },
+  'knowledge-documents': { title: 'Quản lý trích xuất' },
   'plant-diseases': { title: 'Liên kết cây và bệnh' },
   overview: {
     title: 'Tổng quan vận hành',
