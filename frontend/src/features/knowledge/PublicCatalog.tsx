@@ -18,18 +18,6 @@ import { SearchField } from '@/components/common/CatalogControls';
 import { CatalogPager, CatalogSelect } from './CatalogControls';
 import { catalogError, catalogLabels, contentFields, publicPath, safeSource } from './catalogUi';
 
-export function CatalogLinks() {
-  return (
-    <nav aria-label="Tra cứu nông nghiệp" className="flex flex-wrap gap-2">
-      {(Object.keys(catalogLabels) as CatalogKind[]).map((kind) => (
-        <Button key={kind} asChild variant="outline">
-          <Link href={publicPath(kind)}>{catalogLabels[kind]}</Link>
-        </Button>
-      ))}
-    </nav>
-  );
-}
-
 function CatalogContent({
   kind,
   record,
@@ -242,7 +230,6 @@ export function PublicCatalog({ kind, id }: { kind: CatalogKind; id?: string }) 
   ];
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-5 py-8 sm:px-8 lg:px-12">
-      <CatalogLinks />
       {!id && (
         <>
           <header className="flex flex-col gap-2">
