@@ -53,7 +53,8 @@ export function AdminRecordList<T extends SearchableRecord>({
     if (searchTimer.current !== null) clearTimeout(searchTimer.current);
     searchTimer.current = null;
   }
-  const pageSize = useAdminPageSize(2);
+  const responsivePageSize = useAdminPageSize(2);
+  const pageSize = resource === 'users' ? 10 : responsivePageSize;
   const query = normalize(request.q.trim());
   const filtered = items.filter((item) =>
     normalize(
