@@ -170,3 +170,30 @@ pass. Chỉ chuẩn hóa CRLF sang LF ở hai file trang hồ sơ cá nhân khi 
 hành vi. Full suite **463/463** và Docker build là bằng chứng của lượt triển khai
 trước, không chạy lại trong lượt push. Không stage AI, notebook, Compose AI hoặc
 artifact QA. Chưa xác minh GitHub Actions; xem [chi tiết](figma_sync.md).
+
+## Navbar profile entry — 2026-11-03
+
+Thêm `Hồ sơ nông nghiệp` trong `Navbar.tsx`, dùng chung cho thanh desktop và menu
+điện thoại, đích `/agricultural-profiles`. Bổ sung route trong `appRoutes.ts` và
+`NavigationTab` tại `types/index.ts` để đánh dấu đúng trang hiện tại. Giữ link avatar
+tới hồ sơ cá nhân. Test harness được nối với route quản lý hồ sơ thật.
+
+Kiểm chứng mới: regression trước sửa **2 fail/2 pass** do thiếu link; sau sửa,
+`Navbar.test.tsx` + `App.routing.test.tsx` **14/14 pass**, 11,02 giây. Test kiểm href,
+active state, đóng menu sau bấm và chuyển từ trang chẩn đoán sang quản lý hồ sơ qua
+provider/shell thật. Fixture routing lúc đầu thiếu URL khởi tạo đã được sửa; không
+đổi expected của tính năng. Typecheck, lint 246 file, format sáu file thay đổi và
+Docker frontend production build pass. Frontend local recreate riêng và healthy.
+
+Browser preview cô lập dùng component/CSS thật và dữ liệu tổng hợp: desktop 1280px
+có đủ liên kết trên một dòng; mobile 375px mở menu và bấm được link. QA artifact
+ignored: `.cache/qa-verification/agri116/figma-sync/navbar-profile-desktop.jpg`.
+Preview đã dừng và viewport được reset. Chưa chạy lại full suite/coverage/CI hoặc
+E2E với PostgreSQL cho thay đổi nhỏ này; số full suite ở mục trước là lịch sử.
+Không thay backend/AI/DB. Chưa commit/push thay đổi navbar.
+
+Delivery check cùng ngày, theo yêu cầu push: sau `git fetch origin`, nhánh 116
+local/remote **0/0** trước commit. Chạy lại hai suite trên **14/14 pass**, 10,56 giây;
+typecheck/lint/format sáu file pass, diff whitespace sạch. Chuẩn bị commit source,
+test và docs navbar cùng nhau; loại AI/notebook/Compose AI và QA artifact. Không
+chạy lại build/full suite hoặc xác minh GitHub Actions trong lượt push.

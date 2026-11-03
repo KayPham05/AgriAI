@@ -122,3 +122,14 @@ và không đụng vào source hoặc artifact trong `ai/`.
 - Chỉ stage frontend và docs AGRI-116. Giữ AI/notebook/Compose AI ngoài commit;
   chưa tạo PR, cập nhật Jira Done hay xác minh CI. Các trạng thái chưa commit trước
   mục này là ghi nhận lịch sử.
+
+## Navbar profile entry — 2026-11-03
+
+- Thêm `Hồ sơ nông nghiệp` trên navbar desktop/menu mobile, dẫn tới
+  `/agricultural-profiles`; route/type mapping nhận diện đúng mục đang chọn.
+- Cập nhật Navbar/routing tests và route thật trong test harness. **14/14 pass**;
+  typecheck/lint/format và production Docker frontend build pass.
+- Đã xem preview 1280/375px, kiểm menu/link; frontend local recreate và healthy.
+  Chưa chạy lại full suite/coverage/CI, chưa commit/push. Xem [report](../../reports/AGRI-116/README.md).
+- Delivery check theo yêu cầu push: chạy lại **14/14 pass**, typecheck/lint/format
+  pass; chỉ đưa source/test/docs navbar, loại AI và artifact. Chưa xác minh CI.

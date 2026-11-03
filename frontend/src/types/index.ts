@@ -8,6 +8,7 @@ export type NavigationTab =
   | 'knowledge'
   | 'medicines'
   | 'history'
+  | 'agricultural-profiles'
   | 'about'
   | 'profile';
 

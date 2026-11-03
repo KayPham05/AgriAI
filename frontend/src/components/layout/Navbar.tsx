@@ -33,6 +33,7 @@ const navItems: Array<{ id: NavigationTab; label: string }> = [
   { id: 'plants', label: 'Cây trồng' },
   { id: 'diseases', label: 'Bệnh thường gặp' },
   { id: 'history', label: 'Mẫu đã lưu' },
+  { id: 'agricultural-profiles', label: 'Hồ sơ nông nghiệp' },
   { id: 'about', label: 'Về dự án' },
 ];
 

@@ -14,6 +14,7 @@ import { DiseaseDetailRoute } from '@/features/diseases/DiseaseDetailRoute';
 import { HistoryRoute } from '@/features/history/HistoryRoute';
 import { AboutRoute } from '@/features/about/AboutRoute';
 import { ProfileRoute } from '@/features/profile/ProfileRoute';
+import { AgriculturalProfilesRoute } from '@/features/agricultural-profiles/AgriculturalProfilesRoute';
 import { PublicCatalog } from '@/features/knowledge/PublicCatalog';
 
 // jsdom has no Next server. Compose real provider/shell/features; URL history
@@ -31,6 +32,7 @@ function TestRoute({ children }: { children?: ReactNode }) {
     history: <HistoryRoute />,
     about: <AboutRoute />,
     profile: <ProfileRoute />,
+    'agricultural-profiles': <AgriculturalProfilesRoute />,
     'plant-detail': null,
     'disease-detail': null,
     knowledge: <PublicCatalog kind="knowledge-documents" id={detailId ?? undefined} />,

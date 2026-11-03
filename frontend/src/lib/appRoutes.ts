@@ -10,6 +10,7 @@ const TAB_PATHS: Record<NavigationTab, string> = {
   knowledge: '/knowledge',
   medicines: '/medicines',
   history: '/history',
+  'agricultural-profiles': '/agricultural-profiles',
   about: '/about',
   profile: '/profile',
 };
