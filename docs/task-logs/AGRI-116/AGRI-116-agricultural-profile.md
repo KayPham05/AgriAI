@@ -81,3 +81,44 @@ và không đụng vào source hoặc artifact trong `ai/`.
 - Coverage serial: branch **70,30% (2031/2889)**; typecheck, lint và production build pass.
 - Default parallel local còn 4 timeout do worker contention; GitHub Actions chưa chạy lại
   trên revision sửa.
+
+## Authenticated profile navigation fix — 2026-10-28
+
+- User đã đăng nhập dùng `UserProfilePage`, nơi thiếu link tới quản lý hồ sơ sau merge
+  AGRI-128.
+- Thêm link `Quản lý hồ sơ` tới `/agricultural-profiles` và regression test.
+- UserProfilePage: **9/9 pass**; typecheck, lint và diff check pass.
+- Chưa commit/push thay đổi này.
+
+## Figma plugin UI sync — 2026-11-03
+
+- Đồng bộ danh sách/tìm kiếm, form, chi tiết/lịch sử và xác nhận xóa theo các frame
+  đọc trực tiếp qua plugin Figma; link chẩn đoán chỉ nhận ID hồ sơ sở hữu.
+- Full frontend trước chỉnh cuối **455/455 pass**; năm suite liên quan sau chỉnh cuối
+  **56/56 pass**; typecheck/lint/format và Docker frontend production build pass.
+- Xem UI fixture ở 375/768/1280px; rebuild/recreate riêng frontend local, healthy.
+  Không sửa backend, AI, migration hoặc dữ liệu PostgreSQL.
+- Chưa đo coverage mới, chạy E2E thật/CI hoặc commit/push. Nguồn frame, affected paths,
+  giới hạn và bằng chứng: [báo cáo](../../reports/AGRI-116/figma_sync.md).
+
+## Create profile during diagnosis — 2026-11-03
+
+- Thêm action `Thêm hồ sơ mới` trong dropdown chẩn đoán, kể cả khi danh sách rỗng;
+  dùng lại form/API hiện có trong dialog, tự chọn hồ sơ sau lưu và giữ ảnh đã chọn.
+- Lưu lỗi giữ nội dung để thử lại; hủy giữ lựa chọn cũ; chặn gửi trùng/đóng khi đang lưu.
+- Regression suite mới **5/5 pass**, typecheck/lint/format pass. Browser fixture đã
+  kiểm mở/tạo/chọn/hủy. Docker frontend production build/recreate pass, healthy;
+  `/diagnose` và backend health HTTP 200. Không sửa backend/AI hoặc dữ liệu thật.
+- Full frontend sau bổ sung: **68 file, 463/463 pass**, 522,64 giây.
+- Chưa commit/push, đo coverage hay xác minh GitHub Actions. Xem
+  [bằng chứng chi tiết](../../reports/AGRI-116/figma_sync.md).
+
+## Delivery preparation — 2026-11-03
+
+- Theo yêu cầu push, commit code: `04e5852` điều hướng, `5e3ab09` lịch sử,
+  `0090015` UI Figma, `508faa3` chọn/tạo hồ sơ khi chẩn đoán.
+- Kiểm mới: **70/70 test** trong bảy suite, typecheck/lint/format pass;
+  không chạy lại full suite/build. Chi tiết trong [báo cáo](../../reports/AGRI-116/figma_sync.md).
+- Chỉ stage frontend và docs AGRI-116. Giữ AI/notebook/Compose AI ngoài commit;
+  chưa tạo PR, cập nhật Jira Done hay xác minh CI. Các trạng thái chưa commit trước
+  mục này là ghi nhận lịch sử.
