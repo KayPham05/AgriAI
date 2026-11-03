@@ -3,10 +3,16 @@
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 
+// Public UI media only; user-uploaded images stay in the private storage bucket.
+const AUTH_MEDIA_ROOT = 'https://pub-5b7b85dc2aa84f1ca62aa18308983f37.r2.dev/auth';
+const VIDEO_URL = `${AUTH_MEDIA_ROOT}/field-v1.mp4`;
+const POSTER_URL = `${AUTH_MEDIA_ROOT}/field-poster-v1.webp`;
+
 export function AuthPanelVideo() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [enabled, setEnabled] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [posterFailed, setPosterFailed] = useState(false);
 
   useEffect(() => {
     const media = window.matchMedia?.(
@@ -35,19 +41,23 @@ export function AuthPanelVideo() {
 
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-      <Image
-        src="/media/auth/field-poster.webp"
-        alt=""
-        fill
-        sizes="(min-width: 768px) 448px, 0px"
-        className="object-cover"
-      />
+      {!posterFailed && (
+        <Image
+          unoptimized
+          src={POSTER_URL}
+          alt=""
+          fill
+          sizes="(min-width: 768px) 448px, 0px"
+          className="object-cover"
+          onError={() => setPosterFailed(true)}
+        />
+      )}
       {enabled && !failed && (
         <video
           ref={videoRef}
           data-auth-video
-          src="/media/auth/field-original.mp4"
-          poster="/media/auth/field-poster.webp"
+          src={VIDEO_URL}
+          poster={POSTER_URL}
           autoPlay
           muted
           loop

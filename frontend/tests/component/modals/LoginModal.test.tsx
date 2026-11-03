@@ -17,7 +17,14 @@ describe('LoginModal entry mode', () => {
     render(<LoginModal isOpen onClose={vi.fn()} onAuthSuccess={vi.fn()} />);
     const panel = screen.getByRole('dialog').querySelector('[data-auth-background]');
     const video = panel?.querySelector('video');
-    expect(video).toHaveAttribute('src', '/media/auth/field-original.mp4');
+    expect(video).toHaveAttribute(
+      'src',
+      'https://pub-5b7b85dc2aa84f1ca62aa18308983f37.r2.dev/auth/field-v1.mp4',
+    );
+    expect(video).toHaveAttribute(
+      'poster',
+      'https://pub-5b7b85dc2aa84f1ca62aa18308983f37.r2.dev/auth/field-poster-v1.webp',
+    );
     expect(video).toHaveAttribute('loop');
     expect(video).toHaveAttribute('playsinline');
     expect(video?.muted).toBe(true);
@@ -27,7 +34,14 @@ describe('LoginModal entry mode', () => {
     expect(panel?.querySelector('video')).toBe(video);
     fireEvent.error(video as HTMLVideoElement);
     expect(panel?.querySelector('video')).toBeNull();
-    expect(panel?.querySelector('img[alt=""]')).not.toBeNull();
+    expect(panel?.querySelector('img[alt=""]')).toHaveAttribute(
+      'src',
+      'https://pub-5b7b85dc2aa84f1ca62aa18308983f37.r2.dev/auth/field-poster-v1.webp',
+    );
+    const poster = panel?.querySelector('img[alt=""]');
+    if (!poster) throw new Error('Expected video fallback poster');
+    fireEvent.error(poster);
+    expect(panel?.querySelector('img[alt=""]')).toBeNull();
   });
   it('uses the still frame without loading video when desktop motion is not enabled', () => {
     vi.stubGlobal('matchMedia', () => ({
