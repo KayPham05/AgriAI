@@ -170,7 +170,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
       setEditorVersion((value) => value + 1);
       setRevision((value) => value + 1);
       setNotice(
-        kind === 'plants'
+        kind === 'plants' || kind === 'diseases'
           ? 'Đã lưu nội dung.'
           : 'Đã lưu nội dung. Kiểm tra trạng thái duyệt trước khi công khai.',
       );
@@ -203,14 +203,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
           setRecord(
             await catalogRequest(path, { token, method: 'PUT', body: { ...body, isActive: true } }),
           );
-        } else
-          setRecord(
-            await catalogRequest(`/api/admin/diseases/${record.id}/approval`, {
-              token,
-              method: 'PUT',
-              body: { isContentApproved: action === 'approve' },
-            }),
-          );
+        }
       } else {
         setRecord(
           await catalogRequest(`${path}/publication`, {
@@ -366,12 +359,8 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
                 <Badge variant="outline">
                   {record.isActive ? 'Đang hoạt động' : 'Đã ngừng hoạt động'}
                 </Badge>
-                {kind !== 'plants' && (
-                  <Badge variant="outline">
-                    {(kind === 'diseases' ? record.isContentApproved : record.isApproved)
-                      ? 'Đã duyệt'
-                      : 'Chưa duyệt'}
-                  </Badge>
+                {!catalog && (
+                  <Badge variant="outline">{record.isApproved ? 'Đã duyệt' : 'Chưa duyệt'}</Badge>
                 )}
                 {!catalog && (
                   <Badge variant="outline">
@@ -387,21 +376,13 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
                   </Button>
                 ) : (
                   <>
-                    {kind !== 'plants' && (
+                    {!catalog && (
                       <Button
                         disabled={pending || dirty}
                         variant="outline"
-                        onClick={() =>
-                          void change(
-                            (kind === 'diseases' ? record.isContentApproved : record.isApproved)
-                              ? 'revoke'
-                              : 'approve',
-                          )
-                        }
+                        onClick={() => void change(record.isApproved ? 'revoke' : 'approve')}
                       >
-                        {(kind === 'diseases' ? record.isContentApproved : record.isApproved)
-                          ? 'Thu hồi duyệt'
-                          : 'Duyệt nội dung'}
+                        {record.isApproved ? 'Thu hồi duyệt' : 'Duyệt nội dung'}
                       </Button>
                     )}
                     {!catalog && (

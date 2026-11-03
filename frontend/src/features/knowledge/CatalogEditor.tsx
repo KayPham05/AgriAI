@@ -121,7 +121,7 @@ export function CatalogEditor({
             />
             <p className="text-sm text-muted-foreground">
               Phân loại áp dụng cho mọi cây liên kết với mục này. Chỉ loại Bệnh được gắn hướng dẫn
-              thuốc. Thay đổi phân loại cần duyệt lại nội dung.
+              thuốc.
             </p>
           </>
         )}
@@ -185,7 +185,7 @@ export function CatalogEditor({
           <p className="whitespace-pre-wrap break-words">{draft.content}</p>
         </section>
       )}
-      {record.id && kind !== 'plants' && (
+      {record.id && kind !== 'plants' && kind !== 'diseases' && (
         <p className="text-sm text-muted-foreground">
           Thay đổi nội dung cần được duyệt lại trước khi công khai.
         </p>

@@ -290,14 +290,14 @@ public class PredictionService : IPredictionService
             : new PlantDto(Guid.Empty, "Unknown", "Chưa xác định", null, null, true, DateTime.UtcNow);
 
         var disease = primaryPlantDisease.Disease;
-        var approved = disease?.IsContentApproved == true;
+        var visible = primaryPlantDisease.IsActive && primaryPlantDisease.Plant?.IsActive == true && disease?.IsActive == true;
         const string pending = "Thông tin đang được cập nhật";
         var diseaseDto = disease != null
             ? new DiseaseDto(disease.Id, disease.Name, disease.VietnameseName,
-                approved ? disease.Description ?? pending : pending,
-                approved ? disease.Symptoms ?? pending : pending,
-                approved ? disease.Treatment ?? pending : pending,
-                approved ? disease.Prevention ?? pending : pending, disease.IsActive, disease.CreatedAt)
+                visible ? disease.Description ?? pending : pending,
+                visible ? disease.Symptoms ?? pending : pending,
+                visible ? disease.Treatment ?? pending : pending,
+                visible ? disease.Prevention ?? pending : pending, disease.IsActive, disease.CreatedAt)
                 { IsContentApproved = disease.IsContentApproved, ConditionType = disease.ConditionType }
             : new DiseaseDto(Guid.Empty, "Unknown", "Chưa xác định", null, null, null, null, true, DateTime.UtcNow);
 
@@ -315,12 +315,13 @@ public class PredictionService : IPredictionService
         var details = prediction.PredictionDetails.OrderBy(d => d.Rank).Select(d =>
         {
             var pd = d.PlantDisease ?? primaryPlantDisease;
+            var detailVisible = pd.IsActive && pd.Plant?.IsActive == true && pd.Disease?.IsActive == true;
             var pdPlant = pd.Plant != null ? new PlantDto(pd.Plant.Id, pd.Plant.Name, pd.Plant.VietnameseName, pd.Plant.ScientificName, pd.Plant.Description, pd.Plant.IsActive, pd.Plant.CreatedAt) : plantDto;
             var pdDisease = pd.Disease != null ? new DiseaseDto(pd.Disease.Id, pd.Disease.Name, pd.Disease.VietnameseName,
-                pd.Disease.IsContentApproved ? pd.Disease.Description ?? pending : pending,
-                pd.Disease.IsContentApproved ? pd.Disease.Symptoms ?? pending : pending,
-                pd.Disease.IsContentApproved ? pd.Disease.Treatment ?? pending : pending,
-                pd.Disease.IsContentApproved ? pd.Disease.Prevention ?? pending : pending,
+                detailVisible ? pd.Disease.Description ?? pending : pending,
+                detailVisible ? pd.Disease.Symptoms ?? pending : pending,
+                detailVisible ? pd.Disease.Treatment ?? pending : pending,
+                detailVisible ? pd.Disease.Prevention ?? pending : pending,
                 pd.Disease.IsActive, pd.Disease.CreatedAt)
                 { IsContentApproved = pd.Disease.IsContentApproved, ConditionType = pd.Disease.ConditionType } : diseaseDto;
 
@@ -341,9 +342,9 @@ public class PredictionService : IPredictionService
             AgriculturalProfileId = prediction.AgriculturalProfileId,
             Images = ProjectImages(prediction),
             Warning = prediction.Confidence <= 0.8f ? "Độ tin cậy thấp; cần kiểm tra lại kết quả." : null,
-            InformationPending = !approved,
-            Medication = approved && prediction.Confidence > 0.8f && disease?.ConditionType == "Disease"
-                ? disease.Medication : null
+            InformationPending = !visible,
+            // Medication is populated only from verified medicine uses when predicting.
+            Medication = null
         };
     }
 

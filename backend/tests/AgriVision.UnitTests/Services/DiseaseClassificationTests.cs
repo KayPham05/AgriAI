@@ -13,6 +13,25 @@ public class DiseaseClassificationTests
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
+    [Fact]
+    public async Task SavedActiveContent_ShouldBePublicWithoutApproval()
+    {
+        var entity = new Disease { Name = "Fixture", IsContentApproved = false };
+        var repository = new Mock<IDiseaseRepository>();
+        repository.Setup(r => r.GetByIdAsync(entity.Id, It.IsAny<CancellationToken>())).ReturnsAsync(entity);
+        repository.Setup(r => r.GetAllAsync(false, It.IsAny<CancellationToken>())).ReturnsAsync(new[] { entity });
+        var service = new DiseaseService(repository.Object);
+        var request = JsonSerializer.Deserialize<UpdateDiseaseRequest>(
+            """{"name":"Fixture","isActive":true,"description":"Saved description","symptoms":"Saved symptoms","treatment":"Saved treatment","prevention":"Saved prevention"}""", Json)!;
+        await service.UpdateAsync(entity.Id, request);
+        var detail = await service.GetByIdAsync(entity.Id);
+        detail!.Description.Should().Be("Saved description");
+        detail.Symptoms.Should().Be("Saved symptoms");
+        detail.Treatment.Should().Be("Saved treatment");
+        detail.Prevention.Should().Be("Saved prevention");
+        (await service.GetAllAsync()).Single().Treatment.Should().Be("Saved treatment");
+    }
+
     [Theory]
     [InlineData("Unknown")]
     [InlineData("Healthy")]

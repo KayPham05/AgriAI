@@ -15,7 +15,7 @@ public class KnowledgeMedicineServiceTests
     [InlineData(0.81f, "Disease", true, true, true)]
     [InlineData(0.9f, "Healthy", true, true, false)]
     [InlineData(0.9f, "NutrientDeficiency", true, true, false)]
-    [InlineData(0.9f, "Disease", false, true, false)]
+    [InlineData(0.9f, "Disease", false, true, true)]
     [InlineData(0.9f, "Disease", true, false, false)]
     [InlineData(float.NaN, "Disease", true, true, false)]
     [InlineData(float.PositiveInfinity, "Disease", true, true, false)]

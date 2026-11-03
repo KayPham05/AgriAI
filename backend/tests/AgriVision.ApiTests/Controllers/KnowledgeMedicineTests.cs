@@ -318,7 +318,7 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
 
     [Fact]
     [Trait("ApiCase", "knowledge.disease_approval")]
-    public async Task PublicDisease_ShouldNotExposeUnreviewedKnowledge()
+    public async Task PublicDisease_ShouldExposeSavedActiveContentWithoutApproval()
     {
         using var admin = await CreateAccountAsync(true);
         using var guest = factory.CreateClient();
@@ -326,7 +326,7 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var id = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
         var publicItem = await guest.GetFromJsonAsync<JsonElement>($"/api/diseases/{id}");
-        publicItem.GetProperty("treatment").ToString().Should().NotBe("Unreviewed treatment");
+        publicItem.GetProperty("treatment").ToString().Should().Be("Unreviewed treatment");
         var adminItem = await admin.GetFromJsonAsync<JsonElement>($"/api/diseases/{id}");
         adminItem.GetProperty("treatment").GetString().Should().Be("Unreviewed treatment");
         var approvalPath = $"/api/admin/diseases/{id}/approval";
@@ -341,7 +341,14 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
             new { name = adminItem.GetProperty("name").GetString(), treatment = "Changed treatment", isActive = true });
         edit.StatusCode.Should().Be(HttpStatusCode.OK);
         (await edit.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("isContentApproved").GetBoolean().Should().BeFalse();
-        (await guest.GetFromJsonAsync<JsonElement>($"/api/diseases/{id}")).GetProperty("treatment").ToString().Should().NotBe("Changed treatment");
+        (await guest.GetFromJsonAsync<JsonElement>($"/api/diseases/{id}")).GetProperty("treatment").ToString().Should().Be("Changed treatment");
+        var list = await guest.GetFromJsonAsync<JsonElement>("/api/diseases");
+        list.EnumerateArray().Single(item => item.GetProperty("id").GetGuid() == id)
+            .GetProperty("treatment").GetString().Should().Be("Changed treatment");
+        (await admin.DeleteAsync($"/api/diseases/{id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await guest.GetAsync($"/api/diseases/{id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await guest.GetFromJsonAsync<JsonElement>("/api/diseases?includeInactive=true"))
+            .EnumerateArray().Should().NotContain(item => item.GetProperty("id").GetGuid() == id);
         (await admin.PutAsJsonAsync($"/api/admin/diseases/{Guid.NewGuid()}/approval", new { isContentApproved = true }))
             .StatusCode.Should().Be(HttpStatusCode.NotFound);
     }

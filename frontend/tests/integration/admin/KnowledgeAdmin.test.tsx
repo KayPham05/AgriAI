@@ -79,6 +79,8 @@ describe('knowledge administration with real API adapter', () => {
       await userEvent.type(screen.getByLabelText('Tên danh mục'), 'Catalog fixture');
       await userEvent.click(screen.getByRole('button', { name: 'Lưu nội dung' }));
       expect(await screen.findByRole('heading', { name: 'Catalog fixture' })).toBeVisible();
+      expect(screen.queryByRole('button', { name: 'Duyệt nội dung' })).not.toBeInTheDocument();
+      expect(screen.queryByText('Chưa duyệt')).not.toBeInTheDocument();
       expect(writes).toEqual([
         expect.objectContaining({
           url: `/api/${kind}`,

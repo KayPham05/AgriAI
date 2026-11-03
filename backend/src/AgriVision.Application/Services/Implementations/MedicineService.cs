@@ -105,7 +105,7 @@ public class MedicineService(IMedicineRepository repository, IPlantDiseaseReposi
     {
         if (!float.IsFinite(confidence) || confidence <= 0.8f || confidence > 1) return [];
         var pair = await pairs.GetByIdAsync(plantDiseaseId, cancellationToken);
-        if (pair == null || !CatalogValidation.ActivePair(pair) || !pair.Disease.IsContentApproved || pair.Disease.ConditionType != "Disease") return [];
+        if (pair == null || !CatalogValidation.ActivePair(pair) || pair.Disease.ConditionType != "Disease") return [];
         var uses = await repository.GetEligibleUsesAsync(plantDiseaseId, cancellationToken);
         return uses.Select(u => new RecommendedMedicineDto(u.MedicineId, u.PlantDiseaseId,
             u.Medicine.ProductName, u.Medicine.ActiveIngredient, u.Medicine.TargetUse,
