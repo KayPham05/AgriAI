@@ -58,6 +58,9 @@ describe('medicine label review', () => {
     { conditionType: 'Disease', plantIsActive: false, diseaseIsActive: true },
     { conditionType: 'Disease', plantIsActive: true, diseaseIsActive: false },
     { conditionType: 'Disease', plantIsActive: true, diseaseIsActive: true, isActive: false },
+    { conditionType: undefined, plantIsActive: true, diseaseIsActive: true },
+    { conditionType: 'Disease', plantIsActive: undefined, diseaseIsActive: true },
+    { conditionType: 'Disease', plantIsActive: true, diseaseIsActive: undefined },
   ])('blocks an ineligible pair but allows removing its existing link: %j', async (state) => {
     const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
     vi.stubGlobal('fetch', fetch);
@@ -70,6 +73,11 @@ describe('medicine label review', () => {
       />,
     );
     await userEvent.click(screen.getByRole('button', { name: /Sửa hướng dẫn/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Chọn cặp cây và bệnh' }));
+    expect(within(screen.getByRole('dialog')).queryByRole('option')).not.toBeInTheDocument();
+    await userEvent.type(within(screen.getByRole('dialog')).getByRole('combobox'), 'ca chua');
+    expect(within(screen.getByRole('dialog')).queryByRole('option')).not.toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
     expect(screen.getByRole('button', { name: 'Lưu hướng dẫn' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Xác minh nhãn' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Duyệt liên kết' })).toBeDisabled();

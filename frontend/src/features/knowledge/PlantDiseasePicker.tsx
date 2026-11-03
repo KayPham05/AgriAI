@@ -36,7 +36,10 @@ export function PlantDiseasePicker({
   const terms = searchableText(search).trim().split(/\s+/).filter(Boolean);
   const options = pairs.filter(
     (pair) =>
-      (pair.isActive || pair.id === value) &&
+      pair.isActive &&
+      pair.plantIsActive === true &&
+      pair.diseaseIsActive === true &&
+      pair.conditionType === 'Disease' &&
       terms.every((term) =>
         searchableText(`${pair.plantName} ${pair.diseaseName} ${pair.className}`).includes(term),
       ),
