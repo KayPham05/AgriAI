@@ -20,7 +20,16 @@ describe('knowledge administration with real API adapter', () => {
         vi.fn(async (url: string) => {
           if (url.includes('plant-diseases'))
             return json(
-              page([pair, { ...pair, id: 'other', plantId: 'other', diseaseName: 'Unrelated' }]),
+              page([
+                pair,
+                {
+                  ...pair,
+                  id: 'other',
+                  plantId: 'other',
+                  diseaseId: 'other',
+                  diseaseName: 'Unrelated',
+                },
+              ]),
             );
           return json(url.endsWith(record.id) ? record : [record]);
         }),
@@ -32,6 +41,17 @@ describe('knowledge administration with real API adapter', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Mở Catalog' }));
       expect(await screen.findByText(text)).toBeVisible();
       expect(screen.queryByRole('button', { name: 'Mở chi tiết' })).not.toBeInTheDocument();
+      if (kind === 'diseases') {
+        const related = await screen.findByRole('region', { name: 'Cây trồng liên quan' });
+        expect(within(related).getByRole('heading', { name: 'Cà chua / Cháy lá' })).toBeVisible();
+        expect(within(related).queryByText(/Unrelated/)).not.toBeInTheDocument();
+        await userEvent.type(screen.getByLabelText('Tên danh mục'), ' mới');
+        expect(within(related).getByRole('button', { name: 'Ngừng liên kết' })).toBeDisabled();
+      } else {
+        expect(
+          screen.queryByRole('region', { name: 'Cây trồng liên quan' }),
+        ).not.toBeInTheDocument();
+      }
     },
   );
   it.each(['plants', 'diseases'] as const)(

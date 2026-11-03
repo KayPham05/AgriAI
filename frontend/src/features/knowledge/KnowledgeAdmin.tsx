@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { CatalogEditor } from './CatalogEditor';
 import { CatalogPager, CatalogSelect, ConfirmAction } from './CatalogControls';
 import { MedicineUses } from './MedicineUses';
+import { PlantDiseaseManager } from './PlantDiseaseManager';
 import { catalogError, catalogLabels } from './catalogUi';
 
 function RelatedCatalogInfo({
@@ -442,6 +443,23 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
             onDirtyChange={setDirty}
             disabled={pending}
           />
+          {kind === 'diseases' && record.id && (
+            <PlantDiseaseManager
+              key={record.id}
+              token={token}
+              diseaseId={record.id}
+              disabled={pending || dirty || !record.isActive}
+              onBusyChange={(value) => {
+                lock.current = value;
+                setUsePending(value);
+              }}
+              onChange={(updated) =>
+                setPairs((current) =>
+                  current.map((pair) => (pair.id === updated.id ? updated : pair)),
+                )
+              }
+            />
+          )}
           {kind === 'medicines' && record.id && (
             <MedicineUses
               record={record}

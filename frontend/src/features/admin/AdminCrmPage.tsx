@@ -35,12 +35,9 @@ import { AdminUsers } from './AdminUsers';
 import { AdminImages } from './AdminImages';
 import { AdminSessions } from './AdminSessions';
 import dynamic from 'next/dynamic';
-import { BookOpen, Leaf, Pill, Link2, Bug } from 'lucide-react';
+import { BookOpen, Leaf, Pill, Bug } from 'lucide-react';
 const KnowledgeAdmin = dynamic(() =>
   import('@/features/knowledge/KnowledgeAdmin').then((module) => module.KnowledgeAdmin),
-);
-const PlantDiseaseManager = dynamic(() =>
-  import('@/features/knowledge/PlantDiseaseManager').then((module) => module.PlantDiseaseManager),
 );
 
 type CrmView =
@@ -51,8 +48,7 @@ type CrmView =
   | 'plants'
   | 'diseases'
   | 'medicines'
-  | 'knowledge-documents'
-  | 'plant-diseases';
+  | 'knowledge-documents';
 const NAVIGATION = [
   { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
   { id: 'users', label: 'Người dùng', icon: Users },
@@ -62,14 +58,12 @@ const NAVIGATION = [
   { id: 'diseases', label: 'Bệnh cây', icon: Bug },
   { id: 'medicines', label: 'Thuốc', icon: Pill },
   { id: 'knowledge-documents', label: 'Trích xuất', icon: BookOpen },
-  { id: 'plant-diseases', label: 'Liên kết cây và bệnh', icon: Link2 },
 ] as const;
 const VIEW_COPY = {
   plants: { title: 'Quản lý cây trồng' },
   diseases: { title: 'Quản lý bệnh cây' },
   medicines: { title: 'Quản lý thuốc' },
   'knowledge-documents': { title: 'Quản lý trích xuất' },
-  'plant-diseases': { title: 'Liên kết cây và bệnh' },
   overview: {
     title: 'Tổng quan vận hành',
   },
@@ -321,7 +315,6 @@ function AdminWorkspace({ session }: { session: AuthSession }) {
                 view === 'knowledge-documents') && (
                 <KnowledgeAdmin key={view} kind={view} token={session.token} />
               )}
-              {view === 'plant-diseases' && <PlantDiseaseManager token={session.token} />}
             </AdminMotion>
             {view !== 'overview' && (
               <footer className="mt-2 flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border pt-2 text-xs text-muted-foreground">
