@@ -8,3 +8,6 @@ Affected: `frontend/src/features/knowledge/PublicCatalog.tsx`, `frontend/tests/i
 
 Verification: regression failed on the duplicate navigation before the change; focused PublicKnowledge run passed 6/6 after the change (`.cache/agri134-green.log`). Combined checks are recorded separately after all six tasks. No API/database/AI changes. DoD: implementation and focused verification complete; PR/review pending.
 
+2026-11-04 follow-up: split the footer's combined knowledge/medicine entry into explicit routes, preserving medicine discoverability after removing the duplicate in-page chooser. App.routing passed 10/10 (.cache/agri134-routing.log).
+
+Combined six-task verification: frontend typecheck, lint and 483/483 tests passed (.cache/combined-frontend.log); production Next.js build passed (.cache/combined-build.log); backend unit 179/179, catalog API 33/33 and prediction API 29/29 passed (.cache/combined-backend-unit.log, .cache/agri140-api.log, .cache/combined-prediction-api.log). API suites use disposable PostgreSQL and fake AI/storage. Formatting passed for all 18 changed frontend files. Whole-checkout format:check reports 213 errors, including unchanged CRLF files under core.autocrlf=true; no mass formatting was performed. No live deployment or real AI/R2 acceptance is claimed. Implementation and combined verification complete; branch split/review pending.
