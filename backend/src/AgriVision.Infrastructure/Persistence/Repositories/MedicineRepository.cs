@@ -15,12 +15,12 @@ public class MedicineRepository(AppDbContext context) : IMedicineRepository
         CatalogFilterParams filter, bool publicOnly, CancellationToken cancellationToken = default)
     {
         var query = WithUses().AsNoTracking();
-        if (publicOnly) query = query.Where(m => m.IsActive && m.IsApproved && m.IsPublic);
+        if (publicOnly) query = query.Where(m => m.IsActive && m.IsPublic);
         if (filter.PlantId.HasValue || filter.DiseaseId.HasValue)
             query = query.Where(m => m.Uses.Any(u =>
                 (!filter.PlantId.HasValue || u.PlantDisease.PlantId == filter.PlantId) &&
                 (!filter.DiseaseId.HasValue || u.PlantDisease.DiseaseId == filter.DiseaseId) &&
-                (!publicOnly || (u.IsApproved && u.IsLabelVerified && u.PlantDisease.IsActive &&
+                (!publicOnly || (u.PlantDisease.IsActive &&
                     u.PlantDisease.Plant.IsActive && u.PlantDisease.Disease.IsActive &&
                     u.PlantDisease.Disease.ConditionType == "Disease"))));
         if (!string.IsNullOrWhiteSpace(filter.Search))
@@ -47,8 +47,8 @@ public class MedicineRepository(AppDbContext context) : IMedicineRepository
 
     public async Task<IReadOnlyList<MedicineUse>> GetEligibleUsesAsync(Guid plantDiseaseId, CancellationToken cancellationToken = default) =>
         await context.MedicineUses.AsNoTracking().Include(u => u.Medicine)
-            .Where(u => u.PlantDiseaseId == plantDiseaseId && u.IsApproved && u.IsLabelVerified &&
-                u.Medicine.IsActive && u.Medicine.IsApproved && u.Medicine.IsPublic &&
+            .Where(u => u.PlantDiseaseId == plantDiseaseId &&
+                u.Medicine.IsActive && u.Medicine.IsPublic &&
                 u.PlantDisease.IsActive && u.PlantDisease.Plant.IsActive && u.PlantDisease.Disease.IsActive)
             .OrderBy(u => u.Medicine.ProductName).ThenBy(u => u.MedicineId).ToListAsync(cancellationToken);
 }

@@ -149,7 +149,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
       setEditorVersion((value) => value + 1);
       setRevision((value) => value + 1);
     } catch (failure) {
-      // A child mutation may have revoked parent publication; stale approval must not remain actionable.
+      // Do not leave stale label verification actionable after a child mutation.
       setRecord(null);
       setError(`Thao tác đã lưu nhưng chưa tải lại được dữ liệu. ${catalogError(failure)}`);
       throw failure;
@@ -170,7 +170,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
       setEditorVersion((value) => value + 1);
       setRevision((value) => value + 1);
       setNotice(
-        kind === 'plants' || kind === 'diseases'
+        kind !== 'knowledge-documents'
           ? 'Đã lưu nội dung.'
           : 'Đã lưu nội dung. Kiểm tra trạng thái duyệt trước khi công khai.',
       );
@@ -211,10 +211,11 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
             method: 'PUT',
             body: {
               isActive: true,
-              isApproved:
-                action === 'restore' || action === 'revoke'
+              ...(kind === 'knowledge-documents'
+                ? { isApproved: action === 'restore' || action === 'revoke'
                   ? false
-                  : action === 'approve' || Boolean(record.isApproved),
+                  : action === 'approve' || Boolean(record.isApproved) }
+                : {}),
               isPublic: action === 'publish',
             },
           }),
@@ -359,7 +360,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
                 <Badge variant="outline">
                   {record.isActive ? 'Đang hoạt động' : 'Đã ngừng hoạt động'}
                 </Badge>
-                {!catalog && (
+                {kind === 'knowledge-documents' && (
                   <Badge variant="outline">{record.isApproved ? 'Đã duyệt' : 'Chưa duyệt'}</Badge>
                 )}
                 {!catalog && (
@@ -368,7 +369,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
                   </Badge>
                 )}
               </div>
-              <RelatedCatalogInfo kind={kind} record={record} pairs={pairs} />
+              {kind !== 'plants' && <RelatedCatalogInfo kind={kind} record={record} pairs={pairs} />}
               <div className="flex flex-wrap gap-2">
                 {!record.isActive ? (
                   <Button disabled={pending || dirty} onClick={() => void change('restore')}>
@@ -376,7 +377,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
                   </Button>
                 ) : (
                   <>
-                    {!catalog && (
+                    {kind === 'knowledge-documents' && (
                       <Button
                         disabled={pending || dirty}
                         variant="outline"
@@ -387,7 +388,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
                     )}
                     {!catalog && (
                       <Button
-                        disabled={pending || dirty || !record.isApproved}
+                        disabled={pending || dirty || (kind === 'knowledge-documents' && !record.isApproved)}
                         onClick={() => void change(record.isPublic ? 'hide' : 'publish')}
                       >
                         {record.isPublic ? 'Ẩn công khai' : 'Công khai'}
@@ -424,11 +425,11 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
             onDirtyChange={setDirty}
             disabled={pending}
           />
-          {kind === 'diseases' && record.id && (
+          {kind === 'plants' && record.id && (
             <PlantDiseaseManager
               key={record.id}
               token={token}
-              diseaseId={record.id}
+              plantId={record.id}
               disabled={pending || dirty || !record.isActive}
               onBusyChange={(value) => {
                 lock.current = value;

@@ -39,17 +39,17 @@ describe('knowledge administration with real API adapter', () => {
       expect(await screen.findByText(text)).toBeVisible();
       expect(screen.queryByText('Unrelated')).not.toBeInTheDocument();
       await userEvent.click(screen.getByRole('button', { name: 'Mở Catalog' }));
-      expect(await screen.findByText(text)).toBeVisible();
+      if (kind === 'diseases') expect(await screen.findByText(text)).toBeVisible();
       expect(screen.queryByRole('button', { name: 'Mở chi tiết' })).not.toBeInTheDocument();
-      if (kind === 'diseases') {
-        const related = await screen.findByRole('region', { name: 'Cây trồng liên quan' });
+      if (kind === 'plants') {
+        const related = await screen.findByRole('region', { name: 'Bệnh và tình trạng liên quan' });
         expect(within(related).getByRole('heading', { name: 'Cà chua / Cháy lá' })).toBeVisible();
         expect(within(related).queryByText(/Unrelated/)).not.toBeInTheDocument();
         await userEvent.type(screen.getByLabelText('Tên danh mục'), ' mới');
         expect(within(related).getByRole('button', { name: 'Ngừng liên kết' })).toBeDisabled();
       } else {
         expect(
-          screen.queryByRole('region', { name: 'Cây trồng liên quan' }),
+          screen.queryByRole('region', { name: 'Bệnh và tình trạng liên quan' }),
         ).not.toBeInTheDocument();
       }
     },
@@ -128,7 +128,7 @@ describe('knowledge administration with real API adapter', () => {
     await userEvent.click(await screen.findByRole('button', { name: /Sửa hướng dẫn Cà chua/ }));
     await userEvent.type(screen.getByLabelText('Hướng dẫn trên nhãn'), ' mới');
     await userEvent.click(screen.getByRole('button', { name: 'Lưu hướng dẫn' }));
-    expect(screen.getByRole('button', { name: 'Thu hồi duyệt' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Ẩn công khai' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Lưu nội dung' })).toBeDisabled();
     await act(async () => finish(json(medicine.uses?.[0])));
   });
@@ -215,7 +215,7 @@ describe('knowledge administration with real API adapter', () => {
     );
     expect(await screen.findByRole('alert')).toHaveTextContent('Không lưu được');
   });
-  it('revokes parent publication after saving changed label directions', async () => {
+  it('keeps the medicine public after saving changed directions', async () => {
     let saved = { ...medicine };
     const writes: unknown[] = [];
     vi.stubGlobal(
@@ -227,9 +227,7 @@ describe('knowledge administration with real API adapter', () => {
           writes.push(body);
           saved = {
             ...saved,
-            isApproved: false,
-            isPublic: false,
-            uses: [{ ...medicine.uses?.[0], ...body, isApproved: false, isLabelVerified: false }],
+            uses: [{ ...medicine.uses?.[0], ...body }],
           };
           return json(saved.uses?.[0]);
         }
@@ -241,7 +239,9 @@ describe('knowledge administration with real API adapter', () => {
     await userEvent.click(await screen.findByRole('button', { name: /Sửa hướng dẫn Cà chua/ }));
     await userEvent.type(screen.getByLabelText('Hướng dẫn trên nhãn'), ' mới');
     await userEvent.click(screen.getByRole('button', { name: 'Lưu hướng dẫn' }));
-    expect(await screen.findByText('Chưa duyệt')).toBeVisible();
+    expect(await screen.findByRole('button', { name: /Sửa hướng dẫn Cà chua/ })).toBeVisible();
+    expect(screen.queryByText('Chưa xác minh nhãn')).not.toBeInTheDocument();
+    expect(screen.getByText('Đang công khai')).toBeVisible();
     expect(writes[0]).toEqual({ labelDirections: 'Hướng dẫn kiểm thử mới' });
   });
 });

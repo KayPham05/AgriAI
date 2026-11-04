@@ -40,16 +40,14 @@ describe('Admin record list', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Trang sau' }));
       fireEvent.change(screen.getByRole('textbox'), { target: { value: '  DANG thi anh  ' } });
       act(() => vi.advanceTimersByTime(499));
-      expect(
-        screen.getByText(resource === 'users' ? 'Người dùng 11' : 'Người dùng 3'),
-      ).toBeVisible();
+      expect(screen.getByText('Người dùng 11')).toBeVisible();
       act(() => vi.advanceTimersByTime(1));
       expect(screen.getAllByRole('listitem')).toHaveLength(1);
       expect(screen.getByText('Đặng Thị Ánh')).toBeVisible();
       expect(screen.getByText('Trang 1 / 1')).toBeVisible();
       fireEvent.change(screen.getByRole('textbox'), { target: { value: '' } });
       act(() => vi.advanceTimersByTime(500));
-      expect(screen.getByText(resource === 'users' ? 'Trang 1 / 2' : 'Trang 1 / 6')).toBeVisible();
+      expect(screen.getByText('Trang 1 / 2')).toBeVisible();
     },
   );
 

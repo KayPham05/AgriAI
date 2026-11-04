@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAdminPageSize } from './useAdminPageSize';
 
 const SEARCH_DEBOUNCE_MS = 500;
 
@@ -53,8 +52,7 @@ export function AdminRecordList<T extends SearchableRecord>({
     if (searchTimer.current !== null) clearTimeout(searchTimer.current);
     searchTimer.current = null;
   }
-  const responsivePageSize = useAdminPageSize(2);
-  const pageSize = resource === 'users' ? 10 : responsivePageSize;
+  const pageSize = 10;
   const query = normalize(request.q.trim());
   const filtered = items.filter((item) =>
     normalize(

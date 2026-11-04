@@ -87,24 +87,18 @@ function CatalogContent({
       {kind === 'medicines' && (
         <section className="flex flex-col gap-4">
           <h2 className="text-xl font-bold">Hướng dẫn theo đối tượng sử dụng</h2>
-          {record.uses
-            ?.filter((use) => use.isApproved && use.isLabelVerified)
-            .map((use) => {
-              const pair = pairs.find((item) => item.id === use.plantDiseaseId);
-              return (
-                <div key={use.plantDiseaseId} className="border-t border-border pt-4">
-                  <h3 className="font-semibold">
-                    {pair
-                      ? `${pair.plantName} / ${pair.diseaseName}`
-                      : 'Đối tượng đang được cập nhật'}
-                  </h3>
-                  <p className="mt-2 whitespace-pre-wrap break-words">{use.labelDirections}</p>
-                </div>
-              );
-            })}
-          {!record.uses?.some((use) => use.isApproved && use.isLabelVerified) && (
-            <p>Chưa có hướng dẫn sử dụng đã xác minh được công khai.</p>
-          )}
+          {record.uses?.map((use) => {
+            const pair = pairs.find((item) => item.id === use.plantDiseaseId);
+            return (
+              <div key={use.plantDiseaseId} className="border-t border-border pt-4">
+                <h3 className="font-semibold">
+                  {pair ? `${pair.plantName} / ${pair.diseaseName}` : 'Đối tượng đang được cập nhật'}
+                </h3>
+                <p className="mt-2 whitespace-pre-wrap break-words">{use.labelDirections}</p>
+              </div>
+            );
+          })}
+          {!record.uses?.length && <p>Chưa có hướng dẫn sử dụng được công khai.</p>}
         </section>
       )}
       {linkedPairs.length > 0 && (

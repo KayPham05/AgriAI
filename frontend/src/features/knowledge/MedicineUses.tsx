@@ -47,8 +47,8 @@ export function MedicineUses({
   const use = record.uses?.find((item) => item.plantDiseaseId === pairId);
   const pair = pairs.find((item) => item.id === pairId);
   const unavailable = pairId ? unavailableReason(pair) : '';
-  const changed = directions.trim() !== (use?.labelDirections ?? '');
-  async function mutate(action: 'save' | 'verify' | 'approve' | 'remove') {
+  const applied = record.uses?.map((item) => item.plantDiseaseId) ?? [];
+  async function mutate(action: 'save' | 'remove') {
     if (busy.current || disabled || !pairId) return;
     if (action !== 'remove' && unavailable) {
       setError(unavailable);
@@ -66,14 +66,7 @@ export function MedicineUses({
       await catalogRequest(`/api/admin/medicines/${record.id}/uses/${pairId}`, {
         token,
         method: action === 'remove' ? 'DELETE' : 'PUT',
-        body:
-          action === 'remove'
-            ? undefined
-            : {
-                labelDirections: directions.trim(),
-                ...(action === 'verify' ? { isLabelVerified: true } : {}),
-                ...(action === 'approve' ? { isApproved: true } : {}),
-              },
+        body: action === 'remove' ? undefined : { labelDirections: directions.trim() },
       });
       await onRefresh();
       setPairId('');
@@ -94,11 +87,11 @@ export function MedicineUses({
   return (
     <section
       className="flex flex-col gap-4 border-t border-border pt-5"
-      aria-label="Hướng dẫn sử dụng theo cây và bệnh"
+      aria-label="Cây, bệnh áp dụng và cách dùng"
     >
-      <h3 className="text-xl font-bold">Đối tượng sử dụng và nhãn</h3>
+      <h3 className="text-xl font-bold">Cây, bệnh áp dụng và cách dùng</h3>
       <p className="text-sm text-muted-foreground">
-        Lưu hướng dẫn trước. Sau khi đối soát nhãn, xác minh và duyệt bằng thao tác riêng.
+        Mỗi cặp cây và bệnh chỉ gắn một hướng dẫn. Cặp đã áp dụng không còn trong danh sách chọn.
       </p>
       <ul className="flex flex-col gap-3">
         {record.uses?.map((item) => {
@@ -109,13 +102,7 @@ export function MedicineUses({
               key={item.plantDiseaseId}
               className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3"
             >
-              <div className="min-w-0">
-                <p className="break-words font-semibold">{name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {item.isLabelVerified ? 'Đã xác minh nhãn' : 'Chưa xác minh nhãn'};{' '}
-                  {item.isApproved ? 'Liên kết đã duyệt' : 'Liên kết chưa duyệt'}
-                </p>
-              </div>
+              <p className="min-w-0 break-words font-semibold">{name}</p>
               <Button
                 variant="outline"
                 className="h-auto min-h-11 max-w-full whitespace-normal break-words text-left"
@@ -133,6 +120,7 @@ export function MedicineUses({
         <PlantDiseasePicker
           pairs={pairs}
           value={pairId}
+          excludeIds={applied}
           onChange={choose}
           disabled={pending || disabled}
         />
@@ -157,34 +145,6 @@ export function MedicineUses({
               >
                 Lưu hướng dẫn
               </Button>
-              <Button
-                variant="outline"
-                disabled={
-                  pending ||
-                  disabled ||
-                  Boolean(unavailable) ||
-                  !use ||
-                  changed ||
-                  use.isLabelVerified
-                }
-                onClick={() => void mutate('verify')}
-              >
-                Xác minh nhãn
-              </Button>
-              <Button
-                variant="outline"
-                disabled={
-                  pending ||
-                  disabled ||
-                  Boolean(unavailable) ||
-                  !use?.isLabelVerified ||
-                  changed ||
-                  use.isApproved
-                }
-                onClick={() => void mutate('approve')}
-              >
-                Duyệt liên kết
-              </Button>
               {use && (
                 <Button
                   variant="outline"
@@ -195,11 +155,6 @@ export function MedicineUses({
                 </Button>
               )}
             </div>
-            {changed && (
-              <p className="text-sm text-muted-foreground">
-                Cần lưu thay đổi trước khi xác minh hoặc duyệt.
-              </p>
-            )}
           </>
         )}
       </fieldset>

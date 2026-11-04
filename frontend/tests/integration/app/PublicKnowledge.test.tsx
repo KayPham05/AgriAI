@@ -98,7 +98,7 @@ describe('public knowledge catalog', () => {
       ).toBe(true),
     );
   });
-  it('shows verified use directions with the matching crop and safety information', async () => {
+  it('shows use directions with the matching crop and safety information', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url: string) => json(url.includes('plant-diseases') ? page([pair]) : medicine)),

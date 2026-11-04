@@ -185,7 +185,7 @@ export function CatalogEditor({
           <p className="whitespace-pre-wrap break-words">{draft.content}</p>
         </section>
       )}
-      {record.id && kind !== 'plants' && kind !== 'diseases' && (
+      {record.id && kind === 'knowledge-documents' && (
         <p className="text-sm text-muted-foreground">
           Thay đổi nội dung cần được duyệt lại trước khi công khai.
         </p>

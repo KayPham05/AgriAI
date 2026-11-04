@@ -18,7 +18,7 @@ it('changes only availability of an existing AI pair after confirmation', async 
       return json(page([current]));
     }),
   );
-  render(<PlantDiseaseManager token="admin" diseaseId={pair.diseaseId} />);
+  render(<PlantDiseaseManager token="admin" plantId={pair.plantId} />);
   await userEvent.click(await screen.findByRole('button', { name: 'Ngừng liên kết' }));
   expect(writes).toHaveLength(0);
   await userEvent.click(

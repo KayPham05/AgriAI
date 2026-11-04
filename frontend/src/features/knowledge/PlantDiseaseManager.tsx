@@ -10,13 +10,13 @@ const PAGE_SIZE = 20;
 
 export function PlantDiseaseManager({
   token,
-  diseaseId,
+  plantId,
   disabled = false,
   onBusyChange,
   onChange,
 }: {
   token: string;
-  diseaseId: string;
+  plantId: string;
   disabled?: boolean;
   onBusyChange?: (busy: boolean) => void;
   onChange?: (pair: PlantDiseasePair) => void;
@@ -50,7 +50,7 @@ export function PlantDiseaseManager({
     };
   }, [token, revision]);
   async function toggle(pair: PlantDiseasePair) {
-    if (disabled || pending || pair.diseaseId !== diseaseId) return;
+    if (disabled || pending || pair.plantId !== plantId) return;
     setPending(true);
     onBusyChange?.(true);
     setError('');
@@ -70,7 +70,7 @@ export function PlantDiseaseManager({
   }
   const filtered = pairs.filter(
     (pair) =>
-      pair.diseaseId === diseaseId &&
+      pair.plantId === plantId &&
       `${pair.plantName} ${pair.diseaseName} ${pair.className}`
         .toLocaleLowerCase('vi')
         .includes(search.trim().toLocaleLowerCase('vi')),
@@ -80,17 +80,17 @@ export function PlantDiseaseManager({
   const visible = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   return (
     <section
-      aria-label="Cây trồng liên quan"
+      aria-label="Bệnh và tình trạng liên quan"
       className="flex flex-col gap-4 border-t border-border pt-5"
     >
-      <h3 className="text-lg font-semibold">Cây trồng liên quan</h3>
+      <h3 className="text-lg font-semibold">Bệnh và tình trạng liên quan</h3>
       <p className="text-muted-foreground">
         Quản lý hoạt động của các cặp hiện có. Mã lớp AI chỉ được xem, không chỉnh sửa tại đây.
       </p>
       <div className="shrink-0">
         <SearchField
           id="pair-search"
-          label="Tìm cây liên quan"
+          label="Tìm bệnh hoặc tình trạng"
           value={search}
           onChange={(value) => {
             setSearch(value);

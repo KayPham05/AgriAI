@@ -7,3 +7,7 @@ Affected: frontend/src/features/admin/AdminCrmPage.tsx and frontend/src/features
 Verification: regression initially failed because the embedded section was absent (1 failed, 10 passed); after implementation all 25 focused tests passed (.cache/agri139-red.log and .cache/agri139-green.log). git diff --check passed. DoD: implementation and focused verification complete; combined checks and review pending. No dependencies or additional worktrees.
 
 2026-11-04 delivery: independent branch AGRI-139-disease-links starts at 170e2be; focused tests passed 25/25 after isolating the relationship changes (.cache/split-139.log). The combined six-task frontend passed typecheck, lint, 483 tests and build. Changed files pass formatting; whole-checkout CRLF formatting remains a recorded limitation. Branch split complete; remote PR/review pending.
+
+2026-11-04 integration: relationship management moved from disease detail to plant detail; disease detail remains read-only for condition classification. `PlantDiseaseManager` is scoped by `plantId`. Focused tests were updated; execution is pending because the host sandbox could not start commands in this worktree.
+
+2026-11-04 check update: `PlantDiseaseManager` tests now use `plantId` and the "Tìm bệnh hoặc tình trạng" label; frontend typecheck passes and the related suites pass 14/14; backend KnowledgeMedicine including the relationship coverage passes 51/51 with `-p:LangVersion=12`.
