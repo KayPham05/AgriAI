@@ -19,7 +19,6 @@ namespace AgriVision.ApiTests.Controllers;
 public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<AgriVisionFactory>
 {
     [Fact]
-    [Trait("ApiCase", "knowledge.lifecycle")]
     public async Task Medicine_ShouldPublishWithoutApproval_AndExposeSavedUsesPublicly()
     {
         using var admin = await CreateAccountAsync(true);
@@ -182,7 +181,6 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
     }
 
     [Fact]
-    [Trait("ApiCase", "knowledge.lifecycle")]
     public async Task DocumentLifecycle_ShouldRequireApproval_RevokeAfterEdit_AndSoftDelete()
     {
         using var admin = await CreateAccountAsync(true);
