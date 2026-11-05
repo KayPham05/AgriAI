@@ -39,7 +39,13 @@ export function AppShell({ children }: { children: ReactNode }) {
               href="/knowledge"
               className="inline-flex min-h-11 items-center font-semibold text-primary underline"
             >
-              Tra cứu bài viết và thuốc
+              Tra cứu trích xuất
+            </Link>
+            <Link
+              href="/medicines"
+              className="inline-flex min-h-11 items-center font-semibold text-primary underline"
+            >
+              Tra cứu thuốc
             </Link>
             <Button asChild variant="link" className="self-start px-0">
               <Link href="/about">

@@ -34,8 +34,6 @@ export interface CatalogRecord {
 export interface MedicineUse {
   plantDiseaseId: string;
   labelDirections: string;
-  isLabelVerified: boolean;
-  isApproved: boolean;
 }
 export interface PlantDiseasePair {
   id: string;
@@ -46,6 +44,9 @@ export interface PlantDiseasePair {
   className: string;
   classIndex: number;
   isActive: boolean;
+  conditionType?: string | null;
+  plantIsActive?: boolean;
+  diseaseIsActive?: boolean;
 }
 export interface CatalogPage<T = CatalogRecord> {
   items: T[];

@@ -18,62 +18,214 @@ namespace AgriVision.ApiTests.Controllers;
 
 public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<AgriVisionFactory>
 {
-    [Theory]
-    [InlineData("medicines")]
-    [InlineData("knowledge-documents")]
-    [Trait("ApiCase", "knowledge.lifecycle")]
-    public async Task AdminLifecycle_ShouldProtectDrafts_RequireReviewAfterEdit_AndSoftDelete(string resource)
+    [Fact]
+    public async Task Medicine_ShouldPublishWithoutApproval_AndExposeSavedUsesPublicly()
     {
         using var admin = await CreateAccountAsync(true);
         using var guest = factory.CreateClient();
         var pair = await PairAsync();
-        var id = await CreateAsync(admin, resource, pair.Id);
-        (await guest.GetAsync($"/api/{resource}/{id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        var draft = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/{resource}/{id}");
-        var adminList = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/{resource}?search=Fixture");
+        var id = await CreateAsync(admin, "medicines", pair.Id);
+        var path = $"/api/admin/medicines/{id}";
+        (await admin.PutAsJsonAsync($"{path}/publication", new { isPublic = true, isActive = true }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await admin.PutAsJsonAsync($"{path}/uses/{pair.Id}",
+            new { labelDirections = "Saved directions" }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        var published = await guest.GetFromJsonAsync<JsonElement>($"/api/medicines/{id}");
+        published.GetProperty("isApproved").GetBoolean().Should().BeFalse();
+        published.GetProperty("uses").GetArrayLength().Should().Be(1);
+        published.GetProperty("uses")[0].GetProperty("isApproved").GetBoolean().Should().BeFalse();
+        var filtered = await guest.GetFromJsonAsync<JsonElement>($"/api/medicines?plantId={pair.PlantId}");
+        filtered.GetProperty("items").EnumerateArray().Should().Contain(item => item.GetProperty("id").GetGuid() == id);
+
+        // A saved use is public immediately; no separate verification step remains.
+        (await admin.PutAsJsonAsync($"{path}/uses/{pair.Id}",
+            new { labelDirections = "Changed directions" }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        var changed = await guest.GetFromJsonAsync<JsonElement>($"/api/medicines/{id}");
+        changed.GetProperty("isPublic").GetBoolean().Should().BeTrue();
+        changed.GetProperty("uses")[0].GetProperty("labelDirections").GetString()
+            .Should().Be("Changed directions");
+        (await admin.PutAsJsonAsync($"{path}/publication", new { isPublic = false, isActive = true }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await guest.GetAsync($"/api/medicines/{id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    [Trait("ApiCase", "knowledge.medicine_optional_target")]
+    public async Task MedicineContent_ShouldAllowOmittedTarget_AndPreserveLegacyValue()
+    {
+        using var admin = await CreateAccountAsync(true);
+        var body = new { productName = "Optional target fixture", activeIngredient = "Fixture",
+            sourceUrl = "https://example.test/label", safetyWarning = "Fixture warning", labelReference = "Fixture label" };
+        using var created = await admin.PostAsJsonAsync("/api/admin/medicines", body);
+        created.StatusCode.Should().Be(HttpStatusCode.Created);
+        var result = await created.Content.ReadFromJsonAsync<JsonElement>();
+        var id = result.GetProperty("id").GetGuid();
+        result.GetProperty("targetUse").GetString().Should().BeEmpty();
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var entity = await db.Medicines.SingleAsync(m => m.Id == id);
+            entity.TargetUse = "Retain legacy text";
+            await db.SaveChangesAsync();
+        }
+        using var updated = await admin.PutAsJsonAsync($"/api/admin/medicines/{id}", body with { productName = "Edited fixture" });
+        updated.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await updated.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("targetUse").GetString().Should().Be("Retain legacy text");
+    }
+
+    [Fact]
+    [Trait("ApiCase", "knowledge.classification")]
+    public async Task Classification_ShouldControlMedicineUses_AndPreserveLegacyUpdates()
+    {
+        using var admin = await CreateAccountAsync(true);
+        using var user = await CreateAccountAsync(false);
+        using var guest = factory.CreateClient();
+        var disease = new AgriVision.Domain.Entities.Disease { Name = $"Classification_{Guid.NewGuid():N}", IsContentApproved = true };
+        var pair = new AgriVision.Domain.Entities.PlantDisease
+        {
+            Plant = new AgriVision.Domain.Entities.Plant { Name = $"Plant_{Guid.NewGuid():N}" },
+            Disease = disease, ClassName = $"Fixture___{Guid.NewGuid():N}"
+        };
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            pair.ClassIndex = await db.PlantDiseases.MaxAsync(p => p.ClassIndex) + 1;
+            db.PlantDiseases.Add(pair);
+            await db.SaveChangesAsync();
+        }
+        var medicineId = await CreateAsync(admin, "medicines", pair.Id);
+        var path = $"/api/diseases/{disease.Id}";
+        var body = new { name = disease.Name, isActive = true, conditionType = "Disease" };
+        (await guest.PutAsJsonAsync(path, body)).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await user.PutAsJsonAsync(path, body)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await admin.PutAsJsonAsync($"/api/admin/medicines/{medicineId}/uses/{pair.Id}",
+            new { labelDirections = "Synthetic label" })).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await admin.PutAsJsonAsync(path, body with { conditionType = "Invalid" })).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        using var classified = await admin.PutAsJsonAsync(path, body);
+        classified.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await classified.Content.ReadFromJsonAsync<JsonElement>();
+        result.GetProperty("conditionType").GetString().Should().Be("Disease");
+        result.GetProperty("isContentApproved").GetBoolean().Should().BeFalse();
+        // An older client's content-only edit must not reset classification.
+        using var legacy = await admin.PutAsJsonAsync(path, new { name = disease.Name, isActive = true });
+        legacy.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await legacy.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("conditionType").GetString().Should().Be("Disease");
+        var choices = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/plant-diseases?diseaseId={disease.Id}");
+        var choice = choices.GetProperty("items")[0];
+        choice.GetProperty("conditionType").GetString().Should().Be("Disease");
+        choice.GetProperty("plantIsActive").GetBoolean().Should().BeTrue();
+        choice.GetProperty("diseaseIsActive").GetBoolean().Should().BeTrue();
+        await AssignUseAsync(admin, medicineId, pair.Id);
+        await PublishAsync(admin, "medicines", medicineId);
+        using var reclassified = await admin.PutAsJsonAsync(path, body with { conditionType = "Healthy" });
+        reclassified.StatusCode.Should().Be(HttpStatusCode.OK);
+        var publicMedicine = await guest.GetFromJsonAsync<JsonElement>($"/api/medicines/{medicineId}");
+        publicMedicine.GetProperty("uses").GetArrayLength().Should().Be(0);
+        var filtered = await guest.GetFromJsonAsync<JsonElement>($"/api/medicines?diseaseId={disease.Id}");
+        filtered.GetProperty("totalCount").GetInt32().Should().Be(0);
+        (await admin.DeleteAsync($"/api/admin/medicines/{medicineId}/uses/{pair.Id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    [Trait("ApiCase", "knowledge.lifecycle")]
+    public async Task MedicineLifecycle_ShouldPublishWithoutApproval_KeepPublicUseAfterEdit_AndSoftDelete()
+    {
+        using var admin = await CreateAccountAsync(true);
+        using var guest = factory.CreateClient();
+        var pair = await PairAsync();
+        var id = await CreateAsync(admin, "medicines", pair.Id);
+        (await guest.GetAsync($"/api/medicines/{id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var draft = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/medicines/{id}");
+        var adminList = await admin.GetFromJsonAsync<JsonElement>("/api/admin/medicines?search=Fixture");
         adminList.GetProperty("items").EnumerateArray().Should().Contain(item => item.GetProperty("id").GetGuid() == id);
         draft.GetProperty("isApproved").GetBoolean().Should().BeFalse();
 
-        using var invalidPublish = await admin.PutAsJsonAsync($"/api/admin/{resource}/{id}/publication",
-            new { isApproved = false, isPublic = true, isActive = true });
-        invalidPublish.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        await PublishAsync(admin, resource, id);
-        if (resource == "medicines") await AssignUseAsync(admin, id, pair.Id);
+        (await admin.PutAsJsonAsync($"/api/admin/medicines/{id}/publication",
+            new { isPublic = true, isActive = true })).StatusCode.Should().Be(HttpStatusCode.OK);
+        await AssignUseAsync(admin, id, pair.Id);
 
-        var publicItem = await guest.GetFromJsonAsync<JsonElement>($"/api/{resource}/{id}");
+        var publicItem = await guest.GetFromJsonAsync<JsonElement>($"/api/medicines/{id}");
         publicItem.GetProperty("id").GetGuid().Should().Be(id);
-        using var update = await admin.PutAsJsonAsync($"/api/admin/{resource}/{id}", Payload(resource, pair.Id, "Updated content"));
+        publicItem.GetProperty("isApproved").GetBoolean().Should().BeFalse();
+        publicItem.GetProperty("uses").GetArrayLength().Should().Be(1);
+
+        using var update = await admin.PutAsJsonAsync($"/api/admin/medicines/{id}",
+            Payload("medicines", pair.Id, "Updated content"));
         update.StatusCode.Should().Be(HttpStatusCode.OK);
         var updateResult = await update.Content.ReadFromJsonAsync<JsonElement>();
-        updateResult.GetProperty("isApproved").GetBoolean().Should().BeFalse();
-        updateResult.GetProperty("isPublic").GetBoolean().Should().BeFalse();
-        (await guest.GetAsync($"/api/{resource}/{id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        // Product edits also revoke label verification; reviewing publication alone is insufficient.
-        if (resource == "medicines")
-        {
-            updateResult.GetProperty("uses")[0].GetProperty("isLabelVerified").GetBoolean().Should().BeFalse();
-            await AssignUseAsync(admin, id, pair.Id);
-        }
-        await PublishAsync(admin, resource, id);
-        var edited = await guest.GetFromJsonAsync<JsonElement>($"/api/{resource}/{id}");
-        edited.GetProperty("isApproved").GetBoolean().Should().BeTrue();
-        edited.GetProperty(resource == "medicines" ? "productName" : "title").GetString().Should().Be("Updated content");
-        var filtered = await guest.GetFromJsonAsync<JsonElement>($"/api/{resource}?plantId={pair.PlantId}&diseaseId={pair.DiseaseId}&search=Updated");
+        updateResult.GetProperty("isPublic").GetBoolean().Should().BeTrue();
+        updateResult.GetProperty("uses")[0].GetProperty("isApproved").GetBoolean().Should().BeFalse();
+        var edited = await guest.GetFromJsonAsync<JsonElement>($"/api/medicines/{id}");
+        edited.GetProperty("productName").GetString().Should().Be("Updated content");
+        edited.GetProperty("uses").GetArrayLength().Should().Be(1);
+        edited.GetProperty("uses")[0].GetProperty("isApproved").GetBoolean().Should().BeFalse();
+
+        var filtered = await guest.GetFromJsonAsync<JsonElement>($"/api/medicines?plantId={pair.PlantId}&diseaseId={pair.DiseaseId}&search=Updated");
         filtered.GetProperty("items").EnumerateArray().Should().Contain(item => item.GetProperty("id").GetGuid() == id);
-        var wrongPair = await guest.GetFromJsonAsync<JsonElement>($"/api/{resource}?plantId={Guid.NewGuid()}");
+        var wrongPair = await guest.GetFromJsonAsync<JsonElement>($"/api/medicines?plantId={Guid.NewGuid()}");
         wrongPair.GetProperty("totalCount").GetInt32().Should().Be(0);
 
-        (await admin.DeleteAsync($"/api/admin/{resource}/{id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
-        (await guest.GetAsync($"/api/{resource}/{id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        var hidden = await guest.GetFromJsonAsync<JsonElement>($"/api/{resource}?includeInactive=true&isApproved=false");
+        (await admin.DeleteAsync($"/api/admin/medicines/{id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await guest.GetAsync($"/api/medicines/{id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var hidden = await guest.GetFromJsonAsync<JsonElement>("/api/medicines?includeInactive=true&isApproved=false");
         hidden.GetProperty("items").EnumerateArray().Should().NotContain(item => item.GetProperty("id").GetGuid() == id);
-        var retained = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/{resource}/{id}");
+        var retained = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/medicines/{id}");
         retained.GetProperty("isActive").GetBoolean().Should().BeFalse();
         retained.GetProperty("isPublic").GetBoolean().Should().BeFalse();
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        (resource == "medicines" ? await db.Medicines.AnyAsync(m => m.Id == id) :
-            await db.KnowledgeDocuments.AnyAsync(d => d.Id == id)).Should().BeTrue();
+        (await db.Medicines.AnyAsync(m => m.Id == id)).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DocumentLifecycle_ShouldRequireApproval_RevokeAfterEdit_AndSoftDelete()
+    {
+        using var admin = await CreateAccountAsync(true);
+        using var guest = factory.CreateClient();
+        var pair = await PairAsync();
+        var id = await CreateAsync(admin, "knowledge-documents", pair.Id);
+        (await guest.GetAsync($"/api/knowledge-documents/{id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var draft = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/knowledge-documents/{id}");
+        var adminList = await admin.GetFromJsonAsync<JsonElement>("/api/admin/knowledge-documents?search=Fixture");
+        adminList.GetProperty("items").EnumerateArray().Should().Contain(item => item.GetProperty("id").GetGuid() == id);
+        draft.GetProperty("isApproved").GetBoolean().Should().BeFalse();
+
+        using var invalidPublish = await admin.PutAsJsonAsync($"/api/admin/knowledge-documents/{id}/publication",
+            new { isApproved = false, isPublic = true, isActive = true });
+        invalidPublish.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await PublishAsync(admin, "knowledge-documents", id);
+
+        var publicItem = await guest.GetFromJsonAsync<JsonElement>($"/api/knowledge-documents/{id}");
+        publicItem.GetProperty("id").GetGuid().Should().Be(id);
+        using var update = await admin.PutAsJsonAsync($"/api/admin/knowledge-documents/{id}",
+            Payload("knowledge-documents", pair.Id, "Updated content"));
+        update.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updateResult = await update.Content.ReadFromJsonAsync<JsonElement>();
+        updateResult.GetProperty("isApproved").GetBoolean().Should().BeFalse();
+        updateResult.GetProperty("isPublic").GetBoolean().Should().BeFalse();
+        (await guest.GetAsync($"/api/knowledge-documents/{id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        await PublishAsync(admin, "knowledge-documents", id);
+        var edited = await guest.GetFromJsonAsync<JsonElement>($"/api/knowledge-documents/{id}");
+        edited.GetProperty("isApproved").GetBoolean().Should().BeTrue();
+        edited.GetProperty("title").GetString().Should().Be("Updated content");
+        var filtered = await guest.GetFromJsonAsync<JsonElement>($"/api/knowledge-documents?plantId={pair.PlantId}&diseaseId={pair.DiseaseId}&search=Updated");
+        filtered.GetProperty("items").EnumerateArray().Should().Contain(item => item.GetProperty("id").GetGuid() == id);
+        var wrongPair = await guest.GetFromJsonAsync<JsonElement>($"/api/knowledge-documents?plantId={Guid.NewGuid()}");
+        wrongPair.GetProperty("totalCount").GetInt32().Should().Be(0);
+
+        (await admin.DeleteAsync($"/api/admin/knowledge-documents/{id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await guest.GetAsync($"/api/knowledge-documents/{id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var hidden = await guest.GetFromJsonAsync<JsonElement>("/api/knowledge-documents?includeInactive=true&isApproved=false");
+        hidden.GetProperty("items").EnumerateArray().Should().NotContain(item => item.GetProperty("id").GetGuid() == id);
+        var retained = await admin.GetFromJsonAsync<JsonElement>($"/api/admin/knowledge-documents/{id}");
+        retained.GetProperty("isActive").GetBoolean().Should().BeFalse();
+        retained.GetProperty("isPublic").GetBoolean().Should().BeFalse();
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        (await db.KnowledgeDocuments.AnyAsync(d => d.Id == id)).Should().BeTrue();
     }
 
     [Theory]
@@ -123,7 +275,7 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
 
     [Fact]
     [Trait("ApiCase", "knowledge.relations")]
-    public async Task Relations_ShouldRejectUnknownPairs_AndRequireVerifiedApprovedUses()
+    public async Task Relations_ShouldRejectUnknownPairs_AndPublishSavedUses()
     {
         using var admin = await CreateAccountAsync(true);
         using var guest = factory.CreateClient();
@@ -133,31 +285,24 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
         var id = await CreateAsync(admin, "medicines", pair.Id);
         await PublishAsync(admin, "medicines", id);
         (await admin.PutAsJsonAsync($"/api/admin/medicines/{id}/uses/{Guid.NewGuid()}",
-            new { labelDirections = "Fixture label only", isLabelVerified = true, isApproved = true }))
+            new { labelDirections = "Fixture label only" }))
             .StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await admin.PutAsJsonAsync($"/api/admin/medicines/{id}/uses/{pair.Id}",
-            new { labelDirections = "Fixture label only", isLabelVerified = false, isApproved = true }))
-            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        await AssignUseAsync(admin, id, pair.Id, false);
-        var unverified = await guest.GetFromJsonAsync<JsonElement>($"/api/medicines/{id}");
-        unverified.GetProperty("uses").GetArrayLength().Should().Be(0);
         await AssignUseAsync(admin, id, pair.Id);
-        var verified = await guest.GetFromJsonAsync<JsonElement>($"/api/medicines/{id}");
-        verified.GetProperty("uses").GetArrayLength().Should().Be(1);
+        var saved = await guest.GetFromJsonAsync<JsonElement>($"/api/medicines/{id}");
+        saved.GetProperty("uses").GetArrayLength().Should().Be(1);
         (await admin.DeleteAsync($"/api/admin/medicines/{id}/uses/{pair.Id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
         (await guest.GetFromJsonAsync<JsonElement>($"/api/medicines/{id}")).GetProperty("uses").GetArrayLength().Should().Be(0);
     }
 
     [Theory]
-    [InlineData(0.8f, "Disease", true, true, 0)]
-    [InlineData(0.81f, "Disease", true, true, 1)]
-    [InlineData(0.95f, "Healthy", true, true, 0)]
-    [InlineData(0.95f, "NutrientDeficiency", true, true, 0)]
-    [InlineData(0.95f, "Disease", false, true, 0)]
-    [InlineData(0.95f, "Disease", true, false, 0)]
+    [InlineData(0.8f, "Disease", true, 0)]
+    [InlineData(0.81f, "Disease", true, 1)]
+    [InlineData(0.95f, "Healthy", true, 0)]
+    [InlineData(0.95f, "NutrientDeficiency", true, 0)]
+    [InlineData(0.95f, "Disease", false, 0)]
     [Trait("ApiCase", "knowledge.prediction_snapshot")]
     public async Task Diagnosis_ShouldUseOnlyEligibleMedicines_AndPreserveSnapshot(
-        float confidence, string condition, bool verified, bool published, int expected)
+        float confidence, string condition, bool published, int expected)
     {
         using var admin = await CreateAccountAsync(true);
         var pair = await PairAsync();
@@ -169,12 +314,12 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
             var disease = await db.Diseases.SingleAsync(d => d.Id == pair.DiseaseId);
             disease.ConditionType = "Disease";
             disease.IsContentApproved = true;
-            disease.Medication = "Legacy text must not bypass label verification";
+            disease.Medication = "Legacy text must not bypass active recommendations";
             await db.SaveChangesAsync();
         }
         var id = await CreateAsync(admin, "medicines", pair.Id);
         if (published) await PublishAsync(admin, "medicines", id);
-        await AssignUseAsync(admin, id, pair.Id, verified);
+        await AssignUseAsync(admin, id, pair.Id);
         await using (var conditionScope = factory.Services.CreateAsyncScope())
         {
             var db = conditionScope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -240,7 +385,7 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
 
     [Fact]
     [Trait("ApiCase", "knowledge.disease_approval")]
-    public async Task PublicDisease_ShouldNotExposeUnreviewedKnowledge()
+    public async Task PublicDisease_ShouldExposeSavedActiveContentWithoutApproval()
     {
         using var admin = await CreateAccountAsync(true);
         using var guest = factory.CreateClient();
@@ -248,7 +393,7 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var id = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
         var publicItem = await guest.GetFromJsonAsync<JsonElement>($"/api/diseases/{id}");
-        publicItem.GetProperty("treatment").ToString().Should().NotBe("Unreviewed treatment");
+        publicItem.GetProperty("treatment").ToString().Should().Be("Unreviewed treatment");
         var adminItem = await admin.GetFromJsonAsync<JsonElement>($"/api/diseases/{id}");
         adminItem.GetProperty("treatment").GetString().Should().Be("Unreviewed treatment");
         var approvalPath = $"/api/admin/diseases/{id}/approval";
@@ -263,7 +408,14 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
             new { name = adminItem.GetProperty("name").GetString(), treatment = "Changed treatment", isActive = true });
         edit.StatusCode.Should().Be(HttpStatusCode.OK);
         (await edit.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("isContentApproved").GetBoolean().Should().BeFalse();
-        (await guest.GetFromJsonAsync<JsonElement>($"/api/diseases/{id}")).GetProperty("treatment").ToString().Should().NotBe("Changed treatment");
+        (await guest.GetFromJsonAsync<JsonElement>($"/api/diseases/{id}")).GetProperty("treatment").ToString().Should().Be("Changed treatment");
+        var list = await guest.GetFromJsonAsync<JsonElement>("/api/diseases");
+        list.EnumerateArray().Single(item => item.GetProperty("id").GetGuid() == id)
+            .GetProperty("treatment").GetString().Should().Be("Changed treatment");
+        (await admin.DeleteAsync($"/api/diseases/{id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await guest.GetAsync($"/api/diseases/{id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await guest.GetFromJsonAsync<JsonElement>("/api/diseases?includeInactive=true"))
+            .EnumerateArray().Should().NotContain(item => item.GetProperty("id").GetGuid() == id);
         (await admin.PutAsJsonAsync($"/api/admin/diseases/{Guid.NewGuid()}/approval", new { isContentApproved = true }))
             .StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -307,8 +459,8 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
     }
 
     [Fact]
-    [Trait("ApiCase", "knowledge.label_review")]
-    public async Task LabelEdit_ShouldRevokeApprovalEvenWhenTrueFlagsAreSubmitted_AndAllowSeparateReview()
+    [Trait("ApiCase", "knowledge.label_edit")]
+    public async Task LabelEdit_ShouldKeepMedicineAndUsePublic()
     {
         using var admin = await CreateAccountAsync(true);
         using var guest = factory.CreateClient();
@@ -317,18 +469,14 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
         await AssignUseAsync(admin, id, pair.Id);
         await PublishAsync(admin, "medicines", id);
         var response = await admin.PutAsJsonAsync($"/api/admin/medicines/{id}/uses/{pair.Id}",
-            new { labelDirections = "Changed fixture instructions", isApproved = true, isLabelVerified = true });
+            new { labelDirections = "Changed fixture instructions" });
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var edited = await response.Content.ReadFromJsonAsync<JsonElement>();
         edited.GetProperty("isApproved").GetBoolean().Should().BeFalse();
-        edited.GetProperty("isLabelVerified").GetBoolean().Should().BeFalse();
-        (await guest.GetAsync($"/api/medicines/{id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        // Same text, separate review: trigger must allow verification and approval now.
-        var review = await admin.PutAsJsonAsync($"/api/admin/medicines/{id}/uses/{pair.Id}",
-            new { labelDirections = "Changed fixture instructions", isApproved = true, isLabelVerified = true });
-        (await review.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("isApproved").GetBoolean().Should().BeTrue();
-        await PublishAsync(admin, "medicines", id);
-        (await guest.GetFromJsonAsync<JsonElement>($"/api/medicines/{id}")).GetProperty("uses").GetArrayLength().Should().Be(1);
+        var published = await guest.GetFromJsonAsync<JsonElement>($"/api/medicines/{id}");
+        published.GetProperty("uses").GetArrayLength().Should().Be(1);
+        published.GetProperty("uses")[0].GetProperty("labelDirections").GetString()
+            .Should().Be("Changed fixture instructions");
     }
 
     [Fact]
@@ -351,11 +499,8 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
     }
 
     [Theory]
-    [InlineData("unapproved")]
     [InlineData("private")]
     [InlineData("inactive")]
-    [InlineData("use-unapproved")]
-    [InlineData("label-unverified")]
     [InlineData("pair-inactive")]
     [InlineData("plant-inactive")]
     [InlineData("disease-inactive")]
@@ -378,20 +523,16 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
         medicine.Uses.Add(new AgriVision.Domain.Entities.MedicineUse
         {
             Medicine = medicine, PlantDisease = pair, LabelDirections = "Fixture directions",
-            IsApproved = true, IsLabelVerified = true
+            IsApproved = true
         });
         db.Medicines.Add(medicine);
         await db.SaveChangesAsync();
         var repository = new MedicineRepository(db);
         (await repository.GetEligibleUsesAsync(pair.Id)).Should().ContainSingle(u => u.MedicineId == medicine.Id);
-        var use = medicine.Uses.Single();
         switch (reason)
         {
-            case "unapproved": medicine.IsApproved = false; medicine.IsPublic = false; break;
             case "private": medicine.IsPublic = false; break;
             case "inactive": medicine.IsActive = false; medicine.IsPublic = false; break;
-            case "use-unapproved": use.IsApproved = false; break;
-            case "label-unverified": use.IsApproved = false; use.IsLabelVerified = false; break;
             case "pair-inactive": pair.IsActive = false; break;
             case "plant-inactive": pair.Plant.IsActive = false; break;
             case "disease-inactive": pair.Disease.IsActive = false; break;
@@ -487,10 +628,10 @@ public class KnowledgeMedicineTests(AgriVisionFactory factory) : IClassFixture<A
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
-    private static async Task AssignUseAsync(HttpClient admin, Guid id, Guid pair, bool verified = true)
+    private static async Task AssignUseAsync(HttpClient admin, Guid id, Guid pair)
     {
         using var response = await admin.PutAsJsonAsync($"/api/admin/medicines/{id}/uses/{pair}",
-            new { labelDirections = "Fixture label only", isLabelVerified = verified, isApproved = verified });
+            new { labelDirections = "Fixture label only" });
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 

@@ -60,7 +60,7 @@ describe('public catalog card content', () => {
     expect(screen.getByText('Cây lương thực')).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Dấu hiệu trên lá tham khảo' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Kiểm tra lá' })).toHaveAttribute('href', '/diagnose');
-    expect(screen.getByRole('link', { name: 'Bài viết liên quan' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Trích xuất liên quan' })).toHaveAttribute(
       'href',
       `/knowledge?plantId=00000000-0000-0000-0000-000000000001&diseaseId=${pair.diseaseId}`,
     );

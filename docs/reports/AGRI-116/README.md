@@ -378,3 +378,20 @@ hoặc commit/push.
 Branch: `AGRI-116-agricultural-profile-ui-extend`, created from the current AGRI-116 branch at user request. Includes profile diagnosis/save workflow and forward-only migration, profile cards/detail/history filters, public catalog cards/detail, WEBP support and crop names in Top-3. Unrelated AI experiments/notebooks, docker-compose.ai.yml and generated next-env.d.ts remain local.
 
 Fresh verification: frontend full Vitest run outside sandbox: 475 passed / 2 failed (477 total). One failure was the avatar test expecting the old JPEG/PNG message; updated to the new JPEG/PNG/WEBP contract. Then the 10 affected suites passed 102/102 tests. The other failure remains in HomeBannerSlideshow.test.tsx:88 (timer count 1 instead of 0 after unmount); no slideshow changes in this delivery. The initial sandbox test attempt failed to load 68 suites due to ENOENT in its temporary transform cache; it is not a valid application test result. Typecheck and lint (248 files) passed; diff whitespace checks passed. Backend/AI/build results above are prior runs, not rerun during push preparation. Coverage and GitHub Actions are unverified; this is not a claim that all CI gates pass.
+
+## Merge AGRI-128 for PR #57 — 2026-11-05
+
+Merged the AGRI-128 base at abcdea1 into AGRI-116-agricultural-profile-ui-extend.
+PublicCatalog.tsx preserves the crop cards and plant detail from AGRI-116 and
+uses the navigation, extraction terminology and public medicine rules from
+AGRI-128. CatalogImportTests.cs and MigrationTests.cs verify 11 migrations
+after upgrade and check the forward-only boundary after rolling back the newer
+reversible medicine migration in disposable PostgreSQL.
+
+Local verification on the combined tree: Vitest 494/494 across 69 suites, TypeScript,
+Biome lint and production frontend build passed. Format check passed on the two
+resolved frontend files. In .NET 9 containers, unit 180/180, API 256/256 and
+integration 65/65 passed. The first integration build lacked its SQL fixture in
+the QA copy. The independent rerun with the database directory included passed.
+Real checkpoint and R2 suites were excluded. Application DB migrations, coverage
+and GitHub Actions were outside this verification run.

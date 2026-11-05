@@ -18,7 +18,51 @@ import { Badge } from '@/components/ui/badge';
 import { CatalogEditor } from './CatalogEditor';
 import { CatalogPager, CatalogSelect, ConfirmAction } from './CatalogControls';
 import { MedicineUses } from './MedicineUses';
+import { PlantDiseaseManager } from './PlantDiseaseManager';
 import { catalogError, catalogLabels } from './catalogUi';
+
+function RelatedCatalogInfo({
+  kind,
+  record,
+  pairs,
+}: {
+  kind: CatalogKind;
+  record: CatalogRecord;
+  pairs: PlantDiseasePair[];
+}) {
+  if (kind === 'diseases') {
+    const labels: Record<string, string> = {
+      Unknown: 'Chưa xác định',
+      Healthy: 'Khỏe mạnh',
+      NutrientDeficiency: 'Thiếu dinh dưỡng',
+      Disease: 'Bệnh',
+    };
+    return (
+      <p className="mt-2 text-sm text-muted-foreground">
+        Phân loại tình trạng: {labels[record.conditionType ?? 'Unknown'] ?? 'Chưa xác định'}
+      </p>
+    );
+  }
+  if (kind !== 'plants') return null;
+  const linked = pairs.filter((pair) => pair.plantId === record.id);
+  return (
+    <div className="mt-2 flex flex-col gap-1 text-sm">
+      <p className="font-semibold">Bệnh và tình trạng liên quan</p>
+      {linked.length ? (
+        <ul className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground">
+          {linked.map((pair) => (
+            <li key={pair.id}>
+              <span>{pair.diseaseName}</span>
+              {!pair.isActive && ' (liên kết ngừng hoạt động)'}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-muted-foreground">Chưa có bệnh hoặc tình trạng liên kết.</p>
+      )}
+    </div>
+  );
+}
 
 export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: string }) {
   const [filter, setFilter] = useState<CatalogFilter>({ pageNumber: 1 });
@@ -105,7 +149,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
       setEditorVersion((value) => value + 1);
       setRevision((value) => value + 1);
     } catch (failure) {
-      // A child mutation may have revoked parent publication; stale approval must not remain actionable.
+      // Do not leave stale label verification actionable after a child mutation.
       setRecord(null);
       setError(`Thao tác đã lưu nhưng chưa tải lại được dữ liệu. ${catalogError(failure)}`);
       throw failure;
@@ -126,7 +170,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
       setEditorVersion((value) => value + 1);
       setRevision((value) => value + 1);
       setNotice(
-        kind === 'plants'
+        kind !== 'knowledge-documents'
           ? 'Đã lưu nội dung.'
           : 'Đã lưu nội dung. Kiểm tra trạng thái duyệt trước khi công khai.',
       );
@@ -159,14 +203,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
           setRecord(
             await catalogRequest(path, { token, method: 'PUT', body: { ...body, isActive: true } }),
           );
-        } else
-          setRecord(
-            await catalogRequest(`/api/admin/diseases/${record.id}/approval`, {
-              token,
-              method: 'PUT',
-              body: { isContentApproved: action === 'approve' },
-            }),
-          );
+        }
       } else {
         setRecord(
           await catalogRequest(`${path}/publication`, {
@@ -174,10 +211,11 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
             method: 'PUT',
             body: {
               isActive: true,
-              isApproved:
-                action === 'restore' || action === 'revoke'
+              ...(kind === 'knowledge-documents'
+                ? { isApproved: action === 'restore' || action === 'revoke'
                   ? false
-                  : action === 'approve' || Boolean(record.isApproved),
+                  : action === 'approve' || Boolean(record.isApproved) }
+                : {}),
               isPublic: action === 'publish',
             },
           }),
@@ -285,6 +323,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
                         {item.isActive ? 'Hoạt động' : 'Ngừng hoạt động'}
                         {!catalog && `; ${item.isPublic ? 'công khai' : 'chưa công khai'}`}
                       </p>
+                      <RelatedCatalogInfo kind={kind} record={item} pairs={pairs} />
                     </div>
                     <Button
                       variant="outline"
@@ -321,12 +360,8 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
                 <Badge variant="outline">
                   {record.isActive ? 'Đang hoạt động' : 'Đã ngừng hoạt động'}
                 </Badge>
-                {kind !== 'plants' && (
-                  <Badge variant="outline">
-                    {(kind === 'diseases' ? record.isContentApproved : record.isApproved)
-                      ? 'Đã duyệt'
-                      : 'Chưa duyệt'}
-                  </Badge>
+                {kind === 'knowledge-documents' && (
+                  <Badge variant="outline">{record.isApproved ? 'Đã duyệt' : 'Chưa duyệt'}</Badge>
                 )}
                 {!catalog && (
                   <Badge variant="outline">
@@ -334,6 +369,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
                   </Badge>
                 )}
               </div>
+              {kind !== 'plants' && <RelatedCatalogInfo kind={kind} record={record} pairs={pairs} />}
               <div className="flex flex-wrap gap-2">
                 {!record.isActive ? (
                   <Button disabled={pending || dirty} onClick={() => void change('restore')}>
@@ -341,26 +377,18 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
                   </Button>
                 ) : (
                   <>
-                    {kind !== 'plants' && (
+                    {kind === 'knowledge-documents' && (
                       <Button
                         disabled={pending || dirty}
                         variant="outline"
-                        onClick={() =>
-                          void change(
-                            (kind === 'diseases' ? record.isContentApproved : record.isApproved)
-                              ? 'revoke'
-                              : 'approve',
-                          )
-                        }
+                        onClick={() => void change(record.isApproved ? 'revoke' : 'approve')}
                       >
-                        {(kind === 'diseases' ? record.isContentApproved : record.isApproved)
-                          ? 'Thu hồi duyệt'
-                          : 'Duyệt nội dung'}
+                        {record.isApproved ? 'Thu hồi duyệt' : 'Duyệt nội dung'}
                       </Button>
                     )}
                     {!catalog && (
                       <Button
-                        disabled={pending || dirty || !record.isApproved}
+                        disabled={pending || dirty || (kind === 'knowledge-documents' && !record.isApproved)}
                         onClick={() => void change(record.isPublic ? 'hide' : 'publish')}
                       >
                         {record.isPublic ? 'Ẩn công khai' : 'Công khai'}
@@ -397,6 +425,23 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
             onDirtyChange={setDirty}
             disabled={pending}
           />
+          {kind === 'plants' && record.id && (
+            <PlantDiseaseManager
+              key={record.id}
+              token={token}
+              plantId={record.id}
+              disabled={pending || dirty || !record.isActive}
+              onBusyChange={(value) => {
+                lock.current = value;
+                setUsePending(value);
+              }}
+              onChange={(updated) =>
+                setPairs((current) =>
+                  current.map((pair) => (pair.id === updated.id ? updated : pair)),
+                )
+              }
+            />
+          )}
           {kind === 'medicines' && record.id && (
             <MedicineUses
               record={record}

@@ -119,14 +119,44 @@ it('does not issue a pending search after leaving the catalog', async () => {
 it('debounces the plant/disease relationship filter without extra requests', async () => {
   const fetch = vi.fn(async () => json(page([pair])));
   vi.stubGlobal('fetch', fetch);
-  render(<PlantDiseaseManager token="admin" />);
+  render(<PlantDiseaseManager token="admin" plantId={pair.plantId} />);
   await act(async () => {});
   vi.useFakeTimers();
-  fireEvent.change(screen.getByLabelText('Tìm cây hoặc bệnh'), { target: { value: 'missing' } });
+  fireEvent.change(screen.getByLabelText('Tìm bệnh hoặc tình trạng'), { target: { value: 'missing' } });
   expect(screen.getByRole('heading', { name: 'Cà chua / Cháy lá' })).toBeVisible();
   await act(async () => {
     vi.advanceTimersByTime(500);
   });
   expect(screen.queryByRole('heading', { name: 'Cà chua / Cháy lá' })).not.toBeInTheDocument();
   expect(fetch).toHaveBeenCalledOnce();
+});
+
+it('paginates pairs and returns to page one after the 500ms search delay', async () => {
+  const pairs = Array.from({ length: 25 }, (_, i) => ({
+    ...pair,
+    id: `pair-${i}`,
+    diseaseName: `Bệnh ${i}`,
+  }));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => json({ ...page(pairs), hasNextPage: false })),
+  );
+  render(<PlantDiseaseManager token="admin" plantId={pair.plantId} />);
+  await act(async () => {});
+  expect(screen.getAllByRole('heading', { level: 4 })).toHaveLength(20);
+  fireEvent.click(screen.getByRole('button', { name: 'Trang sau' }));
+  expect(screen.getAllByRole('heading', { level: 4 })).toHaveLength(5);
+  vi.useFakeTimers();
+  fireEvent.change(screen.getByLabelText('Tìm bệnh hoặc tình trạng'), { target: { value: 'Bệnh 0' } });
+  await act(async () => {
+    vi.advanceTimersByTime(499);
+  });
+  expect(screen.getAllByRole('heading', { level: 4 })).toHaveLength(5);
+  await act(async () => {
+    vi.advanceTimersByTime(1);
+  });
+  expect(screen.getAllByRole('heading', { level: 4 })).toHaveLength(1);
+  expect(screen.getByText('1 kết quả · Trang 1/1')).toBeVisible();
+  fireEvent.change(screen.getByLabelText('Tìm bệnh hoặc tình trạng'), { target: { value: '' } });
+  expect(screen.getAllByRole('heading', { level: 4 })).toHaveLength(20);
 });

@@ -217,3 +217,10 @@ và không đụng vào source hoặc artifact trong `ai/`.
 - Prepared `AGRI-116-agricultural-profile-ui-extend` with profile/diagnosis, catalog UI, migration, WEBP and Top-3 changes; unrelated AI experiments stay local.
 - Fresh affected frontend checks: 102/102 pass; typecheck/lint pass. Full run before avatar expectation update: 475/477 pass; HomeBannerSlideshow timer assertion remains unresolved. No new backend/AI/coverage/CI claim.
 - See [delivery evidence and limits](../../reports/AGRI-116/README.md).
+
+## Merge AGRI-128 for PR #57 — 2026-11-05
+
+- Resolved three conflicts in the public catalog and migration tests. The merged
+  schema has 11 migrations and retains the profile assignment guard.
+- Local checks passed: frontend 494/494, backend 180 unit + 256 API + 65
+  integration, and frontend production build. See [verification and limits](../../reports/AGRI-116/README.md).

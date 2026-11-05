@@ -25,7 +25,8 @@ public record CreateDiseaseRequest(
     string? Description,
     string? Symptoms,
     string? Treatment,
-    string? Prevention
+    string? Prevention,
+    string? ConditionType = null
 );
 
 public record UpdateDiseaseRequest(
@@ -35,5 +36,6 @@ public record UpdateDiseaseRequest(
     string? Symptoms,
     string? Treatment,
     string? Prevention,
-    bool IsActive
+    bool IsActive,
+    string? ConditionType = null
 );

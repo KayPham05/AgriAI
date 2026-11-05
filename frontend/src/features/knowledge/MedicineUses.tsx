@@ -1,11 +1,27 @@
 'use client';
 import { useRef, useState } from 'react';
 import { catalogRequest, type CatalogRecord, type PlantDiseasePair } from '@/services/knowledgeApi';
+import { PlantDiseasePicker } from './PlantDiseasePicker';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { CatalogSelect, ConfirmAction } from './CatalogControls';
+import { ConfirmAction } from './CatalogControls';
 import { catalogError } from './catalogUi';
+
+function unavailableReason(pair: PlantDiseasePair | undefined): string {
+  if (!pair) return 'Không tìm thấy thông tin cặp cây và bệnh. Vui lòng tải lại danh mục.';
+  if (!pair.isActive || pair.plantIsActive === false || pair.diseaseIsActive === false)
+    return 'Cây, bệnh hoặc liên kết đã ngừng hoạt động. Khôi phục tại danh mục tương ứng trước khi lưu hướng dẫn.';
+  if (pair.conditionType === 'Healthy')
+    return 'Cặp này thuộc nhóm Khỏe mạnh, không được gắn hướng dẫn thuốc.';
+  if (pair.conditionType === 'NutrientDeficiency')
+    return 'Cặp này thuộc nhóm Thiếu dinh dưỡng, không được gắn hướng dẫn thuốc.';
+  if (pair.conditionType !== 'Disease')
+    return `${pair.diseaseName} chưa được phân loại là Bệnh. Kiểm tra Phân loại tình trạng tại Quản lý bệnh cây.`;
+  if (pair.plantIsActive !== true || pair.diseaseIsActive !== true)
+    return 'Chưa có đủ thông tin hoạt động của cây và bệnh. Vui lòng tải lại danh mục.';
+  return '';
+}
 
 export function MedicineUses({
   record,
@@ -29,9 +45,15 @@ export function MedicineUses({
   const [error, setError] = useState('');
   const [remove, setRemove] = useState(false);
   const use = record.uses?.find((item) => item.plantDiseaseId === pairId);
-  const changed = directions.trim() !== (use?.labelDirections ?? '');
-  async function mutate(action: 'save' | 'verify' | 'approve' | 'remove') {
+  const pair = pairs.find((item) => item.id === pairId);
+  const unavailable = pairId ? unavailableReason(pair) : '';
+  const applied = record.uses?.map((item) => item.plantDiseaseId) ?? [];
+  async function mutate(action: 'save' | 'remove') {
     if (busy.current || disabled || !pairId) return;
+    if (action !== 'remove' && unavailable) {
+      setError(unavailable);
+      return;
+    }
     if (action !== 'remove' && !directions.trim()) {
       setError('Vui lòng nhập hướng dẫn trên nhãn.');
       return;
@@ -44,14 +66,7 @@ export function MedicineUses({
       await catalogRequest(`/api/admin/medicines/${record.id}/uses/${pairId}`, {
         token,
         method: action === 'remove' ? 'DELETE' : 'PUT',
-        body:
-          action === 'remove'
-            ? undefined
-            : {
-                labelDirections: directions.trim(),
-                ...(action === 'verify' ? { isLabelVerified: true } : {}),
-                ...(action === 'approve' ? { isApproved: true } : {}),
-              },
+        body: action === 'remove' ? undefined : { labelDirections: directions.trim() },
       });
       await onRefresh();
       setPairId('');
@@ -72,11 +87,11 @@ export function MedicineUses({
   return (
     <section
       className="flex flex-col gap-4 border-t border-border pt-5"
-      aria-label="Hướng dẫn sử dụng theo cây và bệnh"
+      aria-label="Cây, bệnh áp dụng và cách dùng"
     >
-      <h3 className="text-xl font-bold">Đối tượng sử dụng và nhãn</h3>
+      <h3 className="text-xl font-bold">Cây, bệnh áp dụng và cách dùng</h3>
       <p className="text-sm text-muted-foreground">
-        Lưu hướng dẫn trước. Sau khi đối soát nhãn, xác minh và duyệt bằng thao tác riêng.
+        Mỗi cặp cây và bệnh chỉ gắn một hướng dẫn. Cặp đã áp dụng không còn trong danh sách chọn.
       </p>
       <ul className="flex flex-col gap-3">
         {record.uses?.map((item) => {
@@ -87,13 +102,7 @@ export function MedicineUses({
               key={item.plantDiseaseId}
               className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3"
             >
-              <div className="min-w-0">
-                <p className="break-words font-semibold">{name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {item.isLabelVerified ? 'Đã xác minh nhãn' : 'Chưa xác minh nhãn'};{' '}
-                  {item.isApproved ? 'Liên kết đã duyệt' : 'Liên kết chưa duyệt'}
-                </p>
-              </div>
+              <p className="min-w-0 break-words font-semibold">{name}</p>
               <Button
                 variant="outline"
                 className="h-auto min-h-11 max-w-full whitespace-normal break-words text-left"
@@ -108,20 +117,20 @@ export function MedicineUses({
       </ul>
       <fieldset disabled={pending || disabled} className="flex min-w-0 flex-col gap-4">
         <legend className="sr-only">Biên tập hướng dẫn</legend>
-        <CatalogSelect
-          label="Chọn cặp cây và bệnh"
+        <PlantDiseasePicker
+          pairs={pairs}
           value={pairId}
+          excludeIds={applied}
           onChange={choose}
-          options={pairs
-            .filter((pair) => pair.isActive || pair.id === pairId)
-            .map((pair) => ({
-              value: pair.id,
-              label: `${pair.plantName} / ${pair.diseaseName}${pair.isActive ? '' : ' (ngừng hoạt động)'}`,
-            }))}
           disabled={pending || disabled}
         />
         {pairId && (
           <>
+            {unavailable && (
+              <p role="alert" className="text-destructive">
+                {unavailable}
+              </p>
+            )}
             <Label htmlFor="medicine-label-directions">Hướng dẫn trên nhãn</Label>
             <Textarea
               id="medicine-label-directions"
@@ -130,22 +139,11 @@ export function MedicineUses({
               rows={5}
             />
             <div className="flex flex-wrap gap-2">
-              <Button disabled={pending || disabled} onClick={() => void mutate('save')}>
+              <Button
+                disabled={pending || disabled || Boolean(unavailable)}
+                onClick={() => void mutate('save')}
+              >
                 Lưu hướng dẫn
-              </Button>
-              <Button
-                variant="outline"
-                disabled={pending || disabled || !use || changed || use.isLabelVerified}
-                onClick={() => void mutate('verify')}
-              >
-                Xác minh nhãn
-              </Button>
-              <Button
-                variant="outline"
-                disabled={pending || disabled || !use?.isLabelVerified || changed || use.isApproved}
-                onClick={() => void mutate('approve')}
-              >
-                Duyệt liên kết
               </Button>
               {use && (
                 <Button
@@ -157,11 +155,6 @@ export function MedicineUses({
                 </Button>
               )}
             </div>
-            {changed && (
-              <p className="text-sm text-muted-foreground">
-                Cần lưu thay đổi trước khi xác minh hoặc duyệt.
-              </p>
-            )}
           </>
         )}
       </fieldset>

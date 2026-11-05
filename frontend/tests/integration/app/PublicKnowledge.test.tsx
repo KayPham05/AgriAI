@@ -85,6 +85,9 @@ describe('public knowledge catalog', () => {
     vi.stubGlobal('fetch', fetch);
     render(<PublicCatalog kind="knowledge-documents" />);
     expect(await screen.findByText(/41 kết quả/)).toBeVisible();
+    expect(screen.queryByRole('navigation', { name: 'Tra cứu nông nghiệp' })).toBeNull();
+    expect(screen.getByLabelText('Lọc theo cây')).toBeVisible();
+    expect(screen.getByLabelText('Lọc theo bệnh')).toBeVisible();
     await userEvent.type(screen.getByLabelText('Tìm kiếm danh mục'), 'chăm sóc');
     await userEvent.click(screen.getByRole('button', { name: 'Tìm kiếm' }));
     await waitFor(() =>
@@ -95,7 +98,7 @@ describe('public knowledge catalog', () => {
       ).toBe(true),
     );
   });
-  it('shows verified use directions with the matching crop and safety information', async () => {
+  it('shows use directions with the matching crop and safety information', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url: string) => json(url.includes('plant-diseases') ? page([pair]) : medicine)),

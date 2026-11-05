@@ -23,18 +23,6 @@ import { CatalogPager, CatalogSelect } from './CatalogControls';
 import { catalogError, catalogLabels, contentFields, publicPath, safeSource } from './catalogUi';
 import { PublicCatalogCard } from './PublicCatalogCard';
 
-export function CatalogLinks() {
-  return (
-    <nav aria-label="Tra cứu nông nghiệp" className="flex flex-wrap gap-2">
-      {(Object.keys(catalogLabels) as CatalogKind[]).map((kind) => (
-        <Button key={kind} asChild variant="outline">
-          <Link href={publicPath(kind)}>{catalogLabels[kind]}</Link>
-        </Button>
-      ))}
-    </nav>
-  );
-}
-
 function PlantDetailContent({
   record,
   plant,
@@ -195,7 +183,7 @@ function PlantDetailContent({
                     className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-primary underline-offset-4 hover:underline"
                     href={`/knowledge?plantId=${pair.plantId}&diseaseId=${pair.diseaseId}`}
                   >
-                    Bài viết liên quan
+                    Trích xuất liên quan
                     <ArrowRight className="size-4" aria-hidden="true" />
                   </Link>
                   <Link
@@ -305,24 +293,20 @@ function CatalogContent({
       {kind === 'medicines' && (
         <section className="flex flex-col gap-4">
           <h2 className="text-xl font-bold">Hướng dẫn theo đối tượng sử dụng</h2>
-          {record.uses
-            ?.filter((use) => use.isApproved && use.isLabelVerified)
-            .map((use) => {
-              const pair = pairs.find((item) => item.id === use.plantDiseaseId);
-              return (
-                <div key={use.plantDiseaseId} className="border-t border-border pt-4">
-                  <h3 className="font-semibold">
-                    {pair
-                      ? `${pair.plantName} / ${pair.diseaseName}`
-                      : 'Đối tượng đang được cập nhật'}
-                  </h3>
-                  <p className="mt-2 whitespace-pre-wrap break-words">{use.labelDirections}</p>
-                </div>
-              );
-            })}
-          {!record.uses?.some((use) => use.isApproved && use.isLabelVerified) && (
-            <p>Chưa có hướng dẫn sử dụng đã xác minh được công khai.</p>
-          )}
+          {record.uses?.map((use) => {
+            const pair = pairs.find((item) => item.id === use.plantDiseaseId);
+            return (
+              <div key={use.plantDiseaseId} className="border-t border-border pt-4">
+                <h3 className="font-semibold">
+                  {pair
+                    ? `${pair.plantName} / ${pair.diseaseName}`
+                    : 'Đối tượng đang được cập nhật'}
+                </h3>
+                <p className="mt-2 whitespace-pre-wrap break-words">{use.labelDirections}</p>
+              </div>
+            );
+          })}
+          {!record.uses?.length && <p>Chưa có hướng dẫn sử dụng được công khai.</p>}
         </section>
       )}
       {linkedPairs.length > 0 && (
@@ -338,7 +322,7 @@ function CatalogContent({
                   className="text-primary underline"
                   href={`/knowledge?plantId=${pair.plantId}&diseaseId=${pair.diseaseId}`}
                 >
-                  Bài viết liên quan
+                  Trích xuất liên quan
                 </Link>
                 <Link
                   className="text-primary underline"
@@ -448,7 +432,6 @@ export function PublicCatalog({ kind, id }: { kind: CatalogKind; id?: string }) 
   ];
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-5 py-8 sm:px-8 lg:px-12">
-      <CatalogLinks />
       {!id && (
         <>
           <header className="flex flex-col gap-2">
@@ -526,7 +509,7 @@ export function PublicCatalog({ kind, id }: { kind: CatalogKind; id?: string }) 
                   </h2>
                   <p className="line-clamp-3 break-words text-muted-foreground">
                     {item.content ??
-                      item.targetUse ??
+                      item.activeIngredient ??
                       item.description ??
                       'Xem thông tin chi tiết trong danh mục.'}
                   </p>

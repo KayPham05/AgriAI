@@ -9,6 +9,9 @@ export const pair: PlantDiseasePair = {
   classIndex: 0,
   className: 'Ca_chua___Chay_la_som',
   isActive: true,
+  conditionType: 'Disease',
+  plantIsActive: true,
+  diseaseIsActive: true,
 };
 export const article: CatalogRecord = {
   id: 'article-a',
@@ -34,12 +37,10 @@ export const medicine: CatalogRecord = {
     {
       plantDiseaseId: 'pair-a',
       labelDirections: 'Hướng dẫn kiểm thử',
-      isLabelVerified: true,
-      isApproved: true,
     },
   ],
   isActive: true,
-  isApproved: true,
+  isApproved: false,
   isPublic: true,
   createdAt: '2026-10-25T00:00:00Z',
   updatedAt: '2026-10-25T00:00:00Z',

@@ -436,7 +436,7 @@ public class DatabaseImprovementTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Medicine_ShouldRequireMandatoryFields_AndVerifiedLabelBeforeUseApproval()
+    public async Task Medicine_ShouldRequireMandatoryFields_AndKeepPublishingAfterContentEdit()
     {
         await using var database = CreateDatabase();
         var id = Guid.NewGuid();
@@ -450,19 +450,14 @@ public class DatabaseImprovementTests : IAsyncLifetime
             VALUES ({id}, 'Test product', 'Test ingredient', 'Test target', 'https://example.test/label', 'Test warning', 'Test label', now(), now())
             """);
         var classId = await database.PlantDiseases.OrderBy(p => p.ClassIndex).Select(p => p.Id).FirstAsync();
-        Func<Task> unverified = async () => await database.Database.ExecuteSqlInterpolatedAsync($"""
+        await database.Database.ExecuteSqlInterpolatedAsync($"""
             INSERT INTO medicine_uses (medicine_id, plant_disease_id, label_directions, is_approved)
             VALUES ({id}, {classId}, 'Follow verified label', true)
-            """);
-        (await unverified.Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be(PostgresErrorCodes.CheckViolation);
-        await database.Database.ExecuteSqlInterpolatedAsync($"""
-            INSERT INTO medicine_uses (medicine_id, plant_disease_id, label_directions, is_label_verified, is_approved)
-            VALUES ({id}, {classId}, 'Follow verified label', true, true)
             """);
         await database.Database.ExecuteSqlInterpolatedAsync($"UPDATE medicines SET is_approved = true, is_public = true WHERE id = {id}");
         await database.Database.ExecuteSqlInterpolatedAsync($"UPDATE medicines SET safety_warning = 'Updated warning' WHERE id = {id}");
         (await database.Database.SqlQuery<bool>($"""
-            SELECT NOT is_approved AND NOT is_public AS "Value" FROM medicines WHERE id = {id}
+            SELECT NOT is_approved AND is_public AS "Value" FROM medicines WHERE id = {id}
             """).SingleAsync()).Should().BeTrue();
         (await database.Database.SqlQuery<bool>($"""
             SELECT NOT is_approved AND NOT is_label_verified AS "Value" FROM medicine_uses WHERE medicine_id = {id}
@@ -470,7 +465,7 @@ public class DatabaseImprovementTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task EditingMedicineDirections_ShouldRevokeUseAndProductApproval()
+    public async Task EditingMedicineDirections_ShouldKeepProductPublicAndResetLegacyFlags()
     {
         await using var database = CreateDatabase();
         var medicine = Guid.NewGuid();
@@ -485,7 +480,7 @@ public class DatabaseImprovementTests : IAsyncLifetime
             WHERE medicine_id = {medicine} AND plant_disease_id = {classId};
             """);
         (await database.Database.SqlQuery<bool>($"""
-            SELECT NOT m.is_approved AND NOT m.is_public AND NOT u.is_approved AND NOT u.is_label_verified
+            SELECT m.is_public AND NOT m.is_approved AND NOT u.is_approved AND NOT u.is_label_verified
                 AND u.label_directions = 'Changed instructions' AS "Value"
             FROM medicines m JOIN medicine_uses u ON u.medicine_id = m.id WHERE m.id = {medicine}
             """).SingleAsync()).Should().BeTrue();
