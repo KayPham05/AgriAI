@@ -174,6 +174,10 @@ describe('URL-driven app navigation', () => {
       </App>,
     );
     expect(await screen.findByText('Danh mục công khai')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Tra cứu thuốc' })).toHaveAttribute(
+      'href',
+      '/medicines',
+    );
     expect(window.location.pathname).toBe('/plants');
     expect(getPredictionHistory).not.toHaveBeenCalled();
   });

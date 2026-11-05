@@ -105,7 +105,9 @@ public class DiseaseService : IDiseaseService
 
     private static DiseaseDto MapToDto(Disease disease, bool includeUnapproved = false)
     {
-        var visible = includeUnapproved || disease.IsContentApproved;
+        // Keep the legacy parameter/approval metadata for existing clients. Saved active content
+        // is public immediately; administrators can also inspect inactive content.
+        var visible = includeUnapproved || disease.IsActive;
         const string pending = "Thông tin đang được cập nhật";
         return new DiseaseDto(
             disease.Id,

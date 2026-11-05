@@ -121,7 +121,7 @@ export function CatalogEditor({
             />
             <p className="text-sm text-muted-foreground">
               Phân loại áp dụng cho mọi cây liên kết với mục này. Chỉ loại Bệnh được gắn hướng dẫn
-              thuốc. Thay đổi phân loại cần duyệt lại nội dung.
+              thuốc.
             </p>
           </>
         )}
@@ -156,7 +156,7 @@ export function CatalogEditor({
                 </p>
               ))}
             <p className="text-sm text-muted-foreground">
-              Không chọn cặp nào để tạo bài viết chung.
+              Không chọn cặp nào để tạo trích xuất chung.
             </p>
           </fieldset>
         )}
@@ -172,20 +172,20 @@ export function CatalogEditor({
         </Button>
         {kind === 'knowledge-documents' && (
           <Button type="button" variant="outline" onClick={() => setPreview((value) => !value)}>
-            Xem trước bài viết
+            Xem trước trích xuất
           </Button>
         )}
       </div>
       {preview && (
         <section
-          aria-label="Xem trước bài viết"
+          aria-label="Xem trước trích xuất"
           className="flex flex-col gap-3 border-t border-border pt-4"
         >
           <h3 className="break-words text-xl font-bold">{draft.title}</h3>
           <p className="whitespace-pre-wrap break-words">{draft.content}</p>
         </section>
       )}
-      {record.id && kind !== 'plants' && (
+      {record.id && kind === 'knowledge-documents' && (
         <p className="text-sm text-muted-foreground">
           Thay đổi nội dung cần được duyệt lại trước khi công khai.
         </p>

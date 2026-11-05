@@ -19,11 +19,13 @@ function searchableText(value: string): string {
 export function PlantDiseasePicker({
   pairs,
   value,
+  excludeIds,
   onChange,
   disabled,
 }: {
   pairs: PlantDiseasePair[];
   value: string;
+  excludeIds?: string[];
   onChange: (value: string) => void;
   disabled?: boolean;
 }) {
@@ -36,7 +38,11 @@ export function PlantDiseasePicker({
   const terms = searchableText(search).trim().split(/\s+/).filter(Boolean);
   const options = pairs.filter(
     (pair) =>
-      (pair.isActive || pair.id === value) &&
+      pair.isActive &&
+      pair.plantIsActive === true &&
+      pair.diseaseIsActive === true &&
+      pair.conditionType === 'Disease' &&
+      (pair.id === value || !excludeIds?.includes(pair.id)) &&
       terms.every((term) =>
         searchableText(`${pair.plantName} ${pair.diseaseName} ${pair.className}`).includes(term),
       ),

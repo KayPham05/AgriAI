@@ -320,7 +320,7 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
 
                     b.ToTable("medicines", null, t =>
                         {
-                            t.HasCheckConstraint("ck_medicines_public", "NOT is_public OR (is_approved AND is_active)");
+                            t.HasCheckConstraint("ck_medicines_public", "NOT is_public OR is_active");
 
                             t.HasCheckConstraint("ck_medicines_required", "btrim(product_name) <> '' AND btrim(active_ingredient) <> '' AND btrim(source_url) <> '' AND btrim(safety_warning) <> '' AND btrim(label_reference) <> ''");
                         });
@@ -359,8 +359,6 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
 
                     b.ToTable("medicine_uses", null, t =>
                         {
-                            t.HasCheckConstraint("ck_medicine_uses_approval", "NOT is_approved OR is_label_verified");
-
                             t.HasCheckConstraint("ck_medicine_uses_directions", "btrim(label_directions) <> ''");
                         });
                 });

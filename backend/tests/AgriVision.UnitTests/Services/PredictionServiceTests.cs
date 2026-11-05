@@ -341,18 +341,24 @@ public class PredictionServiceTests
     [InlineData("Healthy", true)]
     [InlineData("NutrientDeficiency", true)]
     [InlineData("Disease", false)]
-    public async Task Medication_ShouldBeHidden_ForHealthyNutrientOrUnapprovedContent(string condition, bool approved)
+    public async Task LegacyMedication_ShouldStayHidden_WhileSavedActiveAdviceIsVisible(string condition, bool approved)
     {
         ConfigureHealthyClass();
         var disease = _plantDiseaseRepository.PlantDiseases.Single().Disease;
         disease.ConditionType = condition;
         disease.IsContentApproved = approved;
         disease.Medication = "Medication must not be shown";
+        disease.Description = "Saved description";
+        disease.Treatment = "Saved treatment";
+        _diseasePredictor.Result = new(0, "Tomato___Healthy", 0.95f, [new(0, "Tomato___Healthy", 0.95f)]);
         var result = await _predictionService.PredictAsync(CreateFile(), null);
         result.PredictedPlantDisease.Disease.IsContentApproved.Should().Be(approved);
         result.PredictedPlantDisease.Disease.ConditionType.Should().Be(condition);
         result.Medication.Should().BeNull();
-        if (!approved) result.PredictedPlantDisease.Disease.Description.Should().Be("Thông tin đang được cập nhật");
+        result.InformationPending.Should().BeFalse();
+        result.PredictedPlantDisease.Disease.Description.Should().Be("Saved description");
+        result.PredictedPlantDisease.Disease.Treatment.Should().Be("Saved treatment");
+        result.PredictionDetails.Single().PlantDisease!.Disease.Treatment.Should().Be("Saved treatment");
     }
 
     [Fact]
@@ -372,6 +378,27 @@ public class PredictionServiceTests
         stored.Images.Single().ImagePath.Should().BeNull();
         entity.ResultSnapshotJson.Should().NotBeNull();
         (await _predictionService.GetPredictionByIdAsync(result.Id, userId: Guid.NewGuid())).Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("pair")]
+    [InlineData("plant")]
+    [InlineData("disease")]
+    public async Task InactiveCatalog_ShouldHideAdviceInPrimaryAndTopK(string inactive)
+    {
+        ConfigureHealthyClass();
+        var pair = _plantDiseaseRepository.PlantDiseases.Single();
+        pair.Disease.IsContentApproved = true;
+        pair.Disease.Treatment = "Inactive advice";
+        if (inactive == "pair") pair.IsActive = false;
+        if (inactive == "plant") pair.Plant.IsActive = false;
+        if (inactive == "disease") pair.Disease.IsActive = false;
+        _diseasePredictor.Result = new(0, "Tomato___Healthy", 0.95f, [new(0, "Tomato___Healthy", 0.95f)]);
+        var result = await _predictionService.PredictAsync(CreateFile(), null);
+        result.InformationPending.Should().BeTrue();
+        result.PredictedPlantDisease.Disease.Treatment.Should().Be("Thông tin đang được cập nhật");
+        result.PredictionDetails.Single().PlantDisease!.Disease.Treatment.Should().Be("Thông tin đang được cập nhật");
+        result.Medication.Should().BeNull();
     }
 
     [Theory]

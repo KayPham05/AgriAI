@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { CatalogEditor } from './CatalogEditor';
 import { CatalogPager, CatalogSelect, ConfirmAction } from './CatalogControls';
 import { MedicineUses } from './MedicineUses';
+import { PlantDiseaseManager } from './PlantDiseaseManager';
 import { catalogError, catalogLabels } from './catalogUi';
 
 function RelatedCatalogInfo({
@@ -148,7 +149,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
       setEditorVersion((value) => value + 1);
       setRevision((value) => value + 1);
     } catch (failure) {
-      // A child mutation may have revoked parent publication; stale approval must not remain actionable.
+      // Do not leave stale label verification actionable after a child mutation.
       setRecord(null);
       setError(`Thao tác đã lưu nhưng chưa tải lại được dữ liệu. ${catalogError(failure)}`);
       throw failure;
@@ -169,7 +170,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
       setEditorVersion((value) => value + 1);
       setRevision((value) => value + 1);
       setNotice(
-        kind === 'plants'
+        kind !== 'knowledge-documents'
           ? 'Đã lưu nội dung.'
           : 'Đã lưu nội dung. Kiểm tra trạng thái duyệt trước khi công khai.',
       );
@@ -202,14 +203,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
           setRecord(
             await catalogRequest(path, { token, method: 'PUT', body: { ...body, isActive: true } }),
           );
-        } else
-          setRecord(
-            await catalogRequest(`/api/admin/diseases/${record.id}/approval`, {
-              token,
-              method: 'PUT',
-              body: { isContentApproved: action === 'approve' },
-            }),
-          );
+        }
       } else {
         setRecord(
           await catalogRequest(`${path}/publication`, {
@@ -217,10 +211,11 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
             method: 'PUT',
             body: {
               isActive: true,
-              isApproved:
-                action === 'restore' || action === 'revoke'
+              ...(kind === 'knowledge-documents'
+                ? { isApproved: action === 'restore' || action === 'revoke'
                   ? false
-                  : action === 'approve' || Boolean(record.isApproved),
+                  : action === 'approve' || Boolean(record.isApproved) }
+                : {}),
               isPublic: action === 'publish',
             },
           }),
@@ -365,12 +360,8 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
                 <Badge variant="outline">
                   {record.isActive ? 'Đang hoạt động' : 'Đã ngừng hoạt động'}
                 </Badge>
-                {kind !== 'plants' && (
-                  <Badge variant="outline">
-                    {(kind === 'diseases' ? record.isContentApproved : record.isApproved)
-                      ? 'Đã duyệt'
-                      : 'Chưa duyệt'}
-                  </Badge>
+                {kind === 'knowledge-documents' && (
+                  <Badge variant="outline">{record.isApproved ? 'Đã duyệt' : 'Chưa duyệt'}</Badge>
                 )}
                 {!catalog && (
                   <Badge variant="outline">
@@ -378,7 +369,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
                   </Badge>
                 )}
               </div>
-              <RelatedCatalogInfo kind={kind} record={record} pairs={pairs} />
+              {kind !== 'plants' && <RelatedCatalogInfo kind={kind} record={record} pairs={pairs} />}
               <div className="flex flex-wrap gap-2">
                 {!record.isActive ? (
                   <Button disabled={pending || dirty} onClick={() => void change('restore')}>
@@ -386,26 +377,18 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
                   </Button>
                 ) : (
                   <>
-                    {kind !== 'plants' && (
+                    {kind === 'knowledge-documents' && (
                       <Button
                         disabled={pending || dirty}
                         variant="outline"
-                        onClick={() =>
-                          void change(
-                            (kind === 'diseases' ? record.isContentApproved : record.isApproved)
-                              ? 'revoke'
-                              : 'approve',
-                          )
-                        }
+                        onClick={() => void change(record.isApproved ? 'revoke' : 'approve')}
                       >
-                        {(kind === 'diseases' ? record.isContentApproved : record.isApproved)
-                          ? 'Thu hồi duyệt'
-                          : 'Duyệt nội dung'}
+                        {record.isApproved ? 'Thu hồi duyệt' : 'Duyệt nội dung'}
                       </Button>
                     )}
                     {!catalog && (
                       <Button
-                        disabled={pending || dirty || !record.isApproved}
+                        disabled={pending || dirty || (kind === 'knowledge-documents' && !record.isApproved)}
                         onClick={() => void change(record.isPublic ? 'hide' : 'publish')}
                       >
                         {record.isPublic ? 'Ẩn công khai' : 'Công khai'}
@@ -442,6 +425,23 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
             onDirtyChange={setDirty}
             disabled={pending}
           />
+          {kind === 'plants' && record.id && (
+            <PlantDiseaseManager
+              key={record.id}
+              token={token}
+              plantId={record.id}
+              disabled={pending || dirty || !record.isActive}
+              onBusyChange={(value) => {
+                lock.current = value;
+                setUsePending(value);
+              }}
+              onChange={(updated) =>
+                setPairs((current) =>
+                  current.map((pair) => (pair.id === updated.id ? updated : pair)),
+                )
+              }
+            />
+          )}
           {kind === 'medicines' && record.id && (
             <MedicineUses
               record={record}

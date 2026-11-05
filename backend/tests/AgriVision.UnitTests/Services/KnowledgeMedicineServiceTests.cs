@@ -15,7 +15,7 @@ public class KnowledgeMedicineServiceTests
     [InlineData(0.81f, "Disease", true, true, true)]
     [InlineData(0.9f, "Healthy", true, true, false)]
     [InlineData(0.9f, "NutrientDeficiency", true, true, false)]
-    [InlineData(0.9f, "Disease", false, true, false)]
+    [InlineData(0.9f, "Disease", false, true, true)]
     [InlineData(0.9f, "Disease", true, false, false)]
     [InlineData(float.NaN, "Disease", true, true, false)]
     [InlineData(float.PositiveInfinity, "Disease", true, true, false)]
@@ -42,16 +42,41 @@ public class KnowledgeMedicineServiceTests
         else repository.Verify(r => r.GetEligibleUsesAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Fact]
+    public async Task MedicinePublication_ShouldOnlyRequireActivity()
+    {
+        var medicine = new Medicine { ProductName = "Fixture", IsActive = true };
+        var repository = new Mock<IMedicineRepository>();
+        repository.Setup(r => r.GetAsync(medicine.Id, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(medicine);
+        var service = new MedicineService(repository.Object, Mock.Of<IPlantDiseaseRepository>());
+
+        var published = await service.PublishAsync(medicine.Id, new CatalogPublicationRequest(false, true, true));
+
+        published.IsPublic.Should().BeTrue();
+        published.IsApproved.Should().BeFalse();
+        await FluentActions.Invoking(() => service.PublishAsync(
+            medicine.Id, new CatalogPublicationRequest(false, true, false)))
+            .Should().ThrowAsync<ArgumentException>();
+    }
+
     [Theory]
     [InlineData(false, true)]
     [InlineData(true, false)]
-    public async Task Publication_ShouldRejectPublicContentWithoutApprovalOrActivity(bool approved, bool active)
+    public async Task DocumentPublication_ShouldRequireApprovalAndActivity(bool approved, bool active)
     {
-        var medicines = new MedicineService(Mock.Of<IMedicineRepository>(), Mock.Of<IPlantDiseaseRepository>());
-        var documents = new KnowledgeDocumentService(Mock.Of<IKnowledgeDocumentRepository>(), Mock.Of<IPlantDiseaseRepository>());
-        var request = new CatalogPublicationRequest(approved, true, active);
-        await FluentActions.Invoking(() => medicines.PublishAsync(Guid.NewGuid(), request)).Should().ThrowAsync<ArgumentException>();
-        await FluentActions.Invoking(() => documents.PublishAsync(Guid.NewGuid(), request)).Should().ThrowAsync<ArgumentException>();
+        var document = new KnowledgeDocument
+        {
+            Title = "Fixture", Content = "Fixture", SourceUrl = "https://example.test/source"
+        };
+        var repository = new Mock<IKnowledgeDocumentRepository>();
+        repository.Setup(r => r.GetAsync(document.Id, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(document);
+        var service = new KnowledgeDocumentService(repository.Object, Mock.Of<IPlantDiseaseRepository>());
+
+        await FluentActions.Invoking(() => service.PublishAsync(
+            document.Id, new CatalogPublicationRequest(approved, true, active)))
+            .Should().ThrowAsync<ArgumentException>();
     }
 
     [Theory]
@@ -101,7 +126,7 @@ public class KnowledgeMedicineServiceTests
     }
 
     [Fact]
-    public async Task LabelDirectionsEdit_ShouldReturnPersistedVerification_WhenFlagsAreOmitted()
+    public async Task LabelDirectionsEdit_ShouldPersistDirections_WhenFlagsAreOmitted()
     {
         var pair = new PlantDisease { Plant = new Plant(), Disease = new Disease { ConditionType = "Disease" } };
         var entity = new Medicine();
@@ -123,7 +148,6 @@ public class KnowledgeMedicineServiceTests
         var result = await service.AssignUseAsync(entity.Id, pair.Id, request);
 
         result.IsApproved.Should().BeFalse();
-        result.IsLabelVerified.Should().BeFalse();
         result.LabelDirections.Should().Be("Changed");
     }
 }
