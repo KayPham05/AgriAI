@@ -21,8 +21,15 @@ type View =
 
 export function AgriculturalProfilesRoute() {
   const { profile: userProfile, session, openAuthentication } = useAuth();
-  const { profiles, isLoading, error, createProfile, updateProfile, deleteProfile } =
-    useAgriculturalProfiles();
+  const {
+    profiles,
+    isLoading,
+    error,
+    createProfile,
+    updateProfile,
+    deleteProfile,
+    removePrediction,
+  } = useAgriculturalProfiles();
   const { viewHistoryItem } = useHistory();
   const [view, setView] = useState<View>({ type: 'list' });
   const [search, setSearch] = useState('');
@@ -295,9 +302,10 @@ export function AgriculturalProfilesRoute() {
                 </CardContent>
               </Card>
               <AgriculturalProfileHistory
-                key={selected.id}
+                key={`${selected.id}-${selected.predictionCount}`}
                 profileId={selected.id}
                 token={session.token}
+                onRemoved={() => removePrediction?.(selected.id)}
                 onView={viewHistoryItem}
               />
             </div>

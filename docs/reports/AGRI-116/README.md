@@ -395,3 +395,77 @@ integration 65/65 passed. The first integration build lacked its SQL fixture in
 the QA copy. The independent rerun with the database directory included passed.
 Real checkpoint and R2 suites were excluded. Application DB migrations, coverage
 and GitHub Actions were outside this verification run.
+
+## Cập nhật từ AGRI-128 — 2026-11-06
+
+Nhánh AGRI-116-agricultural-profile-ui-extend đã fast-forward đến 16a0115
+(origin/AGRI-128-backend-improvement). Không có conflict. Bản cập nhật gồm
+account recovery/2FA và điều chỉnh landing prediction/profile drafts từ upstream.
+Kiểm chứng mới: tsc --noEmit pass và 30/30 test trong 5 suite regression
+hồ sơ/chẩn đoán pass. Chưa chạy lại backend, full frontend, coverage hoặc CI.
+Merge hiện áp dụng ở local. File next-env.d.ts và thí nghiệm AI local được giữ.
+
+## Đồng bộ xóa dự đoán với hồ sơ — 2026-11-06
+
+AppProvider.tsx tải lại danh sách hồ sơ sau DELETE dự đoán thành công để cập nhật
+predictionCount theo dữ liệu server. AgriculturalProfilesRoute.tsx tải lại lịch
+sử đang mở khi số lượt thay đổi. Backend hiện đã xóa bản ghi predictions chung
+và tính số lượt bằng COUNT theo agricultural_profile_id, không lưu lịch sử trùng.
+Response cập nhật hồ sơ được kiểm tra phiên và thứ tự request để tránh áp dụng
+response cũ. DELETE lỗi giữ dữ liệu hiện tại. Nếu DELETE thành công nhưng tải
+hồ sơ lỗi, bản ghi vẫn được loại khỏi Mẫu đã lưu và lỗi đồng bộ được hiển thị.
+
+Regression mới ProfilePredictionDeletion.test.tsx tái hiện hai lỗi thiếu refresh
+trước sửa. Sau sửa, 9/9 test của ba suite liên quan pass, typecheck và lint pass.
+Chưa kiểm browser hoặc chạy lại backend trong lượt này. Chưa commit/push.
+
+Full frontend run được dừng sau khi ghi nhận lỗi timeout ở Admin entrance,
+startup và các suite Admin workspace/overview. Không có kết quả tổng hoàn tất
+cho lượt full suite này. Regression mục tiêu 9/9, TypeScript và lint 259 file
+đã pass riêng. Các lỗi full suite cần điều tra riêng trước khi xác nhận CI.
+
+## Xóa lượt dự đoán khỏi hồ sơ — 2026-11-06
+
+AgriculturalProfileHistory thêm nút Xóa khỏi hồ sơ và popup xác nhận, nêu rõ kết
+quả được giữ trong Mẫu đã lưu. Hủy không gọi API. Đang xử lý chặn thao tác lặp
+và đóng popup, lỗi giữ kết quả để thử lại. Thành công giảm bộ đếm của hồ sơ trong
+context và tải lại lịch sử từ trang đầu để xử lý trang cuối bị rỗng.
+
+DELETE /api/predictions/{id}/agricultural-profile/{profileId} kiểm tra đồng thời
+owner của prediction và profile trong câu UPDATE. Chỉ gỡ agricultural_profile_id,
+giữ prediction, snapshot và ảnh. Guest bị chặn, foreign/missing/wrong link trả
+404. Cập nhật controller/service/repository/interfaces, manifest và API tests.
+Trigger hiện có cho phép gỡ FK nên không cần migration mới.
+
+Kiểm chứng frontend mới: 44/44 test trong 4 suite, TypeScript và lint 259 file
+pass. Chưa chạy full suite hoặc browser trong lượt này. Chưa commit/push.
+
+Backend verification trong .NET 9 container với PostgreSQL disposable đã pass
+25/25 API profile/contract tests và 43/43 PredictionService unit tests. API test
+mới kiểm guest/foreign/wrong profile, count về 0, grouped history rỗng, saved
+history còn 1 và ảnh giữ nguyên. Lượt đầu 24 pass/1 fail do so timestamp ảnh
+vừa tạo trong bộ nhớ với PostgreSQL (mất phần nhỏ hơn microsecond). Đã đổi
+baseline sang GET bản lưu trước thao tác, rồi lượt API chạy lại 25/25 pass.
+Không chạy CI, real storage hoặc browser E2E. Docker ứng dụng chưa rebuild.
+
+## Cập nhật Docker local để hiển thị nút — 2026-11-06
+
+Phát hiện frontend/backend đang chạy container cũ khoảng 29 giờ. Đã build và
+recreate riêng hai service, cả hai healthy. Backend mới cần ba migration của
+128: OptionalMedicineTargetUse, RemoveMedicineApprovalGates và EmailTwoFactor.
+Trước migration đã tạo pg_dump -Fc và pg_restore --list kiểm tra được, backup
+ignored .cache/qa-verification/agri116/local-ui-refresh/before-ui-refresh.dump
+(87.416 byte). Chạy --migrate riêng thành công, giữ database/volumes.
+
+HTTP /agricultural-profiles trả 200, bundle JavaScript đang phục vụ chứa nút
+Xóa khỏi hồ sơ. API health 200 và endpoint DELETE gỡ liên kết không token trả
+401. Chưa kiểm lại thao tác xóa bằng browser với tài khoản thật. Chưa commit/push.
+
+## Chuẩn bị push 116-extend — 2026-11-06
+
+Đưa lên phần đồng bộ xóa Mẫu đã lưu và gỡ dự đoán khỏi hồ sơ, gồm API owner-only,
+popup xác nhận, bộ đếm và regression tests. Kiểm tra mới trước commit: TypeScript
+và 44/44 test của 4 suite frontend liên quan pass (6,93 giây). Backend 25 API và
+43 unit tests, production builds và smoke Docker là kết quả đã ghi ở các mục
+trước. Full suite/coverage/CI chưa xác nhận xanh. Thí nghiệm AI và file sinh tự
+động next-env.d.ts được loại khỏi commit.

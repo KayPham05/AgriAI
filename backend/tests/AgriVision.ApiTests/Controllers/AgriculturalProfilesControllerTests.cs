@@ -276,6 +276,40 @@ public class AgriculturalProfilesControllerTests : IClassFixture<AgriVisionFacto
         (await owner.PutAsJsonAsync(url, new { agriculturalProfileId = profileId })).StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
+
+    [Trait("ApiCase", "profiles.detach_prediction")]
+    [Fact]
+    public async Task DetachPrediction_OnlyOwnerCanRemoveLink_AndRetainsSavedResultAndImages()
+    {
+        using var owner = _factory.CreateClient();
+        using var other = _factory.CreateClient();
+        using var guest = _factory.CreateClient();
+        await RegisterAsync(owner);
+        await RegisterAsync(other);
+        var profileId = await CreateProfileAsync(owner);
+        var otherProfile = await CreateProfileAsync(other);
+        using var upload = CreatePredictionRequest(profileId);
+        var created = await owner.PostAsync("/api/predictions", upload);
+        var prediction = (await created.Content.ReadFromJsonAsync<PredictionResultDto>())!;
+        var url = $"/api/predictions/{prediction.Id}/agricultural-profile/{profileId}";
+        var saved = (await owner.GetFromJsonAsync<PredictionResultDto>($"/api/predictions/{prediction.Id}"))!;
+        (await guest.DeleteAsync(url)).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await other.DeleteAsync(url)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await owner.DeleteAsync($"/api/predictions/{prediction.Id}/agricultural-profile/{otherProfile}"))
+            .StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await owner.DeleteAsync(url)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var retained = (await owner.GetFromJsonAsync<PredictionResultDto>($"/api/predictions/{prediction.Id}"))!;
+        retained.AgriculturalProfileId.Should().BeNull();
+        retained.Images.Should().BeEquivalentTo(saved.Images);
+        retained.Confidence.Should().Be(prediction.Confidence);
+        var profile = await owner.GetFromJsonAsync<JsonElement>($"{ProfilesUrl}/{profileId}");
+        profile.GetProperty("predictionCount").GetInt32().Should().Be(0);
+        var history = await owner.GetFromJsonAsync<JsonElement>("/api/predictions");
+        history.GetProperty("totalCount").GetInt32().Should().Be(1);
+        var grouped = await owner.GetFromJsonAsync<JsonElement>($"/api/predictions?agriculturalProfileId={profileId}");
+        grouped.GetProperty("totalCount").GetInt32().Should().Be(0);
+    }
+
     private static async Task<Guid> RegisterAsync(HttpClient client)
     {
         var response = await client.PostAsJsonAsync("/api/auth/register",

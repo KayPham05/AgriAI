@@ -80,6 +80,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // User Profile
   const [userProfile, setUserProfile] = useState<UserProfile>(guestProfile);
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
+  const activeSessionRef = useRef(authSession);
+  activeSessionRef.current = authSession;
+  const profileRefreshRef = useRef(0);
   const [agriculturalProfiles, setAgriculturalProfiles] = useState<AgriculturalProfile[]>([]);
   const [agriculturalProfilesLoading, setAgriculturalProfilesLoading] = useState(false);
   const [agriculturalProfilesError, setAgriculturalProfilesError] = useState<string | null>(null);
@@ -257,6 +260,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     async (id: string) => {
       try {
         if (authSession) await deletePrediction(id, authSession.token);
+        if (activeSessionRef.current !== authSession) return;
         setHistory((prev) => prev.filter((item) => item.id !== id));
         addToast({
           type: 'info',
@@ -265,6 +269,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
             ? 'Kết quả đã được xóa khỏi tài khoản.'
             : 'Kết quả đã được xóa khỏi trình duyệt.',
         });
+        if (authSession) {
+          const refresh = ++profileRefreshRef.current;
+          try {
+            const profiles = await getAgriculturalProfiles(authSession.token);
+            if (activeSessionRef.current !== authSession || refresh !== profileRefreshRef.current)
+              return;
+            setAgriculturalProfiles(profiles);
+            setAgriculturalProfilesError(null);
+          } catch (error) {
+            if (activeSessionRef.current !== authSession || refresh !== profileRefreshRef.current)
+              return;
+            setAgriculturalProfilesError(
+              error instanceof Error
+                ? error.message
+                : 'Không thể cập nhật số lượt chẩn đoán. Vui lòng tải lại trang.',
+            );
+          }
+        }
       } catch (error) {
         addToast({
           type: 'error',
@@ -363,6 +385,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       avatarUrl: user.avatarUrl ?? '',
     }));
     updateStoredAuthUser(user);
+  }, []);
+  const removeProfilePrediction = useCallback((profileId: string) => {
+    setAgriculturalProfiles((current) =>
+      current.map((profile) =>
+        profile.id === profileId
+          ? { ...profile, predictionCount: Math.max(0, profile.predictionCount - 1) }
+          : profile,
+      ),
+    );
   }, []);
   const recordProfilePrediction = useCallback((profileId: string) => {
     setAgriculturalProfiles((current) =>
@@ -476,6 +507,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       error: agriculturalProfilesError,
       createProfile,
       recordPrediction: recordProfilePrediction,
+      removePrediction: removeProfilePrediction,
       updateProfile: updateAgriculturalProfileState,
       deleteProfile: deleteAgriculturalProfileState,
     }),
@@ -485,6 +517,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       agriculturalProfilesError,
       createProfile,
       recordProfilePrediction,
+      removeProfilePrediction,
       updateAgriculturalProfileState,
       deleteAgriculturalProfileState,
     ],
