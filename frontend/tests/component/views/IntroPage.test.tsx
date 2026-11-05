@@ -102,7 +102,7 @@ describe('IntroPage', () => {
     expect(screen.queryByRole('button', { name: /Khám phá bản demo/i })).not.toBeInTheDocument();
   });
 
-  it('offers registration and an authenticated trial from the closing banner', async () => {
+  it('offers registration and links to the anonymous prediction section from the closing banner', async () => {
     const onRegister = vi.fn();
     const onLogin = vi.fn();
     render(<IntroPage onLogin={onLogin} onRegister={onRegister} />);
@@ -110,8 +110,15 @@ describe('IntroPage', () => {
     await userEvent.click(within(banner).getByRole('button', { name: 'Tạo tài khoản' }));
     expect(onRegister).toHaveBeenCalledOnce();
     expect(onLogin).not.toHaveBeenCalled();
-    await userEvent.click(within(banner).getByRole('button', { name: 'Thử nghiệm ngay' }));
-    expect(onLogin).toHaveBeenCalledOnce();
-    expect(within(banner).getByText(/Đăng nhập để thử phân tích/)).toBeVisible();
+    expect(within(banner).getByRole('link', { name: 'Thử dự đoán' })).toHaveAttribute(
+      'href',
+      '#try-prediction',
+    );
+    expect(screen.getByRole('region', { name: 'Dự đoán ngay' })).toHaveAttribute(
+      'id',
+      'try-prediction',
+    );
+    expect(onLogin).not.toHaveBeenCalled();
+    expect(within(banner).getByText(/không cần tài khoản/)).toBeVisible();
   });
 });
