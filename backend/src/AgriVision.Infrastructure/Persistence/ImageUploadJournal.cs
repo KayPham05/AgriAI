@@ -16,6 +16,21 @@ public sealed class ImageUploadJournal(AppDbContext database, IConfiguration con
         var user = await database.Users.FromSqlInterpolated($"SELECT * FROM users WHERE id = {context.UserId} FOR UPDATE")
             .AsNoTracking().SingleOrDefaultAsync(cancellationToken);
         if (user == null || !user.IsActive) throw new UnauthorizedAccessException("User is unavailable.");
+        if (context.CatalogKind != null)
+        {
+            if (user.Role != "Admin") throw new UnauthorizedAccessException("Only administrators can upload catalog images.");
+            var prefix = $"users/{context.UserId:D}/catalog/";
+            var catalogCount = await database.Plants.CountAsync(p => p.ImageKey != null && p.ImageKey.StartsWith(prefix), cancellationToken)
+                + await database.Diseases.CountAsync(d => d.ImageKey != null && d.ImageKey.StartsWith(prefix), cancellationToken)
+                + await database.PendingImageUploads.CountAsync(p => p.UserId == context.UserId && p.Key.StartsWith(prefix), cancellationToken);
+            var catalogLimit = configuration.GetValue("StorageLimits:MaxCatalogImagesPerAdmin", 1000);
+            if (catalogLimit < 1) throw new InvalidOperationException("Catalog image quota must be positive.");
+            if (catalogCount >= catalogLimit) throw new ArgumentException("Đã đạt giới hạn lưu ảnh danh mục.");
+            database.PendingImageUploads.Add(new PendingImageUpload { Key = key, UserId = context.UserId });
+            await database.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return;
+        }
         var limit = configuration.GetValue("StorageLimits:MaxImagesPerUser", 100);
         if (limit < 1) throw new InvalidOperationException("Storage quota must be positive.");
         var stored = await database.PredictionImages.CountAsync(image => image.Prediction.UserId == context.UserId && image.DeletedAt == null, cancellationToken);
@@ -35,6 +50,14 @@ public sealed class ImageUploadJournal(AppDbContext database, IConfiguration con
         if (!ImageStorageKey.IsAvatarForUser(key, userId)) throw new ArgumentException("Invalid retired avatar key.");
         if (await database.PendingImageUploads.AnyAsync(item => item.Key == key, cancellationToken)) return;
         database.PendingImageUploads.Add(new PendingImageUpload { Key = key, UserId = userId });
+        await database.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task RetireCatalogAsync(Guid actorId, string kind, Guid id, string key, CancellationToken cancellationToken)
+    {
+        if (!ImageStorageKey.IsCatalogImage(key, kind, id)) throw new ArgumentException("Invalid retired catalog image.");
+        if (await database.PendingImageUploads.AnyAsync(item => item.Key == key, cancellationToken)) return;
+        database.PendingImageUploads.Add(new PendingImageUpload { Key = key, UserId = actorId });
         await database.SaveChangesAsync(cancellationToken);
     }
 }

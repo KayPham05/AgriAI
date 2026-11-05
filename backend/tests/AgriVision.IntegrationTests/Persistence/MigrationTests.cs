@@ -69,7 +69,8 @@ public class MigrationTests
             """);
         await database.Database.MigrateAsync();
         await database.Database.MigrateAsync();
-        (await database.Database.GetAppliedMigrationsAsync()).Should().HaveCount(11);
+        (await database.Database.GetAppliedMigrationsAsync()).Should().HaveCount(15)
+            .And.Contain("20261104135449_AdminNotifications");
         (await database.Users.SingleAsync(account => account.Id == legacyUserId)).AvatarUrl.Should().BeNull();
         database.Database.HasPendingModelChanges().Should().BeFalse();
         var legacy = await database.Predictions.Include(prediction => prediction.Images).SingleAsync();

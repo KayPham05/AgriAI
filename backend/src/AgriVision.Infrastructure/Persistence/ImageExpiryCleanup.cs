@@ -57,7 +57,9 @@ public static class ImageExpiryCleanup
             {
                 var referenced = await database.PredictionImages.AnyAsync(image => image.ImagePublicId == item.Key, cancellationToken)
                     || await database.Predictions.AnyAsync(prediction => prediction.ImagePublicId == item.Key, cancellationToken)
-                    || await database.Users.AnyAsync(user => user.AvatarUrl == ImageStorageKey.AvatarUrlPrefix + item.Key, cancellationToken);
+                    || await database.Users.AnyAsync(user => user.AvatarUrl == ImageStorageKey.AvatarUrlPrefix + item.Key, cancellationToken)
+                    || await database.Plants.AnyAsync(plant => plant.ImageKey == item.Key, cancellationToken)
+                    || await database.Diseases.AnyAsync(disease => disease.ImageKey == item.Key, cancellationToken);
                 if (!referenced)
                 {
                     if (!ImageStorageKey.IsSupported(item.Key) || !item.Key.StartsWith("users/", StringComparison.Ordinal))

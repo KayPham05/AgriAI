@@ -25,8 +25,9 @@ public class MedicineRepository(AppDbContext context) : IMedicineRepository
                     u.PlantDisease.Disease.ConditionType == "Disease"))));
         if (!string.IsNullOrWhiteSpace(filter.Search))
         {
-            var search = filter.Search.Trim().ToLowerInvariant();
-            query = query.Where(m => m.ProductName.ToLower().Contains(search) || m.ActiveIngredient.ToLower().Contains(search));
+            var (ids, count) = await CatalogSearch.PageAsync(query.Select(m => new CatalogSearchEntry(m.Id, m.ProductName, m.ActiveIngredient)), filter, cancellationToken);
+            var matches = await query.Where(m => ids.Contains(m.Id)).ToListAsync(cancellationToken);
+            return (matches.OrderBy(m => Array.IndexOf(ids, m.Id)).ToArray(), count);
         }
         var total = await query.CountAsync(cancellationToken);
         var items = await query.OrderBy(m => m.ProductName).ThenBy(m => m.Id)

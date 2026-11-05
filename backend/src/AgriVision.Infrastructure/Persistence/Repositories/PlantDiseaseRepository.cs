@@ -14,6 +14,20 @@ public class PlantDiseaseRepository : IPlantDiseaseRepository
         _context = context;
     }
 
+    public async Task<PlantDisease> LinkAsync(Guid plantId, Guid diseaseId, CancellationToken cancellationToken = default)
+    {
+        var plant = await _context.Plants.FindAsync([plantId], cancellationToken)
+            ?? throw new KeyNotFoundException("Plant not found.");
+        var disease = await _context.Diseases.FindAsync([diseaseId], cancellationToken)
+            ?? throw new KeyNotFoundException("Disease not found.");
+        if (!plant.IsActive || !disease.IsActive)
+            throw new ArgumentException("The plant and disease must be active before linking them.");
+        // The unique pair key makes concurrent submissions idempotent without replacing AI mappings or history.
+        await _context.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO plant_diseases (id, plant_id, disease_id, is_active) VALUES ({Guid.NewGuid()}, {plantId}, {diseaseId}, TRUE) ON CONFLICT (plant_id, disease_id) DO UPDATE SET is_active = TRUE", cancellationToken);
+        return await _context.PlantDiseases.AsNoTracking().Include(p => p.Plant).Include(p => p.Disease)
+            .SingleAsync(p => p.PlantId == plantId && p.DiseaseId == diseaseId, cancellationToken);
+    }
+
     public async Task<PlantDisease?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _context.PlantDiseases
@@ -30,8 +44,10 @@ public class PlantDiseaseRepository : IPlantDiseaseRepository
         if (filter.DiseaseId.HasValue) query = query.Where(p => p.DiseaseId == filter.DiseaseId);
         if (!string.IsNullOrWhiteSpace(filter.Search))
         {
-            var search = filter.Search.Trim().ToLowerInvariant();
-            query = query.Where(p => p.Plant.Name.ToLower().Contains(search) || p.Disease.Name.ToLower().Contains(search));
+            var (ids, count) = await CatalogSearch.PageAsync(query.Select(p => new CatalogSearchEntry(p.Id,
+                p.Plant.Name + " " + p.Disease.Name, (p.Plant.VietnameseName ?? p.Plant.Name) + " " + (p.Disease.VietnameseName ?? p.Disease.Name))), filter, cancellationToken);
+            var matches = await query.Where(p => ids.Contains(p.Id)).ToListAsync(cancellationToken);
+            return (matches.OrderBy(p => Array.IndexOf(ids, p.Id)).ToArray(), count);
         }
         var total = await query.CountAsync(cancellationToken);
         var items = await query.OrderBy(p => p.ClassIndex).ThenBy(p => p.Id)
@@ -64,7 +80,7 @@ public class PlantDiseaseRepository : IPlantDiseaseRepository
 
         if (!includeInactive)
         {
-            query = query.Where(pd => pd.IsActive);
+            query = query.Where(pd => pd.IsActive && pd.Plant.IsActive && pd.Disease.IsActive);
         }
 
         return await query.OrderBy(pd => pd.ClassIndex).ToListAsync(cancellationToken);
@@ -75,7 +91,7 @@ public class PlantDiseaseRepository : IPlantDiseaseRepository
         return await _context.PlantDiseases
             .Include(pd => pd.Plant)
             .Include(pd => pd.Disease)
-            .Where(pd => pd.PlantId == plantId && pd.IsActive)
+            .Where(pd => pd.PlantId == plantId && pd.IsActive && pd.Plant.IsActive && pd.Disease.IsActive)
             .ToListAsync(cancellationToken);
     }
 

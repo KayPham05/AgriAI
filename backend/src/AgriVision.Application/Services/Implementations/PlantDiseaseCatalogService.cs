@@ -9,6 +9,9 @@ namespace AgriVision.Application.Services.Implementations;
 
 public class PlantDiseaseCatalogService(IPlantDiseaseRepository repository) : IPlantDiseaseCatalogService
 {
+    public async Task<PlantDiseaseLookupDto> LinkAsync(LinkPlantDiseaseRequest request, CancellationToken cancellationToken = default) =>
+        Map(await repository.LinkAsync(request.PlantId, request.DiseaseId, cancellationToken));
+
     public async Task<PagedResult<PlantDiseaseLookupDto>> ListAsync(CatalogFilterParams filter, bool publicOnly, CancellationToken cancellationToken = default)
     {
         CatalogValidation.Filter(filter);

@@ -63,4 +63,13 @@ public class UserSessionRepository : IUserSessionRepository
             await _context.SaveChangesAsync(cancellationToken);
         }
     }
+
+    public async Task RevokeAllByAdminAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        await _context.UserSessions.Where(s => s.UserId == userId && s.RevokedAt == null)
+            .ExecuteUpdateAsync(update => update
+                .SetProperty(s => s.RevokedAt, s => s.CreatedAt > now ? s.CreatedAt : now)
+                .SetProperty(s => s.RevocationReason, "account_locked"), cancellationToken);
+    }
 }

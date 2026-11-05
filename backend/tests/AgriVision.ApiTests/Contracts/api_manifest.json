@@ -34,6 +34,7 @@
     "method": "GET",
     "route": "/api/auth/me",
     "cases": [
+      "admin.policy.session",
       "auth.register.contract",
       "existing.SecurityAuthorizationTests.ProtectedEndpoints_ShouldRejectInvalidBearer",
       "existing.SecurityAuthorizationTests.LegacyTokenWithoutSid_ShouldBeRejected_EvenWhenNewActiveSessionExists",
@@ -613,6 +614,138 @@
     "route": "/api/admin/plant-diseases/{id:guid}/availability",
     "cases": [
       "knowledge.pair_availability"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/admin/images",
+    "cases": [
+      "admin.workspace.lifecycle",
+      "admin.workspace.authorization",
+      "admin.workspace.validation"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/admin/sessions",
+    "cases": [
+      "admin.workspace.lifecycle",
+      "admin.workspace.authorization",
+      "admin.workspace.validation"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/admin/images/{id:guid}/content",
+    "cases": [
+      "admin.workspace.lifecycle",
+      "admin.workspace.authorization"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/admin/images/{id:guid}",
+    "cases": [
+      "admin.workspace.lifecycle",
+      "admin.workspace.authorization"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/admin/images/{id:guid}/warnings",
+    "cases": [
+      "admin.workspace.lifecycle",
+      "admin.workspace.authorization"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/admin/users/{id:guid}/warnings",
+    "cases": [
+      "admin.workspace.lifecycle",
+      "admin.workspace.authorization",
+      "admin.workspace.validation"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/admin/users/{id:guid}/logout-all",
+    "cases": [
+      "admin.workspace.lifecycle",
+      "admin.workspace.authorization",
+      "admin.workspace.validation"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/users/notifications",
+    "cases": [
+      "admin.workspace.lifecycle",
+      "admin.workspace.validation"
+    ]
+  },
+  {
+    "method": "PUT",
+    "route": "/api/users/notifications/{id:guid}/read",
+    "cases": [
+      "admin.workspace.lifecycle"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/users/notifications/{id:guid}",
+    "cases": [
+      "admin.workspace.lifecycle"
+    ]
+  },
+  {
+    "method": "PUT",
+    "route": "/api/users/notifications/read",
+    "cases": [
+      "admin.workspace.lifecycle",
+      "admin.workspace.validation"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/admin/plant-diseases",
+    "cases": [
+      "admin.policy.pairs"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/users/notifications",
+    "cases": [
+      "admin.workspace.lifecycle",
+      "admin.workspace.validation"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/catalog/{kind}/{id:guid}/image",
+    "cases": [
+      "catalog.images.lifecycle",
+      "catalog.images.size-boundary",
+      "catalog.images.missing-record"
+    ]
+  },
+  {
+    "method": "PUT",
+    "route": "/api/catalog/{kind}/{id:guid}/image",
+    "cases": [
+      "catalog.images.lifecycle",
+      "catalog.images.validation",
+      "catalog.images.size-boundary",
+      "catalog.images.missing-record"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/catalog/{kind}/{id:guid}/image",
+    "cases": [
+      "catalog.images.lifecycle",
+      "catalog.images.missing-record"
     ]
   }
 ]

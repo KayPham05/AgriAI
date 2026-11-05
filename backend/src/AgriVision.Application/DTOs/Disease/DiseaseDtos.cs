@@ -15,6 +15,7 @@ public record DiseaseDto(
     // Older immutable snapshots do not contain this metadata.
     public bool? IsContentApproved { get; init; }
     public string? ConditionType { get; init; }
+    public string? ImageUrl { get; init; }
 }
 
 public record DiseaseApprovalRequest(bool IsContentApproved);

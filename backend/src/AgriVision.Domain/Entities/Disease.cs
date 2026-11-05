@@ -4,6 +4,7 @@ public class Disease
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = string.Empty;
+    public string? ImageKey { get; set; }
     public string? VietnameseName { get; set; }
     public string? Description { get; set; }
     public string? Symptoms { get; set; }

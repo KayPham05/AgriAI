@@ -7,8 +7,8 @@ public record PlantDiseaseDto(
     Guid Id,
     Guid PlantId,
     Guid DiseaseId,
-    string ClassName,
-    int ClassIndex,
+    string? ClassName,
+    int? ClassIndex,
     bool IsActive,
     PlantDto Plant,
     DiseaseDto Disease

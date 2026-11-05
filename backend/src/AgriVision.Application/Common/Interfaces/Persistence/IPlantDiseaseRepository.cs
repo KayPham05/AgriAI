@@ -5,6 +5,7 @@ namespace AgriVision.Application.Common.Interfaces.Persistence;
 
 public interface IPlantDiseaseRepository
 {
+    Task<PlantDisease> LinkAsync(Guid plantId, Guid diseaseId, CancellationToken cancellationToken = default);
     Task<(IReadOnlyList<PlantDisease> Items, int Total)> SearchAsync(CatalogFilterParams filter, bool publicOnly, CancellationToken cancellationToken = default);
     Task<PlantDisease?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<PlantDisease?> GetByClassIndexAsync(int classIndex, CancellationToken cancellationToken = default);

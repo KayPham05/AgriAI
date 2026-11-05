@@ -92,6 +92,10 @@ public class PredictionService : IPredictionService
             throw new InvalidOperationException("AI class index/name does not match the database catalog.");
         }
 
+        // Never replace a disabled winning class with a lower-confidence class.
+        if (!primaryPlantDisease.IsActive || !primaryPlantDisease.Plant.IsActive || !primaryPlantDisease.Disease.IsActive)
+            throw new ArgumentException("Cây hoặc tình trạng được nhận diện hiện đã ngừng hoạt động. Chưa thể cung cấp kết quả dự đoán cho ảnh này.");
+
         // Guests receive the result without storing images or personal history.
         var uploadResult = new ImageUploadResult(string.Empty, string.Empty);
 
@@ -113,6 +117,8 @@ public class PredictionService : IPredictionService
             var pdItem = await _plantDiseaseRepository.GetByClassIndexAsync(topItem.ClassIndex, cancellationToken);
             if (pdItem == null || pdItem.ClassName != topItem.ClassName)
                 throw new InvalidOperationException("AI top-k class index/name does not match the database catalog.");
+
+            if (!pdItem.IsActive || !pdItem.Plant.IsActive || !pdItem.Disease.IsActive) continue;
 
             prediction.PredictionDetails.Add(new PredictionDetail
             {
@@ -294,7 +300,7 @@ public class PredictionService : IPredictionService
     private static PredictionResultDto MapToResultDto(Prediction prediction, PlantDisease primaryPlantDisease)
     {
         var plantDto = primaryPlantDisease.Plant != null
-            ? new PlantDto(primaryPlantDisease.Plant.Id, primaryPlantDisease.Plant.Name, primaryPlantDisease.Plant.VietnameseName, primaryPlantDisease.Plant.ScientificName, primaryPlantDisease.Plant.Description, primaryPlantDisease.Plant.IsActive, primaryPlantDisease.Plant.CreatedAt)
+            ? new PlantDto(primaryPlantDisease.Plant.Id, primaryPlantDisease.Plant.Name, primaryPlantDisease.Plant.VietnameseName, primaryPlantDisease.Plant.ScientificName, primaryPlantDisease.Plant.Description, primaryPlantDisease.Plant.IsActive, primaryPlantDisease.Plant.CreatedAt, primaryPlantDisease.Plant.Category)
             : new PlantDto(Guid.Empty, "Unknown", "Chưa xác định", null, null, true, DateTime.UtcNow);
 
         var disease = primaryPlantDisease.Disease;
@@ -324,7 +330,7 @@ public class PredictionService : IPredictionService
         {
             var pd = d.PlantDisease ?? primaryPlantDisease;
             var detailVisible = pd.IsActive && pd.Plant?.IsActive == true && pd.Disease?.IsActive == true;
-            var pdPlant = pd.Plant != null ? new PlantDto(pd.Plant.Id, pd.Plant.Name, pd.Plant.VietnameseName, pd.Plant.ScientificName, pd.Plant.Description, pd.Plant.IsActive, pd.Plant.CreatedAt) : plantDto;
+            var pdPlant = pd.Plant != null ? new PlantDto(pd.Plant.Id, pd.Plant.Name, pd.Plant.VietnameseName, pd.Plant.ScientificName, pd.Plant.Description, pd.Plant.IsActive, pd.Plant.CreatedAt, pd.Plant.Category) : plantDto;
             var pdDisease = pd.Disease != null ? new DiseaseDto(pd.Disease.Id, pd.Disease.Name, pd.Disease.VietnameseName,
                 detailVisible ? pd.Disease.Description ?? pending : pending,
                 detailVisible ? pd.Disease.Symptoms ?? pending : pending,
@@ -334,7 +340,7 @@ public class PredictionService : IPredictionService
                 { IsContentApproved = pd.Disease.IsContentApproved, ConditionType = pd.Disease.ConditionType } : diseaseDto;
 
             var pdDto = new PlantDiseaseDto(pd.Id, pd.PlantId, pd.DiseaseId, pd.ClassName, pd.ClassIndex, pd.IsActive, pdPlant, pdDisease);
-            return new PredictionDetailDto(pd.ClassIndex, pd.ClassName, d.Probability, pdDto);
+            return new PredictionDetailDto(pd.ClassIndex ?? throw new InvalidOperationException("Prediction has no AI mapping."), pd.ClassName!, d.Probability, pdDto);
         });
 
         return new PredictionResultDto(

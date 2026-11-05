@@ -35,7 +35,7 @@ public class PredictionsController : ControllerBase
         // Invalid credentials must not silently turn a user's request into an unsaved guest prediction.
         if (Request.Headers.ContainsKey("Authorization") && !isAuthenticated)
         {
-            return Unauthorized();
+            return Challenge();
         }
 
         if (isAuthenticated)

@@ -31,13 +31,13 @@ public class DiseaseService : IDiseaseService
         var disease = new Disease
         {
             Id = Guid.NewGuid(),
-            Name = CatalogValidation.Text(request.Name, "Name", 150),
+            Name = CatalogValidation.Name(request.Name, "Name", 150),
             ConditionType = ValidateCondition(request.ConditionType ?? "Unknown"),
-            VietnameseName = request.VietnameseName,
-            Description = request.Description,
-            Symptoms = request.Symptoms,
-            Treatment = request.Treatment,
-            Prevention = request.Prevention,
+            VietnameseName = AgriVision.Application.Common.CatalogText.Name(request.VietnameseName),
+            Description = AgriVision.Application.Common.CatalogText.Normalize(request.Description),
+            Symptoms = AgriVision.Application.Common.CatalogText.Normalize(request.Symptoms),
+            Treatment = AgriVision.Application.Common.CatalogText.Normalize(request.Treatment),
+            Prevention = AgriVision.Application.Common.CatalogText.Normalize(request.Prevention),
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -54,7 +54,7 @@ public class DiseaseService : IDiseaseService
             throw new KeyNotFoundException($"Disease with ID '{id}' not found.");
         }
 
-        var name = CatalogValidation.Text(request.Name, "Name", 150);
+        var name = CatalogValidation.Name(request.Name, "Name", 150);
         // Omitted metadata preserves the classification for older clients.
         var condition = ValidateCondition(request.ConditionType ?? disease.ConditionType);
         if (disease.Name != name || disease.VietnameseName != request.VietnameseName ||
@@ -64,11 +64,11 @@ public class DiseaseService : IDiseaseService
             disease.IsContentApproved = false;
         disease.Name = name;
         disease.ConditionType = condition;
-        disease.VietnameseName = request.VietnameseName;
-        disease.Description = request.Description;
-        disease.Symptoms = request.Symptoms;
-        disease.Treatment = request.Treatment;
-        disease.Prevention = request.Prevention;
+        disease.VietnameseName = AgriVision.Application.Common.CatalogText.Name(request.VietnameseName);
+        disease.Description = AgriVision.Application.Common.CatalogText.Normalize(request.Description);
+        disease.Symptoms = AgriVision.Application.Common.CatalogText.Normalize(request.Symptoms);
+        disease.Treatment = AgriVision.Application.Common.CatalogText.Normalize(request.Treatment);
+        disease.Prevention = AgriVision.Application.Common.CatalogText.Normalize(request.Prevention);
         disease.IsActive = request.IsActive;
         disease.UpdatedAt = DateTime.UtcNow;
 
@@ -119,6 +119,7 @@ public class DiseaseService : IDiseaseService
             visible ? disease.Prevention : pending,
             disease.IsActive,
             disease.CreatedAt
-        ) { IsContentApproved = disease.IsContentApproved, ConditionType = disease.ConditionType };
+        ) { IsContentApproved = disease.IsContentApproved, ConditionType = disease.ConditionType,
+            ImageUrl = AgriVision.Application.Common.CatalogImageUrl.Create("diseases", disease.Id, disease.ImageKey) };
     }
 }

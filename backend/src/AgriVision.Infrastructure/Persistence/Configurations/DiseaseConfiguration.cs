@@ -15,6 +15,7 @@ public class DiseaseConfiguration : IEntityTypeConfiguration<Disease>
         builder.Property(d => d.Medication).HasColumnName("medication");
 
         builder.HasKey(d => d.Id);
+        builder.Property(d => d.ImageKey).HasColumnName("image_key").HasMaxLength(200);
         builder.Property(d => d.Id).HasColumnName("id");
 
         builder.Property(d => d.Name)

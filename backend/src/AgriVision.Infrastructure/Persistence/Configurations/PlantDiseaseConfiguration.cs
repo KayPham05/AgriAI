@@ -10,7 +10,7 @@ public class PlantDiseaseConfiguration : IEntityTypeConfiguration<PlantDisease>
     {
         builder.ToTable("plant_diseases", t =>
         {
-            t.HasCheckConstraint("ck_plant_diseases_class_index", "class_index >= 0");
+            t.HasCheckConstraint("ck_plant_diseases_class_index", "(class_index IS NULL AND class_name IS NULL) OR (class_index IS NOT NULL AND class_index >= 0 AND class_name IS NOT NULL AND length(trim(class_name)) > 0)");
         });
 
         builder.HasKey(pd => pd.Id);
@@ -26,12 +26,10 @@ public class PlantDiseaseConfiguration : IEntityTypeConfiguration<PlantDisease>
 
         builder.Property(pd => pd.ClassName)
             .HasColumnName("class_name")
-            .HasMaxLength(255)
-            .IsRequired();
+            .HasMaxLength(255);
 
         builder.Property(pd => pd.ClassIndex)
-            .HasColumnName("class_index")
-            .IsRequired();
+            .HasColumnName("class_index");
 
         builder.Property(pd => pd.IsActive)
             .HasColumnName("is_active")

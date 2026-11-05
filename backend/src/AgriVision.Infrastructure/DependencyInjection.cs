@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Amazon.S3;
 using Amazon.Runtime;
+using AgriVision.Application.Services.Interfaces;
 
 namespace AgriVision.Infrastructure;
 
@@ -28,6 +29,10 @@ public static class DependencyInjection
 
         // Register Repositories & Unit of Work
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IAdminWorkspaceService, AdminWorkspaceService>();
+        services.AddScoped<IUserNotificationRepository, UserNotificationRepository>();
+        services.AddScoped<IAdminImageService, AdminImageService>();
+        services.AddScoped<ICatalogImageService, CatalogImageService>();
         services.AddScoped<IUserSessionRepository, UserSessionRepository>();
         services.AddScoped<IPlantRepository, PlantRepository>();
         services.AddScoped<IDiseaseRepository, DiseaseRepository>();

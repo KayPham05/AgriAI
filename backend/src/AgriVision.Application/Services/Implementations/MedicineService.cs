@@ -115,7 +115,7 @@ public class MedicineService(IMedicineRepository repository, IPlantDiseaseReposi
         string source, string warning, string label)
     {
         // Validate all fields before mutating an entity tracked by a unit of work.
-        var name = CatalogValidation.Text(productName, "ProductName", 200);
+        var name = CatalogValidation.Name(productName, "ProductName", 200);
         var activeIngredient = CatalogValidation.Text(ingredient, "ActiveIngredient");
         // Legacy clients may still send this field; content-only edits preserve existing data.
         var targetUse = target?.Trim() ?? medicine.TargetUse;
