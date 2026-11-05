@@ -99,7 +99,7 @@ describe('ProfileAvatarEditor', () => {
     [
       'unsupported',
       new File(['text'], 'portrait.svg', { type: 'image/svg+xml' }),
-      'Chỉ hỗ trợ ảnh JPG hoặc PNG.',
+      'Chỉ hỗ trợ ảnh JPG, PNG hoặc WEBP.',
     ],
     ['empty', new File([], 'empty.png', { type: 'image/png' }), 'Tệp ảnh trống.'],
     [

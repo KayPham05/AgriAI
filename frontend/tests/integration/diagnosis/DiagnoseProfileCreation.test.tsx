@@ -13,12 +13,12 @@ import type {
   AgriculturalProfile,
   AgriculturalProfileInput,
 } from '@/services/agriculturalProfileApi';
-import { createPrediction } from '@/services/predictionApi';
+import { createPrediction, assignPredictionProfile } from '@/services/predictionApi';
 import { successfulPrediction } from '../../helpers/prediction';
 
 vi.mock('@/services/predictionApi', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/services/predictionApi')>();
-  return { ...actual, createPrediction: vi.fn() };
+  return { ...actual, createPrediction: vi.fn(), assignPredictionProfile: vi.fn() };
 });
 
 const existing: AgriculturalProfile = {
@@ -119,27 +119,26 @@ function Harness({
   );
 }
 
-async function openCreateProfile() {
-  fireEvent.keyDown(screen.getByRole('combobox', { name: 'Hồ sơ nông nghiệp' }), {
-    key: 'ArrowDown',
-  });
-  const option = await screen.findByRole('option', { name: 'Thêm hồ sơ mới' });
-  fireEvent.keyDown(option, { key: 'Enter' });
-  return screen.findByRole('dialog', { name: 'Thêm hồ sơ mới' });
-}
-
-async function selectImage() {
+async function analyze() {
   await userEvent.upload(
     screen.getByLabelText(/Chọn ảnh lá cây/i),
     new File(['leaf'], 'leaf.jpg', { type: 'image/jpeg' }),
   );
-  expect(await screen.findByRole('img', { name: 'Ảnh xem trước: leaf.jpg' })).toBeVisible();
+  await screen.findByRole('img', { name: 'Ảnh xem trước: leaf.jpg' });
+  await userEvent.click(screen.getByRole('button', { name: 'Phân tích ngay' }));
 }
-
-describe('create profile from diagnosis', () => {
+async function chooseProfile(name: string) {
+  fireEvent.keyDown(screen.getByRole('combobox', { name: 'Hồ sơ nông nghiệp' }), {
+    key: 'ArrowDown',
+  });
+  fireEvent.keyDown(await screen.findByRole('option', { name }), { key: 'Enter' });
+}
+const promptName = 'Bạn có muốn lưu kết quả vào hồ sơ nông nghiệp không?';
+describe('save completed diagnosis into a profile', () => {
   beforeEach(() => {
     window.history.replaceState({}, '', '/diagnose');
     saveProfile.mockReset().mockResolvedValue(created);
+    vi.mocked(assignPredictionProfile).mockReset().mockResolvedValue(undefined);
     vi.mocked(createPrediction).mockReset().mockResolvedValue(successfulPrediction);
     vi.stubGlobal(
       'Image',
@@ -147,99 +146,104 @@ describe('create profile from diagnosis', () => {
         onload: (() => void) | null = null;
         naturalWidth = 1200;
         naturalHeight = 800;
-        set src(_value: string) {
+        set src(_v: string) {
           queueMicrotask(() => this.onload?.());
         }
       },
     );
   });
-
-  it('creates the first profile, selects it and preserves the selected image for prediction', async () => {
-    render(<Harness />);
-    await selectImage();
-    const dialog = await openCreateProfile();
-    const user = userEvent.setup();
-    await user.type(within(dialog).getByRole('textbox', { name: 'Tên hồ sơ *' }), '  Vườn mới  ');
-    await user.type(
-      within(dialog).getByRole('textbox', { name: 'Mô tả và thông tin canh tác' }),
-      '  Đất phù sa  ',
+  it('asks only after success and assigns the existing result without another inference', async () => {
+    render(<Harness initial={[existing]} />);
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    await analyze();
+    await screen.findByRole('dialog', { name: promptName });
+    await chooseProfile('Vườn nhà');
+    await userEvent.click(screen.getByRole('button', { name: 'Lưu vào hồ sơ' }));
+    expect(assignPredictionProfile).toHaveBeenCalledExactlyOnceWith(
+      'prediction-id',
+      'garden',
+      'test-token',
     );
-    await user.click(within(dialog).getByRole('button', { name: 'Tạo hồ sơ' }));
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: 'Hồ sơ nông nghiệp' })).toHaveTextContent(
-      'Vườn mới',
-    );
-    expect(screen.getByRole('img', { name: 'Ảnh xem trước: leaf.jpg' })).toBeVisible();
-    expect(saveProfile).toHaveBeenCalledExactlyOnceWith({
-      name: 'Vườn mới',
-      description: 'Đất phù sa',
-    });
-    expect(createPrediction).not.toHaveBeenCalled();
-    await user.click(screen.getByRole('button', { name: 'Phân tích ngay' }));
+    expect(createPrediction).toHaveBeenCalledOnce();
     expect(createPrediction).toHaveBeenCalledWith(
       expect.any(File),
-      expect.objectContaining({ agriculturalProfileId: 'new-garden' }),
+      expect.not.objectContaining({ agriculturalProfileId: expect.anything() }),
     );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Đã lưu kết quả vào hồ sơ');
   });
-
-  it('keeps entered data and the image after a save error, then retries successfully', async () => {
-    saveProfile.mockRejectedValueOnce(new Error('Không thể lưu hồ sơ lúc này.'));
-    render(<Harness />);
-    await selectImage();
-    const dialog = await openCreateProfile();
-    const user = userEvent.setup();
-    await user.type(within(dialog).getByRole('textbox', { name: 'Tên hồ sơ *' }), 'Vườn mới');
-    await user.click(within(dialog).getByRole('button', { name: 'Tạo hồ sơ' }));
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      'Không thể lưu hồ sơ lúc này.',
-    );
-    expect(within(dialog).getByRole('textbox', { name: 'Tên hồ sơ *' })).toHaveValue('Vườn mới');
-    await user.click(within(dialog).getByRole('button', { name: 'Tạo hồ sơ' }));
-    expect(screen.getByRole('combobox', { name: 'Hồ sơ nông nghiệp' })).toHaveTextContent(
-      'Vườn mới',
-    );
-    expect(screen.getByRole('img', { name: 'Ảnh xem trước: leaf.jpg' })).toBeVisible();
-  });
-
-  it('cancels creation without changing the previously selected profile or image', async () => {
-    window.history.replaceState({}, '', '/diagnose?profile=garden');
+  it('skips without changing the result or assigning a profile', async () => {
     render(<Harness initial={[existing]} />);
-    await selectImage();
-    const dialog = await openCreateProfile();
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Hủy' }));
-    expect(screen.getByRole('combobox', { name: 'Hồ sơ nông nghiệp' })).toHaveTextContent(
-      'Vườn nhà',
-    );
-    expect(screen.getByRole('img', { name: 'Ảnh xem trước: leaf.jpg' })).toBeVisible();
-    expect(saveProfile).not.toHaveBeenCalled();
+    await analyze();
+    await screen.findByRole('dialog', { name: promptName });
+    await userEvent.click(screen.getByRole('button', { name: 'Bỏ qua' }));
+    expect(assignPredictionProfile).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Lưu vào hồ sơ nông nghiệp' })).toBeVisible();
   });
-
-  it('blocks duplicate submissions and closing while the create request is pending', async () => {
-    let finish!: (profile: AgriculturalProfile) => void;
-    saveProfile.mockImplementationOnce(
+  it('creates the first profile, then waits for explicit save before assigning', async () => {
+    render(<Harness />);
+    await analyze();
+    await screen.findByRole('dialog', { name: promptName });
+    await userEvent.click(screen.getByRole('button', { name: 'Thêm hồ sơ mới' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Thêm hồ sơ mới' });
+    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Tên hồ sơ *' }), 'Vườn mới');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Tạo hồ sơ' }));
+    await screen.findByRole('dialog', { name: promptName });
+    expect(screen.getByRole('combobox')).toHaveTextContent('Vườn mới');
+    expect(assignPredictionProfile).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: 'Lưu vào hồ sơ' }));
+    expect(assignPredictionProfile).toHaveBeenCalledWith(
+      'prediction-id',
+      'new-garden',
+      'test-token',
+    );
+    expect(createPrediction).toHaveBeenCalledOnce();
+  });
+  it('retains the result and selected profile after a save error and retries', async () => {
+    vi.mocked(assignPredictionProfile).mockRejectedValueOnce(new Error('Không thể lưu lúc này.'));
+    render(<Harness initial={[existing]} />);
+    await analyze();
+    await screen.findByRole('dialog', { name: promptName });
+    await chooseProfile('Vườn nhà');
+    await userEvent.click(screen.getByRole('button', { name: 'Lưu vào hồ sơ' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Không thể lưu lúc này.');
+    expect(screen.getByRole('combobox')).toHaveTextContent('Vườn nhà');
+    await userEvent.click(screen.getByRole('button', { name: 'Lưu vào hồ sơ' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(createPrediction).toHaveBeenCalledOnce();
+  });
+  it('prevents duplicate save and dismissing a pending save', async () => {
+    let finish!: () => void;
+    vi.mocked(assignPredictionProfile).mockImplementationOnce(
       () =>
-        new Promise((resolve) => {
+        new Promise<void>((resolve) => {
           finish = resolve;
         }),
     );
-    render(<Harness />);
-    const dialog = await openCreateProfile();
-    const user = userEvent.setup();
-    await user.type(within(dialog).getByRole('textbox', { name: 'Tên hồ sơ *' }), 'Vườn mới');
-    await user.dblClick(within(dialog).getByRole('button', { name: 'Tạo hồ sơ' }));
-    expect(within(dialog).getByRole('button', { name: 'Đang lưu...' })).toBeDisabled();
-    expect(within(dialog).getByRole('button', { name: 'Hủy' })).toBeDisabled();
-    await user.keyboard('{Escape}');
+    render(<Harness initial={[existing]} />);
+    await analyze();
+    await screen.findByRole('dialog', { name: promptName });
+    await chooseProfile('Vườn nhà');
+    await userEvent.dblClick(screen.getByRole('button', { name: 'Lưu vào hồ sơ' }));
+    expect(screen.getByRole('button', { name: 'Đang lưu...' })).toBeDisabled();
+    await userEvent.keyboard('{Escape}');
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(saveProfile).toHaveBeenCalledOnce();
-    await act(async () => finish(created));
+    expect(assignPredictionProfile).toHaveBeenCalledOnce();
+    await act(async () => finish());
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
-
-  it('does not offer profile creation to a guest', () => {
+  it('does not prompt guests or failed predictions', async () => {
     render(<Harness authenticated={false} />);
-    expect(screen.queryByRole('combobox', { name: 'Hồ sơ nông nghiệp' })).not.toBeInTheDocument();
+    await analyze();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(saveProfile).not.toHaveBeenCalled();
+    expect(assignPredictionProfile).not.toHaveBeenCalled();
+  });
+  it('does not prompt when inference fails', async () => {
+    vi.mocked(createPrediction).mockRejectedValueOnce(new Error('Không thể phân tích.'));
+    render(<Harness />);
+    await analyze();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(assignPredictionProfile).not.toHaveBeenCalled();
   });
 });

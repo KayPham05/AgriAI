@@ -132,8 +132,10 @@ function mapTopPredictions(
       detail.plantDisease?.disease.vietnameseName ??
       detail.plantDisease?.disease.name ??
       detail.className;
+    const plant = detail.plantDisease?.plant.vietnameseName ?? detail.plantDisease?.plant.name;
     return {
       className: detail.className,
+      plant,
       label,
       confidence: detail.confidence,
       isHealthy: isHealthyLabel(label),
@@ -176,7 +178,12 @@ function mapHistoryItem(item: PredictionHistoryDto): DiagnosisResult {
     confidence: item.confidence,
     confidenceCategory: getConfidenceCategory(item.confidence),
     top_predictions: [
-      { label: diseaseLabel, confidence: item.confidence, isHealthy: isHealthyLabel(diseaseLabel) },
+      {
+        plant: plantLabel,
+        label: diseaseLabel,
+        confidence: item.confidence,
+        isHealthy: isHealthyLabel(diseaseLabel),
+      },
     ],
     originalImageUrl: item.imagePath,
     gradcam_url: '',
@@ -315,6 +322,18 @@ export async function getProfilePredictionHistory(
   });
   const result = await authenticatedRequest<PagedResult<PredictionHistoryDto>>(`?${query}`, token);
   return { ...result, items: result.items.map(mapHistoryItem) };
+}
+
+export async function assignPredictionProfile(
+  id: string,
+  profileId: string,
+  token: string,
+): Promise<void> {
+  await authenticatedRequest<unknown>(`/${encodeURIComponent(id)}/agricultural-profile`, token, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ agriculturalProfileId: profileId }),
+  });
 }
 
 export async function deletePrediction(id: string, token: string): Promise<void> {

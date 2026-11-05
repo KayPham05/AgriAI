@@ -203,6 +203,79 @@ public class AgriculturalProfilesControllerTests : IClassFixture<AgriVisionFacto
         (await guest.PostAsync("/api/predictions", request)).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    [Trait("ApiCase", "profiles.attach_prediction")]
+    [Fact]
+    public async Task Owner_CanAttachCompletedPrediction_Idempotently_WithoutChangingSnapshotOrImages()
+    {
+        using var owner = _factory.CreateClient();
+        var userId = await RegisterAsync(owner);
+        var profileId = await CreateProfileAsync(owner);
+        using var upload = CreatePredictionRequest(null);
+        var response = await owner.PostAsync("/api/predictions", upload);
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var prediction = (await response.Content.ReadFromJsonAsync<PredictionResultDto>())!;
+        prediction.AgriculturalProfileId.Should().BeNull();
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var before = await db.Predictions.AsNoTracking().SingleAsync(p => p.Id == prediction.Id);
+        var image = await db.PredictionImages.AsNoTracking().SingleAsync(p => p.PredictionId == prediction.Id);
+        for (var attempt = 0; attempt < 2; attempt++)
+            (await owner.PutAsJsonAsync($"/api/predictions/{prediction.Id}/agricultural-profile", new { agriculturalProfileId = profileId }))
+                .StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var after = await db.Predictions.AsNoTracking().SingleAsync(p => p.Id == prediction.Id);
+        after.AgriculturalProfileId.Should().Be(profileId);
+        after.ResultSnapshotJson.Should().Be(before.ResultSnapshotJson);
+        after.CreatedAt.Should().Be(before.CreatedAt);
+        (await db.PredictionImages.AsNoTracking().SingleAsync(p => p.Id == image.Id)).Should().BeEquivalentTo(image);
+        (await db.Predictions.CountAsync(p => p.UserId == userId)).Should().Be(1);
+        var detail = await owner.GetFromJsonAsync<PredictionResultDto>($"/api/predictions/{prediction.Id}");
+        detail!.AgriculturalProfileId.Should().Be(profileId);
+        var profile = await owner.GetFromJsonAsync<JsonElement>($"{ProfilesUrl}/{profileId}");
+        profile.GetProperty("predictionCount").GetInt32().Should().Be(1);
+        var anotherProfile = await CreateProfileAsync(owner);
+        (await owner.PutAsJsonAsync($"/api/predictions/{prediction.Id}/agricultural-profile", new { agriculturalProfileId = anotherProfile }))
+            .StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Trait("ApiCase", "profiles.attach_prediction_access")]
+    [Fact]
+    public async Task AttachPrediction_RejectsGuestForeignMissingAndInvalidResources()
+    {
+        using var owner = _factory.CreateClient();
+        using var other = _factory.CreateClient();
+        using var guest = _factory.CreateClient();
+        await RegisterAsync(owner);
+        await RegisterAsync(other);
+        var profileId = await CreateProfileAsync(owner);
+        var otherProfile = await CreateProfileAsync(other);
+        using var upload = CreatePredictionRequest(null);
+        var response = await owner.PostAsync("/api/predictions", upload);
+        var prediction = (await response.Content.ReadFromJsonAsync<PredictionResultDto>())!;
+        var url = $"/api/predictions/{prediction.Id}/agricultural-profile";
+        (await guest.PutAsJsonAsync(url, new { agriculturalProfileId = profileId })).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await other.PutAsJsonAsync(url, new { agriculturalProfileId = otherProfile })).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        foreach (var id in new[] { otherProfile, Guid.NewGuid() })
+            (await owner.PutAsJsonAsync(url, new { agriculturalProfileId = id })).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await owner.PutAsJsonAsync($"/api/predictions/{Guid.NewGuid()}/agricultural-profile", new { agriculturalProfileId = profileId }))
+            .StatusCode.Should().Be(HttpStatusCode.NotFound);
+        foreach (var body in new object[] { new { }, new { agriculturalProfileId = Guid.Empty }, new { agriculturalProfileId = "invalid" } })
+            (await owner.PutAsJsonAsync(url, body)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var retained = await owner.GetFromJsonAsync<PredictionResultDto>($"/api/predictions/{prediction.Id}");
+        retained!.AgriculturalProfileId.Should().BeNull();
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var otherOwnerId = await db.AgriculturalProfiles.Where(profile => profile.Id == otherProfile).Select(profile => profile.UserId).SingleAsync();
+        var otherUser = await db.Users.SingleAsync(user => user.Id == otherOwnerId);
+        otherUser.Role = "Admin";
+        await db.SaveChangesAsync();
+        var login = await other.PostAsJsonAsync("/api/auth/login", new LoginRequest(otherUser.Email, "Password123!"));
+        var auth = (await login.Content.ReadFromJsonAsync<AuthResponse>())!;
+        other.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.Token);
+        (await other.PutAsJsonAsync(url, new { agriculturalProfileId = otherProfile })).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await owner.DeleteAsync($"{ProfilesUrl}/{profileId}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await owner.PutAsJsonAsync(url, new { agriculturalProfileId = profileId })).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
     private static async Task<Guid> RegisterAsync(HttpClient client)
     {
         var response = await client.PostAsJsonAsync("/api/auth/register",
@@ -221,11 +294,11 @@ public class AgriculturalProfilesControllerTests : IClassFixture<AgriVisionFacto
         return profile.GetProperty("id").GetGuid();
     }
 
-    private static MultipartFormDataContent CreatePredictionRequest(Guid profileId)
+    private static MultipartFormDataContent CreatePredictionRequest(Guid? profileId)
     {
         var request = new MultipartFormDataContent();
         request.Add(new ByteArrayContent([0xFF, 0xD8, 0xFF, 0xE0, 0x01]), "file", "leaf.jpg");
-        request.Add(new StringContent(profileId.ToString()), "agriculturalProfileId");
+        if (profileId.HasValue) request.Add(new StringContent(profileId.Value.ToString()), "agriculturalProfileId");
         return request;
     }
 }

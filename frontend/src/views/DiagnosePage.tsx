@@ -6,21 +6,11 @@ import { gsap } from 'gsap';
 import { ArrowRight, ImagePlus, RefreshCw, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { AnalysisStepper } from '@/components/diagnosis/AnalysisStepper';
 import { AnalysisResultCard } from '@/components/diagnosis/AnalysisResultCard';
 import { AnalysisIssueNotice } from '@/components/diagnosis/AnalysisIssueNotice';
-import { CreateAgriculturalProfileDialog } from '@/components/agricultural-profile/CreateAgriculturalProfileDialog';
+import { SavePredictionProfileDialog } from '@/components/agricultural-profile/SavePredictionProfileDialog';
 import {
   Dialog,
   DialogContent,
@@ -55,6 +45,7 @@ interface DiagnosePageProps {
   agriculturalProfiles?: AgriculturalProfile[];
   onCreateAgriculturalProfile?: (input: AgriculturalProfileInput) => Promise<AgriculturalProfile>;
   profileOwnerName?: string;
+  onProfileSaved?: (profileId: string) => void;
 }
 
 export const DiagnosePage: React.FC<DiagnosePageProps> = ({
@@ -64,6 +55,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
   agriculturalProfiles = [],
   onCreateAgriculturalProfile,
   profileOwnerName = 'Tài khoản của bạn',
+  onProfileSaved,
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -74,20 +66,18 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
   const [issue, setIssue] = useState<DiagnosisIssue | null>(null);
   const [showComparison, setShowComparison] = useState(false);
   const [showSupported, setShowSupported] = useState(false);
-  const [showCreateProfile, setShowCreateProfile] = useState(false);
+  const [showSaveProfile, setShowSaveProfile] = useState(false);
+  const [savedProfileName, setSavedProfileName] = useState<string | null>(null);
   const [isSample, setIsSample] = useState(false);
   const [isPreparing, setIsPreparing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [selectedAgriculturalProfileId, setSelectedAgriculturalProfileId] = useState<
-    string | undefined
-  >(() => {
-    if (!authToken || typeof window === 'undefined') return undefined;
-    const requested = new URLSearchParams(window.location.search).get('profile');
-    return agriculturalProfiles.find((profile) => profile.id === requested)?.id;
-  });
-  const ownedProfileId = agriculturalProfiles.find(
-    (profile) => profile.id === selectedAgriculturalProfileId,
-  )?.id;
+  const requestedProfileId =
+    typeof window === 'undefined'
+      ? null
+      : new URLSearchParams(window.location.search).get('profile');
+  const selectedAgriculturalProfile = authToken
+    ? agriculturalProfiles.find((profile) => profile.id === requestedProfileId)
+    : undefined;
   const inputRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<string | null>(null);
   const requestRef = useRef<AbortController | null>(null);
@@ -173,6 +163,8 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
     setPreviewUrl(null);
     setResolution('');
     setPrediction(null);
+    setShowSaveProfile(false);
+    setSavedProfileName(null);
     setIssue(null);
     setShowComparison(false);
     setIsSample(false);
@@ -265,6 +257,8 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
     const controller = new AbortController();
     requestRef.current = controller;
     setPrediction(null);
+    setShowSaveProfile(false);
+    setSavedProfileName(null);
     setIssue(null);
     setShowComparison(false);
     setProgress(0);
@@ -272,7 +266,9 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
     try {
       const result = await createPrediction(selectedFile, {
         token: authToken,
-        agriculturalProfileId: ownedProfileId,
+        ...(selectedAgriculturalProfile && {
+          agriculturalProfileId: selectedAgriculturalProfile.id,
+        }),
         signal: controller.signal,
         onUploadProgress: setProgress,
         onUploadComplete: () => {
@@ -281,6 +277,12 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
       });
       if (controller.signal.aborted) return;
       setPrediction(result);
+      if (selectedAgriculturalProfile) {
+        setSavedProfileName(selectedAgriculturalProfile.name);
+        onProfileSaved?.(selectedAgriculturalProfile.id);
+      } else {
+        setShowSaveProfile(Boolean(authToken));
+      }
       onPredictionCreated(result.diagnosis);
       const confidenceIssue = getConfidenceIssue(result);
       setIssue(confidenceIssue);
@@ -313,7 +315,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
       <Input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png"
+        accept="image/jpeg,image/png,image/webp"
         className="sr-only"
         aria-label="Chọn ảnh lá cây"
         disabled={busy || isPreparing}
@@ -325,6 +327,16 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
         }}
       />
       <h1 className="sr-only">Chẩn đoán ảnh lá</h1>
+      {selectedAgriculturalProfile && (
+        <div className="mb-6 rounded-card border border-border bg-secondary p-5">
+          <p className="break-words font-semibold text-primary">
+            Đang kiểm tra với hồ sơ “{selectedAgriculturalProfile.name}”.
+          </p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Kết quả phân tích sẽ tự động được lưu vào hồ sơ này.
+          </p>
+        </div>
+      )}
       <AnalysisStepper
         currentStep={currentStep}
         hasIssue={!!issue}
@@ -338,7 +350,9 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
             <div>
               <h2 className="font-semibold">Ảnh cần phân tích</h2>
-              <p className="mt-1 text-sm text-muted-foreground">JPG hoặc PNG · tối đa 15 MB</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                JPG, PNG hoặc WEBP · tối đa 15 MB
+              </p>
             </div>
             {previewUrl && (
               <div className="flex gap-1">
@@ -358,63 +372,6 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
               </div>
             )}
           </div>
-          {authToken && (agriculturalProfiles.length > 0 || onCreateAgriculturalProfile) && (
-            <div className="border-b border-border bg-surface-muted p-5 sm:px-6">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
-                <div>
-                  <Label htmlFor="diagnosis-agricultural-profile" className="font-semibold">
-                    Hồ sơ nông nghiệp
-                  </Label>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    Gắn kết kết quả với một khu vực canh tác tùy chọn.
-                  </p>
-                </div>
-                <Select
-                  value={ownedProfileId ?? 'none'}
-                  onValueChange={(value) => {
-                    if (value === 'create-profile') {
-                      setShowCreateProfile(true);
-                      return;
-                    }
-                    setSelectedAgriculturalProfileId(value === 'none' ? undefined : value);
-                  }}
-                  disabled={busy || isPreparing}
-                >
-                  <SelectTrigger id="diagnosis-agricultural-profile" className="w-full sm:w-64">
-                    <SelectValue placeholder="Không gắn hồ sơ" />
-                  </SelectTrigger>
-                  <SelectContent
-                    onCloseAutoFocus={(event) => {
-                      if (showCreateProfile) event.preventDefault();
-                    }}
-                  >
-                    <SelectGroup>
-                      <SelectItem value="none">Không gắn hồ sơ</SelectItem>
-                      {agriculturalProfiles.map((profile) => (
-                        <SelectItem key={profile.id} value={profile.id}>
-                          {profile.name}
-                        </SelectItem>
-                      ))}
-                      {onCreateAgriculturalProfile && (
-                        <>
-                          <SelectSeparator />
-                          <SelectItem value="create-profile">Thêm hồ sơ mới</SelectItem>
-                        </>
-                      )}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-          {authToken && showCreateProfile && onCreateAgriculturalProfile && (
-            <CreateAgriculturalProfileDialog
-              ownerName={profileOwnerName}
-              onCreate={onCreateAgriculturalProfile}
-              onCreated={(profile) => setSelectedAgriculturalProfileId(profile.id)}
-              onClose={() => setShowCreateProfile(false)}
-            />
-          )}
           <div className="p-5 sm:p-6">
             {inputIssue && (
               <div className="mb-5">
@@ -507,6 +464,38 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
                   </>
                 )}
               </Button>
+            )}
+            {authToken && prediction && (
+              <div className="mt-3 grid gap-3">
+                {savedProfileName ? (
+                  <p role="status" className="text-sm text-primary">
+                    Đã lưu kết quả vào hồ sơ “{savedProfileName}”.
+                  </p>
+                ) : (
+                  <Button
+                    size="lg"
+                    className="h-auto min-h-12 w-full whitespace-normal py-3 text-center"
+                    onClick={() => setShowSaveProfile(true)}
+                  >
+                    Lưu vào hồ sơ nông nghiệp
+                  </Button>
+                )}
+                {showSaveProfile && (
+                  <SavePredictionProfileDialog
+                    key={prediction.dto.id}
+                    predictionId={prediction.dto.id}
+                    token={authToken}
+                    profiles={agriculturalProfiles}
+                    ownerName={profileOwnerName}
+                    onCreate={onCreateAgriculturalProfile}
+                    onSaved={(profile) => {
+                      setSavedProfileName(profile.name);
+                      onProfileSaved?.(profile.id);
+                    }}
+                    onClose={() => setShowSaveProfile(false)}
+                  />
+                )}
+              </div>
             )}
             {status === 'uploading' && (
               <Progress className="mt-4" value={progress} aria-label="Tiến độ tải ảnh" />

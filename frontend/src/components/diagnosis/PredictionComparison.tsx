@@ -9,7 +9,7 @@ export function PredictionComparison({ predictions }: { predictions: TopPredicti
         {predictions.slice(0, 3).map((item) => (
           <li key={item.className ?? item.label}>
             <div className="mb-2 flex items-start justify-between gap-3 text-sm">
-              <span>{item.label}</span>
+              <span>{item.plant ? `${item.plant} · ${item.label}` : item.label}</span>
               <span className="shrink-0 font-semibold tabular-nums">
                 {(item.confidence * 100).toFixed(1)}%
               </span>

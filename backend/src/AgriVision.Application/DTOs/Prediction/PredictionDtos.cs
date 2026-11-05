@@ -10,6 +10,8 @@ public class PredictRequest
     public Guid? AgriculturalProfileId { get; init; }
 }
 
+public record AssignPredictionProfileRequest(Guid AgriculturalProfileId);
+
 public record PredictionDetailDto(
     int ClassIndex,
     string ClassName,

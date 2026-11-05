@@ -1,5 +1,10 @@
 [
   {
+    "method": "PUT",
+    "route": "/api/predictions/{id:guid}/agricultural-profile",
+    "cases": ["profiles.attach_prediction", "profiles.attach_prediction_access"]
+  },
+  {
     "method": "POST",
     "route": "/api/auth/register",
     "cases": [

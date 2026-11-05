@@ -54,6 +54,20 @@ function normalize(value: string): string {
     .replace(/[^a-z0-9]/g, '');
 }
 
+export function findPlantTemplate(
+  record: Pick<PlantDto, 'name' | 'vietnameseName'>,
+): Plant | undefined {
+  const catalogId =
+    plantIdAliases[normalize(record.name)] ??
+    plantIdAliases[normalize(record.vietnameseName ?? '')] ??
+    normalize(record.name);
+  return SUPPORTED_PLANTS.find(
+    (plant) =>
+      normalize(plant.id) === catalogId ||
+      normalize(plant.name) === normalize(record.vietnameseName ?? record.name),
+  );
+}
+
 function splitContent(value: string | null, fallback: string[]): string[] {
   if (!value?.trim()) return fallback;
   return value
@@ -73,15 +87,7 @@ export async function getPlants(): Promise<Plant[]> {
   const plants = records
     .filter((record) => record.isActive)
     .map((record) => {
-      const catalogId =
-        plantIdAliases[normalize(record.name)] ??
-        plantIdAliases[normalize(record.vietnameseName ?? '')] ??
-        normalize(record.name);
-      const template = SUPPORTED_PLANTS.find(
-        (plant) =>
-          normalize(plant.id) === catalogId ||
-          normalize(plant.name) === normalize(record.vietnameseName ?? record.name),
-      );
+      const template = findPlantTemplate(record);
 
       return {
         ...(template ?? {

@@ -64,18 +64,29 @@ describe('DiagnosePage prediction flow', () => {
             ]}
           />,
         );
-        expect(screen.getByRole('combobox', { name: 'Hồ sơ nông nghiệp' })).toHaveTextContent(
-          profileId === 'garden' ? 'Vườn nhà' : 'Không gắn hồ sơ',
-        );
+        expect(
+          screen.queryByRole('combobox', { name: 'Hồ sơ nông nghiệp' }),
+        ).not.toBeInTheDocument();
         const input = screen.getByLabelText(/Chọn ảnh lá cây/i) as HTMLInputElement;
         await uploadValidImage(input);
         await userEvent.click(screen.getByRole('button', { name: 'Phân tích ngay' }));
-        expect(createPrediction).toHaveBeenCalledWith(
-          expect.any(File),
-          expect.objectContaining({
-            agriculturalProfileId: profileId === 'garden' ? 'garden' : undefined,
-          }),
-        );
+        if (profileId === 'garden') {
+          expect(await screen.findByText('Đã lưu kết quả vào hồ sơ “Vườn nhà”.')).toBeVisible();
+          expect(screen.getByText('Đang kiểm tra với hồ sơ “Vườn nhà”.')).toBeVisible();
+          expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+          expect(createPrediction).toHaveBeenCalledWith(
+            expect.any(File),
+            expect.objectContaining({ agriculturalProfileId: 'garden' }),
+          );
+        } else {
+          expect(
+            await screen.findByRole('combobox', { name: 'Hồ sơ nông nghiệp' }),
+          ).toHaveTextContent('Chọn hồ sơ để lưu');
+          expect(createPrediction).toHaveBeenCalledWith(
+            expect.any(File),
+            expect.not.objectContaining({ agriculturalProfileId: expect.anything() }),
+          );
+        }
       } finally {
         window.history.replaceState({}, '', '/');
       }
@@ -152,6 +163,8 @@ describe('DiagnosePage prediction flow', () => {
     const { fileInput } = renderDiagnosePage();
     await uploadValidImage(fileInput);
     await userEvent.click(screen.getByRole('button', { name: 'Phân tích ngay' }));
+    await screen.findByRole('dialog');
+    await userEvent.click(screen.getByRole('button', { name: 'Bỏ qua' }));
     expect(await screen.findByRole('heading', { name: 'Độ tin cậy chẩn đoán thấp' })).toBeVisible();
     expect(screen.queryByRole('list', { name: 'Dự đoán Top-3' })).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Xem tạm bảng đối chiếu Top-3' }));
@@ -161,7 +174,7 @@ describe('DiagnosePage prediction flow', () => {
   });
   beforeEach(() => {
     vi.stubGlobal('Image', SuccessfulImage);
-    vi.mocked(createPrediction).mockReset();
+    vi.mocked(createPrediction).mockReset().mockResolvedValue(successfulPrediction);
   });
 
   it('provides a named drop zone with a keyboard alternative and accepts a dropped image', async () => {
@@ -303,6 +316,8 @@ describe('DiagnosePage prediction flow', () => {
 
     // Act
     await act(async () => resolvePrediction(successfulPrediction));
+    await screen.findByRole('dialog');
+    await userEvent.click(screen.getByRole('button', { name: 'Bỏ qua' }));
 
     // Assert: success
     expect(await screen.findByRole('heading', { name: 'Bệnh cháy lá sớm' })).toBeInTheDocument();

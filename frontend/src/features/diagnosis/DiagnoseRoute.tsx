@@ -5,7 +5,7 @@ export function DiagnoseRoute() {
   const { session, profile } = useAuth();
   const { addPrediction } = useHistory();
   const { plants } = useCatalog();
-  const { profiles, createProfile } = useAgriculturalProfiles();
+  const { profiles, createProfile, recordPrediction } = useAgriculturalProfiles();
   return (
     <DiagnosePage
       authToken={session?.token}
@@ -14,6 +14,7 @@ export function DiagnoseRoute() {
       agriculturalProfiles={profiles}
       onCreateAgriculturalProfile={createProfile}
       profileOwnerName={profile.name}
+      onProfileSaved={recordPrediction}
     />
   );
 }

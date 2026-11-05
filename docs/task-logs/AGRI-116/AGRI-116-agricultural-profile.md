@@ -133,3 +133,94 @@ và không đụng vào source hoặc artifact trong `ai/`.
   Chưa chạy lại full suite/coverage/CI, chưa commit/push. Xem [report](../../reports/AGRI-116/README.md).
 - Delivery check theo yêu cầu push: chạy lại **14/14 pass**, typecheck/lint/format
   pass; chỉ đưa source/test/docs navbar, loại AI và artifact. Chưa xác minh CI.
+
+## Profile list action alignment — 2026-11-04
+
+- Căn nút tạo bằng chiều cao/đáy input tìm kiếm; đưa nút chi tiết sát phải panel,
+  căn giữa hàng desktop và xuống dưới ở mobile. Chỉ sửa hai component layout.
+- **4/4 test** quản lý hồ sơ hiện có pass; typecheck/lint/format, Docker frontend
+  build pass. Browser fixture đã kiểm 1280/768/375px và mở chi tiết/form tạo.
+- Frontend local recreate, healthy. Chưa commit/push, chạy full suite/coverage/CI.
+  Chi tiết và paths: [report](../../reports/AGRI-116/README.md).
+
+## Save completed diagnosis into a profile — 2026-11-04
+
+- Bỏ selector trước phân tích; thêm popup chọn/tạo hồ sơ sau khi có kết quả,
+  lưu idempotent vào kết quả hiện có hoặc bỏ qua; không gọi lại AI.
+- API owner-only và migration trigger mới; giữ snapshot/ảnh/TTL/history. Full
+  frontend **469/469 pass**, browser fixture desktop/mobile và production builds pass.
+- Chưa commit/push/đo coverage/xác minh CI. Xem [contract và bằng chứng backend](../../reports/AGRI-116/post_prediction_profile_save.md).
+- Kết quả cuối backend **485/485 pass** (.NET 9; 163 unit/257 API/65 integration).
+  Sau backup, migrate riêng local thành công và recreate backend/frontend healthy;
+  health/trang HTTP 200, Guest gắn hồ sơ 401. Giữ AI và volumes; chưa commit/push.
+- Follow-up vị trí nút: chuyển lưu xuống dưới phân tích, nền xanh nổi bật, không icon.
+  **7/7 test**, typecheck/lint/frontend build pass; kiểm browser desktop/mobile.
+  Chưa commit/push; bằng chứng chi tiết trong report lưu sau chẩn đoán.
+
+## Profile card grid — 2026-11-04
+
+- Chuyển danh sách sang thẻ riêng 1/2/3 cột; giữ tên/mô tả/số chẩn đoán/ngày cập
+  nhật, nút chi tiết ở đáy phải; dùng Card có sẵn, không thêm icon/dependency.
+- **4/4 test** route, typecheck/lint/format và production frontend build pass.
+  Browser fixture đã kiểm 1280/768/375px và mở chi tiết. Không chạy full suite mới.
+- Chưa commit/push. Paths/bằng chứng: [report](../../reports/AGRI-116/README.md).
+
+## Profile detail layout — 2026-11-04
+
+- Sắp xếp chi tiết thành cột nội dung/lịch sử và cột thông tin hồ sơ; đưa chẩn
+  đoán/chỉnh sửa lên đầu, xóa đặt riêng. Lịch sử thêm kết quả và hướng dẫn khi rỗng.
+- **6/6 test**, typecheck/lint/format/diff check và production build pass.
+  Browser fixture kiểm tên dài, dữ liệu có/rỗng và responsive 320–1440px.
+- Frontend Docker local healthy. Chưa commit/push/full suite/coverage/CI;
+  paths và giới hạn kiểm chứng: [report](../../reports/AGRI-116/README.md).
+
+## Public catalog cards — 2026-11-04
+
+- Áp dụng thẻ ảnh/nội dung/nút đáy cho cây, bệnh và thuốc; tái sử dụng ảnh có
+  sẵn, chỉ ghép đúng cặp cây/bệnh; thuốc chưa có ảnh hiện ô thay thế.
+- **42/42 test**, typecheck/lint/format và production build pass; frontend
+  Docker local healthy. Browser kiểm cây/bệnh, search/chi tiết và 375/768/1280px.
+- Thuốc local chưa có mục công khai; thẻ có dữ liệu mới kiểm bằng Vitest.
+  Chưa commit/push/full suite/coverage/CI. [Paths và bằng chứng](../../reports/AGRI-116/README.md).
+
+## Diagnosis started from a profile — 2026-11-04
+
+- Link chẩn đoán từ hồ sơ hiển thị tên và gửi ID trong POST phân tích để tự lưu,
+  thành công bỏ popup. Chẩn đoán thông thường tiếp tục chọn hồ sơ sau kết quả.
+- **55/55 test**, typecheck/lint/format và frontend production build pass.
+  Chưa kiểm browser/E2E với AI thật hoặc commit/push. [Bằng chứng](../../reports/AGRI-116/README.md).
+
+## Profile diagnosis history search and plant filter — 2026-11-04
+
+- Thêm tìm kiếm theo tên cây/kết quả và lọc theo cây trong lịch sử hồ sơ.
+- Component history **2/2 pass**, typecheck/lint/format pass. Chưa chạy full suite, coverage, CI hoặc commit/push.
+
+## Mở rộng định dạng ảnh chẩn đoán — 2026-11-04
+
+- Nhận JPEG/PNG/WEBP xuyên suốt file picker, frontend validation, backend
+  extension check và AI content validation; thêm regression test WEBP.
+- Ba tệp `.jpg` thực tế là WEBP đã trả HTTP 200 qua AI và backend sau rebuild;
+  tệp gửi với tên thật `leaf.webp` cũng trả HTTP 200. AI container test **1/1**,
+  frontend unit tests liên quan **14/14**; ba container local healthy.
+- Host thiếu FastAPI nên test AI được chạy trong container. Chưa full suite,
+  coverage, CI, commit hoặc push.
+
+## Hiển thị cây trong Top-3 — 2026-11-04
+
+- Bổ sung tên cây vào dữ liệu Top-3 và hiển thị `Tên cây · Tên bệnh`, tránh mơ
+  hồ khi các lớp bệnh có cùng tên hoặc độ tin cậy thấp.
+- **40/40 test** component/API, TypeScript và diff check pass. Chưa full suite,
+  coverage, CI, commit hoặc push.
+
+## Extend branch delivery — 2026-11-05
+
+- Prepared `AGRI-116-agricultural-profile-ui-extend` with profile/diagnosis, catalog UI, migration, WEBP and Top-3 changes; unrelated AI experiments stay local.
+- Fresh affected frontend checks: 102/102 pass; typecheck/lint pass. Full run before avatar expectation update: 475/477 pass; HomeBannerSlideshow timer assertion remains unresolved. No new backend/AI/coverage/CI claim.
+- See [delivery evidence and limits](../../reports/AGRI-116/README.md).
+
+## Merge AGRI-128 for PR #57 — 2026-11-05
+
+- Resolved three conflicts in the public catalog and migration tests. The merged
+  schema has 11 migrations and retains the profile assignment guard.
+- Local checks passed: frontend 494/494, backend 180 unit + 256 API + 65
+  integration, and frontend production build. See [verification and limits](../../reports/AGRI-116/README.md).

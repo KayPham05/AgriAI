@@ -119,6 +119,17 @@ public class PredictionRepository : IPredictionRepository
         _ => DateTime.SpecifyKind(dt, DateTimeKind.Utc)
     };
 
+    public async Task<bool> AssignProfileAsync(Guid id, Guid userId, Guid profileId, CancellationToken cancellationToken = default)
+    {
+        // Check both owners in the update, including when a profile is deleted during selection.
+        var affected = await _context.Predictions
+            .Where(p => p.Id == id && p.UserId == userId &&
+                (p.AgriculturalProfileId == null || p.AgriculturalProfileId == profileId) &&
+                _context.AgriculturalProfiles.Any(profile => profile.Id == profileId && profile.UserId == userId))
+            .ExecuteUpdateAsync(setters => setters.SetProperty(p => p.AgriculturalProfileId, (Guid?)profileId), cancellationToken);
+        return affected == 1;
+    }
+
     public async Task AddAsync(Prediction prediction, CancellationToken cancellationToken = default)
     {
         await _context.Predictions.AddAsync(prediction, cancellationToken);

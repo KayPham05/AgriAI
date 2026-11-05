@@ -70,9 +70,9 @@ describe('AnalysisResultCard', () => {
       diagnosis: {
         ...successfulPrediction.diagnosis,
         top_predictions: [
-          { label: 'Bệnh cháy lá sớm', confidence: 0.94 },
-          { label: 'Lá khỏe mạnh', confidence: 0.04 },
-          { label: 'Đốm lá', confidence: 0.02 },
+          { plant: 'Cà chua', label: 'Bệnh cháy lá sớm', confidence: 0.94 },
+          { plant: 'Khoai tây', label: 'Lá khỏe mạnh', confidence: 0.04 },
+          { plant: 'Cà chua', label: 'Đốm lá', confidence: 0.02 },
         ],
       },
     };
@@ -80,6 +80,8 @@ describe('AnalysisResultCard', () => {
     expect(screen.getByRole('heading', { name: 'Bệnh cháy lá sớm' })).toBeVisible();
     const rankings = within(screen.getByRole('list', { name: 'Dự đoán Top-3' }));
     expect(rankings.getAllByRole('listitem')).toHaveLength(3);
+    expect(rankings.getByText('Cà chua · Bệnh cháy lá sớm')).toBeVisible();
+    expect(rankings.getByText('Khoai tây · Lá khỏe mạnh')).toBeVisible();
     expect(rankings.getByText('4.0%')).toBeVisible();
     expect(rankings.getByText('2.0%')).toBeVisible();
     expect(screen.getByText('Chưa có triệu chứng trong cẩm nang.')).toBeVisible();

@@ -25,7 +25,7 @@ public class PredictionService : IPredictionService
     private readonly IMedicineService _medicineService;
     private readonly ILogger<PredictionService> _logger;
 
-    private static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png" };
+    private static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png", ".webp" };
     private static readonly JsonSerializerOptions SnapshotJsonOptions = new(JsonSerializerDefaults.Web);
 
     public PredictionService(
@@ -234,6 +234,14 @@ public class PredictionService : IPredictionService
         }).ToList();
 
         return new PagedResult<PredictionHistoryDto>(historyItems, filterParams.PageNumber, filterParams.PageSize, totalCount);
+    }
+
+    public async Task AssignProfileAsync(Guid id, Guid userId, Guid profileId, CancellationToken cancellationToken = default)
+    {
+        if (profileId == Guid.Empty)
+            throw new ArgumentException("Agricultural profile ID must not be empty.", nameof(profileId));
+        if (!await _predictionRepository.AssignProfileAsync(id, userId, profileId, cancellationToken))
+            throw new KeyNotFoundException("Prediction or agricultural profile not found.");
     }
 
     public async Task DeletePredictionAsync(Guid id, Guid userId, bool isAdmin = false, CancellationToken cancellationToken = default)
