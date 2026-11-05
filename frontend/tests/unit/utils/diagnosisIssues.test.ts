@@ -7,12 +7,12 @@ import {
 import { successfulPrediction } from '../../helpers/prediction';
 
 describe('diagnosis issue decisions', () => {
-  it.each(['image/heic', 'image/webp', 'application/pdf', 'image/gif'])(
-    'blocks unsupported %s',
-    (type) => {
-      expect(getInputIssue({ type, size: 1000 })?.code).toBe('INVALID_FORMAT');
-    },
-  );
+  it.each(['image/heic', 'application/pdf', 'image/gif'])('blocks unsupported %s', (type) => {
+    expect(getInputIssue({ type, size: 1000 })?.code).toBe('INVALID_FORMAT');
+  });
+  it('accepts WEBP input', () => {
+    expect(getInputIssue({ type: 'image/webp', size: 1000 })).toBeNull();
+  });
   it('accepts the size limit and rejects the next byte and empty images', () => {
     expect(getInputIssue({ type: 'image/jpeg', size: 15 * 1024 * 1024 })).toBeNull();
     expect(getInputIssue({ type: 'image/png', size: 15 * 1024 * 1024 + 1 })?.code).toBe(

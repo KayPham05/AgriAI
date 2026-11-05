@@ -16,6 +16,12 @@ def make_image() -> bytes:
     return buffer.getvalue()
 
 
+def make_webp_image() -> bytes:
+    buffer = io.BytesIO()
+    Image.new("RGB", (32, 32), color="green").save(buffer, format="WEBP")
+    return buffer.getvalue()
+
+
 class FakePredictor:
     def predict_image(self, image_path, top_k=3):
         return {
@@ -61,6 +67,12 @@ class ThreePlantPredictor(FakePredictor):
 
 
 class InferenceServiceTests(unittest.TestCase):
+    def test_webp_upload_is_decoded_and_reaches_inference(self):
+        with TestClient(create_app(lambda **_kwargs: FakePredictor())) as client:
+            response = client.post(
+                "/predict", files={"file": ("leaf.webp", make_webp_image(), "image/webp")}
+            )
+        self.assertEqual(response.status_code, 200, response.text)
     def test_upload_at_byte_limit_is_accepted_but_one_more_byte_is_rejected(self):
         image = make_image()
         at_limit = image + b"\0" * (15 * 1024 * 1024 - len(image))

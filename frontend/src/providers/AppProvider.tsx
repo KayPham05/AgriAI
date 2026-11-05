@@ -364,6 +364,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
     updateStoredAuthUser(user);
   }, []);
+  const recordProfilePrediction = useCallback((profileId: string) => {
+    setAgriculturalProfiles((current) =>
+      current.map((profile) =>
+        profile.id === profileId
+          ? { ...profile, predictionCount: profile.predictionCount + 1 }
+          : profile,
+      ),
+    );
+  }, []);
   const createProfile = useCallback(
     async (input: AgriculturalProfileInput) => {
       if (!authSession) throw new Error('Vui lòng đăng nhập để quản lý hồ sơ nông nghiệp.');
@@ -466,6 +475,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isLoading: agriculturalProfilesLoading,
       error: agriculturalProfilesError,
       createProfile,
+      recordPrediction: recordProfilePrediction,
       updateProfile: updateAgriculturalProfileState,
       deleteProfile: deleteAgriculturalProfileState,
     }),
@@ -474,6 +484,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       agriculturalProfilesLoading,
       agriculturalProfilesError,
       createProfile,
+      recordProfilePrediction,
       updateAgriculturalProfileState,
       deleteAgriculturalProfileState,
     ],
@@ -518,32 +529,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
         <HistoryContext value={historyState}>
           <AgriculturalProfileContext value={agriculturalProfileState}>
             <FeedbackContext value={feedback}>
-            {children}
-            <ToastContainer toasts={toasts} onDismiss={removeToast} />
-            <LoginModal
-              isOpen={isLoginOpen}
-              initialMode={authEntryMode}
-              onClose={() => setIsLoginOpen(false)}
-              onAuthSuccess={handleAuthSuccess}
-            />
-            <NotificationsModal
-              isOpen={isNotificationsOpen}
-              onClose={() => setIsNotificationsOpen(false)}
-              notifications={notifications}
-              onMarkAllRead={() =>
-                setNotifications((items) => items.map((item) => ({ ...item, read: true })))
-              }
-              onClearAll={() => setNotifications([])}
-            />
-            <HistoryDetailModal
-              isOpen={isHistoryDetailOpen}
-              result={historyDetailResult}
-              onClose={() => setIsHistoryDetailOpen(false)}
-              onAnalyzeNew={() => {
-                setIsHistoryDetailOpen(false);
-                router.push('/diagnose');
-              }}
-            />
+              {children}
+              <ToastContainer toasts={toasts} onDismiss={removeToast} />
+              <LoginModal
+                isOpen={isLoginOpen}
+                initialMode={authEntryMode}
+                onClose={() => setIsLoginOpen(false)}
+                onAuthSuccess={handleAuthSuccess}
+              />
+              <NotificationsModal
+                isOpen={isNotificationsOpen}
+                onClose={() => setIsNotificationsOpen(false)}
+                notifications={notifications}
+                onMarkAllRead={() =>
+                  setNotifications((items) => items.map((item) => ({ ...item, read: true })))
+                }
+                onClearAll={() => setNotifications([])}
+              />
+              <HistoryDetailModal
+                isOpen={isHistoryDetailOpen}
+                result={historyDetailResult}
+                onClose={() => setIsHistoryDetailOpen(false)}
+                onAnalyzeNew={() => {
+                  setIsHistoryDetailOpen(false);
+                  router.push('/diagnose');
+                }}
+              />
             </FeedbackContext>
           </AgriculturalProfileContext>
         </HistoryContext>

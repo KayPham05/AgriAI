@@ -113,12 +113,21 @@ export function AgriculturalProfilesRoute() {
         : view.type === 'delete'
           ? 'Lịch sử chẩn đoán vẫn thuộc tài khoản của bạn sau khi xóa hồ sơ.'
           : view.type === 'detail' && selected
-            ? `Hồ sơ của bạn · Tạo ${new Date(selected.createdAt).toLocaleDateString('vi-VN')} · Cập nhật ${new Date(selected.updatedAt ?? selected.createdAt).toLocaleDateString('vi-VN')}`
+            ? 'Thông tin canh tác và các lần chẩn đoán của khu vực này.'
             : 'Theo dõi thông tin canh tác và lịch sử theo từng hồ sơ của bạn.';
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
-      <header className="flex flex-col gap-6">
+      <header className="flex flex-col gap-3">
+        {view.type === 'detail' && selected && (
+          <Button
+            variant="link"
+            className="mb-2 w-fit px-0"
+            onClick={() => changeView({ type: 'list' })}
+          >
+            Quay về danh sách
+          </Button>
+        )}
         <h1
           ref={headingRef}
           tabIndex={-1}
@@ -151,8 +160,8 @@ export function AgriculturalProfilesRoute() {
           </h2>
           {profiles.length > 0 && (
             <>
-              <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-                <div className="flex w-full flex-col gap-2 sm:max-w-3xl">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-end">
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
                   <Label htmlFor="profile-search">Tìm hồ sơ</Label>
                   <Input
                     id="profile-search"
@@ -163,7 +172,10 @@ export function AgriculturalProfilesRoute() {
                     className="h-13 rounded-xl border-border px-3.5"
                   />
                 </div>
-                <Button className="w-fit px-6" onClick={() => changeView({ type: 'create' })}>
+                <Button
+                  className="h-13 w-full shrink-0 px-6 sm:w-auto"
+                  onClick={() => changeView({ type: 'create' })}
+                >
                   Tạo hồ sơ
                 </Button>
               </div>
@@ -195,21 +207,21 @@ export function AgriculturalProfilesRoute() {
               </CardContent>
             </Card>
           )}
-          {profiles.length > 0 && (
-            <Card className="rounded-card py-6 ring-0">
-              <CardContent className="px-6">
-                {visibleProfiles.length > 0 ? (
-                  <ul>
-                    {visibleProfiles.map((profile) => (
-                      <li key={profile.id} className="border-b border-border py-5 first:pt-0">
-                        <AgriculturalProfileCard
-                          profile={profile}
-                          onView={() => changeView({ type: 'detail', id: profile.id })}
-                        />
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
+          {profiles.length > 0 &&
+            (visibleProfiles.length > 0 ? (
+              <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {visibleProfiles.map((profile) => (
+                  <li key={profile.id} className="min-w-0">
+                    <AgriculturalProfileCard
+                      profile={profile}
+                      onView={() => changeView({ type: 'detail', id: profile.id })}
+                    />
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <Card className="rounded-card py-6 ring-0">
+                <CardContent className="px-6">
                   <div className="flex flex-col items-start gap-5">
                     <h3 className="text-xl font-bold">Không có kết quả tìm kiếm</h3>
                     <p className="text-sm text-muted-foreground">
@@ -219,10 +231,9 @@ export function AgriculturalProfilesRoute() {
                       Xóa tìm kiếm
                     </Button>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+                </CardContent>
+              </Card>
+            ))}
           <p className="text-xs leading-5 text-muted-foreground">
             Chỉ hiển thị hồ sơ của tài khoản đang đăng nhập.
           </p>
@@ -252,55 +263,90 @@ export function AgriculturalProfilesRoute() {
 
       {view.type === 'detail' && selected && (
         <>
-          <Card className="rounded-card py-6 ring-0">
-            <CardHeader className="px-6">
-              <CardTitle>
-                <h2 className="text-xl font-bold">Thông tin canh tác</h2>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-5 px-6">
-              <p className="whitespace-pre-line break-words leading-6">
-                {selected.description || 'Chưa có ghi chú canh tác.'}
-              </p>
-              <p className="text-xs leading-5 text-muted-foreground">
-                Cây trồng lấy từ từng kết quả chẩn đoán.
-              </p>
-              <div className="flex flex-col items-start gap-4 sm:flex-row sm:flex-wrap">
-                <Button asChild className="px-6">
-                  <Link href={`/diagnose?profile=${encodeURIComponent(selected.id)}`}>
-                    Chẩn đoán với hồ sơ này
-                  </Link>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="border-border px-6"
-                  onClick={() => changeView({ type: 'edit', id: selected.id })}
-                >
-                  Chỉnh sửa
-                </Button>
-                <Button
-                  variant="outline"
-                  className="border-border px-6"
-                  onClick={() => changeView({ type: 'delete', id: selected.id })}
-                >
-                  Xóa hồ sơ
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-          <AgriculturalProfileHistory
-            key={selected.id}
-            profileId={selected.id}
-            token={session.token}
-            onView={viewHistoryItem}
-          />
-          <Button
-            variant="link"
-            className="w-fit px-0"
-            onClick={() => changeView({ type: 'list' })}
-          >
-            Quay về danh sách
-          </Button>
+          <div className="flex flex-col gap-3 border-b border-border pb-6 sm:flex-row sm:flex-wrap">
+            <Button asChild className="h-auto min-h-12 whitespace-normal px-6 py-3">
+              <Link href={`/diagnose?profile=${encodeURIComponent(selected.id)}`}>
+                Chẩn đoán với hồ sơ này
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              className="min-h-12 border-border px-6"
+              onClick={() => changeView({ type: 'edit', id: selected.id })}
+            >
+              Chỉnh sửa
+            </Button>
+          </div>
+          <div className="grid items-start gap-6 lg:grid-cols-3">
+            <div className="flex min-w-0 flex-col gap-6 lg:col-span-2">
+              <Card className="rounded-card border border-border bg-surface py-6 ring-0">
+                <CardHeader className="px-6">
+                  <CardTitle>
+                    <h2 className="text-xl font-bold">Thông tin canh tác</h2>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-5 px-6">
+                  <p className="whitespace-pre-line break-words leading-7">
+                    {selected.description || 'Chưa có ghi chú canh tác.'}
+                  </p>
+                  <p className="border-t border-border pt-4 text-sm leading-6 text-muted-foreground">
+                    Cây trồng được ghi nhận theo từng kết quả trong lịch sử chẩn đoán bên dưới.
+                  </p>
+                </CardContent>
+              </Card>
+              <AgriculturalProfileHistory
+                key={selected.id}
+                profileId={selected.id}
+                token={session.token}
+                onView={viewHistoryItem}
+              />
+            </div>
+            <Card className="min-w-0 rounded-card border border-border bg-surface py-6 ring-0">
+              <CardHeader className="px-6">
+                <CardTitle>
+                  <h2 className="text-xl font-bold">Thông tin hồ sơ</h2>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-6 px-6">
+                <dl className="grid gap-5">
+                  <div className="grid gap-1">
+                    <dt className="text-sm text-muted-foreground">Chủ sở hữu</dt>
+                    <dd className="break-words font-semibold">{userProfile.name}</dd>
+                  </div>
+                  <div className="grid gap-1">
+                    <dt className="text-sm text-muted-foreground">Ngày tạo</dt>
+                    <dd>{new Date(selected.createdAt).toLocaleDateString('vi-VN')}</dd>
+                  </div>
+                  <div className="grid gap-1">
+                    <dt className="text-sm text-muted-foreground">Cập nhật gần nhất</dt>
+                    <dd>
+                      {new Date(selected.updatedAt ?? selected.createdAt).toLocaleDateString(
+                        'vi-VN',
+                      )}
+                    </dd>
+                  </div>
+                  <div className="grid gap-1 border-t border-border pt-5">
+                    <dt className="text-sm text-muted-foreground">Đã lưu vào hồ sơ</dt>
+                    <dd className="text-lg font-semibold text-primary">
+                      {selected.predictionCount} lượt chẩn đoán
+                    </dd>
+                  </div>
+                </dl>
+                <div className="grid gap-3 border-t border-border pt-5">
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    Xóa hồ sơ vẫn giữ kết quả chẩn đoán trong tài khoản của bạn.
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="w-full border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => changeView({ type: 'delete', id: selected.id })}
+                  >
+                    Xóa hồ sơ
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </>
       )}
 

@@ -158,12 +158,15 @@ public class DatabaseImprovementTests : IAsyncLifetime
         (await move.Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be(PostgresErrorCodes.CheckViolation);
         await database.Database.ExecuteSqlInterpolatedAsync($"UPDATE predictions SET agricultural_profile_id = NULL WHERE id = {id}");
         (await database.Predictions.CountAsync(p => p.Id == id)).Should().Be(1);
-        (await move.Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be(PostgresErrorCodes.CheckViolation);
+        await move();
         var ungrouped = await CreatePredictionAsync(database, owner, null);
         Func<Task> attachLater = async () => await database.Database.ExecuteSqlInterpolatedAsync($"""
             UPDATE predictions SET agricultural_profile_id = {first} WHERE id = {ungrouped}
             """);
-        (await attachLater.Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be(PostgresErrorCodes.CheckViolation);
+        await attachLater();
+        (await database.Predictions.AsNoTracking().SingleAsync(p => p.Id == ungrouped)).AgriculturalProfileId.Should().Be(first);
+        Func<Task> transferAttached = async () => await database.Database.ExecuteSqlInterpolatedAsync($"UPDATE predictions SET agricultural_profile_id = {second} WHERE id = {ungrouped}");
+        (await transferAttached.Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be(PostgresErrorCodes.CheckViolation);
     }
 
     [Fact]

@@ -25,8 +25,7 @@ public class MigrationTests
             INSERT INTO users (id, full_name, email, created_at) VALUES ({owner}, 'Forward owner', 'forward@example.test', now());
             INSERT INTO agricultural_profiles (id, user_id, name, created_at) VALUES ({profile}, {owner}, 'Keep this profile', now());
             """);
-        // The new nullable avatar column is reversible; verify the protected historical boundary separately.
-        await database.GetService<IMigrator>().MigrateAsync("20261023130623_SessionRevocationClockSafety");
+        // The profile-assignment trigger migration is now the latest forward-only boundary.
         var before = (await database.Database.GetAppliedMigrationsAsync()).ToArray();
         Func<Task> downgrade = () => database.GetService<IMigrator>().MigrateAsync("20261017084014_DatabaseImprovement");
         await downgrade.Should().ThrowAsync<NotSupportedException>().WithMessage("*forward-only*");
@@ -69,7 +68,7 @@ public class MigrationTests
             """);
         await database.Database.MigrateAsync();
         await database.Database.MigrateAsync();
-        (await database.Database.GetAppliedMigrationsAsync()).Should().HaveCount(8);
+        (await database.Database.GetAppliedMigrationsAsync()).Should().HaveCount(9);
         (await database.Users.SingleAsync(account => account.Id == legacyUserId)).AvatarUrl.Should().BeNull();
         database.Database.HasPendingModelChanges().Should().BeFalse();
         var legacy = await database.Predictions.Include(prediction => prediction.Images).SingleAsync();

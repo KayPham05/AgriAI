@@ -691,6 +691,8 @@ public class PredictionServiceTests
 
     private sealed class RecordingPredictionRepository : IPredictionRepository
     {
+        public Task<bool> AssignProfileAsync(Guid id, Guid userId, Guid profileId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(false);
         public Exception? WriteError { get; set; }
         public List<Prediction> AddedPredictions { get; } = [];
 

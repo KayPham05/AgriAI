@@ -1,6 +1,14 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from '@/components/ui/card';
 import type { AgriculturalProfile } from '@/services/agriculturalProfileApi';
 
 export function AgriculturalProfileCard({
@@ -11,23 +19,32 @@ export function AgriculturalProfileCard({
   onView: () => void;
 }) {
   return (
-    <article className="grid gap-5 sm:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] sm:gap-6">
-      <div className="flex min-w-0 flex-col gap-1.5">
-        <h3 className="break-words text-xl font-bold leading-8">{profile.name}</h3>
-        <p className="whitespace-pre-line break-words text-sm leading-6 text-muted-foreground">
-          {profile.description || 'Chưa có ghi chú canh tác'}
-        </p>
-        <p className="text-xs leading-5 text-muted-foreground">
-          {profile.predictionCount > 0
-            ? `${profile.predictionCount} lượt chẩn đoán`
-            : 'Chưa có chẩn đoán'}
-          {' · '}Cập nhật{' '}
-          {new Date(profile.updatedAt ?? profile.createdAt).toLocaleDateString('vi-VN')}
-        </p>
-      </div>
-      <Button variant="outline" className="w-fit self-start border-border px-6" onClick={onView}>
-        Xem chi tiết
-      </Button>
+    <article className="h-full min-w-0">
+      <Card className="h-full gap-5 rounded-card border border-border bg-surface pt-6 ring-0">
+        <CardHeader className="gap-3 px-6">
+          <CardTitle>
+            <h3 className="break-words text-xl font-bold leading-8">{profile.name}</h3>
+          </CardTitle>
+          <CardDescription className="line-clamp-3 whitespace-pre-line break-words leading-6">
+            {profile.description || 'Chưa có ghi chú canh tác'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-2 px-6">
+          <p className="font-semibold text-primary">
+            {profile.predictionCount > 0
+              ? `${profile.predictionCount} lượt chẩn đoán`
+              : 'Chưa có chẩn đoán'}
+          </p>
+          <p className="text-xs leading-5 text-muted-foreground">
+            Cập nhật {new Date(profile.updatedAt ?? profile.createdAt).toLocaleDateString('vi-VN')}
+          </p>
+        </CardContent>
+        <CardFooter className="mt-auto justify-end border-border px-6 py-4">
+          <Button variant="outline" className="px-6" onClick={onView}>
+            Xem chi tiết
+          </Button>
+        </CardFooter>
+      </Card>
     </article>
   );
 }

@@ -1,7 +1,10 @@
 'use client';
 import { createContext, use } from 'react';
 import type { AuthSession, AuthUser } from '@/services/authApi';
-import type { AgriculturalProfile, AgriculturalProfileInput } from '@/services/agriculturalProfileApi';
+import type {
+  AgriculturalProfile,
+  AgriculturalProfileInput,
+} from '@/services/agriculturalProfileApi';
 import type { Plant, Disease, DiagnosisResult, UserProfile, NotificationItem } from '@/types';
 
 interface AuthState {
@@ -23,6 +26,7 @@ interface HistoryState {
   viewHistoryItem: (result: DiagnosisResult) => Promise<void>;
 }
 interface AgriculturalProfileState {
+  recordPrediction?: (profileId: string) => void;
   profiles: AgriculturalProfile[];
   isLoading: boolean;
   error: string | null;

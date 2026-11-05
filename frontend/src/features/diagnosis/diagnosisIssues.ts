@@ -26,7 +26,8 @@ export function isInputIssue(issue: DiagnosisIssue): boolean {
   return ['INVALID_FORMAT', 'FILE_TOO_LARGE', 'CORRUPTED_OR_LOW_RES'].includes(issue.code);
 }
 export function getInputIssue(file: Pick<File, 'type' | 'size'>): DiagnosisIssue | null {
-  if (!['image/jpeg', 'image/png'].includes(file.type)) return { code: 'INVALID_FORMAT' };
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type))
+    return { code: 'INVALID_FORMAT' };
   if (file.size === 0)
     return {
       code: 'CORRUPTED_OR_LOW_RES',

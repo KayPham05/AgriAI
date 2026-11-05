@@ -95,6 +95,16 @@ public class PredictionsController : ControllerBase
     }
 
     [Authorize]
+    [HttpPut("{id:guid}/agricultural-profile")]
+    public async Task<IActionResult> AssignProfile(Guid id, [FromBody] AssignPredictionProfileRequest request, CancellationToken cancellationToken)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (!Guid.TryParse(userIdClaim, out var userId)) return Unauthorized();
+        await _predictionService.AssignProfileAsync(id, userId, request.AgriculturalProfileId, cancellationToken);
+        return NoContent();
+    }
+
+    [Authorize]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

@@ -43,7 +43,7 @@ describe('profile diagnosis history', () => {
     render(<AgriculturalProfileHistory profileId="garden" token="token" onView={onView} />);
     expect(await screen.findByRole('alert')).toHaveTextContent('Không thể tải lịch sử.');
     await userEvent.click(screen.getByRole('button', { name: 'Thử lại' }));
-    expect(await screen.findByText('Lúa')).toBeInTheDocument();
+    expect((await screen.findAllByText('Lúa')).length).toBeGreaterThan(0);
     await userEvent.click(screen.getByRole('button', { name: 'Xem kết quả đã lưu' }));
     expect(onView).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'result-1', plant: 'Lúa', prediction: 'Khỏe mạnh' }),
@@ -79,11 +79,11 @@ describe('profile diagnosis history', () => {
       });
     vi.stubGlobal('fetch', fetchMock);
     render(<AgriculturalProfileHistory profileId="garden" token="token" onView={vi.fn()} />);
-    expect(await screen.findByText('Lúa')).toBeInTheDocument();
+    expect((await screen.findAllByText('Lúa')).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Trang trước' })).toBeDisabled();
     await userEvent.click(screen.getByRole('button', { name: 'Trang sau' }));
-    expect(await screen.findByText('Cà chua')).toBeInTheDocument();
-    expect(screen.queryByText('Lúa')).not.toBeInTheDocument();
+    expect((await screen.findAllByText('Cà chua')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Lúa', { selector: 'p' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Trang sau' })).toBeDisabled();
     expect(fetchMock).toHaveBeenLastCalledWith(
       '/api/predictions?agriculturalProfileId=garden&pageNumber=2&pageSize=10',

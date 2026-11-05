@@ -1,6 +1,7 @@
 import { afterEach, assert, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createPrediction,
+  assignPredictionProfile,
   deletePrediction,
   getPredictionById,
   getPredictionHistory,
@@ -149,8 +150,8 @@ describe('createPrediction', () => {
     });
 
     expect(diagnosis.top_predictions).toMatchObject([
-      { className: 'Tomato___healthy', label: 'Khỏe mạnh', confidence: 0.6 },
-      { className: 'Potato___healthy', label: 'Khỏe mạnh', confidence: 0.3 },
+      { className: 'Tomato___healthy', plant: 'Cà chua', label: 'Khỏe mạnh', confidence: 0.6 },
+      { className: 'Potato___healthy', plant: 'Cà chua', label: 'Khỏe mạnh', confidence: 0.3 },
     ]);
   });
 
@@ -304,6 +305,40 @@ describe('createPrediction', () => {
 
 describe('prediction history requests', () => {
   afterEach(() => vi.unstubAllGlobals());
+
+  it('assigns an existing prediction with JSON/auth and accepts a 204 response', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 204,
+      json: async () => {
+        throw new SyntaxError('No content');
+      },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await assignPredictionProfile('prediction-1', 'garden', 'jwt-token');
+    expect(fetchMock).toHaveBeenCalledExactlyOnceWith(
+      '/api/predictions/prediction-1/agricultural-profile',
+      {
+        method: 'PUT',
+        headers: { Authorization: 'Bearer jwt-token', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agriculturalProfileId: 'garden' }),
+      },
+    );
+  });
+
+  it('keeps assignment errors actionable instead of reporting a false save', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: async () => ({ message: 'Hồ sơ không còn tồn tại.' }),
+      }),
+    );
+    await expect(assignPredictionProfile('prediction-1', 'deleted', 'jwt-token')).rejects.toThrow(
+      'Hồ sơ không còn tồn tại.',
+    );
+  });
 
   it('requests the selected profile and requested page without mixing account history', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
