@@ -40,7 +40,8 @@ type PredictionStatus = 'idle' | 'uploading' | 'analyzing' | 'success' | 'error'
 
 interface DiagnosePageProps {
   authToken?: string;
-  onPredictionCreated: (result: DiagnosisResult) => void;
+  onPredictionCreated?: (result: DiagnosisResult) => void;
+  embedded?: boolean;
   supportedPlants?: Plant[];
   agriculturalProfiles?: AgriculturalProfile[];
   onCreateAgriculturalProfile?: (input: AgriculturalProfileInput) => Promise<AgriculturalProfile>;
@@ -51,6 +52,7 @@ interface DiagnosePageProps {
 export const DiagnosePage: React.FC<DiagnosePageProps> = ({
   authToken,
   onPredictionCreated,
+  embedded = false,
   supportedPlants = [],
   agriculturalProfiles = [],
   onCreateAgriculturalProfile,
@@ -283,7 +285,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
       } else {
         setShowSaveProfile(Boolean(authToken));
       }
-      onPredictionCreated(result.diagnosis);
+      onPredictionCreated?.(result.diagnosis);
       const confidenceIssue = getConfidenceIssue(result);
       setIssue(confidenceIssue);
       setStatus(confidenceIssue ? 'attention' : 'success');
@@ -311,12 +313,15 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
   const chooseImage = () => inputRef.current?.click();
 
   return (
-    <div ref={pageRef} className="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:px-12">
+    <div
+      ref={pageRef}
+      className={embedded ? 'min-w-0' : 'mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:px-12'}
+    >
       <Input
         ref={inputRef}
         type="file"
         accept="image/jpeg,image/png,image/webp"
-        className="sr-only"
+        className="sr-only size-px!"
         aria-label="Chọn ảnh lá cây"
         disabled={busy || isPreparing}
         tabIndex={-1}
@@ -326,7 +331,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
           e.target.value = '';
         }}
       />
-      <h1 className="sr-only">Chẩn đoán ảnh lá</h1>
+      {!embedded && <h1 className="sr-only">Chẩn đoán ảnh lá</h1>}
       {selectedAgriculturalProfile && (
         <div className="mb-6 rounded-card border border-border bg-secondary p-5">
           <p className="break-words font-semibold text-primary">
@@ -337,11 +342,13 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
           </p>
         </div>
       )}
-      <AnalysisStepper
-        currentStep={currentStep}
-        hasIssue={!!issue}
-        hasImage={Boolean(selectedFile) || isPreparing}
-      />
+      {!embedded && (
+        <AnalysisStepper
+          currentStep={currentStep}
+          hasIssue={!!issue}
+          hasImage={Boolean(selectedFile) || isPreparing}
+        />
+      )}
       <div className="grid items-start gap-8 lg:grid-cols-5">
         <section
           className="min-w-0 overflow-hidden rounded-card border border-border bg-surface lg:col-span-3"
@@ -511,7 +518,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
             showComparison={showComparison}
             onChooseImage={chooseImage}
             onChooseSample={() => void chooseSample()}
-            onShowSupported={() => setShowSupported(true)}
+            onShowSupported={embedded ? undefined : () => setShowSupported(true)}
             onViewComparison={() => setShowComparison(true)}
             onRetry={selectedFile ? analyze : undefined}
           />

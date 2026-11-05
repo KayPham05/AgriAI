@@ -1,4 +1,6 @@
 using AgriVision.Application.Common.Interfaces.Services;
+using AgriVision.Application.Common.Interfaces.Authentication;
+using System.Collections.Concurrent;
 using AgriVision.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
@@ -13,6 +15,7 @@ namespace AgriVision.TestSupport;
 
 public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
+    public TestInbox Inbox { get; } = new();
     private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder("postgres:16-alpine")
         .WithDatabase("agrivision_test_db")
         .WithUsername("testuser")
@@ -33,6 +36,7 @@ public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("TrafficLimits:AuthRequestsPerMinute", "10000");
         builder.UseSetting("ConnectionStrings:DefaultConnection", _dbContainer.GetConnectionString());
         builder.UseSetting("JwtSettings:Secret", new string('x', 32));
+        builder.UseSetting("Google:ClientId", "fixture.apps.googleusercontent.com");
         builder.UseSetting("AiService:BaseUrl", "http://127.0.0.1:1");
         builder.ConfigureServices(services =>
         {
@@ -54,6 +58,8 @@ public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
             services.RemoveAll<IPlantDiseasePredictor>();
             services.AddSingleton<IImageStorage, FakeImageStorage>();
             services.AddSingleton<IPlantDiseasePredictor, FakePlantDiseasePredictor>();
+            services.RemoveAll<IAccountEmailSender>();
+            services.AddSingleton<IAccountEmailSender>(Inbox);
 
             // Ensure database schema is created
             using var sp = services.BuildServiceProvider();
@@ -62,6 +68,21 @@ public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
             db.Database.Migrate();
             DbInitializer.SeedAsync(scope.ServiceProvider).GetAwaiter().GetResult();
         });
+    }
+
+    public sealed class TestInbox : IAccountEmailSender
+    {
+        private readonly ConcurrentQueue<(string Recipient, string Subject, string Body)> _messages = new();
+
+        public IReadOnlyList<string> Read(string recipient, string subject) =>
+            _messages.Where(message => message.Recipient == recipient && message.Subject == subject)
+                .Select(message => message.Body).ToArray();
+
+        public Task SendAsync(string recipient, string subject, string body, CancellationToken cancellationToken)
+        {
+            _messages.Enqueue((recipient, subject, body));
+            return Task.CompletedTask;
+        }
     }
 
     protected virtual void ConfigureR2(IWebHostBuilder builder)

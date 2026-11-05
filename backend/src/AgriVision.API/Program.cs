@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Threading.RateLimiting;
 using AgriVision.API.Middleware;
 using AgriVision.Application;
 using AgriVision.Infrastructure;
@@ -26,6 +27,17 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // 2. Configure Controllers & CORS
 builder.Services.AddControllers(options => options.Filters.Add<RequestValidationFilter>());
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("account-challenges", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 20,
+            Window = TimeSpan.FromMinutes(1)
+        }));
+});
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>

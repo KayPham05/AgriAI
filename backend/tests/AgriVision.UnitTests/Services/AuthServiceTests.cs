@@ -178,6 +178,23 @@ public class AuthServiceTests
     }
 
     [Fact]
+    public async Task LoginAsync_ShouldRejectInactiveAccount_WithValidPassword()
+    {
+        var request = new LoginRequest("inactive@example.com", "Password123!");
+        _userRepositoryMock.Setup(repository => repository.GetByEmailForUpdateAsync(request.Email, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User
+            {
+                Email = request.Email,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                IsActive = false
+            });
+
+        var login = () => _authService.LoginAsync(request);
+
+        await login.Should().ThrowAsync<UnauthorizedAccessException>();
+    }
+
+    [Fact]
     public async Task LoginAsync_ShouldRejectPasswordLogin_ForProviderOnlyAccount()
     {
         var request = new LoginRequest("google@example.com", "Password123!");

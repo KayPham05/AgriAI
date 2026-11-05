@@ -1,0 +1,31 @@
+services:
+  backend:
+    environment:
+      Smtp__Host: ${MAIL_HOSTNAME:?Set MAIL_HOSTNAME}
+      Smtp__Port: "587"
+      Smtp__Sender: ${MAIL_SENDER:?Set MAIL_SENDER}
+      Smtp__Password: ${MAIL_PASSWORD:?Set MAIL_PASSWORD}
+
+  mailserver:
+    image: ghcr.io/docker-mailserver/docker-mailserver:15.1.0
+    hostname: ${MAIL_HOSTNAME:?Set MAIL_HOSTNAME}
+    restart: unless-stopped
+    environment:
+      SSL_TYPE: manual
+      PERMIT_DOCKER: none
+      SSL_CERT_PATH: /run/mail-tls/fullchain.pem
+      SSL_KEY_PATH: /run/mail-tls/privkey.pem
+    networks:
+      default:
+        aliases:
+          - ${MAIL_HOSTNAME:?Set MAIL_HOSTNAME}
+    volumes:
+      - mail_config:/tmp/docker-mailserver
+      - mail_data:/var/mail
+      - mail_state:/var/mail-state
+      - ${MAIL_TLS_DIR:?Set MAIL_TLS_DIR}:/run/mail-tls:ro
+
+volumes:
+  mail_config:
+  mail_data:
+  mail_state:
