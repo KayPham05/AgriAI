@@ -197,3 +197,184 @@ local/remote **0/0** trước commit. Chạy lại hai suite trên **14/14 pass*
 typecheck/lint/format sáu file pass, diff whitespace sạch. Chuẩn bị commit source,
 test và docs navbar cùng nhau; loại AI/notebook/Compose AI và QA artifact. Không
 chạy lại build/full suite hoặc xác minh GitHub Actions trong lượt push.
+
+## Profile list action alignment — 2026-11-04
+
+- `frontend/src/features/agricultural-profiles/AgriculturalProfilesRoute.tsx`:
+  toolbar căn đáy ở desktop, input co giãn và nút tạo cao 52px bằng input; mobile
+  nút tạo full width bên dưới input. Không dùng offset/margin bù cho label.
+- `frontend/src/components/agricultural-profile/AgriculturalProfileCard.tsx`:
+  grid nội dung co giãn + cột action theo kích thước nút, căn giữa chiều dọc ở desktop;
+  `Xem chi tiết` sát mép phải phần nội dung panel. Mobile action xuống dưới, căn phải.
+- Chỉ sửa layout; không thêm test kiểm class CSS. Suite quản lý hồ sơ hiện có
+  **4/4 pass**, 12,49 giây; typecheck, lint 246 file và format hai file pass.
+- Browser preview component/CSS thật với fixture tổng hợp: desktop 1280px input và
+  nút tạo cùng top 187/bottom 239/height 52px; các nút chi tiết cách mép phải hàng
+  dưới 0,001px và center delta 0. Tablet 768px input/nút tạo cũng cùng top/bottom;
+  mobile 375px không tràn ngang, action nằm cuối hàng và sát mép phải. Đã bấm mở
+  chi tiết và mở form tạo. Không ghi PostgreSQL trong preview; preview đã dừng,
+  viewport đã reset. Artifact ignored:
+  `.cache/qa-verification/agri116/figma-sync/profile-actions-desktop.jpg`.
+- Docker frontend production build pass, recreate riêng frontend local và healthy.
+  Không thay backend/AI/DB, không migration/xóa volume. Không chạy full suite,
+  coverage hoặc CI trong lượt này; chưa commit/push.
+
+## Save completed diagnosis into a profile — 2026-11-04
+
+Bỏ chọn hồ sơ trước phân tích; sau kết quả, popup cho chọn/tạo hồ sơ và lưu hoặc
+bỏ qua. Bổ sung API gắn kết quả đã có (owner-only, idempotent) và migration trigger
+cho phép gắn hồ sơ sau INSERT; giữ lịch sử, snapshot, ảnh và TTL. Chi tiết contract,
+paths, migration và bằng chứng: [lưu sau chẩn đoán](post_prediction_profile_save.md).
+
+Kiểm chứng cuối: **485/485 backend** (.NET 9, gồm 163 unit/257 API/65 integration),
+**469/469 frontend**, typecheck/lint/format và production builds pass. Đã backup DB,
+áp dụng migration mới và recreate riêng backend/frontend local, healthy. Guest PUT
+401; `/diagnose` và backend health HTTP 200. Chưa commit/push/đo coverage/xác minh CI.
+
+Follow-up cùng ngày: nút lưu đặt dưới `Phân tích ngay`, nền xanh/chữ sáng, full width,
+không icon. **7/7 test luồng lưu**, typecheck/lint và frontend build pass; browser
+fixture đã kiểm desktop/mobile và mở lại popup. Chi tiết trong báo cáo trên.
+
+## Profile card grid — 2026-11-04
+
+Theo yêu cầu mới, chuyển các hồ sơ từ hàng trong một panel chung thành thẻ riêng.
+`AgriculturalProfileCard.tsx` dùng CardHeader/Title/Description, Content và Footer
+hiện có; tên, mô tả tối đa ba dòng, số chẩn đoán, ngày cập nhật và nút chi tiết ở
+đáy phải. `AgriculturalProfilesRoute.tsx` dùng lưới 1/2/3 cột (mobile/sm/lg), bỏ
+panel bao chung và giữ trạng thái tìm kiếm rỗng/tạo/sửa/xóa hiện có. Không thêm icon,
+dependency hoặc sửa backend. Yêu cầu mới thay bố cục hàng của các mục lịch sử trước.
+
+Kiểm chứng mới: route suite **4/4 pass**, 5,90 giây; typecheck, lint 246 file,
+format hai file và Docker frontend production build pass. Không thêm test kiểm
+class CSS. Browser fixture 1280px có ba thẻ cùng cao 314,4px và nút cùng mép đáy;
+768px hai cột; 375px một cột, không tràn ngang; đã bấm mở đúng chi tiết. Ảnh ignored:
+`.cache/qa-verification/agri116/post-result/profile-cards-desktop.jpg`.
+Đã dừng preview/reset viewport. Shadcn CLI docs gặp DNS ENOTFOUND; đối chiếu source
+Card local và [tài liệu chính thức](https://ui.shadcn.com/docs/components/base/card),
+không cài/update component. Chưa chạy lại full suite/coverage/CI; chưa commit/push.
+Đã recreate riêng frontend Docker local và xác nhận healthy; giữ các service khác.
+
+## Profile detail layout — 2026-11-04
+
+Theo yêu cầu tùy chỉnh trang sau khi bấm xem chi tiết, cập nhật
+`frontend/src/features/agricultural-profiles/AgriculturalProfilesRoute.tsx`:
+nút quay lại ở đầu, chẩn đoán/chỉnh sửa gần tên hồ sơ; desktop chia cột chính
+cho thông tin canh tác và lịch sử, cột phụ hiển thị chủ sở hữu, ngày tạo/cập nhật,
+số chẩn đoán. Mobile xếp một cột. Nút xóa có màu chữ cảnh báo và đặt riêng cùng
+giải thích giữ lịch sử; vẫn đi qua màn xác nhận hiện có.
+`frontend/src/components/agricultural-profile/AgriculturalProfileHistory.tsx`
+hiển thị cây trồng, kết quả, thời gian theo nhóm; nút xem ở bên phải trên desktop,
+trạng thái trống có hướng dẫn lưu sau kiểm tra lá. Giữ API, phân trang, retry và
+các callback hiện có; không thêm icon hoặc dependency.
+
+Kiểm chứng mới trong lượt này: **6/6 test** (route và history, 9,65 giây),
+TypeScript, lint 246 file, format hai file và `git diff --check` pass.
+Docker frontend production build pass; recreate riêng frontend local, healthy
+trên cổng 3000. Browser preview dùng fixture kiểm lịch sử có/rỗng, tên dài,
+320/768/1024/1440px, không tràn ngang theo DOM; heading nhận focus khi đổi trang
+và Tab đến nút chẩn đoán. Không có console warning/error trong preview. Đây là
+kiểm tra giao diện với dữ liệu mẫu, không phải E2E với PostgreSQL. Ảnh ignored:
+`.cache/qa-verification/agri116/post-result/profile-detail-desktop.jpg`.
+Đã đóng preview/reset viewport; chưa commit/push, chạy full suite/coverage/CI.
+Không sửa AI/backend/database trong lượt tùy chỉnh này.
+
+## Public crop, disease and medicine cards — 2026-11-04
+
+Theo yêu cầu UI tiếp theo trên nhánh `AGRI-116-agricultural-profile-ui`, áp dụng
+kiểu thẻ ảnh/nội dung/footer của trang chủ cho ba danh mục công khai. Thay đổi:
+
+- `frontend/src/features/knowledge/PublicCatalogCard.tsx`: Card có ảnh 16:9,
+  tên, tên khoa học/hoạt chất/cây minh họa khi có, nội dung tóm tắt và link chi
+  tiết ở đáy. Ảnh cây dùng bộ ảnh hiện có; bệnh chỉ ghép ảnh lá đúng cây và
+  condition trong `className` của quan hệ backend đang hoạt động. Giữ ghi chú
+  ảnh minh họa chưa xác minh. Không dùng ảnh cây chung thay ảnh bệnh.
+- `frontend/src/features/knowledge/PublicCatalog.tsx`: dùng thẻ mới cho cây,
+  bệnh, thuốc; lưới 1/2/3/4 cột theo breakpoint. Giữ bài viết theo bố cục cũ,
+  không thay search/debounce/filter/pagination hoặc quy tắc công khai.
+- `frontend/src/services/catalogApi.ts`: tách/reuse `findPlantTemplate` từ
+  logic nhận diện alias hiện có; giữ hành vi API adapter.
+- `frontend/tests/integration/app/PublicCatalogCards.test.tsx`: kiểm nhận diện
+  cây, cặp bệnh/cây, không lấy ảnh của cây khác, ảnh thiếu/lỗi, hoạt chất thuốc
+  và link dùng ID backend.
+
+DTO thuốc hiện không có trường ảnh, nên thẻ thuốc hiện ô “Chưa có ảnh sản phẩm”.
+Mục cây/bệnh chưa nhận diện được hoặc ảnh tải lỗi cũng có ô thay thế, vẫn vào
+chi tiết được. Không thêm ảnh thương hiệu, dependency, API, migration hay dữ liệu.
+
+Kiểm chứng mới: test mới **6/6 fail trước triển khai** vì chưa có UI ảnh/fallback;
+sau triển khai **42/42 pass** trong 4 file (PublicCatalogCards, PublicKnowledge,
+CatalogDebounce, catalogApi), 14,16 giây. Typecheck, lint 248 file và format 4 file
+pass. Docker frontend production build pass, recreate riêng frontend local healthy.
+Browser trên bản production local đã xem danh sách cây/bệnh, tìm bệnh “Bac la lua”
+ra 1 kết quả và bấm đúng chi tiết; responsive 1280/768/375px có 4/2/1 cột, không
+tràn ngang theo DOM. Bốn thẻ cây hàng đầu cùng cao 407,74px và footer cùng đáy.
+Console không ghi warning/error trong phiên kiểm tra. Danh mục thuốc local hiện
+0 mục công khai, nên browser mới kiểm trạng thái rỗng/bộ lọc; thẻ thuốc có dữ liệu
+được kiểm bằng Vitest, chưa có bằng chứng browser với thuốc công khai thật.
+Đã đóng tab kiểm tra và reset viewport. Artifacts ignored:
+`.cache/qa-verification/agri116/post-result/catalog-plants-desktop.jpg` và
+`catalog-diseases-desktop.jpg` trong cùng thư mục.
+
+Shadcn CLI docs gặp DNS ENOTFOUND; đã đối chiếu Card local và
+[tài liệu Card chính thức](https://ui.shadcn.com/docs/components/base/card),
+không cài/update component. Chưa chạy lại full suite/coverage/CI; chưa commit/push.
+Các thay đổi backend/AI và hồ sơ từ lượt trước được giữ nguyên.
+
+## Diagnosis started from a profile — 2026-11-04
+
+`frontend/src/views/DiagnosePage.tsx` hiển thị tên hồ sơ khi mở liên kết
+`/diagnose?profile=<id>` khớp danh sách hồ sơ của tài khoản. Gửi ID trong POST
+phân tích hiện có để backend lưu kết quả cùng hồ sơ trong một thao tác. Thành công
+hiện xác nhận đã lưu, cập nhật số chẩn đoán và bỏ popup chọn hồ sơ. Vào chẩn đoán
+thông thường vẫn dùng popup sau kết quả. Hồ sơ không khớp danh sách không được
+gửi lên API. Tra lại danh sách mỗi render để nhận dữ liệu hồ sơ tải sau khi mở trang.
+
+`frontend/tests/integration/diagnosis/DiagnosePage.integration.test.tsx` cập nhật
+regression owned/foreign link. RED ghi nhận 1 fail/14 pass trước triển khai.
+GREEN mới có **55/55 pass**, 44,98 giây trong ba suite DiagnosePage.integration,
+DiagnoseProfileCreation và predictionApi. Typecheck, lint 248 file, format và
+diff whitespace check pass. Log ignored tại
+`.cache/qa-verification/agri116/profile-context-{red,green}.log`.
+Production frontend build pass. Chưa kiểm browser/E2E luồng tự lưu với tài khoản
+và AI thật, chưa chạy full suite/coverage/CI hoặc commit/push trong lượt này.
+
+## Profile diagnosis history search and plant filter — 2026-11-04
+
+`AgriculturalProfileHistory.tsx` bổ sung tìm kiếm theo tên cây hoặc kết quả và bộ lọc theo cây trong lịch sử của hồ sơ. Bộ điều khiển hiện sau khi tải thành công, giữ phân trang, retry, empty state và mở kết quả đã lưu. Danh sách cây được suy ra từ dữ liệu trang hiện tại để không thêm API hoặc thay đổi contract.
+
+Kiểm chứng mới: component history **2/2 pass**, typecheck, lint 248 file và format pass. Chưa chạy full suite, coverage hoặc CI. Chưa commit/push.
+
+## Mở rộng định dạng ảnh chẩn đoán — 2026-11-04
+
+Đã mở rộng luồng chẩn đoán để nhận JPEG, PNG và WEBP ở frontend (file picker,
+validation và thông báo), backend (đuôi `.webp`) và AI service (MIME/content
+validation). Bổ sung test upload WEBP cho AI và test validation tương ứng ở
+frontend.
+
+Nguyên nhân ba tệp `cachua_septoria.jpg`, `cachua_domvikhuan.jpg` và
+`cachua_nhendo.jpg` trước đó lỗi là nội dung thực tế là WEBP nhưng mang đuôi
+`.jpg`; sau khi cập nhật, cả ba trả HTTP 200 qua AI và backend. Một tệp được gửi
+với tên thật `leaf.webp` cũng trả HTTP 200 qua backend mới. Test WEBP trong
+container AI **1/1 pass**, frontend unit tests liên quan **14/14 pass**. Docker
+rebuild/recreate cho `ai-service`, `backend` và `frontend` hoàn tất, cả ba healthy.
+
+Host Python không có FastAPI nên không chạy được test AI trực tiếp ngoài
+container; đã chạy bằng dependency trong container. Chưa chạy full suite,
+coverage, CI hoặc commit/push.
+
+## Hiển thị cây trong Top-3 — 2026-11-04
+
+Top-3 trước đây chỉ lấy nhãn bệnh từ `predictionDetails`, nên khi độ tin cậy
+thấp giao diện không cho biết mỗi bệnh thuộc cây nào. `TopPrediction` nay giữ
+thêm tên cây từ `plantDisease.plant`; bộ đối chiếu hiển thị theo dạng
+`Tên cây · Tên bệnh`, còn dữ liệu cũ không có tên cây vẫn giữ cách hiển thị cũ.
+
+Kiểm chứng: `AnalysisResultCard` và `predictionApi` **40/40 pass**, TypeScript
+`tsc --noEmit` và `git diff --check` pass. Chưa chạy full suite, coverage, CI
+hoặc commit/push.
+
+## Extend branch delivery — 2026-11-05
+
+Branch: `AGRI-116-agricultural-profile-ui-extend`, created from the current AGRI-116 branch at user request. Includes profile diagnosis/save workflow and forward-only migration, profile cards/detail/history filters, public catalog cards/detail, WEBP support and crop names in Top-3. Unrelated AI experiments/notebooks, docker-compose.ai.yml and generated next-env.d.ts remain local.
+
+Fresh verification: frontend full Vitest run outside sandbox: 475 passed / 2 failed (477 total). One failure was the avatar test expecting the old JPEG/PNG message; updated to the new JPEG/PNG/WEBP contract. Then the 10 affected suites passed 102/102 tests. The other failure remains in HomeBannerSlideshow.test.tsx:88 (timer count 1 instead of 0 after unmount); no slideshow changes in this delivery. The initial sandbox test attempt failed to load 68 suites due to ENOENT in its temporary transform cache; it is not a valid application test result. Typecheck and lint (248 files) passed; diff whitespace checks passed. Backend/AI/build results above are prior runs, not rerun during push preparation. Coverage and GitHub Actions are unverified; this is not a claim that all CI gates pass.
