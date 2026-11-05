@@ -1,3 +1,4 @@
+import { SUPPORTED_PLANTS } from '@/data/plantData';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -5,7 +6,7 @@ import { IntroPage } from '@/views/IntroPage';
 
 describe('IntroPage', () => {
   it('includes the supplied grape photograph in the introductory film strip', () => {
-    render(<IntroPage onLogin={vi.fn()} onRegister={vi.fn()} />);
+    render(<IntroPage plants={SUPPORTED_PLANTS} onLogin={vi.fn()} onRegister={vi.fn()} />);
     const strip = screen.getByRole('region', { name: 'Dải ảnh cây trồng' });
     expect(
       decodeURIComponent(
@@ -18,7 +19,7 @@ describe('IntroPage', () => {
     ).toContain('nho banner.jpg');
   });
   it('wraps keyboard navigation from the last crop to the first and back', () => {
-    render(<IntroPage onLogin={vi.fn()} onRegister={vi.fn()} />);
+    render(<IntroPage plants={SUPPORTED_PLANTS} onLogin={vi.fn()} onRegister={vi.fn()} />);
     const strip = screen.getByRole('region', { name: 'Dải ảnh cây trồng' });
     Object.defineProperties(strip, {
       clientWidth: { value: 400 },
@@ -43,7 +44,7 @@ describe('IntroPage', () => {
   });
 
   it('lets visitors explore the crop map before signing in', async () => {
-    render(<IntroPage onLogin={vi.fn()} onRegister={vi.fn()} />);
+    render(<IntroPage plants={SUPPORTED_PLANTS} onLogin={vi.fn()} onRegister={vi.fn()} />);
 
     const hero = screen.getByRole('region', { name: 'Giới thiệu AgriAI' });
     const map = within(hero).getByRole('region', { name: 'Bản đồ cây trồng Việt Nam' });
@@ -80,7 +81,7 @@ describe('IntroPage', () => {
     // Arrange
     const onLogin = vi.fn();
     const onRegister = vi.fn();
-    render(<IntroPage onLogin={onLogin} onRegister={onRegister} />);
+    render(<IntroPage plants={SUPPORTED_PLANTS} onLogin={onLogin} onRegister={onRegister} />);
 
     // Assert
     expect(screen.getByRole('heading', { name: /Nhìn kỹ chiếc lá/i })).toBeInTheDocument();
@@ -105,7 +106,7 @@ describe('IntroPage', () => {
   it('offers registration and an authenticated trial from the closing banner', async () => {
     const onRegister = vi.fn();
     const onLogin = vi.fn();
-    render(<IntroPage onLogin={onLogin} onRegister={onRegister} />);
+    render(<IntroPage plants={SUPPORTED_PLANTS} onLogin={onLogin} onRegister={onRegister} />);
     const banner = screen.getByRole('region', { name: 'Bắt đầu với AgriAI' });
     await userEvent.click(within(banner).getByRole('button', { name: 'Tạo tài khoản' }));
     expect(onRegister).toHaveBeenCalledOnce();

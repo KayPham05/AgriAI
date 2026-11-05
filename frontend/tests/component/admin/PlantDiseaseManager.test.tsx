@@ -8,7 +8,8 @@ it('changes only availability of an existing AI pair after confirmation', async 
   const writes: unknown[] = [];
   vi.stubGlobal(
     'fetch',
-    vi.fn(async (_url: string, init?: RequestInit) => {
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === '/api/diseases') return json([]);
       if (init?.method === 'PUT') {
         const body = JSON.parse(String(init.body));
         writes.push(body);

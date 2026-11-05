@@ -1,5 +1,5 @@
-import { useAdminMock } from './AdminMockProvider';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { moderateImage, readAdminImage } from '@/services/adminApi';
 import Image from 'next/image';
 import type { AdminImage } from './adminTypes';
 import { Button } from '@/components/ui/button';
@@ -7,13 +7,30 @@ import { AdminActionDialog } from './AdminActionDialog';
 import { Badge } from '@/components/ui/badge';
 import { AdminRecordList, formatAdminDate } from './AdminRecordList';
 
-function UploadedImage({ image }: { image: AdminImage }) {
+function UploadedImage({ image, token }: { image: AdminImage; token: string }) {
   const [failed, setFailed] = useState(false);
-  const safeUrl =
-    image.imageUrl &&
-    (/^https?:\/\//i.test(image.imageUrl) || image.imageUrl.startsWith('/_next/static/media/'))
-      ? image.imageUrl
-      : null;
+  const [safeUrl, setSafeUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    let objectUrl: string | null = null;
+    setSafeUrl(null);
+    setFailed(false);
+    if (image.status === 'Available') {
+      readAdminImage(image.id, token, controller.signal)
+        .then((blob) => {
+          if (controller.signal.aborted) return;
+          objectUrl = URL.createObjectURL(blob);
+          setSafeUrl(objectUrl);
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setFailed(true);
+        });
+    }
+    return () => {
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [image.id, image.status, token]);
   return (
     <div className="flex items-start gap-3">
       <div className="admin-upload-preview flex aspect-square w-20 shrink-0 items-center justify-center overflow-hidden rounded-media bg-surface-muted sm:w-28">
@@ -33,7 +50,9 @@ function UploadedImage({ image }: { image: AdminImage }) {
               ? 'Ảnh đã hết hạn'
               : image.status === 'Deleted'
                 ? 'Ảnh đã được xóa'
-                : 'Không thể hiển thị ảnh'}
+                : failed
+                  ? 'Không thể hiển thị ảnh'
+                  : 'Đang tải ảnh...'}
           </p>
         )}
       </div>
@@ -57,8 +76,8 @@ function UploadedImage({ image }: { image: AdminImage }) {
     </div>
   );
 }
-export function AdminImages() {
-  const { images, moderateImage } = useAdminMock();
+export function AdminImages({ token }: { token: string }) {
+  const [revision, setRevision] = useState(0);
   const [action, setAction] = useState<{ image: AdminImage; kind: 'delete' | 'warnings' } | null>(
     null,
   );
@@ -72,15 +91,20 @@ export function AdminImages() {
       )}
       <AdminRecordList<AdminImage>
         resource="images"
-        items={images}
+        token={token}
+        revision={revision}
         title="Danh sách ảnh đã tải lên"
         empty="Chưa có dữ liệu ảnh đã tải lên"
       >
         {(image) => (
           <div className="flex flex-col gap-4">
-            <UploadedImage image={image} />
+            <UploadedImage image={image} token={token} />
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => setAction({ image, kind: 'warnings' })}>
+              <Button
+                variant="outline"
+                disabled={!image.userId}
+                onClick={() => setAction({ image, kind: 'warnings' })}
+              >
                 Cảnh báo ảnh vi phạm
               </Button>
               <Button
@@ -98,16 +122,17 @@ export function AdminImages() {
         <AdminActionDialog
           key={`${action.image.id}-${action.kind}`}
           title={action.kind === 'delete' ? 'Xóa ảnh' : 'Cảnh báo ảnh vi phạm'}
-          description={`${action.image.userEmail}. ${action.kind === 'delete' ? 'Chỉ mô phỏng xóa ảnh trong giao diện; tải lại trang để đặt lại. Không xóa tệp thật.' : 'Chỉ mô phỏng cảnh báo chủ ảnh; không gửi thông báo thật.'}`}
+          description={`${action.image.userEmail}. ${action.kind === 'delete' ? 'Xóa tệp ảnh khỏi lưu trữ. Kết quả chẩn đoán vẫn được giữ lại.' : 'Gửi cảnh báo vào mục Thông báo của chủ ảnh.'}`}
           confirmText={action.kind === 'delete' ? 'Xác nhận xóa ảnh' : 'Gửi cảnh báo'}
           messageLabel={action.kind === 'warnings' ? 'Nội dung cảnh báo' : undefined}
           onClose={() => setAction(null)}
           onConfirm={async (message) => {
-            moderateImage(action.image.id, action.kind, message);
+            await moderateImage(token, action.image.id, action.kind, message);
+            setRevision((value) => value + 1);
             setNotice(
               action.kind === 'delete'
-                ? 'Đã mô phỏng xóa ảnh. Không xóa tệp thật.'
-                : 'Đã mô phỏng cảnh báo. Không gửi thông báo thật.',
+                ? 'Đã xóa ảnh khỏi lưu trữ.'
+                : 'Đã gửi cảnh báo cho chủ ảnh.',
             );
           }}
         />

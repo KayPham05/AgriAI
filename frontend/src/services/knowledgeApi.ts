@@ -1,3 +1,5 @@
+import { sessionFetch } from './sessionFetch';
+import { rankCatalog } from '@/lib/catalogText';
 export type CatalogKind = 'plants' | 'diseases' | 'medicines' | 'knowledge-documents';
 export interface Publication {
   isActive: boolean;
@@ -7,8 +9,10 @@ export interface Publication {
 export interface CatalogRecord {
   id: string;
   name?: string;
+  imageUrl?: string | null;
   vietnameseName?: string | null;
   scientificName?: string | null;
+  category?: string | null;
   description?: string | null;
   symptoms?: string | null;
   treatment?: string | null;
@@ -41,8 +45,8 @@ export interface PlantDiseasePair {
   diseaseId: string;
   plantName: string;
   diseaseName: string;
-  className: string;
-  classIndex: number;
+  className: string | null;
+  classIndex: number | null;
   isActive: boolean;
   conditionType?: string | null;
   plantIsActive?: boolean;
@@ -101,13 +105,18 @@ export async function catalogRequest<T>(
 ): Promise<T> {
   const headers: Record<string, string> = {};
   if (options.token) headers.Authorization = `Bearer ${options.token}`;
-  if (options.body !== undefined) headers['Content-Type'] = 'application/json';
-  const response = await fetch(`${baseUrl}${path}`, {
+  const multipart = options.body instanceof FormData;
+  if (options.body !== undefined && !multipart) headers['Content-Type'] = 'application/json';
+  const response = await sessionFetch(`${baseUrl}${path}`, {
     method: options.method ?? 'GET',
     headers,
     signal: options.signal,
     cache: 'no-store',
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    body: multipart
+      ? (options.body as FormData)
+      : options.body === undefined
+        ? undefined
+        : JSON.stringify(options.body),
   });
   const body: unknown =
     response.status === 204 ? undefined : await response.json().catch(() => null);
@@ -141,10 +150,11 @@ export async function readCatalogPage(
       `${catalogPath(kind)}${token ? '?includeInactive=true' : ''}`,
       { token, signal },
     );
-    const search = filter.search?.trim().toLocaleLowerCase('vi') ?? '';
-    const items = records.filter((record) =>
-      recordName(record).toLocaleLowerCase('vi').includes(search),
-    );
+    const items = rankCatalog(records, filter.search ?? '', (record) => [
+      recordName(record),
+      record.name ?? '',
+      record.scientificName ?? '',
+    ]);
     return {
       items: items.slice((pageNumber - 1) * pageSize, pageNumber * pageSize),
       pageNumber,

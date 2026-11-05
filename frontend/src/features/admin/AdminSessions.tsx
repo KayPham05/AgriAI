@@ -1,15 +1,13 @@
-import { useAdminMock } from './AdminMockProvider';
 import type { AdminSession } from './adminTypes';
 import { Badge } from '@/components/ui/badge';
 import { AdminRecordList, formatAdminDate } from './AdminRecordList';
 
-export function AdminSessions() {
-  const { sessions } = useAdminMock();
+export function AdminSessions({ token }: { token: string }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
       <AdminRecordList<AdminSession>
         resource="sessions"
-        items={sessions}
+        token={token}
         title="Danh sách phiên đăng nhập"
         empty="Chưa có dữ liệu phiên đăng nhập"
       >

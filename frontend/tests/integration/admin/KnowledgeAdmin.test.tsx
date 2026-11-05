@@ -46,7 +46,7 @@ describe('knowledge administration with real API adapter', () => {
         expect(within(related).getByRole('heading', { name: 'Cà chua / Cháy lá' })).toBeVisible();
         expect(within(related).queryByText(/Unrelated/)).not.toBeInTheDocument();
         await userEvent.type(screen.getByLabelText('Tên danh mục'), ' mới');
-        expect(within(related).getByRole('button', { name: 'Ngừng liên kết' })).toBeDisabled();
+        expect(within(related).getByRole('button', { name: 'Ngừng liên kết' })).toBeEnabled();
       } else {
         expect(
           screen.queryByRole('region', { name: 'Bệnh và tình trạng liên quan' }),

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { saveAuthSession, clearAuthSession } from '@/services/authApi';
 import { AdminCrmPage } from '@/features/admin/AdminCrmPage';
+import { json } from '../../helpers/knowledge';
 
 const router = vi.hoisted(() => ({ replace: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => router }));
@@ -16,11 +17,56 @@ const admin = {
 function setup(role = 'Admin') {
   vi.stubGlobal('innerWidth', 1280);
   saveAuthSession({ token: 'admin-token', user: { ...admin, role } }, true);
-  const requests = vi.fn(async (url: string) => {
+  let active = true;
+  let imageDeleted = false;
+  const requests = vi.fn(async (url: string, init?: RequestInit) => {
     if (url.endsWith('/api/auth/logout')) return { ok: true, status: 204 };
     if (url.endsWith('/api/auth/me'))
       return { ok: true, json: async (): Promise<typeof admin> => ({ ...admin, role }) };
-    throw new Error(`Unexpected non-authentication request: ${url}`);
+    if (url.endsWith('/status')) {
+      active = false;
+      return json({});
+    }
+    if (init?.method === 'DELETE' && url.endsWith('/api/admin/images/image')) {
+      imageDeleted = true;
+      return new Response(null, { status: 204 });
+    }
+    const request = new URL(url, 'http://localhost');
+    const items =
+      request.pathname === '/api/admin/users'
+        ? request.searchParams.get('search') === 'nobody@example.test'
+          ? []
+          : [
+              {
+                ...admin,
+                id: 'user',
+                fullName: 'Nguyễn Văn An',
+                email: 'an@example.test',
+                role: 'User',
+                isActive: active,
+                predictionCount: 2,
+              },
+            ]
+        : request.pathname === '/api/admin/images'
+          ? [
+              {
+                id: 'image',
+                userId: 'user',
+                userName: 'Nguyễn Văn An',
+                userEmail: 'an@example.test',
+                status: imageDeleted ? 'Deleted' : 'Expired',
+                uploadedAt: admin.createdAt,
+                expiresAt: admin.createdAt,
+              },
+            ]
+          : [];
+    return json({
+      items,
+      totalCount: items.length,
+      totalPages: items.length ? 1 : 0,
+      pageNumber: 1,
+      pageSize: 10,
+    });
   });
   vi.stubGlobal('fetch', requests);
   return requests;
@@ -31,7 +77,7 @@ afterEach(() => {
   clearAuthSession();
 });
 
-describe('Admin mock workspace with real authentication', () => {
+describe('Admin workspace with real API integration', () => {
   it('returns to the overview from the logo without restarting authentication or loading', async () => {
     const requests = setup();
     render(<AdminCrmPage />);
@@ -45,9 +91,9 @@ describe('Admin mock workspace with real authentication', () => {
     expect(screen.queryByRole('status', { name: 'Đang kết nối AgriAI' })).toBeNull();
     expect(screen.queryByRole('status', { name: 'Đang tải AgriAI' })).toBeNull();
     expect(localStorage.getItem('leafai_auth_session')).not.toBeNull();
-    expect(requests.mock.calls.map(([url]) => url)).toEqual(['/api/auth/me']);
+    expect(requests.mock.calls.filter(([url]) => url.endsWith('/api/auth/me'))).toHaveLength(1);
   });
-  it('shows mock records and charts without requesting administrative APIs', async () => {
+  it('labels illustrative charts and loads each administrative list from the API', async () => {
     const requests = setup();
     render(<AdminCrmPage />);
     expect(
@@ -56,7 +102,7 @@ describe('Admin mock workspace with real authentication', () => {
         .querySelectorAll('[data-reload-block]'),
     ).toHaveLength(4);
     expect(await screen.findByRole('heading', { name: 'Tổng quan vận hành' })).toBeVisible();
-    expect(screen.queryByRole('note')).toBeNull();
+    expect(screen.getByRole('note')).toHaveTextContent('dữ liệu minh họa');
     expect(
       screen
         .getByRole('link', { name: 'AgriAI, về trang tổng quan' })
@@ -78,7 +124,10 @@ describe('Admin mock workspace with real authentication', () => {
     expect(await screen.findByRole('region', { name: 'Danh sách ảnh đã tải lên' })).toBeVisible();
     await userEvent.click(screen.getByRole('button', { name: 'Phiên đăng nhập' }));
     expect(await screen.findByRole('region', { name: 'Danh sách phiên đăng nhập' })).toBeVisible();
-    expect(requests.mock.calls.map(([url]) => url)).toEqual(['/api/auth/me']);
+    for (const resource of ['users', 'images', 'sessions'])
+      expect(requests.mock.calls.some(([url]) => url.includes(`/api/admin/${resource}?`))).toBe(
+        true,
+      );
   });
   it('keeps role verification for regular users and missing sessions', async () => {
     setup('User');
@@ -90,7 +139,7 @@ describe('Admin mock workspace with real authentication', () => {
     render(<AdminCrmPage />);
     expect(await screen.findByText('Đăng nhập bằng tài khoản Admin để tiếp tục.')).toBeVisible();
   });
-  it('filters mock accounts from dashboard search and handles no matches', async () => {
+  it('passes dashboard searches to the API and handles no matches', async () => {
     setup();
     render(<AdminCrmPage />);
     await screen.findByRole('heading', { name: 'Tổng quan vận hành' });
@@ -99,47 +148,51 @@ describe('Admin mock workspace with real authentication', () => {
       'an@example.test',
     );
     await userEvent.click(screen.getByRole('button', { name: 'Tìm tài khoản' }));
-    expect(screen.getByText('Nguyễn Văn An')).toBeVisible();
+    expect(await screen.findByText('Nguyễn Văn An')).toBeVisible();
     expect(screen.queryByText('Trần Thị Bình')).toBeNull();
     const search = screen.getByLabelText('Tìm theo tên hoặc email người dùng');
     await userEvent.clear(search);
     await userEvent.type(search, 'nobody@example.test');
     await userEvent.click(screen.getByRole('button', { name: 'Tìm kiếm' }));
-    expect(screen.getByText('Không tìm thấy kết quả phù hợp.')).toBeVisible();
+    expect(await screen.findByText('Không tìm thấy kết quả phù hợp.')).toBeVisible();
   });
-  it('locks a mock account only in memory and resets it when the workspace remounts', async () => {
+  it('retains server moderation state when the workspace remounts', async () => {
     const requests = setup();
     const page = render(<AdminCrmPage />);
     await screen.findByRole('heading', { name: 'Tổng quan vận hành' });
     await userEvent.click(screen.getByRole('button', { name: 'Người dùng' }));
-    let row = screen.getByText('Nguyễn Văn An').closest('li') as HTMLElement;
+    let row = (await screen.findByText('Nguyễn Văn An')).closest('li') as HTMLElement;
     await userEvent.click(within(row).getByRole('button', { name: 'Khóa tài khoản' }));
     const dialog = within(screen.getByRole('dialog'));
     await userEvent.type(dialog.getByLabelText('Lý do'), 'Kiểm tra giao diện');
     await userEvent.click(dialog.getByRole('button', { name: 'Xác nhận khóa' }));
-    await waitFor(() => expect(within(row).getByText('Đã khóa')).toBeVisible());
-    expect(requests.mock.calls.map(([url]) => url)).toEqual(['/api/auth/me']);
+    expect(await screen.findByText('Đã khóa')).toBeVisible();
+    expect(
+      requests.mock.calls.some(([url, init]) => url.endsWith('/status') && init?.method === 'PUT'),
+    ).toBe(true);
     page.unmount();
     render(<AdminCrmPage />);
     await screen.findByRole('heading', { name: 'Tổng quan vận hành' });
     await userEvent.click(screen.getByRole('button', { name: 'Người dùng' }));
-    row = screen.getByText('Nguyễn Văn An').closest('li') as HTMLElement;
-    expect(within(row).getByText('Hoạt động')).toBeVisible();
+    row = (await screen.findByText('Nguyễn Văn An')).closest('li') as HTMLElement;
+    expect(within(row).getByText('Đã khóa')).toBeVisible();
   });
-  it('simulates deleting an image without changing the authenticated session', async () => {
+  it('deletes an image through the API without changing the admin session', async () => {
     const requests = setup();
     render(<AdminCrmPage />);
     await screen.findByRole('heading', { name: 'Tổng quan vận hành' });
     await userEvent.click(screen.getByRole('button', { name: 'Ảnh đã tải lên' }));
-    const row = screen.getByText('Nguyễn Văn An').closest('li') as HTMLElement;
+    const row = (await screen.findByText('Nguyễn Văn An')).closest('li') as HTMLElement;
     await userEvent.click(within(row).getByRole('button', { name: 'Xóa ảnh' }));
     await userEvent.click(
       within(screen.getByRole('dialog')).getByRole('button', { name: 'Xác nhận xóa ảnh' }),
     );
-    await waitFor(() =>
-      expect(within(row).getByRole('button', { name: 'Xóa ảnh' })).toBeDisabled(),
-    );
-    expect(requests.mock.calls.map(([url]) => url)).toEqual(['/api/auth/me']);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Xóa ảnh' })).toBeDisabled());
+    expect(
+      requests.mock.calls.some(
+        ([url, init]) => url.endsWith('/api/admin/images/image') && init?.method === 'DELETE',
+      ),
+    ).toBe(true);
     expect(localStorage.getItem('leafai_auth_session')).not.toBeNull();
   });
   it('keeps the sidebar collapsed when hovered, focused or touched', async () => {

@@ -39,6 +39,60 @@ function showDetail(
 }
 
 describe('public catalog card content', () => {
+  it.each(['plants', 'diseases'] as const)(
+    'prefers the uploaded photo in the new %s card layout',
+    async (kind) => {
+      const imageUrl = `/api/catalog/${kind}/uploaded-record/image?v=admin.png`;
+      show(kind, {
+        id: 'uploaded-record',
+        name: kind === 'plants' ? 'Lua' : 'Chay_la',
+        vietnameseName: 'Ảnh danh mục',
+        imageUrl,
+        category: 'Cây ăn trái',
+        isActive: true,
+        createdAt: '',
+      });
+
+      expect(await screen.findByRole('img', { name: 'Ảnh danh mục' })).toHaveAttribute(
+        'src',
+        imageUrl,
+      );
+      expect(screen.getByRole('link', { name: 'Xem chi tiết' })).toHaveAttribute(
+        'href',
+        `/${kind}/uploaded-record`,
+      );
+      if (kind === 'plants') expect(screen.getByText('Cây ăn trái')).toBeVisible();
+    },
+  );
+
+  it('keeps an uploaded photo and saved category in the expanded plant detail', async () => {
+    const imageUrl = '/api/catalog/plants/rice/image?v=admin.jpg';
+    showDetail('plants', 'rice', {
+      id: 'rice',
+      name: 'Lua',
+      vietnameseName: 'Lúa',
+      imageUrl,
+      category: 'Khác',
+      isActive: true,
+      createdAt: '',
+    });
+
+    expect(await screen.findByRole('img', { name: 'Lúa' })).toHaveAttribute(
+      'src',
+      imageUrl,
+    );
+    expect(screen.getByText('Khác')).toBeVisible();
+  });
+
+  it('allows a catalog-only disease link without an AI class name', async () => {
+    show('diseases', { id: pair.diseaseId, name: 'Bệnh mới', isActive: true, createdAt: '' }, [
+      { ...pair, className: null, classIndex: null },
+    ]);
+
+    expect(await screen.findByRole('heading', { name: 'Bệnh mới' })).toBeVisible();
+    expect(screen.getByText('Chưa có ảnh đối chiếu')).toBeVisible();
+  });
+
   it('presents a plant detail with clear crop information and related actions', async () => {
     showDetail(
       'plants',

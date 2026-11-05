@@ -8,6 +8,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { catalogError, contentFields, safeSource } from './catalogUi';
 import { CatalogSelect } from './CatalogControls';
+import { PLANT_CATEGORIES, plantCategory } from '@/lib/plantCategories';
+import { normalizeCatalogName, normalizeCatalogText } from '@/lib/catalogText';
+
+function normalizeField(key: string, value: string): string {
+  return ['name', 'vietnameseName', 'productName'].includes(key)
+    ? normalizeCatalogName(value)
+    : normalizeCatalogText(value);
+}
 
 export function CatalogEditor({
   kind,
@@ -29,6 +37,7 @@ export function CatalogEditor({
     Object.fromEntries(contentFields[kind].map(({ key }) => [key, String(record[key] ?? '')])),
   );
   const [selected, setSelected] = useState(record.plantDiseaseIds ?? []);
+  const [category, setCategory] = useState(plantCategory(record.category));
   const [conditionType, setConditionType] = useState(record.conditionType ?? 'Unknown');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState('');
@@ -40,7 +49,7 @@ export function CatalogEditor({
     if (inFlight.current || disabled) return;
     const problems: Record<string, string> = {};
     for (const field of contentFields[kind]) {
-      const value = draft[field.key]?.trim() ?? '';
+      const value = normalizeField(field.key, draft[field.key] ?? '');
       if (field.required && !value) problems[field.key] = 'Vui lòng nhập trường này.';
       else if (field.maxLength && value.length > field.maxLength)
         problems[field.key] = `Tối đa ${field.maxLength} ký tự.`;
@@ -51,9 +60,10 @@ export function CatalogEditor({
     setFailure('');
     if (Object.keys(problems).length) return;
     const body: Record<string, unknown> = Object.fromEntries(
-      Object.entries(draft).map(([key, value]) => [key, value.trim()]),
+      Object.entries(draft).map(([key, value]) => [key, normalizeField(key, value)]),
     );
     if (kind === 'knowledge-documents') body.plantDiseaseIds = selected;
+    if (kind === 'plants') body.category = category;
     if (kind === 'diseases') body.conditionType = conditionType;
     if (record.id && (kind === 'plants' || kind === 'diseases')) body.isActive = record.isActive;
     inFlight.current = true;
@@ -78,6 +88,11 @@ export function CatalogEditor({
             value: draft[field.key],
             required: field.required,
             maxLength: field.maxLength,
+            onBlur: () =>
+              setDraft((current) => ({
+                ...current,
+                [field.key]: normalizeField(field.key, current[field.key]),
+              })),
             'aria-invalid': Boolean(errors[field.key]),
             'aria-describedby': errors[field.key] ? `${id}-${field.key}-error` : undefined,
             onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -101,6 +116,19 @@ export function CatalogEditor({
             </div>
           );
         })}
+        {kind === 'plants' && (
+          <CatalogSelect
+            label="Nhóm cây trồng"
+            value={category}
+            emptyLabel={null}
+            disabled={pending || disabled}
+            onChange={(value) => {
+              setCategory(plantCategory(value));
+              onDirtyChange?.(true);
+            }}
+            options={PLANT_CATEGORIES.map((value) => ({ value, label: value }))}
+          />
+        )}
         {kind === 'diseases' && (
           <>
             <CatalogSelect

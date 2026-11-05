@@ -1,3 +1,4 @@
+import { sessionFetch } from './sessionFetch';
 import type { AuthUser } from '@/services/authApi';
 
 export interface UserProfileDto extends AuthUser {
@@ -39,7 +40,7 @@ async function request<T>(
 ): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`${baseUrl}${path}`, {
+    response = await sessionFetch(`${baseUrl}${path}`, {
       method,
       signal,
       cache: 'no-store',

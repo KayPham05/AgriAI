@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { readAdminPage } from '@/services/adminApi';
+import type { CatalogPage } from '@/services/knowledgeApi';
 
 const SEARCH_DEBOUNCE_MS = 500;
 
@@ -27,21 +29,52 @@ function normalize(value: string) {
 
 export function AdminRecordList<T extends SearchableRecord>({
   resource,
-  items,
+  items = [],
   title,
   empty,
   children,
   initialQuery = '',
+  token,
+  revision = 0,
 }: {
   resource: 'users' | 'images' | 'sessions';
-  items: T[];
+  items?: T[];
   title: string;
   empty: string;
   children: (item: T) => ReactNode;
   initialQuery?: string;
+  token?: string;
+  revision?: number;
 }) {
   const [request, setRequest] = useState({ page: 1, q: initialQuery });
   const [draft, setDraft] = useState(initialQuery);
+  const [remote, setRemote] = useState<CatalogPage<T> | null>(null);
+  const [loading, setLoading] = useState(Boolean(token));
+  const [error, setError] = useState('');
+  const [retry, setRetry] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: revision and retry explicitly refresh server state.
+  useEffect(() => {
+    if (!token) return;
+    const controller = new AbortController();
+    setLoading(true);
+    setError('');
+    setRemote(null);
+    readAdminPage<T>(resource, token, request.page, request.q, controller.signal)
+      .then((result) => {
+        if (controller.signal.aborted) return;
+        if (request.page > Math.max(1, result.totalPages)) {
+          setRequest((current) => ({ ...current, page: Math.max(1, result.totalPages) }));
+        } else setRemote(result);
+      })
+      .catch((failure) => {
+        if (!controller.signal.aborted)
+          setError(failure instanceof Error ? failure.message : 'Không thể tải dữ liệu.');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [token, resource, request, revision, retry]);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     return () => {
@@ -59,9 +92,11 @@ export function AdminRecordList<T extends SearchableRecord>({
       `${item.fullName ?? item.userName ?? ''} ${item.email ?? item.userEmail ?? ''}`,
     ).includes(query),
   );
-  const totalPages = Math.ceil(filtered.length / pageSize);
+  const totalPages = token ? (remote?.totalPages ?? 0) : Math.ceil(filtered.length / pageSize);
   const page = Math.min(request.page, Math.max(1, totalPages));
-  const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const visible = token
+    ? (remote?.items ?? [])
+    : filtered.slice((page - 1) * pageSize, page * pageSize);
   return (
     <section aria-label={title} className="admin-record-list flex min-h-0 flex-1 flex-col gap-3">
       <form
@@ -93,20 +128,35 @@ export function AdminRecordList<T extends SearchableRecord>({
           Tìm kiếm
         </Button>
       </form>
-      <p className="text-sm text-muted-foreground">{filtered.length} bản ghi minh họa</p>
-      {visible.length === 0 ? (
-        <p role="status" className="py-10 text-center text-muted-foreground">
-          {request.q ? 'Không tìm thấy kết quả phù hợp.' : empty}
-        </p>
-      ) : (
-        <ul className="admin-records grid min-h-0 flex-1 items-start gap-4 overflow-auto md:grid-cols-2">
-          {visible.map((item) => (
-            <li key={item.id} className="min-w-0 rounded-xl border border-border bg-surface p-4">
-              {children(item)}
-            </li>
-          ))}
-        </ul>
+      {loading && <p role="status">Đang tải dữ liệu...</p>}
+      {error && (
+        <div role="alert" className="text-destructive">
+          {error}{' '}
+          <Button variant="outline" onClick={() => setRetry((value) => value + 1)}>
+            Thử lại
+          </Button>
+        </div>
       )}
+      {!loading && !error && (
+        <p className="text-sm text-muted-foreground">
+          {token ? (remote?.totalCount ?? 0) : filtered.length} bản ghi{token ? '' : ' minh họa'}
+        </p>
+      )}
+      {!loading &&
+        !error &&
+        (visible.length === 0 ? (
+          <p role="status" className="py-10 text-center text-muted-foreground">
+            {request.q ? 'Không tìm thấy kết quả phù hợp.' : empty}
+          </p>
+        ) : (
+          <ul className="admin-records grid min-h-0 flex-1 items-start gap-4 overflow-auto md:grid-cols-2">
+            {visible.map((item) => (
+              <li key={item.id} className="min-w-0 rounded-xl border border-border bg-surface p-4">
+                {children(item)}
+              </li>
+            ))}
+          </ul>
+        ))}
       {totalPages > 0 && (
         <nav
           aria-label="Phân trang dữ liệu"

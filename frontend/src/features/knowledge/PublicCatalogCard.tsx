@@ -20,6 +20,8 @@ import {
   type PlantDiseasePair,
 } from '@/services/knowledgeApi';
 import { LEAF_PHOTOS, LEAF_PHOTO_NOTE } from '@/data/leafPhotos';
+import { catalogImageSource } from '@/lib/catalogImages';
+import { plantCategory } from '@/lib/plantCategories';
 import { publicPath } from './catalogUi';
 
 function conditionKey(value: string): string {
@@ -37,7 +39,7 @@ function diseaseIllustration(record: CatalogRecord, pairs: PlantDiseasePair[]) {
   // Match both identities from the backend class, never a shared disease name alone.
   for (const pair of pairs) {
     if (!pair.isActive || pair.diseaseId !== record.id) continue;
-    const [crop, condition] = pair.className.split('___');
+    const [crop, condition] = (pair.className ?? '').split('___');
     if (!crop || !condition) continue;
     const plant = findPlantTemplate({ name: crop, vietnameseName: null });
     const photo = LEAF_PHOTOS.find(
@@ -70,8 +72,15 @@ export function PublicCatalogCard({
           vietnameseName: record.vietnameseName ?? null,
         })
       : undefined;
-  const illustration = kind === 'diseases' ? diseaseIllustration(record, pairs) : undefined;
-  const image = plant ? { src: plant.imageUrl, alt: plant.name } : illustration;
+  const uploaded =
+    kind === 'plants' || kind === 'diseases' ? catalogImageSource(record.imageUrl) : undefined;
+  const illustration =
+    kind === 'diseases' && !uploaded ? diseaseIllustration(record, pairs) : undefined;
+  const image = uploaded
+    ? { src: uploaded, alt: recordName(record) }
+    : plant
+      ? { src: plant.imageUrl, alt: plant.name }
+      : illustration;
   const showImage = image && failedImage !== image.src;
   const missingImage =
     kind === 'plants'
@@ -98,6 +107,7 @@ export function PublicCatalogCard({
       {showImage ? (
         <Image
           src={image.src}
+          unoptimized={Boolean(uploaded)}
           alt={image.alt}
           width={640}
           height={360}
@@ -126,7 +136,13 @@ export function PublicCatalogCard({
         )}
       </CardHeader>
       <CardContent className="mt-auto flex flex-col gap-3 px-5">
-        {plant && <p className="text-sm font-medium text-primary">{plant.category}</p>}
+        {kind === 'plants' && (
+          <p className="text-sm font-medium text-primary">
+            {record.category
+              ? plantCategory(record.category)
+              : (plant?.category ?? plantCategory(undefined))}
+          </p>
+        )}
         <p className="line-clamp-3 break-words leading-6 text-muted-foreground">{description}</p>
         {illustration && showImage && (
           <p className="text-xs leading-5 text-muted-foreground">{LEAF_PHOTO_NOTE}</p>

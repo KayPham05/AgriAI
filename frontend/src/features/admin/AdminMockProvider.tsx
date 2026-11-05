@@ -126,7 +126,7 @@ export function AdminMockProvider({ children }: { children: ReactNode }) {
   function moderateImage(id: string, action: 'delete' | 'warnings', message: string) {
     if (action === 'warnings') {
       const image = data.images.find((item) => item.id === id);
-      if (image) moderateAccount(image.userId, 'warnings', message);
+      if (image?.userId) moderateAccount(image.userId, 'warnings', message);
       return;
     }
     setData((current) => ({

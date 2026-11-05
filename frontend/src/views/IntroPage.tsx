@@ -13,12 +13,13 @@ import leafTexture from '@/assets/banner-leaves/rice-leaf-cutout.png';
 import { CropMap } from '@/components/common/CropMap';
 import { CropFilmStrip } from '@/components/common/CropFilmStrip';
 import { IntroLeafBackdrop } from '@/components/home/IntroLeafBackdrop';
-import { SUPPORTED_PLANTS } from '@/data/plantData';
+import type { Plant } from '@/types';
 import { CROP_PHOTOS } from '@/data/cropPhotos';
 
 gsap.registerPlugin(useGSAP);
 
 interface IntroPageProps {
+  plants: Plant[];
   onLogin: () => void;
   onRegister: () => void;
 }
@@ -45,7 +46,7 @@ const principles = [
   'Kết quả chỉ hỗ trợ tham khảo, không thay thế chuyên gia.',
 ];
 
-export function IntroPage({ onLogin, onRegister }: IntroPageProps) {
+export function IntroPage({ plants, onLogin, onRegister }: IntroPageProps) {
   const pageRef = useRef<HTMLDivElement>(null);
 
   useGSAP(
@@ -148,7 +149,7 @@ export function IntroPage({ onLogin, onRegister }: IntroPageProps) {
         >
           <IntroLeafBackdrop variant="hero" />
           <div className="relative">
-            <CropMap plants={SUPPORTED_PLANTS}>
+            <CropMap plants={plants}>
               <div data-intro-copy className="min-w-0">
                 <p
                   data-intro-reveal

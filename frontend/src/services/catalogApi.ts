@@ -1,3 +1,5 @@
+import { catalogImageSource } from '@/lib/catalogImages';
+import { plantCategory } from '@/lib/plantCategories';
 import { ALL_DISEASES, SUPPORTED_PLANTS } from '../data/plantData';
 import { LEAF_PHOTOS, LEAF_PHOTO_NOTE } from '../data/leafPhotos';
 import type { Disease, Plant } from '../types';
@@ -5,8 +7,10 @@ import type { Disease, Plant } from '../types';
 export interface PlantDto {
   id: string;
   name: string;
+  imageUrl?: string | null;
   vietnameseName: string | null;
   scientificName: string | null;
+  category?: string | null;
   description: string | null;
   isActive: boolean;
   createdAt: string;
@@ -15,6 +19,7 @@ export interface PlantDto {
 export interface DiseaseDto {
   id: string;
   name: string;
+  imageUrl?: string | null;
   vietnameseName: string | null;
   description: string | null;
   symptoms: string | null;
@@ -76,14 +81,14 @@ function splitContent(value: string | null, fallback: string[]): string[] {
     .filter(Boolean);
 }
 
-async function fetchJson<T>(path: string): Promise<T> {
-  const response = await fetch(`${configuredBaseUrl}${path}`);
+async function fetchJson<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(`${configuredBaseUrl}${path}`, { cache: 'no-store', signal });
   if (!response.ok) throw new Error(`Backend trả về lỗi ${response.status}.`);
   return response.json() as Promise<T>;
 }
 
-export async function getPlants(): Promise<Plant[]> {
-  const records = await fetchJson<PlantDto[]>('/api/plants');
+export async function getPlants(signal?: AbortSignal): Promise<Plant[]> {
+  const records = await fetchJson<PlantDto[]>('/api/plants', signal);
   const plants = records
     .filter((record) => record.isActive)
     .map((record) => {
@@ -101,26 +106,18 @@ export async function getPlants(): Promise<Plant[]> {
           conditions: [],
         }),
         backendId: record.id,
+        imageUrl:
+          catalogImageSource(record.imageUrl) ??
+          template?.imageUrl ??
+          '/images/agriai-leaf-mark.png',
+        category: plantCategory(record.category),
         name: record.vietnameseName ?? template?.name ?? record.name,
         scientificName: record.scientificName ?? template?.scientificName ?? '',
         description:
           record.description ?? template?.description ?? 'Thông tin cây trồng từ hệ thống AgriAI.',
       };
     });
-  // These existing cẩm-nang crops are not additional model labels or active backend rows.
-  const referenceIds = ['pomelo', 'potato', 'banana', 'watermelon'];
-  const references = referenceIds.flatMap((id) => {
-    const template = SUPPORTED_PLANTS.find((plant) => plant.id === id);
-    if (!template || plants.some((plant) => plant.id === id)) return [];
-    return [
-      {
-        ...template,
-        detectableCount: 0,
-        description: `Cây tham khảo ngoài danh mục mô hình v1.4 đang hoạt động. ${template.description}`,
-      },
-    ];
-  });
-  return [...plants, ...references];
+  return plants;
 }
 
 const diseaseIdHints: Record<string, string[]> = {
@@ -163,6 +160,7 @@ export async function getDiseases(): Promise<Disease[]> {
       ...disease,
       backendId: record.id,
       name: disease.name,
+      heroImage: catalogImageSource(record.imageUrl) ?? disease.heroImage,
       overview: record.description
         ? `${record.description}${photo ? ` ${LEAF_PHOTO_NOTE}` : ''}`
         : disease.overview,

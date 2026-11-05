@@ -15,9 +15,11 @@ import {
   type CatalogRecord,
   type PlantDiseasePair,
 } from '@/services/knowledgeApi';
+import { ReferenceImage } from '@/components/common/ReferenceImage';
+import { catalogImageSource } from '@/lib/catalogImages';
+import { plantCategory } from '@/lib/plantCategories';
 import { Button } from '@/components/ui/button';
 import { SearchField } from '@/components/common/CatalogControls';
-import { ReferenceImage } from '@/components/common/ReferenceImage';
 import { findPlantTemplate } from '@/services/catalogApi';
 import { CatalogPager, CatalogSelect } from './CatalogControls';
 import { catalogError, catalogLabels, contentFields, publicPath, safeSource } from './catalogUi';
@@ -35,6 +37,7 @@ function PlantDetailContent({
   const name = recordName(record);
   const scientificName = record.scientificName || plant.scientificName;
   const description = record.description || plant.description;
+  const uploaded = catalogImageSource(record.imageUrl);
 
   return (
     <article className="flex min-w-0 flex-col gap-8">
@@ -52,7 +55,8 @@ function PlantDetailContent({
         <div className="grid md:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
           <div className="min-h-72 bg-surface-muted md:min-h-full">
             <Image
-              src={plant.imageUrl}
+              src={uploaded ?? plant.imageUrl}
+              unoptimized={Boolean(uploaded)}
               alt={name}
               width={960}
               height={720}
@@ -62,7 +66,9 @@ function PlantDetailContent({
           </div>
           <div className="flex flex-col justify-center p-6 sm:p-10">
             <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-primary">
-              <span className="rounded-full bg-secondary px-3 py-1.5">{plant.category}</span>
+              <span className="rounded-full bg-secondary px-3 py-1.5">
+                {record.category ? plantCategory(record.category) : plant.category}
+              </span>
               <span className="inline-flex items-center gap-1.5 text-muted-foreground">
                 <Leaf className="size-4" aria-hidden="true" />
                 Cẩm nang cây trồng
@@ -257,6 +263,13 @@ function CatalogContent({
           </p>
         )}
       </header>
+      {(kind === 'plants' || kind === 'diseases') && record.imageUrl && (
+        <ReferenceImage
+          src={catalogImageSource(record.imageUrl)}
+          alt={recordName(record)}
+          className="max-w-2xl rounded-media"
+        />
+      )}
       {kind === 'medicines' && (
         <p className="rounded-card border border-border bg-surface-muted p-4">
           Thông tin tra cứu không thay thế việc đối chiếu cây, bệnh và hướng dẫn trên nhãn. Chỉ sử

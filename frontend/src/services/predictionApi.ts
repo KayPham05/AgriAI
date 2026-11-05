@@ -1,3 +1,4 @@
+import { sessionFetch, reportSessionIssue } from './sessionFetch';
 import type { DiagnosisResult, TopPrediction } from '../types';
 import type { DiseaseDto, PlantDto } from './catalogApi';
 import {
@@ -208,7 +209,7 @@ async function authenticatedRequest<T>(
   token: string,
   init?: RequestInit,
 ): Promise<T> {
-  const response = await fetch(`${predictionUrl}${path}`, {
+  const response = await sessionFetch(`${predictionUrl}${path}`, {
     ...init,
     headers: { Authorization: `Bearer ${token}`, ...init?.headers },
   });
@@ -253,6 +254,7 @@ export function createPrediction(
     xhr.onabort = () => finish(new Error('Yêu cầu đã được hủy.'));
     xhr.onload = () => {
       const body = xhr.response as unknown;
+      reportSessionIssue(xhr.status, body, options.token);
       if (xhr.status < 200 || xhr.status >= 300) {
         finish(getPredictionError(body, xhr.status));
         return;
@@ -337,7 +339,7 @@ export async function assignPredictionProfile(
 }
 
 export async function deletePrediction(id: string, token: string): Promise<void> {
-  const response = await fetch(`${predictionUrl}/${id}`, {
+  const response = await sessionFetch(`${predictionUrl}/${id}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });

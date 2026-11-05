@@ -2,15 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import type {
-  Plant,
-  Disease,
-  UserProfile,
-  DiagnosisResult,
-  Toast,
-  NotificationItem,
-} from '@/types';
-import { SUPPORTED_PLANTS, ALL_DISEASES } from '@/data/plantData';
+import type { Plant, Disease, UserProfile, DiagnosisResult, Toast } from '@/types';
+import { SessionIssueModal } from '@/components/modals/SessionIssueModal';
+import { SESSION_ISSUE_EVENT, getSessionIssue, type SessionIssue } from '@/services/sessionFetch';
 import {
   type AuthSession,
   type AuthUser,
@@ -49,6 +43,8 @@ import {
 } from './AppContexts';
 import { guestProfile, createUserProfile, readGuestHistory } from './sessionProfile';
 import { isPublicCatalogPath } from '@/features/knowledge/catalogUi';
+import { useUserNotifications } from './useUserNotifications';
+import { useSessionEvents } from '@/hooks/useSessionEvents';
 
 const AUTH_NOTICE_DURATION_MS = 4000;
 
@@ -56,6 +52,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const publicCatalog = isPublicCatalogPath(pathname);
   const router = useRouter();
+  const [sessionIssue, setSessionIssue] = useState<SessionIssue | null>(getSessionIssue);
+  useEffect(() => {
+    const receive = (event: Event) => setSessionIssue((event as CustomEvent<SessionIssue>).detail);
+    window.addEventListener(SESSION_ISSUE_EVENT, receive);
+    return () => window.removeEventListener(SESSION_ISSUE_EVENT, receive);
+  }, []);
   const returnPathRef = useRef<string | null>(null);
   const restoredStartupRef = useRef(false);
   const [hasEnteredApp, setHasEnteredApp] = useState(false);
@@ -75,17 +77,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Navigation
 
-  const [plants, setPlants] = useState<Plant[]>(SUPPORTED_PLANTS);
-  const [diseases, setDiseases] = useState<Disease[]>(ALL_DISEASES);
+  const [plants, setPlants] = useState<Plant[]>([]);
+  const [diseases, setDiseases] = useState<Disease[]>([]);
   // User Profile
   const [userProfile, setUserProfile] = useState<UserProfile>(guestProfile);
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
+  useSessionEvents(authSession?.token ?? loginPendingSession?.token, Boolean(sessionIssue));
   const [agriculturalProfiles, setAgriculturalProfiles] = useState<AgriculturalProfile[]>([]);
   const [agriculturalProfilesLoading, setAgriculturalProfilesLoading] = useState(false);
   const [agriculturalProfilesError, setAgriculturalProfilesError] = useState<string | null>(null);
-
-  // Notifications
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
   // Diagnosis History with LocalStorage Persistence
   const [history, setHistory] = useState<DiagnosisResult[]>([]);
@@ -135,7 +135,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [loginPendingSession]);
 
   useEffect(() => {
-    if (!loginPendingSession || publicCatalog) return;
+    if (sessionIssue || !loginPendingSession || publicCatalog) return;
     if (loginPendingSession.user.role === 'Admin' && pathname === '/') {
       return;
     }
@@ -166,7 +166,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isActive = false;
       clearTimeout(timeout);
     };
-  }, [loginPendingSession, pathname, publicCatalog]);
+  }, [loginPendingSession, pathname, publicCatalog, sessionIssue]);
 
   useEffect(() => {
     if (
@@ -181,6 +181,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (
+      sessionIssue ||
       !loginPendingSession ||
       !startupData ||
       !noticeReady ||
@@ -188,7 +189,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     )
       return;
     setPlants(startupData[0]);
-    setDiseases(startupData[1]);
+    setDiseases(
+      startupData[1].filter((disease) =>
+        startupData[0].some((plant) => plant.id === disease.plantId),
+      ),
+    );
     setHistory(startupData[2]);
     setAgriculturalProfiles(startupData[3]);
     setAgriculturalProfilesError(null);
@@ -198,10 +203,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setLoginPendingSession(null);
     setHasEnteredApp(true);
     restoredStartupRef.current = false;
-  }, [loginPendingSession, startupData, entranceReady, noticeReady, pathname, router]);
+  }, [
+    loginPendingSession,
+    startupData,
+    entranceReady,
+    noticeReady,
+    pathname,
+    router,
+    sessionIssue,
+  ]);
 
   useEffect(() => {
-    if (isRestoringSession || loginPendingSession || logoutName !== null) return;
+    if (sessionIssue || isRestoringSession || loginPendingSession || logoutName !== null) return;
     if (!hasEnteredApp && pathname !== '/' && !publicCatalog) {
       returnPathRef.current = pathname;
       router.replace('/');
@@ -212,6 +225,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [
     isRestoringSession,
+    sessionIssue,
     loginPendingSession,
     logoutName,
     hasEnteredApp,
@@ -232,6 +246,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Modals
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const userNotifications = useUserNotifications(authSession?.token, isNotificationsOpen);
+  const { notifications } = userNotifications;
   const [isHistoryDetailOpen, setIsHistoryDetailOpen] = useState(false);
   const [historyDetailResult, setHistoryDetailResult] = useState<DiagnosisResult | null>(null);
 
@@ -490,6 +506,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ],
   );
 
+  if (sessionIssue)
+    return (
+      <SessionIssueModal
+        issue={sessionIssue}
+        onConfirm={() => {
+          clearAuthSession();
+          setSessionIssue(null);
+          setAuthSession(null);
+          setLoginPendingSession(null);
+          setStartupData(null);
+          setUserProfile(guestProfile);
+          setAgriculturalProfiles([]);
+          setAgriculturalProfilesError(null);
+          setHistory(readGuestHistory());
+          setIsNotificationsOpen(false);
+          setIsHistoryDetailOpen(false);
+          setHasEnteredApp(false);
+          returnPathRef.current = null;
+          router.replace('/');
+          setIsLoginOpen(true);
+        }}
+      />
+    );
   if (logoutName !== null) return <SeedlingLoadingScreen mode="logout" userName={logoutName} />;
   if (isRestoringSession && !publicCatalog) return <AppSplashScreen />;
   if (loginPendingSession && !publicCatalog) {
@@ -541,10 +580,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 isOpen={isNotificationsOpen}
                 onClose={() => setIsNotificationsOpen(false)}
                 notifications={notifications}
-                onMarkAllRead={() =>
-                  setNotifications((items) => items.map((item) => ({ ...item, read: true })))
-                }
-                onClearAll={() => setNotifications([])}
+                onMarkAllRead={userNotifications.markAllRead}
+                onClearAll={userNotifications.clearAll}
+                loading={userNotifications.loading}
+                busy={userNotifications.busy}
+                error={userNotifications.error}
+                onRetry={userNotifications.refresh}
+                page={userNotifications.page}
+                totalPages={userNotifications.totalPages}
+                onPageChange={userNotifications.setPage}
               />
               <HistoryDetailModal
                 isOpen={isHistoryDetailOpen}
