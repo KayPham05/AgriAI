@@ -633,6 +633,12 @@ public class PredictionServiceTests
         prediction.ImagePath.Should().Be("https://images.test/legacy.jpg", "reading history does not delete stored metadata");
     }
 
+
+
+
+
+
+
     private void ConfigureHealthyClass() => _plantDiseaseRepository.PlantDiseases =
     [new PlantDisease { ClassIndex = 0, ClassName = "Tomato___Healthy", Plant = new Plant { Name = "Tomato" }, Disease = new Disease { Name = "Healthy" } }];
 

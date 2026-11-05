@@ -9,5 +9,6 @@ public class UserActionToken
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime ExpiresAt { get; set; }
     public DateTime? ConsumedAt { get; set; }
+    public int FailedAttempts { get; set; }
     public User User { get; set; } = null!;
 }

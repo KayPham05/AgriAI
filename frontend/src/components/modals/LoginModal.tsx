@@ -17,7 +17,18 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AuthPanelVideo } from '@/components/modals/AuthPanelVideo';
-import { type AuthSession, login, register, saveAuthSession } from '../../services/authApi';
+import { PasswordRecoveryForm } from '@/components/modals/PasswordRecoveryForm';
+import { EmailCodeForm } from '@/components/modals/EmailCodeForm';
+import { GoogleSignInButton } from '@/components/modals/GoogleSignInButton';
+import {
+  type AuthSession,
+  type LoginResult,
+  login,
+  loginWithGoogle,
+  register,
+  saveAuthSession,
+  verifyEmailLogin,
+} from '../../services/authApi';
 
 gsap.registerPlugin(useGSAP);
 
@@ -66,6 +77,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [errors, setErrors] = useState<FormErrors>({});
   const [serverError, setServerError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [recoveringPassword, setRecoveringPassword] = useState(false);
+  const [challengeId, setChallengeId] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const previousMode = useRef(mode);
 
@@ -123,6 +136,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setMode(initialMode);
+      setRecoveringPassword(false);
+      setChallengeId(null);
       setCaptchaCode(createCaptchaCode());
       setCaptchaAnswer('');
       setHasAcceptedTerms(false);
@@ -135,6 +150,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   const switchMode = (nextMode: AuthMode) => {
     setMode(nextMode);
+    setRecoveringPassword(false);
     setCaptchaAnswer('');
     setHasAcceptedTerms(false);
     if (nextMode === 'login') setCaptchaCode(createCaptchaCode());
@@ -169,6 +185,30 @@ export const LoginModal: React.FC<LoginModalProps> = ({
     return Object.keys(nextErrors).length === 0;
   };
 
+  const completeLogin = (result: LoginResult) => {
+    if ('challengeId' in result) {
+      setChallengeId(result.challengeId);
+      setPassword('');
+      return;
+    }
+    saveAuthSession(result, remember);
+    onAuthSuccess(result);
+    onClose();
+  };
+
+  const handleGoogleLogin = async (credential: string) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setServerError('');
+    try {
+      completeLogin(await loginWithGoogle(credential));
+    } catch (error) {
+      setServerError(error instanceof Error ? error.message : 'Không thể đăng nhập bằng Google.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setServerError('');
@@ -181,9 +221,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         mode === 'register'
           ? await register({ ...credentials, fullName: fullName.trim() })
           : await login(credentials);
-      saveAuthSession(session, remember);
-      onAuthSuccess(session);
-      onClose();
+      completeLogin(session);
     } catch (error) {
       setServerError(
         error instanceof Error ? error.message : 'Đã có lỗi xảy ra. Vui lòng thử lại.',
@@ -193,6 +231,52 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       setIsSubmitting(false);
     }
   };
+
+  if (challengeId) {
+    return (
+      <Dialog
+        open
+        onOpenChange={(open) => {
+          if (!open) onClose();
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xác minh đăng nhập</DialogTitle>
+            <DialogDescription>Nhập mã 8 chữ số vừa được gửi đến email của bạn.</DialogDescription>
+          </DialogHeader>
+          <EmailCodeForm
+            onVerify={async (code) => completeLogin(await verifyEmailLogin(challengeId, code))}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setChallengeId(null);
+              switchMode('login');
+            }}
+          >
+            Quay lại đăng nhập
+          </Button>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (recoveringPassword) {
+    return (
+      <Dialog
+        open
+        onOpenChange={(open) => {
+          if (!open) onClose();
+        }}
+      >
+        <DialogContent>
+          <PasswordRecoveryForm initialEmail={email} onBack={() => switchMode('login')} />
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog
@@ -459,6 +543,21 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 {isSubmitting ? 'Đang xử lý...' : mode === 'login' ? 'Đăng nhập' : 'Tạo tài khoản'}
               </Button>
             </form>
+            {mode === 'login' && (
+              <GoogleSignInButton
+                onCredential={(credential) => void handleGoogleLogin(credential)}
+              />
+            )}
+            {mode === 'login' && (
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={isSubmitting}
+                onClick={() => setRecoveringPassword(true)}
+              >
+                Quên mật khẩu?
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>

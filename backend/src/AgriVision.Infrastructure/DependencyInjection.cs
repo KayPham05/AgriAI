@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Amazon.S3;
 using Amazon.Runtime;
 
+
 namespace AgriVision.Infrastructure;
 
 public static class DependencyInjection
@@ -25,6 +26,11 @@ public static class DependencyInjection
 
         // Register Authentication Services
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+        services.AddScoped<IPasswordRecovery, PasswordRecovery>();
+        services.AddScoped<IEmailTwoFactor, EmailTwoFactor>();
+        services.AddScoped<IGoogleAccountLogin, GoogleAccountLogin>();
+        if (!string.IsNullOrWhiteSpace(configuration["Smtp:Host"]))
+            services.AddScoped<IAccountEmailSender, SmtpAccountEmailSender>();
 
         // Register Repositories & Unit of Work
         services.AddScoped<IUserRepository, UserRepository>();
@@ -38,6 +44,7 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IMedicineRepository, MedicineRepository>();
         services.AddScoped<IKnowledgeDocumentRepository, KnowledgeDocumentRepository>();
+
 
         // Register Image Storage Service
         services.AddSingleton<IAmazonS3>(_ =>

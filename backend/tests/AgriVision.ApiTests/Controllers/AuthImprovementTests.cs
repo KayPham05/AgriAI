@@ -484,6 +484,12 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>, IDisposabl
 
     private sealed class GatedAuthService(AuthService inner, LogoutGate gate) : IAuthService
     {
+        public Task<AuthResponse> CompleteLoginAsync(User user, CancellationToken cancellationToken)
+            => inner.CompleteLoginAsync(user, cancellationToken);
+
+        public Task<AuthResponse> LoginAccountAsync(User user, CancellationToken cancellationToken)
+            => inner.LoginAccountAsync(user, cancellationToken);
+
         public Task<AuthResponse> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
             => inner.RegisterAsync(request, cancellationToken);
 

@@ -12,6 +12,12 @@ export interface AuthSession {
   user: AuthUser;
 }
 
+export interface EmailChallenge {
+  challengeId: string;
+}
+
+export type LoginResult = AuthSession | EmailChallenge;
+
 export interface LoginCredentials {
   email: string;
   password: string;
@@ -62,10 +68,51 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
-export function login(credentials: LoginCredentials): Promise<AuthSession> {
-  return request<AuthSession>('/api/auth/login', {
+export function login(credentials: LoginCredentials): Promise<LoginResult> {
+  return request<LoginResult>('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify(credentials),
+  });
+}
+
+export function loginWithGoogle(credential: string): Promise<LoginResult> {
+  return request('/api/auth/google', {
+    method: 'POST',
+    body: JSON.stringify({ credential }),
+  });
+}
+
+export function verifyEmailLogin(challengeId: string, code: string): Promise<AuthSession> {
+  return request('/api/auth/two-factor/login', {
+    method: 'POST',
+    body: JSON.stringify({ challengeId, code }),
+  });
+}
+
+export function getEmailTwoFactor(
+  token: string,
+  signal: AbortSignal,
+): Promise<{ enabled: boolean }> {
+  return request('/api/auth/two-factor', { signal, headers: { Authorization: `Bearer ${token}` } });
+}
+
+export function startEmailTwoFactor(token: string, enabled: boolean): Promise<EmailChallenge> {
+  return request(`/api/auth/two-factor/setup?enabled=${enabled}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function verifyEmailTwoFactor(
+  token: string,
+  challengeId: string,
+  code: string,
+  enabled: boolean,
+): Promise<void> {
+  await request(`/api/auth/two-factor/setup/verify?enabled=${enabled}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ challengeId, code }),
   });
 }
 
@@ -73,6 +120,20 @@ export function register(credentials: RegisterCredentials): Promise<AuthSession>
   return request<AuthSession>('/api/auth/register', {
     method: 'POST',
     body: JSON.stringify(credentials),
+  });
+}
+
+export async function requestPasswordReset(email: string): Promise<void> {
+  await request('/api/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function resetPassword(code: string, password: string): Promise<void> {
+  await request('/api/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ code, password }),
   });
 }
 

@@ -25,8 +25,7 @@ public class MigrationTests
             INSERT INTO users (id, full_name, email, created_at) VALUES ({owner}, 'Forward owner', 'forward@example.test', now());
             INSERT INTO agricultural_profiles (id, user_id, name, created_at) VALUES ({profile}, {owner}, 'Keep this profile', now());
             """);
-        // Remove the reversible medicine migration before checking the protected profile boundary.
-        await database.GetService<IMigrator>().MigrateAsync("20261104060000_PostPredictionProfileAssignment");
+        // The latest email 2FA migration also rejects downgrade before any data is removed.
         var before = (await database.Database.GetAppliedMigrationsAsync()).ToArray();
         Func<Task> downgrade = () => database.GetService<IMigrator>().MigrateAsync("20261017084014_DatabaseImprovement");
         await downgrade.Should().ThrowAsync<NotSupportedException>().WithMessage("*forward-only*");
@@ -69,14 +68,16 @@ public class MigrationTests
             """);
         await database.Database.MigrateAsync();
         await database.Database.MigrateAsync();
-        (await database.Database.GetAppliedMigrationsAsync()).Should().HaveCount(11);
+        (await database.Database.GetAppliedMigrationsAsync()).Should().Equal(database.Database.GetMigrations());
         (await database.Users.SingleAsync(account => account.Id == legacyUserId)).AvatarUrl.Should().BeNull();
         database.Database.HasPendingModelChanges().Should().BeFalse();
         var legacy = await database.Predictions.Include(prediction => prediction.Images).SingleAsync();
         legacy.Id.Should().Be(predictionId);
         legacy.UserId.Should().Be(legacyUserId);
         legacy.AgriculturalProfileId.Should().BeNull();
-        (await database.Users.SingleAsync(account => account.Id == legacyUserId)).IsActive.Should().BeTrue();
+        var legacyOwner = await database.Users.SingleAsync(account => account.Id == legacyUserId);
+        legacyOwner.IsActive.Should().BeTrue();
+        legacyOwner.EmailTwoFactorEnabled.Should().BeFalse();
         legacy.ResultSnapshotJson.Should().BeNull();
         legacy.Images.Should().ContainSingle();
         legacy.Images.Single().ImagePath.Should().Be("/legacy.jpg");
