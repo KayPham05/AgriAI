@@ -1,7 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { ArrowLeft, ArrowRight, BookOpen, Leaf, ScanLine, ShieldCheck } from 'lucide-react';
 import {
   catalogRequest,
   loadAllPairs,
@@ -15,8 +17,11 @@ import {
 } from '@/services/knowledgeApi';
 import { Button } from '@/components/ui/button';
 import { SearchField } from '@/components/common/CatalogControls';
+import { ReferenceImage } from '@/components/common/ReferenceImage';
+import { findPlantTemplate } from '@/services/catalogApi';
 import { CatalogPager, CatalogSelect } from './CatalogControls';
 import { catalogError, catalogLabels, contentFields, publicPath, safeSource } from './catalogUi';
+import { PublicCatalogCard } from './PublicCatalogCard';
 
 export function CatalogLinks() {
   return (
@@ -27,6 +32,195 @@ export function CatalogLinks() {
         </Button>
       ))}
     </nav>
+  );
+}
+
+function PlantDetailContent({
+  record,
+  plant,
+  linkedPairs,
+}: {
+  record: CatalogRecord;
+  plant: NonNullable<ReturnType<typeof findPlantTemplate>>;
+  linkedPairs: PlantDiseasePair[];
+}) {
+  const name = recordName(record);
+  const scientificName = record.scientificName || plant.scientificName;
+  const description = record.description || plant.description;
+
+  return (
+    <article className="flex min-w-0 flex-col gap-8">
+      <Button asChild variant="ghost" className="self-start px-0">
+        <Link href={publicPath('plants')}>
+          <ArrowLeft aria-hidden="true" />
+          Về danh sách cây trồng
+        </Link>
+      </Button>
+
+      <section
+        aria-labelledby="plant-detail-title"
+        className="overflow-hidden rounded-media border border-border bg-surface"
+      >
+        <div className="grid md:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+          <div className="min-h-72 bg-surface-muted md:min-h-full">
+            <Image
+              src={plant.imageUrl}
+              alt={name}
+              width={960}
+              height={720}
+              sizes="(min-width: 768px) 52vw, 100vw"
+              className="h-full min-h-72 w-full object-cover md:min-h-[28rem]"
+            />
+          </div>
+          <div className="flex flex-col justify-center p-6 sm:p-10">
+            <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-primary">
+              <span className="rounded-full bg-secondary px-3 py-1.5">{plant.category}</span>
+              <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                <Leaf className="size-4" aria-hidden="true" />
+                Cẩm nang cây trồng
+              </span>
+            </div>
+            <h1
+              id="plant-detail-title"
+              className="mt-5 text-4xl font-bold tracking-tight text-foreground sm:text-5xl"
+            >
+              {name}
+            </h1>
+            {scientificName && (
+              <p className="mt-2 text-base italic text-muted-foreground">{scientificName}</p>
+            )}
+            <p className="mt-6 max-w-prose text-base leading-7 text-muted-foreground">
+              {description}
+            </p>
+            <dl className="mt-7 grid grid-cols-2 gap-4 border-y border-border py-4">
+              <div>
+                <dt className="text-sm text-muted-foreground">Tình trạng tham khảo</dt>
+                <dd className="mt-1 text-2xl font-bold text-primary">{plant.conditions.length}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-muted-foreground">Dấu hiệu mô hình nhận biết</dt>
+                <dd className="mt-1 text-2xl font-bold text-primary">{plant.detectableCount}</dd>
+              </div>
+            </dl>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Button asChild>
+                <Link href="/diagnose">
+                  <ScanLine aria-hidden="true" />
+                  Kiểm tra lá
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href={publicPath('plants')}>Xem cây khác</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="plant-conditions-title" className="border-t border-border pt-8">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-primary">Nhận diện qua lá</p>
+            <h2 id="plant-conditions-title" className="mt-2 text-2xl font-bold sm:text-3xl">
+              Dấu hiệu trên lá tham khảo
+            </h2>
+            <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
+              Đối chiếu nhanh các tình trạng thường gặp của {name}. Hình ảnh và mô tả chỉ dùng để
+              tham khảo trong quá trình kiểm tra.
+            </p>
+          </div>
+          <span className="rounded-full border border-border px-3 py-1.5 text-sm font-semibold text-primary">
+            {plant.conditions.length} tình trạng
+          </span>
+        </div>
+
+        <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {plant.conditions.map((condition) => (
+            <article
+              key={condition.id}
+              className="flex min-w-0 flex-col overflow-hidden rounded-card border border-border bg-surface"
+            >
+              <ReferenceImage src={condition.imageUrl} alt={condition.name} />
+              <div className="flex flex-1 flex-col p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-lg font-bold leading-7">{condition.name}</h3>
+                  {condition.isHealthy && (
+                    <ShieldCheck
+                      className="mt-1 size-5 shrink-0 text-primary"
+                      aria-label="Lá khỏe mạnh"
+                    />
+                  )}
+                </div>
+                {condition.scientificName && (
+                  <p className="mt-1 text-sm italic text-muted-foreground">
+                    {condition.scientificName}
+                  </p>
+                )}
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  {condition.shortDescription}
+                </p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section aria-labelledby="plant-related-title" className="border-t border-border pt-8">
+        <div className="flex items-start gap-3">
+          <span className="grid size-11 shrink-0 place-items-center rounded-card bg-secondary text-primary">
+            <BookOpen aria-hidden="true" />
+          </span>
+          <div>
+            <h2 id="plant-related-title" className="text-2xl font-bold">
+              Tra cứu liên quan
+            </h2>
+            <p className="mt-2 leading-7 text-muted-foreground">
+              Mở bài viết và thông tin sản phẩm theo từng cặp cây trồng và bệnh đã được công khai.
+            </p>
+          </div>
+        </div>
+        {linkedPairs.length > 0 ? (
+          <ul className="mt-6 divide-y divide-border border-y border-border">
+            {linkedPairs.map((pair) => (
+              <li
+                key={pair.id}
+                className="flex flex-col gap-4 py-5 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <p className="font-semibold text-foreground">{pair.diseaseName}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{pair.plantName}</p>
+                </div>
+                <div className="flex flex-wrap gap-x-5 gap-y-2">
+                  <Link
+                    className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-primary underline-offset-4 hover:underline"
+                    href={`/knowledge?plantId=${pair.plantId}&diseaseId=${pair.diseaseId}`}
+                  >
+                    Bài viết liên quan
+                    <ArrowRight className="size-4" aria-hidden="true" />
+                  </Link>
+                  <Link
+                    className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-primary underline-offset-4 hover:underline"
+                    href={`/medicines?plantId=${pair.plantId}&diseaseId=${pair.diseaseId}`}
+                  >
+                    Tra cứu thuốc
+                    <ArrowRight className="size-4" aria-hidden="true" />
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-6 rounded-card border border-border bg-surface-muted p-5 text-muted-foreground">
+            Chưa có nội dung liên quan được công khai cho cây trồng này.
+          </p>
+        )}
+      </section>
+
+      <p className="border-t border-border pt-5 text-sm leading-7 text-muted-foreground">
+        Thông tin trên trang mang tính tham khảo. Khi cây có dấu hiệu bất thường, hãy đối chiếu thêm
+        với cán bộ kỹ thuật địa phương.
+      </p>
+    </article>
   );
 }
 
@@ -47,6 +241,18 @@ function CatalogContent({
         ? pair.diseaseId === record.id
         : record.plantDiseaseIds?.includes(pair.id),
   );
+  const plant =
+    kind === 'plants'
+      ? findPlantTemplate({
+          name: record.name ?? '',
+          vietnameseName: record.vietnameseName ?? null,
+        })
+      : undefined;
+
+  if (plant) {
+    return <PlantDetailContent record={record} plant={plant} linkedPairs={linkedPairs} />;
+  }
+
   return (
     <article className="flex min-w-0 flex-col gap-6">
       <Button asChild variant="outline" className="self-start">
@@ -293,34 +499,46 @@ export function PublicCatalog({ kind, id }: { kind: CatalogKind; id?: string }) 
       {record && <CatalogContent kind={kind} record={record} pairs={pairs} />}
       {page && (
         <>
-          <ul className="grid gap-4 md:grid-cols-2">
-            {page.items.map((item) => (
-              <li
-                key={item.id}
-                className="flex min-w-0 flex-col gap-3 rounded-card border border-border bg-surface p-5"
-              >
-                <h2 className="break-words text-xl font-semibold">
+          <ul
+            className={
+              kind === 'knowledge-documents'
+                ? 'grid gap-4 md:grid-cols-2'
+                : 'grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+            }
+          >
+            {page.items.map((item) =>
+              kind !== 'knowledge-documents' ? (
+                <li key={item.id} className="min-w-0">
+                  <PublicCatalogCard kind={kind} record={item} pairs={pairs} />
+                </li>
+              ) : (
+                <li
+                  key={item.id}
+                  className="flex min-w-0 flex-col gap-3 rounded-card border border-border bg-surface p-5"
+                >
+                  <h2 className="break-words text-xl font-semibold">
+                    <Link
+                      className="text-primary hover:underline"
+                      href={`${publicPath(kind)}/${item.id}`}
+                    >
+                      {recordName(item)}
+                    </Link>
+                  </h2>
+                  <p className="line-clamp-3 break-words text-muted-foreground">
+                    {item.content ??
+                      item.targetUse ??
+                      item.description ??
+                      'Xem thông tin chi tiết trong danh mục.'}
+                  </p>
                   <Link
-                    className="text-primary hover:underline"
+                    className="mt-auto self-start font-semibold text-primary underline underline-offset-4"
                     href={`${publicPath(kind)}/${item.id}`}
                   >
-                    {recordName(item)}
+                    Xem chi tiết
                   </Link>
-                </h2>
-                <p className="line-clamp-3 break-words text-muted-foreground">
-                  {item.content ??
-                    item.targetUse ??
-                    item.description ??
-                    'Xem thông tin chi tiết trong danh mục.'}
-                </p>
-                <Link
-                  className="mt-auto self-start font-semibold text-primary underline underline-offset-4"
-                  href={`${publicPath(kind)}/${item.id}`}
-                >
-                  Xem chi tiết
-                </Link>
-              </li>
-            ))}
+                </li>
+              ),
+            )}
           </ul>
           {page.items.length === 0 && <p>Chưa có nội dung phù hợp được công khai.</p>}
           <CatalogPager
