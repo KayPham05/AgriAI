@@ -13,8 +13,10 @@ using AgriVision.Application.DTOs.Medicine;
 
 namespace AgriVision.UnitTests.Services;
 
-public class PredictionServiceTests
+public partial class PredictionServiceTests : IDisposable
 {
+    private readonly GuestPredictionStore _guestStore = new();
+    public void Dispose() => _guestStore.Dispose();
     private readonly RecordingPredictionRepository _predictionRepository;
     private readonly StubPlantDiseaseRepository _plantDiseaseRepository;
     private readonly RecordingImageStorage _imageStorage;
@@ -40,7 +42,8 @@ public class PredictionServiceTests
             _diseasePredictor,
             _profileRepository.Object,
             medicines.Object,
-            _journal.Object
+            _journal.Object,
+            guestPredictions: _guestStore
         );
     }
 

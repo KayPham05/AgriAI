@@ -130,7 +130,7 @@ export function IntroPage({ plants, onLogin, onRegister }: IntroPageProps) {
           </a>
           <div className="flex flex-wrap items-center gap-1 sm:gap-2">
             <Button asChild variant="ghost" className="px-2 sm:px-5">
-              <Link href="/knowledge">Tra cứu</Link>
+              <Link href="/plants">Tra cứu</Link>
             </Button>
             <Button type="button" variant="ghost" className="px-2 sm:px-5" onClick={onLogin}>
               Đăng nhập

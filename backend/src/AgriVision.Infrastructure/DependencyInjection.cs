@@ -34,6 +34,7 @@ public static class DependencyInjection
         services.AddScoped<IAdminImageService, AdminImageService>();
         services.AddScoped<ICatalogImageService, CatalogImageService>();
         services.AddScoped<ICatalogDeletionService, CatalogDeletionService>();
+        services.AddSingleton<IGuestPredictionStore, GuestPredictionStore>();
         services.AddScoped<IUserSessionRepository, UserSessionRepository>();
         services.AddScoped<IPlantRepository, PlantRepository>();
         services.AddScoped<IDiseaseRepository, DiseaseRepository>();

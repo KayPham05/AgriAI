@@ -156,7 +156,8 @@ public class AgriculturalProfilesControllerTests : IClassFixture<AgriVisionFacto
         saved.AgriculturalProfileId.Should().Be(profileId);
         var snapshot = saved.ResultSnapshotJson;
         var image = await db.PredictionImages.AsNoTracking().SingleAsync(item => item.PredictionId == prediction.Id);
-        image.ExpiresAt.Should().Be(saved.CreatedAt.AddDays(30));
+        image.UploadedAt.Should().BeOnOrAfter(saved.CreatedAt).And.BeOnOrBefore(DateTime.UtcNow);
+        image.ExpiresAt.Should().Be(image.UploadedAt.AddDays(30));
         var detail = await owner.GetFromJsonAsync<JsonElement>($"{ProfilesUrl}/{profileId}");
         detail.GetProperty("predictionCount").GetInt32().Should().Be(1);
         var list = await owner.GetFromJsonAsync<JsonElement[]>(ProfilesUrl);

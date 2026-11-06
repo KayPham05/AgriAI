@@ -755,5 +755,21 @@
       "catalog.permanent-delete",
       "catalog.permanent-delete.medicine"
     ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/predictions/guest/save",
+    "cases": [
+      "predictions.guest.save_roundtrip",
+      "predictions.guest.save_invalid_token"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/predictions/guest/image",
+    "cases": [
+      "predictions.guest.save_roundtrip",
+      "predictions.guest.preview_missing"
+    ]
   }
 ]

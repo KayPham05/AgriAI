@@ -7,6 +7,8 @@ import {
   getPredictionHistory,
   getProfilePredictionHistory,
   mapPredictionResult,
+  readGuestPredictionImage,
+  saveGuestPrediction,
 } from '@/services/predictionApi';
 import { DIAGNOSIS_ISSUE_CODES } from '@/features/diagnosis/diagnosisIssues';
 
@@ -89,6 +91,49 @@ const successfulResponse = {
   predictionDetails: [],
   createdAt: '2026-09-27T10:00:00Z',
 };
+
+describe('guest prediction API transport', () => {
+  it('saves only the opaque guest token with the logged-in credentials', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(successfulResponse), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const saved = await saveGuestPrediction('guest-secret', 'owner-jwt');
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toMatch(/\/api\/predictions\/guest\/save$/);
+    expect(options.method).toBe('POST');
+    expect(new Headers(options.headers).get('Authorization')).toBe('Bearer owner-jwt');
+    expect(JSON.parse(options.body)).toEqual({ guestToken: 'guest-secret' });
+    expect(saved.dto.id).toBe(successfulResponse.id);
+    expect(saved.diagnosis.plant).toBe('Cà chua');
+  });
+
+  it('keeps the preview token out of the URL and disables caching', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response('leaf', { headers: { 'Content-Type': 'image/jpeg' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    const controller = new AbortController();
+    const image = await readGuestPredictionImage('guest-secret', controller.signal);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toMatch(/\/api\/predictions\/guest\/image$/);
+    expect(url).not.toContain('guest-secret');
+    expect(new Headers(options.headers).get('X-Guest-Prediction')).toBe('guest-secret');
+    expect(options.cache).toBe('no-store');
+    expect(options.signal).toBe(controller.signal);
+    expect(await image.text()).toBe('leaf');
+  });
+
+  it('reports an unavailable temporary image instead of treating an error response as an image', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 404 })));
+    await expect(readGuestPredictionImage('expired', new AbortController().signal)).rejects.toThrow(
+      /Ảnh tạm đã hết hạn/,
+    );
+  });
+});
 
 describe('createPrediction', () => {
   it.each(DIAGNOSIS_ISSUE_CODES)('preserves the structured %s code from the API', async (code) => {

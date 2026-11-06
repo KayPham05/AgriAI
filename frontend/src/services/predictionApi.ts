@@ -51,6 +51,8 @@ interface PredictionResultDto {
   confidence: number;
   predictionDetails: PredictionDetailDto[];
   createdAt: string;
+  guestToken?: string | null;
+  guestExpiresAt?: string | null;
 }
 
 interface PredictionHistoryDto {
@@ -305,6 +307,41 @@ export async function getPredictionHistory(token: string): Promise<DiagnosisResu
     token,
   );
   return result.items.map(mapHistoryItem);
+}
+
+export async function saveGuestPrediction(
+  guestToken: string,
+  token: string,
+): Promise<PredictionResponse> {
+  const dto = await authenticatedRequest<PredictionResultDto>('/guest/save', token, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ guestToken }),
+  });
+  const diagnosis = mapPredictionResult(dto);
+  return {
+    dto,
+    diagnosis,
+    crop: diagnosis.plant,
+    disease: diagnosis.prediction,
+    confidence: dto.confidence,
+  };
+}
+
+export async function readGuestPredictionImage(
+  guestToken: string,
+  signal: AbortSignal,
+): Promise<Blob> {
+  const response = await fetch(`${predictionUrl}/guest/image`, {
+    headers: { 'X-Guest-Prediction': guestToken },
+    cache: 'no-store',
+    signal,
+  });
+  if (!response.ok)
+    throw new Error(
+      'Ảnh tạm đã hết hạn hoặc không còn khả dụng. Bạn vẫn có thể xem nội dung kết quả trong tab này.',
+    );
+  return response.blob();
 }
 
 export async function getPredictionById(id: string, token: string): Promise<DiagnosisResult> {

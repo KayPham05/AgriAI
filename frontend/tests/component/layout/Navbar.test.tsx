@@ -14,6 +14,31 @@ const profile = {
 };
 
 describe('Navbar', () => {
+  it('keeps guest catalog navigation separate from account destinations on desktop and mobile', async () => {
+    render(
+      <Navbar
+        currentTab="plants"
+        unreadNotificationsCount={3}
+        onOpenNotifications={vi.fn()}
+        userProfile={profile}
+        isAuthenticated={false}
+        onOpenLogin={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('link', { name: 'AgriAI, về trang chủ' })).toHaveAttribute('href', '/');
+    expect(screen.queryByRole('link', { name: 'Mẫu đã lưu' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Hồ sơ nông nghiệp' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Thông báo/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Cây trồng' })).toHaveAttribute('href', '/plants');
+    expect(screen.getByRole('link', { name: 'Kiểm tra lá' })).toHaveAttribute('href', '/diagnose');
+    await userEvent.click(screen.getByRole('button', { name: 'Mở menu' }));
+    const menu = within(screen.getByRole('dialog'));
+    expect(menu.getByRole('link', { name: 'Kiểm tra lá' })).toHaveAttribute('href', '/diagnose');
+    expect(menu.queryByRole('link', { name: 'Mẫu đã lưu' })).not.toBeInTheDocument();
+    expect(menu.queryByRole('link', { name: 'Hồ sơ nông nghiệp' })).not.toBeInTheDocument();
+    expect(menu.queryByRole('button', { name: /Thông báo/ })).not.toBeInTheDocument();
+    expect(menu.getByRole('button', { name: 'Đăng nhập hoặc đăng ký' })).toBeVisible();
+  });
   it('exposes app destinations as real links that can open in another tab', () => {
     render(
       <Navbar

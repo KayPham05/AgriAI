@@ -36,6 +36,15 @@ const navItems: Array<{ id: NavigationTab; label: string }> = [
   { id: 'agricultural-profiles', label: 'Hồ sơ nông nghiệp' },
   { id: 'about', label: 'Về dự án' },
 ];
+const publicNavItems: typeof navItems = [
+  { id: 'home', label: 'Trang chủ' },
+  { id: 'diagnose', label: 'Kiểm tra lá' },
+  { id: 'plants', label: 'Cây trồng' },
+  { id: 'diseases', label: 'Bệnh thường gặp' },
+  { id: 'knowledge', label: 'Trích xuất' },
+  { id: 'medicines', label: 'Thuốc' },
+  { id: 'about', label: 'Về dự án' },
+];
 
 export const Navbar: React.FC<NavbarProps> = ({
   currentTab,
@@ -46,6 +55,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenLogin,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const items = isAuthenticated ? navItems : publicNavItems;
+  const destination = (id: NavigationTab) =>
+    !isAuthenticated && id === 'home' ? '/' : getTabPath(id);
   const selected =
     currentTab === 'plant-detail'
       ? 'plants'
@@ -57,7 +69,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header className="sticky top-0 z-40 px-5 py-3 sm:px-8 lg:px-12">
       <div className="navigation-bar mx-auto flex h-18 max-w-7xl items-center justify-between gap-3 rounded-card border border-border bg-surface px-3 sm:px-5">
         <Button asChild variant="ghost" className="h-auto gap-3 px-0 hover:bg-transparent">
-          <Link href="/home" aria-label="AgriAI, về trang chủ">
+          <Link href={destination('home')} aria-label="AgriAI, về trang chủ">
             <span className="grid h-11 w-8 shrink-0 place-items-center">
               <Image
                 src="/images/agriai-leaf-mark.png"
@@ -84,7 +96,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </Button>
 
         <nav className="hidden items-center gap-1 xl:flex" aria-label="Điều hướng chính">
-          {navItems.map((item) => (
+          {items.map((item) => (
             <Button
               key={item.id}
               asChild
@@ -92,34 +104,36 @@ export const Navbar: React.FC<NavbarProps> = ({
               aria-current={selected === item.id ? 'page' : undefined}
               className="h-11 rounded-lg px-3"
             >
-              <Link href={getTabPath(item.id)}>{item.label}</Link>
+              <Link href={destination(item.id)}>{item.label}</Link>
             </Button>
           ))}
         </nav>
 
         <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={onOpenNotifications}
-            aria-label={
-              unreadNotificationsCount > 0
-                ? `Thông báo, ${unreadNotificationsCount} chưa đọc`
-                : 'Thông báo'
-            }
-            className="relative hidden sm:inline-flex"
-          >
-            <Bell aria-hidden="true" />
-            {unreadNotificationsCount > 0 && (
-              <span
-                aria-hidden="true"
-                className="absolute right-0 top-0 grid min-h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-xs font-semibold text-primary-foreground"
-              >
-                {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
-              </span>
-            )}
-          </Button>
+          {isAuthenticated && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onOpenNotifications}
+              aria-label={
+                unreadNotificationsCount > 0
+                  ? `Thông báo, ${unreadNotificationsCount} chưa đọc`
+                  : 'Thông báo'
+              }
+              className="relative hidden sm:inline-flex"
+            >
+              <Bell aria-hidden="true" />
+              {unreadNotificationsCount > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="absolute right-0 top-0 grid min-h-5 min-w-5 place-items-center rounded-full bg-primary px-1 text-xs font-semibold text-primary-foreground"
+                >
+                  {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+                </span>
+              )}
+            </Button>
+          )}
           {isAuthenticated ? (
             <Button asChild variant="secondary" size="icon">
               <Link href="/profile" aria-label={`Mở hồ sơ của ${userProfile.name}`}>
@@ -161,7 +175,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <SheetDescription>Chọn khu vực bạn muốn mở.</SheetDescription>
               </SheetHeader>
               <nav className="mt-6 grid gap-2" aria-label="Điều hướng trên điện thoại">
-                {navItems.map((item) => (
+                {items.map((item) => (
                   <Button
                     key={item.id}
                     asChild
@@ -169,21 +183,23 @@ export const Navbar: React.FC<NavbarProps> = ({
                     aria-current={selected === item.id ? 'page' : undefined}
                     className="w-full justify-start rounded-lg"
                   >
-                    <Link href={getTabPath(item.id)} onClick={() => setMenuOpen(false)}>
+                    <Link href={destination(item.id)} onClick={() => setMenuOpen(false)}>
                       {item.label}
                     </Link>
                   </Button>
                 ))}
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start sm:hidden"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onOpenNotifications();
-                  }}
-                >
-                  Thông báo{unreadNotificationsCount > 0 ? ` (${unreadNotificationsCount})` : ''}
-                </Button>
+                {isAuthenticated && (
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start sm:hidden"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onOpenNotifications();
+                    }}
+                  >
+                    Thông báo{unreadNotificationsCount > 0 ? ` (${unreadNotificationsCount})` : ''}
+                  </Button>
+                )}
                 {!isAuthenticated && (
                   <Button
                     type="button"

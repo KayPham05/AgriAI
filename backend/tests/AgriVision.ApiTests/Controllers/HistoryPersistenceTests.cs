@@ -49,8 +49,8 @@ public class HistoryPersistenceTests(AgriVisionFactory factory) : IClassFixture<
             saved.ImagePath.Should().Be($"/api/predictions/{saved.Id}/images/{image.Id}");
             saved.ImagePublicId.Should().Be($"users/{account.User.Id}/predictions/{saved.Id}/{image.Id}.jpg");
             image.ImagePublicId.Should().Be(saved.ImagePublicId);
-            image.UploadedAt.Should().Be(saved.CreatedAt);
-            image.ExpiresAt.Should().Be(saved.CreatedAt.AddDays(30));
+            image.UploadedAt.Should().BeOnOrAfter(saved.CreatedAt).And.BeOnOrBefore(DateTime.UtcNow);
+            image.ExpiresAt.Should().Be(image.UploadedAt.AddDays(30));
             image.ImagePath.Should().Be(saved.ImagePath);
             var snapshot = JsonSerializer.Deserialize<PredictionResultDto>(saved.ResultSnapshotJson!, new JsonSerializerOptions(JsonSerializerDefaults.Web));
             snapshot.Should().BeEquivalentTo(created);

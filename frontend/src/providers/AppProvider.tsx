@@ -50,7 +50,8 @@ const AUTH_NOTICE_DURATION_MS = 4000;
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const publicCatalog = isPublicCatalogPath(pathname);
+  const publicPage =
+    isPublicCatalogPath(pathname) || pathname === '/about' || pathname === '/diagnose';
   const router = useRouter();
   const [sessionIssue, setSessionIssue] = useState<SessionIssue | null>(getSessionIssue);
   useEffect(() => {
@@ -82,10 +83,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // User Profile
   const [userProfile, setUserProfile] = useState<UserProfile>(guestProfile);
   const [authSession, setAuthSession] = useState<AuthSession | null>(null);
+  const diagnosisToken =
+    pathname === '/diagnose' ? (authSession ?? loginPendingSession)?.token : undefined;
   useSessionEvents(authSession?.token ?? loginPendingSession?.token, Boolean(sessionIssue));
   const [agriculturalProfiles, setAgriculturalProfiles] = useState<AgriculturalProfile[]>([]);
   const [agriculturalProfilesLoading, setAgriculturalProfilesLoading] = useState(false);
   const [agriculturalProfilesError, setAgriculturalProfilesError] = useState<string | null>(null);
+
+  // Public diagnosis stays mounted during login; load account choices in the background.
+  useEffect(() => {
+    if (!diagnosisToken) return;
+    let active = true;
+    setAgriculturalProfilesLoading(true);
+    setAgriculturalProfilesError(null);
+    getAgriculturalProfiles(diagnosisToken)
+      .then((profiles) => {
+        if (active) setAgriculturalProfiles(profiles);
+      })
+      .catch((error: unknown) => {
+        if (active)
+          setAgriculturalProfilesError(
+            error instanceof Error ? error.message : 'Không thể tải hồ sơ.',
+          );
+      })
+      .finally(() => {
+        if (active) setAgriculturalProfilesLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [diagnosisToken]);
 
   // Diagnosis History with LocalStorage Persistence
   const [history, setHistory] = useState<DiagnosisResult[]>([]);
@@ -96,15 +123,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIsHistoryReady(true);
   }, []);
 
-  // Sync history to localStorage
+  // Guest history belongs to this tab, never persistent browser storage.
   useEffect(() => {
-    if (!isHistoryReady || authSession) return;
+    if (!isHistoryReady || authSession || loginPendingSession) return;
     try {
-      localStorage.setItem('leafai_history', JSON.stringify(history));
+      sessionStorage.setItem('leafai_guest_history', JSON.stringify(history));
     } catch (e) {
       console.warn('Could not save history to localStorage', e);
     }
-  }, [history, isHistoryReady, authSession]);
+  }, [history, isHistoryReady, authSession, loginPendingSession]);
 
   useEffect(() => {
     let isActive = true;
@@ -135,7 +162,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [loginPendingSession]);
 
   useEffect(() => {
-    if (sessionIssue || !loginPendingSession || publicCatalog) return;
+    if (sessionIssue || !loginPendingSession || publicPage) return;
     if (loginPendingSession.user.role === 'Admin' && pathname === '/') {
       return;
     }
@@ -166,7 +193,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isActive = false;
       clearTimeout(timeout);
     };
-  }, [loginPendingSession, pathname, publicCatalog, sessionIssue]);
+  }, [loginPendingSession, pathname, publicPage, sessionIssue]);
 
   useEffect(() => {
     if (
@@ -215,7 +242,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (sessionIssue || isRestoringSession || loginPendingSession || logoutName !== null) return;
-    if (!hasEnteredApp && pathname !== '/' && !publicCatalog) {
+    if (!hasEnteredApp && pathname !== '/' && !publicPage) {
       returnPathRef.current = pathname;
       router.replace('/');
     } else if (hasEnteredApp && pathname === '/') {
@@ -230,7 +257,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     logoutName,
     hasEnteredApp,
     pathname,
-    publicCatalog,
+    publicPage,
     router,
   ]);
 
@@ -391,11 +418,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
   const createProfile = useCallback(
     async (input: AgriculturalProfileInput) => {
-      if (!authSession) throw new Error('Vui lòng đăng nhập để quản lý hồ sơ nông nghiệp.');
+      const session = authSession ?? loginPendingSession;
+      if (!session) throw new Error('Vui lòng đăng nhập để quản lý hồ sơ nông nghiệp.');
       setAgriculturalProfilesLoading(true);
       setAgriculturalProfilesError(null);
       try {
-        const created = await createAgriculturalProfile(authSession.token, input);
+        const created = await createAgriculturalProfile(session.token, input);
         setAgriculturalProfiles((current) => [created, ...current]);
         return created;
       } catch (error) {
@@ -406,7 +434,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setAgriculturalProfilesLoading(false);
       }
     },
-    [authSession],
+    [authSession, loginPendingSession],
   );
   const updateAgriculturalProfileState = useCallback(
     async (id: string, input: AgriculturalProfileInput) => {
@@ -451,9 +479,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const catalog = useMemo(() => ({ plants, diseases }), [plants, diseases]);
   const auth = useMemo(
     () => ({
-      session: authSession ?? (publicCatalog ? loginPendingSession : null),
+      session: authSession ?? (publicPage ? loginPendingSession : null),
       profile:
-        !authSession && publicCatalog && loginPendingSession
+        !authSession && publicPage && loginPendingSession
           ? createUserProfile(loginPendingSession)
           : userProfile,
       openAuthentication,
@@ -464,7 +492,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [
       authSession,
       userProfile,
-      publicCatalog,
+      publicPage,
       loginPendingSession,
       openAuthentication,
       logout,
@@ -530,8 +558,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       />
     );
   if (logoutName !== null) return <SeedlingLoadingScreen mode="logout" userName={logoutName} />;
-  if (isRestoringSession && !publicCatalog) return <AppSplashScreen />;
-  if (loginPendingSession && !publicCatalog) {
+  if (isRestoringSession && !publicPage) return <AppSplashScreen />;
+  if (loginPendingSession && !publicPage) {
     const startupProps = {
       userName: loginPendingSession.user.fullName,
       error: startupError,
@@ -560,7 +588,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   }
   // UI gate only. The API remains responsible for authorization.
-  if (!hasEnteredApp && pathname !== '/' && !publicCatalog) return <AppSplashScreen />;
+  if (!hasEnteredApp && pathname !== '/' && !publicPage) return <AppSplashScreen />;
 
   return (
     <AuthContext value={auth}>

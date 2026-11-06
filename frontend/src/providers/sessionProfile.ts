@@ -29,14 +29,12 @@ export function createUserProfile(session: AuthSession): UserProfile {
 
 export function readGuestHistory(): DiagnosisResult[] {
   try {
-    const saved = localStorage.getItem('leafai_history');
+    const saved = sessionStorage.getItem('leafai_guest_history');
     if (!saved) return [];
     const records = JSON.parse(saved);
-    return Array.isArray(records)
-      ? records.map((item: DiagnosisResult) => ({ ...item, isDemo: true }))
-      : [];
+    return Array.isArray(records) ? records : [];
   } catch (error) {
-    console.warn('Could not read history from localStorage', error);
+    console.warn('Could not read guest history from sessionStorage', error);
     return [];
   }
 }
