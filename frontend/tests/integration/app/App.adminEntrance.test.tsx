@@ -14,7 +14,10 @@ vi.mock('@/services/authApi', () => ({
   saveAuthSession: vi.fn(),
   clearAuthSession: vi.fn(),
 }));
-vi.mock('@/services/catalogApi', () => ({ getPlants: vi.fn(), getDiseases: vi.fn() }));
+vi.mock('@/services/catalogApi', () => ({
+  getPlants: vi.fn().mockResolvedValue([]),
+  getDiseases: vi.fn().mockResolvedValue([]),
+}));
 vi.mock('@/services/agriculturalProfileApi', () => ({
   getAgriculturalProfiles: vi.fn().mockResolvedValue([]),
   createAgriculturalProfile: vi.fn(),
@@ -86,7 +89,7 @@ describe('Admin entrance routing', () => {
       }
       expect(await screen.findByRole('heading', { name: 'Chào System Admin.' })).toBeVisible();
       expect(router.replace).not.toHaveBeenCalledWith('/admin');
-      expect(getPlants).not.toHaveBeenCalled();
+      expect(getPlants).toHaveBeenCalledOnce(); // Public landing catalog; no extra Admin startup request.
       expect(getDiseases).not.toHaveBeenCalled();
       expect(getPredictionHistory).not.toHaveBeenCalled();
       await userEvent.click(screen.getByRole('button', { name: 'Finish test entrance' }));

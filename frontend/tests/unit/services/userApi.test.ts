@@ -61,11 +61,13 @@ describe('user API mapping', () => {
   it.each([400, 401, 500])('preserves HTTP %s for form and session handling', async (status) => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({
-        ok: false,
-        status,
-        json: async () => ({ message: 'Mật khẩu hiện tại không chính xác.' }),
-      }),
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ message: 'Mật khẩu hiện tại không chính xác.' }), {
+            status,
+          }),
+        ),
     );
     await expect(
       changePassword('token', {

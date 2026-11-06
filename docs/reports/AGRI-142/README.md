@@ -73,3 +73,21 @@ PR readiness remains incomplete: these tests use a diagnostic C# 12 build becaus
 The user subsequently requested PR creation. Preparing a draft from `AGRI-134-142-integration` into the user-requested `AGRI-128-backend-improvement`. The fetched target is now `16a0115f`, three commits beyond the tested ancestor; no merged-result verification is claimed. See the [delivery log](../../task-logs/AGRI-142/pr-delivery.md) for scope, remaining integration/build work and the eventual PR link. Earlier verification records remain unchanged.
 
 Delivery completed: [Draft PR #60](https://github.com/KayPham05/AgriAI/pull/60), with backend/frontend reviewers requested. GitHub reports conflicts with the advanced target (`mergeable=false`); resolve those and the documented default-build limitation before readiness/merge. No merge or deployment was performed.
+
+
+## 2026-11-05 — Catalog acceptance corrections
+
+Implementation prepared for current leaf-reference images, guest navigation, readable Admin disease names, permanent catalog deletion with retained history, and migration of catalog images into `category/plant` / `category/disease`. See [scope, safeguards and fresh verification](catalog-acceptance-corrections.md). Live schema/R2 migration, deployment and PR update remain pending; earlier verification results above do not cover this follow-up.
+
+
+2026-11-06 verification follow-up: frontend **541/541** passed; backend **216/216 Unit**, **275/275 API**, and **76/76 Integration in three fresh processes** passed on 2026-11-05. Typecheck, changed-file lint/format and diff checks passed. The [acceptance corrections report](catalog-acceptance-corrections.md) preserves original failures, fixes, commands, TRX counts and limits. Implementation/local verification are complete; live schema/R2 migration, Docker deployment and PR update remain pending.
+
+Live deployment update (2026-11-06): frontend/backend rebuilt and healthy; schema migration applied; all 3 referenced legacy catalog images migrated on real R2 with byte verification. AI remains stopped by user request. Database backups and evidence are local/ignored. See [deployment details](catalog-acceptance-corrections.md#live-docker-and-r2-deployment--2026-11-06). User acceptance and previously documented PR/CI follow-up remain open.
+
+Guest diagnosis follow-up (2026-11-06): [code and verification report](guest-diagnosis-save.md). Public guest diagnosis, tab-scoped restoration and authenticated saving of the original result are implemented. API build, frontend typecheck and changed-file lint pass. No tests or runtime deployment were performed; new route coverage/manifest updates and user acceptance remain pending.
+
+Guest automated-test follow-up (2026-11-06): tests were subsequently authorized and completed: frontend 558/558, Unit 223/223, API 280/280 and Integration 76/76 (real AI/R2 categories excluded). New route manifest coverage passes. See the appended [verification record](guest-diagnosis-save.md#automated-test-follow-up--2026-11-06).
+
+PR #60 update preparation (2026-11-06): commit/push and English title/body updates were authorized, but automatic approval review blocked Git staging due to the Codex usage limit. No follow-up commits or remote PR changes were delivered. See the [delivery record](../../task-logs/AGRI-142/pr-delivery.md#follow-up-delivery-preparation--2026-11-06). Draft status, target conflicts, default-build/CI validation and user acceptance remain open.
+
+Delivery resumed after the user's continuation: catalog and guest commits were created with their tests, with no source/test changes since the passing verification. Remaining fixture/documentation packaging and remote PR update are recorded in the [resumed delivery log](../../task-logs/AGRI-142/pr-delivery.md#resumed-packaging--2026-11-06). Earlier blocked-attempt notes remain historical.

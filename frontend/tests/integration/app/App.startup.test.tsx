@@ -106,7 +106,7 @@ describe('authenticated app startup', () => {
         await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/admin'), {
           timeout: 6000,
         });
-        expect(getPlants).not.toHaveBeenCalled();
+        expect(getPlants).toHaveBeenCalledOnce(); // Public landing catalog only.
         expect(getPredictionHistory).not.toHaveBeenCalled();
       } else {
         expect(screen.getByText('ĐANG TẢI')).toBeVisible();
