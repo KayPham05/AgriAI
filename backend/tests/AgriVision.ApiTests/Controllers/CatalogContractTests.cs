@@ -98,11 +98,11 @@ public class CatalogContractTests(AgriVisionFactory factory) : IClassFixture<Agr
     {
         using var client = factory.CreateClient();
         await ApiTestClient.Admin(client, factory);
-        var name = Guid.NewGuid().ToString("N").PadRight(length, 'x');
+        var name = ("boundary_" + Guid.NewGuid().ToString("N")).PadRight(length, 'x');
         using var response = await client.PostAsJsonAsync($"/api/{resource}", Body(name));
         response.StatusCode.Should().Be(expected);
         if (expected == HttpStatusCode.Created)
-            (await ApiTestClient.Json(response)).GetProperty("name").GetString().Should().Be(name);
+            (await ApiTestClient.Json(response)).GetProperty("name").GetString().Should().Be("B" + name[1..]);
     }
 
     [Theory]

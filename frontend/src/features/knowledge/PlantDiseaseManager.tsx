@@ -15,6 +15,7 @@ import { SearchableCatalogSelect } from './SearchableCatalogSelect';
 import { rankCatalog } from '@/lib/catalogText';
 
 const PAGE_SIZE = 20;
+const displayName = (value: string) => value.replace(/_+/g, ' ').trim();
 
 export function PlantDiseaseManager({
   token,
@@ -149,7 +150,7 @@ export function PlantDiseaseManager({
           onChange={setNewDisease}
           options={available.map((disease) => ({
             id: disease.id,
-            label: recordName(disease),
+            label: displayName(recordName(disease)),
             searchText: `${recordName(disease)} ${disease.name ?? ''}`,
           }))}
           disabled={disabled || pending || loading || !plantActive}
@@ -202,7 +203,7 @@ export function PlantDiseaseManager({
           >
             <div className="min-w-0">
               <h4 className="font-semibold">
-                {pair.plantName} / {pair.diseaseName}
+                {displayName(pair.plantName)} / {displayName(pair.diseaseName)}
               </h4>
               <p className="break-all text-sm text-muted-foreground">
                 {pair.className ? `${pair.className} (${pair.classIndex})` : 'Liên kết tra cứu'}
@@ -235,7 +236,7 @@ export function PlantDiseaseManager({
       )}
       {selected && (
         <ConfirmAction
-          text={`${selected.isActive ? 'Ngừng' : 'Khôi phục'} liên kết ${selected.plantName} / ${selected.diseaseName}? Thao tác ảnh hưởng nội dung tra cứu liên quan.`}
+          text={`${selected.isActive ? 'Ngừng' : 'Khôi phục'} liên kết ${displayName(selected.plantName)} / ${displayName(selected.diseaseName)}? Thao tác ảnh hưởng nội dung tra cứu liên quan.`}
           onClose={() => setSelected(null)}
           onConfirm={() => void toggle(selected)}
         />

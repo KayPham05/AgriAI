@@ -80,7 +80,7 @@ public class CatalogImagesTests(AgriVisionFactory factory) : IClassFixture<AgriV
         (await ApiTestClient.Json(detail)).GetProperty("imageUrl").GetString().Should().Be(originalUrl);
         await using var scope = host.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        (await db.PendingImageUploads.AnyAsync(p => p.Key.Contains($"/catalog/{kind}/{id:D}/"))).Should().BeFalse();
+        (await db.PendingImageUploads.AnyAsync(p => p.Key.StartsWith($"category/{(kind == "plants" ? "plant" : "disease")}/{id:D}/"))).Should().BeFalse();
     }
 
     [Theory]
@@ -214,6 +214,6 @@ public class CatalogImagesTests(AgriVisionFactory factory) : IClassFixture<AgriV
         storage.Objects.Should().BeEmpty();
         await using var finalScope = host.Services.CreateAsyncScope();
         var finalDb = finalScope.ServiceProvider.GetRequiredService<AppDbContext>();
-        (await finalDb.PendingImageUploads.AnyAsync(p => p.Key.Contains($"/catalog/{kind}/{id:D}/"))).Should().BeFalse();
+        (await finalDb.PendingImageUploads.AnyAsync(p => p.Key.StartsWith($"category/{(kind == "plants" ? "plant" : "disease")}/{id:D}/"))).Should().BeFalse();
     }
 }

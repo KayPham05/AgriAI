@@ -158,6 +158,7 @@ describe('backend plant photograph matching', () => {
     expect(decodeURI(plant.imageUrl)).toContain(`/assets/banner/${filename}`);
     expect(plant.backendId).toBe(record.id);
     if (vietnameseName) expect(plant.name).toBe(vietnameseName);
-    expect(plant.category).not.toBe('Khác');
+    // Photo matching must not override the backend's unspecified category.
+    expect(plant.category).toBe('Khác');
   });
 });

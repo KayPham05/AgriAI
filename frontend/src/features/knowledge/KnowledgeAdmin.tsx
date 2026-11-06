@@ -53,7 +53,7 @@ function RelatedCatalogInfo({
         <ul className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground">
           {linked.map((pair) => (
             <li key={pair.id}>
-              <span>{pair.diseaseName}</span>
+              <span>{pair.diseaseName.replace(/_+/g, ' ').trim()}</span>
               {!pair.isActive && ' (liên kết ngừng hoạt động)'}
             </li>
           ))}
@@ -184,7 +184,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
     }
   }
   async function change(
-    action: 'approve' | 'publish' | 'hide' | 'revoke' | 'restore' | 'deactivate',
+    action: 'approve' | 'publish' | 'hide' | 'revoke' | 'restore' | 'deactivate' | 'delete',
   ) {
     if (!record?.id || lock.current || dirty) return;
     lock.current = true;
@@ -193,6 +193,18 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
     setNotice('');
     try {
       const path = `${catalogPath(kind, token)}/${record.id}`;
+      if (action === 'delete') {
+        await catalogRequest(`/api/admin/catalog/${kind}/${record.id}`, {
+          token,
+          method: 'DELETE',
+        });
+        setRecord(null);
+        setDirty(false);
+        setImageDirty(false);
+        setRevision((value) => value + 1);
+        setNotice('Đã xóa vĩnh viễn. Lịch sử chẩn đoán được giữ lại.');
+        return;
+      }
       if (action === 'deactivate') {
         await catalogRequest(path, { token, method: 'DELETE' });
         await refreshRecord();
@@ -406,19 +418,35 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
                         {record.isPublic ? 'Ẩn công khai' : 'Công khai'}
                       </Button>
                     )}
-                    <Button
-                      variant="outline"
-                      disabled={pending || dirty}
-                      onClick={() =>
-                        setConfirm({
-                          text: 'Ngừng hoạt động mục này? Dữ liệu được giữ lại và không còn xuất hiện trong tra cứu công khai.',
-                          action: () => void change('deactivate'),
-                        })
-                      }
-                    >
-                      Ngừng hoạt động
-                    </Button>
+                    {kind !== 'medicines' && (
+                      <Button
+                        variant="outline"
+                        disabled={pending || dirty}
+                        onClick={() =>
+                          setConfirm({
+                            text: 'Ngừng hoạt động mục này? Dữ liệu được giữ lại và không còn xuất hiện trong tra cứu công khai.',
+                            action: () => void change('deactivate'),
+                          })
+                        }
+                      >
+                        Ngừng hoạt động
+                      </Button>
+                    )}
                   </>
+                )}
+                {kind !== 'knowledge-documents' && (
+                  <Button
+                    variant="destructive"
+                    disabled={pending || dirty || imageDirty}
+                    onClick={() =>
+                      setConfirm({
+                        text: `Xóa vĩnh viễn “${recordName(record)}”? Liên kết, hướng dẫn gắn với mục này và ảnh danh mục sẽ bị xóa. Lịch sử, ảnh người dùng và các cây, bệnh, thuốc khác được giữ lại. Không thể hoàn tác.`,
+                        action: () => void change('delete'),
+                      })
+                    }
+                  >
+                    Xóa vĩnh viễn
+                  </Button>
                 )}
               </div>
               {dirty && (

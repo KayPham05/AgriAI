@@ -18,7 +18,7 @@ public class ImageStorageKeyTests
 
         var key = ImageStorageKey.Create(context, extension);
 
-        key.Should().Be($"users/{owner:D}/catalog/{kind}/{record:D}/{image:D}{extension}");
+        key.Should().Be($"category/{(kind == "plants" ? "plant" : "disease")}/{record:D}/{owner:D}/{image:D}{extension}");
         ImageStorageKey.IsSupported(key).Should().BeTrue();
         ImageStorageKey.Matches(key, context).Should().BeTrue();
         ImageStorageKey.Matches(key, context with { UserId = Guid.NewGuid() }).Should().BeFalse();
@@ -96,6 +96,15 @@ public class ImageStorageKeyTests
     [InlineData("r2/predictions/leaf.jpeg")]
     [InlineData("r2/predictions/leaf.png")]
     public void ExistingR2Keys_RemainSupported(string key) => ImageStorageKey.IsSupported(key).Should().BeTrue();
+
+    [Fact]
+    public void ExistingCatalogKeys_RemainReadableUntilMigrated()
+    {
+        var id = Guid.NewGuid();
+        var key = $"users/{Guid.NewGuid():D}/catalog/plants/{id:D}/{Guid.NewGuid():D}.png";
+        ImageStorageKey.IsSupported(key).Should().BeTrue();
+        ImageStorageKey.IsCatalogImage(key, "plants", id).Should().BeTrue();
+    }
 
     [Fact]
     public void Upload_RejectsMissingIdentityOrUnsupportedExtension()

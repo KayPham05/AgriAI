@@ -371,6 +371,15 @@ public class PredictionService : IPredictionService
                 image.Confidence, image.ExpiresAt, expired);
         }).ToList();
 
+    public static void PreserveBeforeCatalogDeletion(Prediction prediction)
+    {
+        if (prediction.ResultSnapshotJson != null) return;
+        var snapshot = JsonSerializer.SerializeToNode(MapToResultDto(prediction, prediction.PredictedPlantDisease), SnapshotJsonOptions)!;
+        // Preserve legacy content without claiming it was captured at prediction time.
+        snapshot["capturedBeforeCatalogDeletion"] = true;
+        prediction.ResultSnapshotJson = snapshot.ToJsonString();
+    }
+
     private static PredictionResultDto ReadStoredResult(Prediction prediction)
     {
         var result = prediction.ResultSnapshotJson == null
@@ -386,7 +395,8 @@ public class PredictionService : IPredictionService
             Images = images,
             ImagePath = images.FirstOrDefault()?.ImagePath ?? string.Empty,
             ImagePublicId = expired || images.FirstOrDefault()?.ImagePath == null ? null : prediction.ImagePublicId,
-            HasHistoricalSnapshot = prediction.ResultSnapshotJson != null
+            HasHistoricalSnapshot = prediction.ResultSnapshotJson != null &&
+                !System.Text.Json.Nodes.JsonNode.Parse(prediction.ResultSnapshotJson)!.AsObject().ContainsKey("capturedBeforeCatalogDeletion")
         };
     }
 }

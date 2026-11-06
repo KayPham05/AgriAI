@@ -35,7 +35,7 @@ function conditionKey(value: string): string {
     .replace(/[^a-z0-9]/g, '');
 }
 
-function diseaseIllustration(record: CatalogRecord, pairs: PlantDiseasePair[]) {
+export function diseaseIllustration(record: CatalogRecord, pairs: PlantDiseasePair[]) {
   // Match both identities from the backend class, never a shared disease name alone.
   for (const pair of pairs) {
     if (!pair.isActive || pair.diseaseId !== record.id) continue;

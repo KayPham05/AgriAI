@@ -15,7 +15,7 @@ public static class ImageStorageKey
                 context.CatalogId is null || context.CatalogId == Guid.Empty || context.UserId == Guid.Empty ||
                 context.ImageId == Guid.Empty || extension is not (".jpg" or ".jpeg" or ".png"))
                 throw new ArgumentException("Invalid catalog image context.");
-            return $"users/{context.UserId:D}/catalog/{context.CatalogKind}/{context.CatalogId:D}/{context.ImageId:D}{extension}";
+            return $"category/{(context.CatalogKind == "plants" ? "plant" : "disease")}/{context.CatalogId:D}/{context.UserId:D}/{context.ImageId:D}{extension}";
         }
         if (context.UserId == Guid.Empty || (!context.IsAvatar && context.PredictionId == Guid.Empty) || context.ImageId == Guid.Empty)
             throw new ArgumentException("Image storage requires non-empty owner, prediction and image IDs.");
@@ -31,6 +31,11 @@ public static class ImageStorageKey
         if (key == null) return false;
         if (LegacyKey.IsMatch(key)) return true;
         var parts = key.Split('/');
+        if (parts.Length == 5 && parts[0] == "category" && parts[1] is "plant" or "disease")
+            return Guid.TryParseExact(parts[2], "D", out var record) && record != Guid.Empty &&
+                Guid.TryParseExact(parts[3], "D", out var admin) && admin != Guid.Empty &&
+                Guid.TryParseExact(Path.GetFileNameWithoutExtension(parts[4]), "D", out var photo) && photo != Guid.Empty &&
+                Path.GetExtension(parts[4]) is ".jpg" or ".jpeg" or ".png" && key == key.ToLowerInvariant();
         if (parts.Length == 6 && parts[0] == "users" && parts[2] == "catalog" && parts[3] is "plants" or "diseases")
             return Guid.TryParseExact(parts[1], "D", out var catalogOwner) && catalogOwner != Guid.Empty &&
                 Guid.TryParseExact(parts[4], "D", out var catalogId) && catalogId != Guid.Empty &&
@@ -57,6 +62,8 @@ public static class ImageStorageKey
     {
         if (!IsSupported(key)) return false;
         var parts = key!.Split('/');
-        return parts.Length == 6 && parts[2] == "catalog" && parts[3] == kind && parts[4] == id.ToString("D");
+        return (parts.Length == 6 && parts[2] == "catalog" && parts[3] == kind && parts[4] == id.ToString("D")) ||
+            (parts.Length == 5 && parts[0] == "category" && kind is "plants" or "diseases" &&
+             parts[1] == (kind == "plants" ? "plant" : "disease") && parts[2] == id.ToString("D"));
     }
 }

@@ -15,7 +15,8 @@ using Microsoft.OpenApi.Models;
 
 var migrateOnly = args.SequenceEqual(new[] { "--migrate" });
 var expireImagesOnly = args.SequenceEqual(new[] { "--expire-images" });
-var builder = WebApplication.CreateBuilder(migrateOnly || expireImagesOnly ? Array.Empty<string>() : args);
+var migrateCatalogImagesOnly = args.SequenceEqual(new[] { "--migrate-catalog-images" });
+var builder = WebApplication.CreateBuilder(migrateOnly || expireImagesOnly || migrateCatalogImagesOnly ? Array.Empty<string>() : args);
 
 // The Windows Event Log provider can require elevated permissions and must not
 // turn ordinary application warnings into request failures during local runs.
@@ -178,6 +179,13 @@ if (migrateOnly)
     await database.Database.MigrateAsync();
     await DbInitializer.SeedAsync(migrationScope.ServiceProvider);
     app.Logger.LogInformation("Database migrations completed. No HTTP server was started.");
+    await app.DisposeAsync();
+    return;
+}
+
+if (migrateCatalogImagesOnly)
+{
+    Environment.ExitCode = await CatalogImageMigration.RunAsync(app.Services);
     await app.DisposeAsync();
     return;
 }

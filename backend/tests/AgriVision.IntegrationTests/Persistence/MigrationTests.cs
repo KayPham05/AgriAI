@@ -25,8 +25,7 @@ public class MigrationTests
             INSERT INTO users (id, full_name, email, created_at) VALUES ({owner}, 'Forward owner', 'forward@example.test', now());
             INSERT INTO agricultural_profiles (id, user_id, name, created_at) VALUES ({profile}, {owner}, 'Keep this profile', now());
             """);
-        // Remove the reversible medicine migration before checking the protected profile boundary.
-        await database.GetService<IMigrator>().MigrateAsync("20261104060000_PostPredictionProfileAssignment");
+        // Check downgrade rejection from the current schema; catalog deletion is now a forward-only boundary.
         var before = (await database.Database.GetAppliedMigrationsAsync()).ToArray();
         Func<Task> downgrade = () => database.GetService<IMigrator>().MigrateAsync("20261017084014_DatabaseImprovement");
         await downgrade.Should().ThrowAsync<NotSupportedException>().WithMessage("*forward-only*");
@@ -69,7 +68,7 @@ public class MigrationTests
             """);
         await database.Database.MigrateAsync();
         await database.Database.MigrateAsync();
-        (await database.Database.GetAppliedMigrationsAsync()).Should().HaveCount(15)
+        (await database.Database.GetAppliedMigrationsAsync()).Should().HaveCount(16)
             .And.Contain("20261104135449_AdminNotifications");
         (await database.Users.SingleAsync(account => account.Id == legacyUserId)).AvatarUrl.Should().BeNull();
         database.Database.HasPendingModelChanges().Should().BeFalse();

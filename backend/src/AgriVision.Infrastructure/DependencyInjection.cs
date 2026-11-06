@@ -33,6 +33,7 @@ public static class DependencyInjection
         services.AddScoped<IUserNotificationRepository, UserNotificationRepository>();
         services.AddScoped<IAdminImageService, AdminImageService>();
         services.AddScoped<ICatalogImageService, CatalogImageService>();
+        services.AddScoped<ICatalogDeletionService, CatalogDeletionService>();
         services.AddScoped<IUserSessionRepository, UserSessionRepository>();
         services.AddScoped<IPlantRepository, PlantRepository>();
         services.AddScoped<IDiseaseRepository, DiseaseRepository>();

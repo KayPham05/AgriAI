@@ -747,5 +747,13 @@
       "catalog.images.lifecycle",
       "catalog.images.missing-record"
     ]
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/admin/catalog/{kind}/{id:guid}",
+    "cases": [
+      "catalog.permanent-delete",
+      "catalog.permanent-delete.medicine"
+    ]
   }
 ]
