@@ -17,6 +17,7 @@ public sealed class SmtpAccountEmailSender(IConfiguration configuration) : IAcco
         var sender = settings["Sender"] ?? throw new InvalidOperationException("Smtp:Sender is required.");
         var password = settings["Password"] ?? throw new InvalidOperationException("Smtp:Password is required.");
         using var message = new MailMessage(sender, recipient, subject, body);
+        message.IsBodyHtml = true;
         using var client = new SmtpClient(host, settings.GetValue("Port", 587))
         {
             EnableSsl = true,

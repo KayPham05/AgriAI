@@ -11,7 +11,7 @@ public class UserActionTokenConfiguration : IEntityTypeConfiguration<UserActionT
         builder.ToTable("user_action_tokens", table =>
         {
             table.HasCheckConstraint("ck_user_action_tokens_purpose",
-                "purpose IN ('EmailVerification', 'PasswordReset', 'TwoFactorSetup', 'TwoFactorDisable', 'TwoFactorLogin')");
+                "purpose IN ('EmailVerification', 'PasswordReset', 'TwoFactorSetup', 'TwoFactorDisable', 'TwoFactorLogin', 'PasswordChange')");
             table.HasCheckConstraint("ck_user_action_tokens_expiry", "expires_at > created_at");
             table.HasCheckConstraint("ck_user_action_tokens_hash", "token_hash ~ '^[0-9a-f]{64}$'");
         });

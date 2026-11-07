@@ -17,5 +17,7 @@ public record UpdateProfileRequest(string FullName);
 public record ChangePasswordRequest(
     string CurrentPassword,
     string NewPassword,
-    string ConfirmPassword
+    string ConfirmPassword,
+    Guid? VerificationChallengeId = null,
+    string? VerificationCode = null
 );

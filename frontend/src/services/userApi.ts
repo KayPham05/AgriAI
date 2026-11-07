@@ -11,6 +11,12 @@ export interface ChangePasswordInput {
   currentPassword: string;
   newPassword: string;
   confirmPassword: string;
+  verificationChallengeId?: string;
+  verificationCode?: string;
+}
+
+export interface PasswordChangeChallenge {
+  challengeId: string;
 }
 
 export class UserApiError extends Error {
@@ -21,9 +27,11 @@ export class UserApiError extends Error {
     super(
       status === 401
         ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
-        : status === 400 && message
+        : (status === 429 || status === 503) && message
           ? message
-          : 'Không thể hoàn tất yêu cầu. Vui lòng thử lại.',
+          : status === 400 && message
+            ? message
+            : 'Không thể hoàn tất yêu cầu. Vui lòng thử lại.',
     );
     this.name = 'UserApiError';
   }
@@ -76,6 +84,26 @@ export function updateUserProfile(token: string, fullName: string, signal?: Abor
 
 export function changePassword(token: string, input: ChangePasswordInput, signal?: AbortSignal) {
   return request<void>(token, '/change-password', 'POST', input, signal);
+}
+
+export function requestPasswordChangeCode(token: string, signal?: AbortSignal) {
+  return request<PasswordChangeChallenge>(
+    token,
+    '/change-password/code',
+    'POST',
+    undefined,
+    signal,
+  );
+}
+
+export function resendPasswordChangeCode(token: string, challengeId: string, signal?: AbortSignal) {
+  return request<PasswordChangeChallenge>(
+    token,
+    '/change-password/code/resend',
+    'POST',
+    { challengeId },
+    signal,
+  );
 }
 
 export function uploadUserAvatar(token: string, file: File, signal?: AbortSignal) {

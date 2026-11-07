@@ -6,6 +6,9 @@ Latest storage follow-up: [Restore the existing private R2 integration — 2026-
 
 ## Implementation
 
+Latest password recovery and email UX follow-up: [Password recovery and security email UX — 2026-11-07](password-recovery-email-ux-2026-11-07.md).
+Latest resend and password verification follow-up: [Resend codes and profile password verification — 2026-11-07](resend-codes-password-verification-2026-11-07.md).
+
 - `docker-compose.mail.yml` adds Docker Mailserver and authenticated SMTP submission over STARTTLS on port 587. The SMTP submission port is reachable on the Compose network. Mail data, configuration and state use dedicated volumes.
 - `backend/src/AgriVision.Infrastructure/Authentication/` handles SMTP, password recovery, Google ID token verification and email challenges. The backend sends a notice after a successful sign-in. A notice failure is logged and the login still succeeds. A failed OTP send leaves sign-in incomplete.
 - Password recovery returns HTTP 202 for a syntactically valid email regardless of whether it has a password account. It emails a 128-bit code, stores its hash for 15 minutes, and consumes active reset codes and outstanding login challenges in the password update transaction.

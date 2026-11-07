@@ -394,9 +394,10 @@ export function UserProfilePage({
             <DialogTitle>Đổi mật khẩu</DialogTitle>
             <DialogDescription>Bảo vệ tài khoản bằng mật khẩu mới.</DialogDescription>
           </DialogHeader>
-          {passwordOpen && (
+          {passwordOpen && account && (
             <PasswordChangeForm
               token={token}
+              email={account.email}
               onChanged={onLogout}
               onExpired={expire}
               onPendingChange={setPasswordPending}

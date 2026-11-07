@@ -28,8 +28,11 @@ public class AuthControllerTests : IClassFixture<AgriVisionFactory>
         await RegisterAsync(email);
         var request = await _client.PostAsJsonAsync("/api/auth/forgot-password", new { email });
         request.StatusCode.Should().Be(HttpStatusCode.Accepted);
-        var message = _inbox.Read(email, "Đặt lại mật khẩu AgriAI").Should().ContainSingle().Which;
-        var code = Regex.Match(message, @"\b[A-F0-9]{32}\b").Value;
+        var message = _inbox.Read(email, "Mã đặt lại mật khẩu AgriAI").Should().ContainSingle().Which;
+        var code = Regex.Match(message, @"\b[0-9]{8}\b").Value;
+
+        var verify = await _client.PostAsJsonAsync("/api/auth/reset-password/verify", new { code });
+        verify.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var response = await _client.PostAsJsonAsync("/api/auth/reset-password", new { code, password = "NewPassword123!" });
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -55,6 +58,7 @@ public class AuthControllerTests : IClassFixture<AgriVisionFactory>
         var confirm = await _client.PostAsJsonAsync("/api/auth/two-factor/setup/verify",
             new { setupChallenge!.ChallengeId, code = setupCode });
         confirm.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        _inbox.Read(email, "Đã bật xác thực hai yếu tố AgriAI").Should().ContainSingle();
         var status = await _client.GetAsync("/api/auth/two-factor");
         status.StatusCode.Should().Be(HttpStatusCode.OK);
         (await status.Content.ReadFromJsonAsync<TwoFactorStatus>())!.Enabled.Should().BeTrue();
@@ -84,6 +88,7 @@ public class AuthControllerTests : IClassFixture<AgriVisionFactory>
         var disableConfirm = await _client.PostAsJsonAsync("/api/auth/two-factor/setup/verify?enabled=false",
             new { disableChallenge.ChallengeId, code = disableCode });
         disableConfirm.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        _inbox.Read(email, "Đã tắt xác thực hai yếu tố AgriAI").Should().ContainSingle();
         _client.DefaultRequestHeaders.Authorization = null;
 
         var loginWithoutTwoFactor = await _client.PostAsJsonAsync("/api/auth/login", new LoginRequest(email, "Password123!"));

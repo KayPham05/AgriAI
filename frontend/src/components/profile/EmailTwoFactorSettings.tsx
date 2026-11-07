@@ -9,7 +9,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { getEmailTwoFactor, startEmailTwoFactor, verifyEmailTwoFactor } from '@/services/authApi';
+import {
+  getEmailTwoFactor,
+  resendEmailTwoFactor,
+  startEmailTwoFactor,
+  verifyEmailTwoFactor,
+} from '@/services/authApi';
 
 export function EmailTwoFactorSettings({ token }: { token: string }) {
   const [enabled, setEnabled] = useState<boolean | null>(null);
@@ -88,6 +93,10 @@ export function EmailTwoFactorSettings({ token }: { token: string }) {
                 await verifyEmailTwoFactor(token, challenge.id, code, challenge.enable);
                 setEnabled(challenge.enable);
                 setChallenge(null);
+              }}
+              onResend={async () => {
+                const next = await resendEmailTwoFactor(token, challenge.id, challenge.enable);
+                setChallenge({ ...challenge, id: next.challengeId });
               }}
             />
           </DialogContent>

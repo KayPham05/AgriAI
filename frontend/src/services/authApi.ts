@@ -90,6 +90,13 @@ export function verifyEmailLogin(challengeId: string, code: string): Promise<Aut
   });
 }
 
+export function resendEmailLogin(challengeId: string): Promise<EmailChallenge> {
+  return request('/api/auth/two-factor/login/resend', {
+    method: 'POST',
+    body: JSON.stringify({ challengeId }),
+  });
+}
+
 export function getEmailTwoFactor(
   token: string,
   signal: AbortSignal,
@@ -117,6 +124,18 @@ export async function verifyEmailTwoFactor(
   });
 }
 
+export function resendEmailTwoFactor(
+  token: string,
+  challengeId: string,
+  enabled: boolean,
+): Promise<EmailChallenge> {
+  return request(`/api/auth/two-factor/setup/resend?enabled=${enabled}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ challengeId }),
+  });
+}
+
 export function register(credentials: RegisterCredentials): Promise<AuthSession> {
   return request<AuthSession>('/api/auth/register', {
     method: 'POST',
@@ -135,6 +154,13 @@ export async function resetPassword(code: string, password: string): Promise<voi
   await request('/api/auth/reset-password', {
     method: 'POST',
     body: JSON.stringify({ code, password }),
+  });
+}
+
+export async function verifyPasswordResetCode(code: string): Promise<void> {
+  await request('/api/auth/reset-password/verify', {
+    method: 'POST',
+    body: JSON.stringify({ code }),
   });
 }
 

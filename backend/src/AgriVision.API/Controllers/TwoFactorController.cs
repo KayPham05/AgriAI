@@ -53,11 +53,29 @@ public sealed class TwoFactorController(
         return verified is null ? InvalidCode() : NoContent();
     }
 
+    [Authorize]
+    [HttpPost("setup/resend")]
+    public async Task<IActionResult> ResendSetup(ResendChallengeRequest request, CancellationToken cancellationToken, bool enabled = true)
+    {
+        var user = await GetActiveUserAsync(cancellationToken);
+        if (user is null) return Unauthorized();
+        var challengeId = await twoFactor.ResendAsync(request.ChallengeId, user.Id,
+            enabled ? "TwoFactorSetup" : "TwoFactorDisable", cancellationToken);
+        return challengeId is null ? InvalidCode() : Ok(new { challengeId });
+    }
+
     [HttpPost("login")]
     public async Task<IActionResult> VerifyLogin(EmailChallengeRequest request, CancellationToken cancellationToken)
     {
         var user = await twoFactor.VerifyAsync(request.ChallengeId, request.Code, null, null, cancellationToken);
         return user is null ? InvalidCode() : Ok(await auth.CompleteLoginAsync(user, cancellationToken));
+    }
+
+    [HttpPost("login/resend")]
+    public async Task<IActionResult> ResendLogin(ResendChallengeRequest request, CancellationToken cancellationToken)
+    {
+        var challengeId = await twoFactor.ResendAsync(request.ChallengeId, null, "TwoFactorLogin", cancellationToken);
+        return challengeId is null ? InvalidCode() : Ok(new { challengeId });
     }
 
     private async Task<AgriVision.Domain.Entities.User?> GetActiveUserAsync(CancellationToken cancellationToken)
@@ -77,3 +95,5 @@ public sealed class TwoFactorController(
 public sealed record EmailChallengeRequest(
     Guid ChallengeId,
     [Required, RegularExpression("^[0-9]{8}$")] string Code);
+
+public sealed record ResendChallengeRequest(Guid ChallengeId);

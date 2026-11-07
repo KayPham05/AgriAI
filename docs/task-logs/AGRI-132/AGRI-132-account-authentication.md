@@ -49,3 +49,29 @@
 
 - Owner authorized commit/push of integrated code to `origin/AGRI-132-forgot-password`; prepare authentication/config/tests and related reports, with landing/draft changes in a separate AGRI-128 commit. Keep unrelated notes/artifacts and the pre-merge stash local.
 - Recheck build/typecheck and staged diff before commit; retain the full-suite frontend timeout limitation documented in the merge evidence. User will create the PR.
+
+## Follow-up — 2026-11-07 password recovery and security email UX
+
+- Changed password recovery codes to eight digits and added a non-consuming code verification endpoint. The frontend now requires email, code verification, new password and confirmation as separate steps; the recovery title and login link are centered.
+- Added styled HTML email templates for reset and two-factor codes, an enable-two-factor success notice, and a successful password-change notice. SMTP messages are marked as HTML while preserving the existing sender configuration.
+- Verification: `dotnet build backend/AgriVision.sln --no-restore` passed with 0 warnings and 0 errors; `git diff --check` passed. API Testcontainers could not start because the Docker daemon was unavailable. Frontend local runners could not execute because the installed Node runtime is older than the repository requirement.
+- Docker rebuild was attempted with `docker compose build backend frontend`, but the local Docker credential/daemon access failed before image build (`permission denied` / terminated logon session). No images or containers were changed.
+
+## Follow-up — 2026-11-07 resend codes and profile password verification
+
+- Added resend endpoints for login 2FA, setup/disable 2FA and profile password-change codes. Each code expires after 60 seconds; the UI shows a 60-second countdown and enables resend when it reaches zero.
+- Profile password changes now request an eight-digit email code first and include the verified challenge in the final password update request. Existing password validation and session revocation remain in place.
+- Verification: backend build passed with 0 warnings and 0 errors; 182 backend unit tests passed; changed frontend files passed Biome formatting and lint. Full API/browser/Docker verification remains blocked by the unavailable Docker daemon and older local Node runtime.
+
+## CI failure remediation — 2026-11-07
+
+- Updated API contract coverage for five authentication and password-change routes introduced by the backend improvement merge, and aligned the reset-email subject assertion with the implementation.
+- Updated backend password-change tests and frontend profile tests to exercise the required email verification challenge; fixed frontend error mapping for generic 503/429 responses and fake-timer interaction setup.
+- Verification: targeted backend API tests passed 40/40; targeted frontend suites (UserProfilePage, LoginModal, AdminOverview) passed 19/19; `git diff --check` passed. Full CI remains for remote confirmation.
+- Branch: `AGRI-132-forgot-password`. Changes are prepared for commit and push; unrelated local artifacts remain untouched.
+
+## Backend CI manifest remediation — 2026-11-07
+
+- Reproduced the GitHub failure locally: `Manifest_ReferencesOnlyDiscoverableUniqueApiCases` reported `Missing test: users.password.verification` because the manifest mapped the new password-code routes to a trait that had no discoverable xUnit test.
+- Added `Password_VerificationCode_CanBeIssuedAndResendIsThrottled` with the matching trait and coverage for the issue/resend endpoints.
+- Verification: API manifest mapping test passed 5/5; API project build passed with 0 warnings and 0 errors. Full API execution was attempted locally but Testcontainers/Docker infrastructure was unavailable, causing environment-wide failures.

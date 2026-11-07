@@ -793,6 +793,31 @@
   },
   {
     "method": "POST",
+    "route": "/api/auth/reset-password/verify",
+    "cases": ["auth.password_reset"]
+  },
+  {
+    "method": "POST",
+    "route": "/api/auth/two-factor/setup/resend",
+    "cases": ["auth.two_factor.lifecycle"]
+  },
+  {
+    "method": "POST",
+    "route": "/api/auth/two-factor/login/resend",
+    "cases": ["auth.two_factor.lifecycle"]
+  },
+  {
+    "method": "POST",
+    "route": "/api/users/change-password/code",
+    "cases": ["users.password.verification"]
+  },
+  {
+    "method": "POST",
+    "route": "/api/users/change-password/code/resend",
+    "cases": ["users.password.verification"]
+  },
+  {
+    "method": "POST",
     "route": "/api/auth/google",
     "cases": [
       "auth.google.invalid"
