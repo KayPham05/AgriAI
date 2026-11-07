@@ -89,3 +89,8 @@ DoD tổng thể AGRI-128 chưa hoàn tất. Các task khác không được tri
   phân trang có test tự động, chưa hoàn tất UAT do phiên đăng nhập/kết nối trình duyệt.
 - Chi tiết source, tương thích dữ liệu, backup và giới hạn trong
   [báo cáo refinements](admin_catalog_refinements.md). Chưa commit/push.
+
+- [Đồng bộ main và build Docker ngày 2026-11-03](docker_rebuild_2026_11_03.md).
+- [Giữ bản nháp khi đóng dialog tạo hồ sơ — 2026-11-03](profile_dialog_dismissal_2026_11_03.md).
+- [Dự đoán trên landing page, không lưu lịch sử — 2026-11-03](landing_prediction_2026_11_03.md).
+- [Build lại AI, migration và kiểm tra catalog DB — 2026-11-03](ai_database_refresh_2026_11_03.md).

@@ -84,4 +84,72 @@ describe('LoginModal entry mode', () => {
 
     expect(screen.getByText(/CAPTCHA chưa chính xác/i)).toBeInTheDocument();
   });
+
+  it('stores a session only after the email challenge is verified', async () => {
+    const session = {
+      token: 'verified-session',
+      user: {
+        id: '1',
+        fullName: 'An',
+        email: 'an@example.com',
+        role: 'User',
+        createdAt: '2026-11-04',
+      },
+    };
+    const fetchResponse = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ challengeId: 'challenge-1' }, { status: 202 }))
+      .mockResolvedValueOnce(Response.json(session));
+    vi.stubGlobal('fetch', fetchResponse);
+    const user = userEvent.setup();
+    const onAuthSuccess = vi.fn();
+    render(<LoginModal isOpen onClose={vi.fn()} onAuthSuccess={onAuthSuccess} />);
+
+    await user.type(screen.getByLabelText(/^Email$/i), 'an@example.com');
+    await user.type(screen.getByLabelText(/^Mật khẩu$/i), 'secret123');
+    const captcha = screen.getByRole('group', { name: /^Mã CAPTCHA: / });
+    await user.type(
+      screen.getByLabelText(/Mã xác nhận/i),
+      (captcha.getAttribute('aria-label') ?? '').slice(-5),
+    );
+    await user.click(screen.getByRole('button', { name: 'Đăng nhập' }));
+
+    expect(await screen.findByRole('heading', { name: 'Xác minh đăng nhập' })).toBeInTheDocument();
+    expect(onAuthSuccess).not.toHaveBeenCalled();
+    await user.type(screen.getByLabelText('Mã xác minh'), '01234567');
+    await user.click(screen.getByRole('button', { name: 'Xác minh mã' }));
+
+    expect(fetchResponse).toHaveBeenLastCalledWith(
+      '/api/auth/two-factor/login',
+      expect.objectContaining({
+        body: JSON.stringify({ challengeId: 'challenge-1', code: '01234567' }),
+      }),
+    );
+    expect(onAuthSuccess).toHaveBeenCalledWith(session);
+  });
+
+  it('lets the user submit an emailed reset code and return to sign-in', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(new Response(null, { status: 202 }))
+        .mockResolvedValueOnce(new Response(null, { status: 204 })),
+    );
+    const user = userEvent.setup();
+    render(<LoginModal isOpen onClose={vi.fn()} onAuthSuccess={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: 'Quên mật khẩu?' }));
+    await user.type(screen.getByLabelText('Email'), 'an@example.com');
+    await user.click(screen.getByRole('button', { name: 'Gửi mã' }));
+    await user.type(
+      await screen.findByLabelText('Mã trong email'),
+      '0123456789ABCDEF0123456789ABCDEF',
+    );
+    await user.type(screen.getByLabelText('Mật khẩu mới'), 'new-password123');
+    await user.click(screen.getByRole('button', { name: 'Đổi mật khẩu' }));
+
+    expect(await screen.findByText(/Mật khẩu đã được cập nhật/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Quay lại đăng nhập' }));
+    expect(screen.getByRole('heading', { name: 'Chào mừng bạn trở lại' })).toBeInTheDocument();
+  });
 });

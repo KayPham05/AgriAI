@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ProfileAvatarEditor } from '@/components/profile/ProfileAvatarEditor';
+import { EmailTwoFactorSettings } from '@/components/profile/EmailTwoFactorSettings';
 import { PasswordChangeForm } from '@/components/profile/PasswordChangeForm';
 import {
   getUserProfile,
@@ -354,6 +355,8 @@ export function UserProfilePage({
                 <p className="text-xs leading-5 text-muted-foreground">
                   Lần đổi mật khẩu gần nhất: chưa có thông tin.
                 </p>
+                <Separator />
+                <EmailTwoFactorSettings token={token} />
               </section>
               <section
                 id="account-preferences"

@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Threading.RateLimiting;
 using AgriVision.API.Middleware;
 using AgriVision.API.Hubs;
 using AgriVision.Application.Services.Interfaces;
@@ -32,6 +33,17 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddControllers(options => options.Filters.Add<RequestValidationFilter>());
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<ISessionNoticePublisher, SessionNoticePublisher>();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("account-challenges", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 20,
+            Window = TimeSpan.FromMinutes(1)
+        }));
+});
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>

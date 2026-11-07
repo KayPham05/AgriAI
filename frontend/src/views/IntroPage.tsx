@@ -15,6 +15,7 @@ import { CropFilmStrip } from '@/components/common/CropFilmStrip';
 import { IntroLeafBackdrop } from '@/components/home/IntroLeafBackdrop';
 import type { Plant } from '@/types';
 import { CROP_PHOTOS } from '@/data/cropPhotos';
+import { LandingPredictionSection } from '@/features/introduction/LandingPredictionSection';
 
 gsap.registerPlugin(useGSAP);
 
@@ -22,6 +23,7 @@ interface IntroPageProps {
   plants: Plant[];
   onLogin: () => void;
   onRegister: () => void;
+  onSaveGuestResult?: () => void;
 }
 
 const workflowSteps = [
@@ -36,7 +38,7 @@ const workflowSteps = [
   },
   {
     title: 'Đọc kết quả có ngữ cảnh',
-    description: 'Xem lớp dự đoán, độ tin cậy và lưu lại kết quả để đối chiếu.',
+    description: 'Xem lớp dự đoán và độ tin cậy để đối chiếu với chiếc lá của bạn.',
   },
 ];
 
@@ -46,7 +48,7 @@ const principles = [
   'Kết quả chỉ hỗ trợ tham khảo, không thay thế chuyên gia.',
 ];
 
-export function IntroPage({ plants, onLogin, onRegister }: IntroPageProps) {
+export function IntroPage({ plants, onLogin, onRegister, onSaveGuestResult }: IntroPageProps) {
   const pageRef = useRef<HTMLDivElement>(null);
 
   useGSAP(
@@ -189,7 +191,7 @@ export function IntroPage({ plants, onLogin, onRegister }: IntroPageProps) {
                     className="h-auto min-h-12 whitespace-normal"
                     asChild
                   >
-                    <a href="#how-it-works">Xem cách hoạt động</a>
+                    <a href="#try-prediction">Thử dự đoán</a>
                   </Button>
                 </div>
                 <CropFilmStrip />
@@ -197,6 +199,8 @@ export function IntroPage({ plants, onLogin, onRegister }: IntroPageProps) {
             </CropMap>
           </div>
         </section>
+
+        <LandingPredictionSection onRequestLogin={onSaveGuestResult ?? onLogin} />
 
         <section id="how-it-works" aria-label="Cách AgriAI hoạt động" className="bg-surface">
           <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:px-8 md:py-16 lg:grid-cols-2 lg:gap-12 lg:px-12">
@@ -224,8 +228,8 @@ export function IntroPage({ plants, onLogin, onRegister }: IntroPageProps) {
             </div>
             <div data-intro-reveal-group className="flex min-w-0 flex-col gap-6">
               <p data-intro-reveal className="max-w-lg leading-7 text-muted-foreground">
-                Chọn ảnh, xem dự đoán rồi đối chiếu với triệu chứng trên cây. Bạn có thể lưu kết quả
-                để xem lại.
+                Chọn ảnh, xem dự đoán rồi đối chiếu với triệu chứng trên cây. Đăng nhập nếu bạn muốn
+                lưu lịch sử trong khu vực tài khoản.
               </p>
               <ol className="grid flex-1 auto-rows-fr gap-4" aria-label="Ba bước sử dụng AgriAI">
                 {workflowSteps.map(({ model, title, description }, index) => (
@@ -326,12 +330,12 @@ export function IntroPage({ plants, onLogin, onRegister }: IntroPageProps) {
                 >
                   Tạo tài khoản <ArrowRight aria-hidden="true" />
                 </Button>
-                <Button type="button" size="lg" variant="outlineOnDark" onClick={onLogin}>
-                  Thử nghiệm ngay
+                <Button asChild size="lg" variant="outlineOnDark">
+                  <a href="#try-prediction">Thử dự đoán</a>
                 </Button>
               </div>
               <p className="text-sm leading-6 text-primary-foreground">
-                Đăng nhập để thử phân tích từ ảnh.
+                Dự đoán ngay trên trang này, không cần tài khoản.
               </p>
             </div>
           </div>

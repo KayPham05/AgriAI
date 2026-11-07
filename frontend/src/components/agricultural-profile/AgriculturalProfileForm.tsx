@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { useEffect } from 'react';
+import { type Ref, useEffect, useImperativeHandle, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,7 +21,12 @@ import type {
   AgriculturalProfileInput,
 } from '@/services/agriculturalProfileApi';
 
+export interface AgriculturalProfileFormHandle {
+  requestCancel: () => void;
+}
+
 interface AgriculturalProfileFormProps {
+  ref?: Ref<AgriculturalProfileFormHandle>;
   profile?: AgriculturalProfile;
   ownerName: string;
   isSubmitting: boolean;
@@ -31,6 +35,7 @@ interface AgriculturalProfileFormProps {
 }
 
 export function AgriculturalProfileForm({
+  ref,
   profile,
   ownerName,
   isSubmitting,
@@ -42,6 +47,13 @@ export function AgriculturalProfileForm({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [showDiscard, setShowDiscard] = useState(false);
   const isDirty = name !== (profile?.name ?? '') || description !== (profile?.description ?? '');
+
+  const requestCancel = () => {
+    if (isSubmitting) return;
+    if (isDirty) setShowDiscard(true);
+    else onCancel();
+  };
+  useImperativeHandle(ref, () => ({ requestCancel }));
 
   useEffect(() => {
     if (!isDirty) return;
@@ -126,7 +138,7 @@ export function AgriculturalProfileForm({
           type="button"
           variant="outline"
           className="border-border px-6"
-          onClick={() => (isDirty ? setShowDiscard(true) : onCancel())}
+          onClick={requestCancel}
           disabled={isSubmitting}
         >
           Hủy

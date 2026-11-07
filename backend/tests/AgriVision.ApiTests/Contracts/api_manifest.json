@@ -771,5 +771,54 @@
       "predictions.guest.save_roundtrip",
       "predictions.guest.preview_missing"
     ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/auth/forgot-password",
+    "cases": [
+      "auth.password_reset"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/auth/reset-password",
+    "cases": [
+      "auth.password_reset"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/auth/google",
+    "cases": [
+      "auth.google.invalid"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/auth/two-factor",
+    "cases": [
+      "auth.two_factor.lifecycle"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/auth/two-factor/setup",
+    "cases": [
+      "auth.two_factor.lifecycle"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/auth/two-factor/setup/verify",
+    "cases": [
+      "auth.two_factor.lifecycle"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/auth/two-factor/login",
+    "cases": [
+      "auth.two_factor.lifecycle"
+    ]
   }
 ]
