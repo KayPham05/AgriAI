@@ -1,5 +1,10 @@
 [
   {
+    "method": "DELETE",
+    "route": "/api/predictions/{id:guid}/agricultural-profile/{profileId:guid}",
+    "cases": ["profiles.detach_prediction"]
+  },
+  {
     "method": "PUT",
     "route": "/api/predictions/{id:guid}/agricultural-profile",
     "cases": ["profiles.attach_prediction", "profiles.attach_prediction_access"]

@@ -315,6 +315,12 @@ public class PredictionService : IPredictionService
         return new PagedResult<PredictionHistoryDto>(historyItems, filterParams.PageNumber, filterParams.PageSize, totalCount);
     }
 
+    public async Task RemoveProfileAsync(Guid id, Guid userId, Guid profileId, CancellationToken cancellationToken = default)
+    {
+        if (!await _predictionRepository.RemoveProfileAsync(id, userId, profileId, cancellationToken))
+            throw new KeyNotFoundException("Prediction or agricultural profile not found.");
+    }
+
     public async Task AssignProfileAsync(Guid id, Guid userId, Guid profileId, CancellationToken cancellationToken = default)
     {
         if (profileId == Guid.Empty)

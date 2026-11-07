@@ -56,3 +56,10 @@ The API now reports `draft=false`, unlike the earlier snapshot. This workflow di
 ## Frontend lint correction — 2026-11-07
 
 The user reported the failing frontend job on PR #60. Reproduced the exact full lint failure and replaced the non-null assertion in `frontend/tests/component/home/HomePlantGuide.test.tsx` with an explicit fixture guard. Full frontend lint (278 files), TypeScript and all four HomePlantGuide tests passed. Updated the technical report with the original failure, verification scope and GitHub run `42331242171`; backend and other independent jobs passed on that earlier run. No production code, lint configuration, Docker runtime or data changed. Fetch confirmed local source and remote match before delivery. Prepare the focused correction commit and push to the existing PR; do not claim the new CI run has passed before it completes.
+
+
+## Second target merge — 2026-11-07
+
+The user reported two new conflicts after a colleague merged PR #61. Fetch found target `51a40b6` with AGRI-116 profile unlink/count changes; source `394f6a9` was clean and matched remote. GitHub confirmed the preceding source CI passed all jobs, but the new target caused `mergeable=false`. Kept both sides of the interface and AppProvider declarations, preserving guest/session behavior and the new profile functionality. Fixed the incoming profile deletion test setup by restoring catalog mock responses after reset; production behavior was not changed to accommodate tests.
+
+Fresh checks: full frontend lint (279 files), TypeScript, backend solution build (C# 12; one NU1900 warning), PredictionService unit 50/50 and selected profile/guest/contract API 53/53 passed. Frontend full run passed 572/575; after fixing the sole failing file's setup, its 3/3 tests passed. No full backend/integration rerun, migration, AI/R2 operation or deployment. [Technical evidence](../../reports/AGRI-142/pr60-conflict-resolution.md#second-target-advancement-agricultural-profiles--2026-11-07) records exact scope. Prepare a normal merge commit and push to the existing source branch; keep target, reviewers and current ready state. New GitHub CI must be verified independently.

@@ -726,6 +726,7 @@ public partial class PredictionServiceTests : IDisposable
 
     private sealed class RecordingPredictionRepository : IPredictionRepository
     {
+        public Task<bool> RemoveProfileAsync(Guid id, Guid userId, Guid profileId, CancellationToken cancellationToken = default) => Task.FromResult(false);
         public Task<bool> AssignProfileAsync(Guid id, Guid userId, Guid profileId, CancellationToken cancellationToken = default) =>
             Task.FromResult(false);
         public Exception? WriteError { get; set; }

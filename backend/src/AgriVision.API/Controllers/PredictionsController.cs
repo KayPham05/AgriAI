@@ -126,6 +126,16 @@ public class PredictionsController : ControllerBase
     }
 
     [Authorize]
+    [HttpDelete("{id:guid}/agricultural-profile/{profileId:guid}")]
+    public async Task<IActionResult> RemoveProfile(Guid id, Guid profileId, CancellationToken cancellationToken)
+    {
+        var claim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (!Guid.TryParse(claim, out var userId)) return Unauthorized();
+        await _predictionService.RemoveProfileAsync(id, userId, profileId, cancellationToken);
+        return NoContent();
+    }
+
+    [Authorize]
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {

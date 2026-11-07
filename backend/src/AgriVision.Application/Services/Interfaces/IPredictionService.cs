@@ -9,6 +9,7 @@ public interface IPredictionService
 {
     Task<PredictionResultDto> SaveGuestAsync(string guestToken, Guid userId, CancellationToken cancellationToken = default);
     Task<ImageDownloadResult?> ReadGuestImageAsync(string guestToken, CancellationToken cancellationToken = default);
+    Task RemoveProfileAsync(Guid id, Guid userId, Guid profileId, CancellationToken cancellationToken = default);
     Task AssignProfileAsync(Guid id, Guid userId, Guid profileId, CancellationToken cancellationToken = default);
     Task<PredictionResultDto> PredictAsync(IFormFile file, Guid? userId, Guid? agriculturalProfileId = null, CancellationToken cancellationToken = default);
     Task<PredictionResultDto?> GetPredictionByIdAsync(Guid id, CancellationToken cancellationToken = default, Guid? userId = null);

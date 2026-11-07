@@ -47,3 +47,17 @@ GitHub run `42331242171` failed the frontend lint step because `HomePlantGuide.t
 Replaced the assertion with an explicit missing-fixture error, retaining type narrowing and test failure if the rice fixture disappears. No lint rules or production code changed. Fresh local verification: `corepack pnpm run lint` passed all 278 files, `corepack pnpm typecheck` passed, and `corepack pnpm test tests/component/home/HomePlantGuide.test.tsx --maxWorkers=1` passed 4/4. Full tests/build were not repeated for this two-line test-only change.
 
 GitHub API confirmed the preceding commit's backend-tests, python-tests, compose-smoke, secret-scan and commitlint jobs succeeded; frontend and dependent ci-gate failed. A new CI run after delivery must establish the corrected commit's result independently.
+
+
+## Second target advancement: agricultural profiles — 2026-11-07
+
+After PR #61 was merged, the target advanced from `16a0115` to `51a40b6`, bringing `f9c5534` (AGRI-116 prediction removal and counts). Source `394f6a9` matched its remote and had a clean worktree. GitHub confirmed its previous CI run `42332817431` passed all seven jobs, including frontend and ci-gate; the newly reported conflict was caused by target advancement, not a repeat of the lint failure.
+
+Resolved both conflicts by preserving complementary declarations:
+
+- `backend/src/AgriVision.Application/Services/Interfaces/IPredictionService.cs`: retain guest save/image retrieval and add `RemoveProfileAsync`.
+- `frontend/src/providers/AppProvider.tsx`: retain diagnosis login continuity and session notices; add the active-session and refresh sequence references used by the incoming profile count refresh logic.
+
+Reviewed the automatically merged controller/service/repository, frontend profile callbacks and API manifest. The incoming owner-checked profile unlink operation remains distinct from deleting a prediction. No migration or dependency changes were added by this merge.
+
+Fresh verification: full frontend lint (279 files) and typecheck passed. Backend solution build passed using the documented C# 12 option, with zero errors and one cached NU1900 warning. PredictionService unit tests passed 50/50; selected profile, guest and contract API cases passed 53/53 against disposable PostgreSQL with AI/storage doubles. The full frontend run passed 572/575 cases across 81 files; the three failures came from the incoming `ProfilePredictionDeletion.test.tsx` resetting the catalog mocks to undefined. Explicitly restored both catalog mock responses in `beforeEach`; the targeted rerun passed 3/3 without errors. Lint and typecheck also passed again. All 575 cases therefore have passing evidence across these runs, not a subsequent full-suite run. Full backend/integration suites and application deployment were not rerun for these declaration-only conflict resolutions.
