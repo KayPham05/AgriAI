@@ -10,4 +10,5 @@ public interface IUserSessionRepository
     Task RevokeSessionAsync(Guid sessionId, CancellationToken cancellationToken = default);
     Task RevokeSessionAsync(Guid userId, Guid sessionId, CancellationToken cancellationToken = default);
     Task RevokeAllSessionsByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task RevokeAllByAdminAsync(Guid userId, CancellationToken cancellationToken = default);
 }

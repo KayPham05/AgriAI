@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using AgriVision.Application.DTOs.PlantDisease;
+using AgriVision.Application.DTOs.Medicine;
 
 namespace AgriVision.Application.DTOs.Prediction;
 
@@ -8,6 +9,12 @@ public class PredictRequest
     public required IFormFile File { get; init; }
     public Guid? AgriculturalProfileId { get; init; }
 }
+
+public record AssignPredictionProfileRequest(Guid AgriculturalProfileId);
+
+public record SaveGuestPredictionRequest(
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.StringLength(64, MinimumLength = 64)] string GuestToken);
 
 public record PredictionDetailDto(
     int ClassIndex,
@@ -31,7 +38,10 @@ public record PredictionResultDto(
     public string? Warning { get; init; }
     public bool InformationPending { get; init; }
     public string? Medication { get; init; }
+    public IReadOnlyList<RecommendedMedicineDto> RecommendedMedicines { get; init; } = [];
     public Guid? AgriculturalProfileId { get; init; }
+    public string? GuestToken { get; init; }
+    public DateTime? GuestExpiresAt { get; init; }
 }
 
 public record PredictionImageDto(Guid Id, string? ImagePath, double Confidence, DateTime ExpiresAt, bool IsExpired);

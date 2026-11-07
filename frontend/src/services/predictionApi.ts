@@ -1,3 +1,4 @@
+import { sessionFetch, reportSessionIssue } from './sessionFetch';
 import type { DiagnosisResult, TopPrediction } from '../types';
 import type { DiseaseDto, PlantDto } from './catalogApi';
 import {
@@ -50,6 +51,8 @@ interface PredictionResultDto {
   confidence: number;
   predictionDetails: PredictionDetailDto[];
   createdAt: string;
+  guestToken?: string | null;
+  guestExpiresAt?: string | null;
 }
 
 interface PredictionHistoryDto {
@@ -83,6 +86,7 @@ export interface PredictionResponse {
 
 interface PredictionOptions {
   token?: string;
+  agriculturalProfileId?: string;
   signal?: AbortSignal;
   onUploadProgress?: (percentage: number) => void;
   onUploadComplete?: () => void;
@@ -131,8 +135,10 @@ function mapTopPredictions(
       detail.plantDisease?.disease.vietnameseName ??
       detail.plantDisease?.disease.name ??
       detail.className;
+    const plant = detail.plantDisease?.plant.vietnameseName ?? detail.plantDisease?.plant.name;
     return {
       className: detail.className,
+      plant,
       label,
       confidence: detail.confidence,
       isHealthy: isHealthyLabel(label),
@@ -175,7 +181,12 @@ function mapHistoryItem(item: PredictionHistoryDto): DiagnosisResult {
     confidence: item.confidence,
     confidenceCategory: getConfidenceCategory(item.confidence),
     top_predictions: [
-      { label: diseaseLabel, confidence: item.confidence, isHealthy: isHealthyLabel(diseaseLabel) },
+      {
+        plant: plantLabel,
+        label: diseaseLabel,
+        confidence: item.confidence,
+        isHealthy: isHealthyLabel(diseaseLabel),
+      },
     ],
     originalImageUrl: item.imagePath,
     gradcam_url: '',
@@ -200,7 +211,7 @@ async function authenticatedRequest<T>(
   token: string,
   init?: RequestInit,
 ): Promise<T> {
-  const response = await fetch(`${predictionUrl}${path}`, {
+  const response = await sessionFetch(`${predictionUrl}${path}`, {
     ...init,
     headers: { Authorization: `Bearer ${token}`, ...init?.headers },
   });
@@ -245,6 +256,7 @@ export function createPrediction(
     xhr.onabort = () => finish(new Error('Yêu cầu đã được hủy.'));
     xhr.onload = () => {
       const body = xhr.response as unknown;
+      reportSessionIssue(xhr.status, body, options.token);
       if (xhr.status < 200 || xhr.status >= 300) {
         finish(getPredictionError(body, xhr.status));
         return;
@@ -282,6 +294,9 @@ export function createPrediction(
     options.signal?.addEventListener('abort', abortRequest, { once: true });
     const form = new FormData();
     form.append('file', image, image.name);
+    if (options.agriculturalProfileId) {
+      form.append('agriculturalProfileId', options.agriculturalProfileId);
+    }
     xhr.send(form);
   });
 }
@@ -294,13 +309,74 @@ export async function getPredictionHistory(token: string): Promise<DiagnosisResu
   return result.items.map(mapHistoryItem);
 }
 
+export async function saveGuestPrediction(
+  guestToken: string,
+  token: string,
+): Promise<PredictionResponse> {
+  const dto = await authenticatedRequest<PredictionResultDto>('/guest/save', token, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ guestToken }),
+  });
+  const diagnosis = mapPredictionResult(dto);
+  return {
+    dto,
+    diagnosis,
+    crop: diagnosis.plant,
+    disease: diagnosis.prediction,
+    confidence: dto.confidence,
+  };
+}
+
+export async function readGuestPredictionImage(
+  guestToken: string,
+  signal: AbortSignal,
+): Promise<Blob> {
+  const response = await fetch(`${predictionUrl}/guest/image`, {
+    headers: { 'X-Guest-Prediction': guestToken },
+    cache: 'no-store',
+    signal,
+  });
+  if (!response.ok)
+    throw new Error(
+      'Ảnh tạm đã hết hạn hoặc không còn khả dụng. Bạn vẫn có thể xem nội dung kết quả trong tab này.',
+    );
+  return response.blob();
+}
+
 export async function getPredictionById(id: string, token: string): Promise<DiagnosisResult> {
   const dto = await authenticatedRequest<PredictionResultDto>(`/${id}`, token);
   return mapPredictionResult(dto);
 }
 
+export async function getProfilePredictionHistory(
+  profileId: string,
+  token: string,
+  pageNumber = 1,
+): Promise<PagedResult<DiagnosisResult>> {
+  const query = new URLSearchParams({
+    agriculturalProfileId: profileId,
+    pageNumber: String(pageNumber),
+    pageSize: '10',
+  });
+  const result = await authenticatedRequest<PagedResult<PredictionHistoryDto>>(`?${query}`, token);
+  return { ...result, items: result.items.map(mapHistoryItem) };
+}
+
+export async function assignPredictionProfile(
+  id: string,
+  profileId: string,
+  token: string,
+): Promise<void> {
+  await authenticatedRequest<unknown>(`/${encodeURIComponent(id)}/agricultural-profile`, token, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ agriculturalProfileId: profileId }),
+  });
+}
+
 export async function deletePrediction(id: string, token: string): Promise<void> {
-  const response = await fetch(`${predictionUrl}/${id}`, {
+  const response = await sessionFetch(`${predictionUrl}/${id}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -308,4 +384,16 @@ export async function deletePrediction(id: string, token: string): Promise<void>
     const body = (await response.json().catch(() => null)) as unknown;
     throw new Error(getBackendError(body, response.status));
   }
+}
+
+export async function removePredictionProfile(
+  id: string,
+  profileId: string,
+  token: string,
+): Promise<void> {
+  await authenticatedRequest<unknown>(
+    `/${encodeURIComponent(id)}/agricultural-profile/${encodeURIComponent(profileId)}`,
+    token,
+    { method: 'DELETE' },
+  );
 }

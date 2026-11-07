@@ -1,6 +1,5 @@
-import { useAdminMock } from './AdminMockProvider';
 import { useState } from 'react';
-import type { AdminUser } from './adminTypes';
+import { moderateAccount, type ManagedAdminUser } from '@/services/adminApi';
 import { Button } from '@/components/ui/button';
 import { AdminActionDialog } from './AdminActionDialog';
 import { Badge } from '@/components/ui/badge';
@@ -35,9 +34,9 @@ const ACTIONS = {
 };
 type Action = keyof typeof ACTIONS;
 
-export function AdminUsers({ initialQuery = '' }: { initialQuery?: string }) {
-  const { users, moderateAccount } = useAdminMock();
-  const [action, setAction] = useState<{ user: AdminUser; kind: Action } | null>(null);
+export function AdminUsers({ initialQuery = '', token }: { initialQuery?: string; token: string }) {
+  const [revision, setRevision] = useState(0);
+  const [action, setAction] = useState<{ user: ManagedAdminUser; kind: Action } | null>(null);
   const [notice, setNotice] = useState('');
   const copy = action ? ACTIONS[action.kind] : null;
   return (
@@ -47,9 +46,10 @@ export function AdminUsers({ initialQuery = '' }: { initialQuery?: string }) {
           {notice}
         </p>
       )}
-      <AdminRecordList<AdminUser>
+      <AdminRecordList<ManagedAdminUser>
         resource="users"
-        items={users}
+        token={token}
+        revision={revision}
         title="Danh sách người dùng"
         empty="Chưa có dữ liệu người dùng"
         initialQuery={initialQuery}
@@ -66,8 +66,8 @@ export function AdminUsers({ initialQuery = '' }: { initialQuery?: string }) {
               </div>
               <div className="flex flex-wrap gap-2">
                 <Badge variant="outline">{user.role === 'Admin' ? 'Admin' : 'Người dùng'}</Badge>
-                <Badge variant={user.isLocked ? 'destructive' : 'secondary'}>
-                  {user.isLocked ? 'Đã khóa' : 'Hoạt động'}
+                <Badge variant={!user.isActive ? 'destructive' : 'secondary'}>
+                  {!user.isActive ? 'Đã khóa' : 'Hoạt động'}
                 </Badge>
               </div>
             </div>
@@ -77,15 +77,15 @@ export function AdminUsers({ initialQuery = '' }: { initialQuery?: string }) {
               </p>
             )}
             <p className="text-xs text-muted-foreground">
-              {user.warningCount ?? 0} cảnh báo đã gửi
+              {user.predictionCount} lần chẩn đoán đã lưu
             </p>
             {user.role !== 'Admin' && (
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
-                  onClick={() => setAction({ user, kind: user.isLocked ? 'restore' : 'lock' })}
+                  onClick={() => setAction({ user, kind: !user.isActive ? 'restore' : 'lock' })}
                 >
-                  {user.isLocked ? 'Khôi phục tài khoản' : 'Khóa tài khoản'}
+                  {!user.isActive ? 'Khôi phục tài khoản' : 'Khóa tài khoản'}
                 </Button>
                 <Button variant="outline" onClick={() => setAction({ user, kind: 'warnings' })}>
                   Gửi cảnh báo
@@ -102,14 +102,15 @@ export function AdminUsers({ initialQuery = '' }: { initialQuery?: string }) {
         <AdminActionDialog
           key={`${action.user.id}-${action.kind}`}
           title={copy.title}
-          description={`${action.user.email}. Mô phỏng: ${copy.description} Không tác động tài khoản thật.`}
+          description={`${action.user.email}. ${copy.description}`}
           confirmText={copy.confirm}
           messageLabel={copy.messageLabel}
           maxLength={action.kind === 'lock' ? 500 : 1000}
           onClose={() => setAction(null)}
           onConfirm={async (message) => {
-            moderateAccount(action.user.id, action.kind, message);
-            setNotice('Đã mô phỏng thao tác với tài khoản. Không thay đổi dữ liệu thật.');
+            await moderateAccount(token, action.user.id, action.kind, message);
+            setRevision((value) => value + 1);
+            setNotice('Đã cập nhật tài khoản trên hệ thống.');
           }}
         />
       )}

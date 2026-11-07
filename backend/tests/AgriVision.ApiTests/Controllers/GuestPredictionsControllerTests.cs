@@ -21,7 +21,7 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace AgriVision.ApiTests.Controllers;
 
-public class GuestPredictionsControllerTests : IClassFixture<AgriVisionFactory>
+public partial class GuestPredictionsControllerTests : IClassFixture<AgriVisionFactory>
 {
     private readonly AgriVisionFactory _factory;
 

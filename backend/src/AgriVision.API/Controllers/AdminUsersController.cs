@@ -45,7 +45,7 @@ public class AdminUsersController : ControllerBase
         CancellationToken cancellationToken)
     {
         var adminId = GetCurrentUserId();
-        var result = await _adminUserService.SetUserStatusAsync(adminId, id, request.IsActive, cancellationToken);
+        var result = await _adminUserService.SetUserStatusAsync(adminId, id, request.IsActive, cancellationToken, request.Reason);
         return Ok(result);
     }
 

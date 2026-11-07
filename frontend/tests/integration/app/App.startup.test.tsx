@@ -15,6 +15,12 @@ vi.mock('@/services/authApi', () => ({
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 vi.mock('next/navigation', () => ({ usePathname: () => '/', useRouter: () => router }));
 vi.mock('@/services/catalogApi', () => ({ getPlants: vi.fn(), getDiseases: vi.fn() }));
+vi.mock('@/services/agriculturalProfileApi', () => ({
+  getAgriculturalProfiles: vi.fn().mockResolvedValue([]),
+  createAgriculturalProfile: vi.fn(),
+  updateAgriculturalProfile: vi.fn(),
+  deleteAgriculturalProfile: vi.fn(),
+}));
 vi.mock('@/services/predictionApi', () => ({
   getPredictionHistory: vi.fn(),
   deletePrediction: vi.fn(),
@@ -100,7 +106,7 @@ describe('authenticated app startup', () => {
         await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/admin'), {
           timeout: 6000,
         });
-        expect(getPlants).not.toHaveBeenCalled();
+        expect(getPlants).toHaveBeenCalledOnce(); // Public landing catalog only.
         expect(getPredictionHistory).not.toHaveBeenCalled();
       } else {
         expect(screen.getByText('ĐANG TẢI')).toBeVisible();

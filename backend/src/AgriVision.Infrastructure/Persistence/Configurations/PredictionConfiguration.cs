@@ -31,7 +31,7 @@ public class PredictionConfiguration : IEntityTypeConfiguration<Prediction>
 
         builder.Property(p => p.PredictedPlantDiseaseId)
             .HasColumnName("predicted_plant_disease_id")
-            .IsRequired();
+            .IsRequired(false);
 
         builder.Property(p => p.Confidence)
             .HasColumnName("confidence")
@@ -56,6 +56,6 @@ public class PredictionConfiguration : IEntityTypeConfiguration<Prediction>
         builder.HasOne(p => p.PredictedPlantDisease)
             .WithMany(pd => pd.Predictions)
             .HasForeignKey(p => p.PredictedPlantDiseaseId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

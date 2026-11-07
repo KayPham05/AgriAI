@@ -5,6 +5,8 @@ namespace AgriVision.Application.Common.Interfaces.Persistence;
 
 public interface IPredictionRepository
 {
+    Task<bool> RemoveProfileAsync(Guid id, Guid userId, Guid profileId, CancellationToken cancellationToken = default);
+    Task<bool> AssignProfileAsync(Guid id, Guid userId, Guid profileId, CancellationToken cancellationToken = default);
     Task<Prediction?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<IEnumerable<Prediction>> GetByUserIdAsync(Guid userId, int pageNumber = 1, int pageSize = 10, CancellationToken cancellationToken = default);
     Task<int> GetCountByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);

@@ -35,7 +35,7 @@ public class PredictionsController : ControllerBase
         // Invalid credentials must not silently turn a user's request into an unsaved guest prediction.
         if (Request.Headers.ContainsKey("Authorization") && !isAuthenticated)
         {
-            return Unauthorized();
+            return Challenge();
         }
 
         if (isAuthenticated)
@@ -48,6 +48,27 @@ public class PredictionsController : ControllerBase
         var result = await _predictionService.PredictAsync(request.File, userId, request.AgriculturalProfileId, cancellationToken);
         if (!userId.HasValue) return Ok(result);
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+    }
+
+    [Authorize]
+    [HttpPost("guest/save")]
+    [EnableRateLimiting("image")]
+    [RequestTimeout("prediction")]
+    public async Task<ActionResult<PredictionResultDto>> SaveGuest([FromBody] SaveGuestPredictionRequest request, CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+        var result = await _predictionService.SaveGuestAsync(request.GuestToken, userId, cancellationToken);
+        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+    }
+
+    [HttpGet("guest/image")]
+    [EnableRateLimiting("image")]
+    public async Task<IActionResult> ReadGuestImage([FromHeader(Name = "X-Guest-Prediction")] string guestToken, CancellationToken cancellationToken)
+    {
+        Response.Headers.CacheControl = "no-store";
+        Response.Headers["X-Content-Type-Options"] = "nosniff";
+        var image = await _predictionService.ReadGuestImageAsync(guestToken, cancellationToken);
+        return image == null ? NotFound() : File(image.Content, image.ContentType);
     }
 
     [Authorize]
@@ -92,6 +113,26 @@ public class PredictionsController : ControllerBase
         if (image == null) return NotFound();
         Response.Headers["X-Content-Type-Options"] = "nosniff";
         return File(image.Content, image.ContentType);
+    }
+
+    [Authorize]
+    [HttpPut("{id:guid}/agricultural-profile")]
+    public async Task<IActionResult> AssignProfile(Guid id, [FromBody] AssignPredictionProfileRequest request, CancellationToken cancellationToken)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (!Guid.TryParse(userIdClaim, out var userId)) return Unauthorized();
+        await _predictionService.AssignProfileAsync(id, userId, request.AgriculturalProfileId, cancellationToken);
+        return NoContent();
+    }
+
+    [Authorize]
+    [HttpDelete("{id:guid}/agricultural-profile/{profileId:guid}")]
+    public async Task<IActionResult> RemoveProfile(Guid id, Guid profileId, CancellationToken cancellationToken)
+    {
+        var claim = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (!Guid.TryParse(claim, out var userId)) return Unauthorized();
+        await _predictionService.RemoveProfileAsync(id, userId, profileId, cancellationToken);
+        return NoContent();
     }
 
     [Authorize]

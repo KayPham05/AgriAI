@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Navbar } from '@/components/layout/Navbar';
+import { getAppRoute } from '@/lib/appRoutes';
 
 const profile = {
   name: 'Nguyễn Văn An',
@@ -13,6 +14,31 @@ const profile = {
 };
 
 describe('Navbar', () => {
+  it('keeps guest catalog navigation separate from account destinations on desktop and mobile', async () => {
+    render(
+      <Navbar
+        currentTab="plants"
+        unreadNotificationsCount={3}
+        onOpenNotifications={vi.fn()}
+        userProfile={profile}
+        isAuthenticated={false}
+        onOpenLogin={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('link', { name: 'AgriAI, về trang chủ' })).toHaveAttribute('href', '/');
+    expect(screen.queryByRole('link', { name: 'Mẫu đã lưu' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Hồ sơ nông nghiệp' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Thông báo/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Cây trồng' })).toHaveAttribute('href', '/plants');
+    expect(screen.getByRole('link', { name: 'Kiểm tra lá' })).toHaveAttribute('href', '/diagnose');
+    await userEvent.click(screen.getByRole('button', { name: 'Mở menu' }));
+    const menu = within(screen.getByRole('dialog'));
+    expect(menu.getByRole('link', { name: 'Kiểm tra lá' })).toHaveAttribute('href', '/diagnose');
+    expect(menu.queryByRole('link', { name: 'Mẫu đã lưu' })).not.toBeInTheDocument();
+    expect(menu.queryByRole('link', { name: 'Hồ sơ nông nghiệp' })).not.toBeInTheDocument();
+    expect(menu.queryByRole('button', { name: /Thông báo/ })).not.toBeInTheDocument();
+    expect(menu.getByRole('button', { name: 'Đăng nhập hoặc đăng ký' })).toBeVisible();
+  });
   it('exposes app destinations as real links that can open in another tab', () => {
     render(
       <Navbar
@@ -31,6 +57,10 @@ describe('Navbar', () => {
     );
     expect(logo.searchParams.get('url') ?? logo.pathname).toBe('/images/agriai-leaf-mark.png');
     expect(navigation.getByRole('link', { name: 'Cây trồng' })).toHaveAttribute('href', '/plants');
+    expect(navigation.getByRole('link', { name: 'Hồ sơ nông nghiệp' })).toHaveAttribute(
+      'href',
+      '/agricultural-profiles',
+    );
     expect(navigation.getByRole('link', { name: 'Trang chủ' })).toHaveAttribute(
       'aria-current',
       'page',
@@ -52,25 +82,33 @@ describe('Navbar', () => {
     expect(onOpenNotifications).toHaveBeenCalledOnce();
   });
 
-  it('identifies the active page in the mobile menu and closes after navigation', async () => {
-    render(
-      <Navbar
-        currentTab="plants"
-        unreadNotificationsCount={0}
-        onOpenNotifications={vi.fn()}
-        userProfile={profile}
-        isAuthenticated
-        onOpenLogin={vi.fn()}
-      />,
-    );
-    await userEvent.click(screen.getByRole('button', { name: 'Mở menu' }));
-    const menu = within(screen.getByRole('dialog'));
-    expect(menu.getByRole('link', { name: 'Cây trồng' })).toHaveAttribute('aria-current', 'page');
-    const historyLink = menu.getByRole('link', { name: 'Mẫu đã lưu' });
-    expect(historyLink).toHaveAttribute('href', '/history');
-    // jsdom cannot navigate documents; retain the real menu close interaction.
-    historyLink.addEventListener('click', (event) => event.preventDefault(), { once: true });
-    await userEvent.click(historyLink);
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  });
+  it.each([
+    { path: '/plants', label: 'Cây trồng' },
+    { path: '/agricultural-profiles', label: 'Hồ sơ nông nghiệp' },
+  ])(
+    'identifies $path in both menus and closes the mobile menu after navigation',
+    async ({ path, label }) => {
+      render(
+        <Navbar
+          currentTab={getAppRoute(path).tab}
+          unreadNotificationsCount={0}
+          onOpenNotifications={vi.fn()}
+          userProfile={profile}
+          isAuthenticated
+          onOpenLogin={vi.fn()}
+        />,
+      );
+      const navigation = within(screen.getByRole('navigation', { name: 'Điều hướng chính' }));
+      expect(navigation.getByRole('link', { name: label })).toHaveAttribute('aria-current', 'page');
+      await userEvent.click(screen.getByRole('button', { name: 'Mở menu' }));
+      const menu = within(screen.getByRole('dialog'));
+      const destination = menu.getByRole('link', { name: label });
+      expect(destination).toHaveAttribute('aria-current', 'page');
+      expect(destination).toHaveAttribute('href', path);
+      // jsdom cannot navigate documents; retain the real menu close interaction.
+      destination.addEventListener('click', (event) => event.preventDefault(), { once: true });
+      await userEvent.click(destination);
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    },
+  );
 });

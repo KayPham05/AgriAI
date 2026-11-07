@@ -5,15 +5,16 @@ import { HomePlantGuide } from '@/components/home/HomePlantGuide';
 import type { NavigationTab, Plant } from '@/types';
 
 interface HomeViewProps {
+  plants: Plant[];
   onNavigate: (tab: NavigationTab) => void;
   onSelectPlant: (plant: Plant) => void;
 }
 
-export function HomePage({ onNavigate, onSelectPlant }: HomeViewProps) {
+export function HomePage({ plants, onNavigate, onSelectPlant }: HomeViewProps) {
   return (
     <div>
       <HomeLandingHero onNavigate={onNavigate} />
-      <HomePlantGuide onNavigate={onNavigate} onSelectPlant={onSelectPlant} />
+      <HomePlantGuide plants={plants} onNavigate={onNavigate} onSelectPlant={onSelectPlant} />
     </div>
   );
 }

@@ -5,8 +5,8 @@ public class PlantDisease
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid PlantId { get; set; }
     public Guid DiseaseId { get; set; }
-    public string ClassName { get; set; } = string.Empty;
-    public int ClassIndex { get; set; }
+    public string? ClassName { get; set; }
+    public int? ClassIndex { get; set; }
     public bool IsActive { get; set; } = true;
 
     public Plant Plant { get; set; } = null!;

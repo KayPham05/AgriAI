@@ -1,5 +1,5 @@
 import type React from 'react';
-import NextImage from 'next/image';
+import { PrivateImage } from '@/components/common/PrivateImage';
 import { useEffect, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { AnalysisStepper } from '@/components/diagnosis/AnalysisStepper';
 import { AnalysisResultCard } from '@/components/diagnosis/AnalysisResultCard';
 import { AnalysisIssueNotice } from '@/components/diagnosis/AnalysisIssueNotice';
+import { SavePredictionProfileDialog } from '@/components/agricultural-profile/SavePredictionProfileDialog';
 import {
   Dialog,
   DialogContent,
@@ -26,8 +27,22 @@ import {
   type DiagnosisIssue,
 } from '@/features/diagnosis/diagnosisIssues';
 import sampleLeaf from '@/assets/Bệnh lá/cà chua/Cháy lá sớm  đốm vòng.jpg';
-import { createPrediction, type PredictionResponse } from '../services/predictionApi';
+import {
+  createPrediction,
+  readGuestPredictionImage,
+  saveGuestPrediction,
+  type PredictionResponse,
+} from '../services/predictionApi';
+import {
+  clearGuestPredictionDraft,
+  readGuestPredictionDraft,
+  writeGuestPredictionDraft,
+} from '@/features/diagnosis/guestPredictionDraft';
 import type { DiagnosisResult, Plant } from '../types';
+import type {
+  AgriculturalProfile,
+  AgriculturalProfileInput,
+} from '@/services/agriculturalProfileApi';
 
 gsap.registerPlugin(useGSAP);
 
@@ -35,14 +50,26 @@ type PredictionStatus = 'idle' | 'uploading' | 'analyzing' | 'success' | 'error'
 
 interface DiagnosePageProps {
   authToken?: string;
-  onPredictionCreated: (result: DiagnosisResult) => void;
+  onRequestLogin?: () => void;
+  onPredictionCreated?: (result: DiagnosisResult) => void;
+  embedded?: boolean;
   supportedPlants?: Plant[];
+  agriculturalProfiles?: AgriculturalProfile[];
+  onCreateAgriculturalProfile?: (input: AgriculturalProfileInput) => Promise<AgriculturalProfile>;
+  profileOwnerName?: string;
+  onProfileSaved?: (profileId: string) => void;
 }
 
 export const DiagnosePage: React.FC<DiagnosePageProps> = ({
   authToken,
+  onRequestLogin,
   onPredictionCreated,
+  embedded = false,
   supportedPlants = [],
+  agriculturalProfiles = [],
+  onCreateAgriculturalProfile,
+  profileOwnerName = 'Tài khoản của bạn',
+  onProfileSaved,
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -53,14 +80,98 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
   const [issue, setIssue] = useState<DiagnosisIssue | null>(null);
   const [showComparison, setShowComparison] = useState(false);
   const [showSupported, setShowSupported] = useState(false);
+  const [showSaveProfile, setShowSaveProfile] = useState(false);
+  const [savedProfileName, setSavedProfileName] = useState<string | null>(null);
+  const [guestSaveRequested, setGuestSaveRequested] = useState(false);
+  const [savingGuest, setSavingGuest] = useState(false);
+  const [guestMessage, setGuestMessage] = useState('');
   const [isSample, setIsSample] = useState(false);
   const [isPreparing, setIsPreparing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const requestedProfileId =
+    typeof window === 'undefined'
+      ? null
+      : new URLSearchParams(window.location.search).get('profile');
+  const selectedAgriculturalProfile = authToken
+    ? agriculturalProfiles.find((profile) => profile.id === requestedProfileId)
+    : undefined;
   const inputRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<string | null>(null);
   const requestRef = useRef<AbortController | null>(null);
   const selectionIdRef = useRef(0);
   const pageRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const draft = readGuestPredictionDraft();
+    if (!draft?.result.dto.guestToken) return;
+    setPrediction(draft.result);
+    setGuestSaveRequested(draft.saveRequested);
+    const confidenceIssue = getConfidenceIssue(draft.result);
+    setIssue(confidenceIssue);
+    setStatus(confidenceIssue ? 'attention' : 'success');
+    const controller = new AbortController();
+    const selectionId = selectionIdRef.current;
+    readGuestPredictionImage(draft.result.dto.guestToken, controller.signal)
+      .then((blob) => {
+        if (controller.signal.aborted || selectionId !== selectionIdRef.current) return;
+        const url = URL.createObjectURL(blob);
+        if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+        previewRef.current = url;
+        setPreviewUrl(url);
+        const extension =
+          blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg';
+        setSelectedFile(new File([blob], `anh-la-trong-phien.${extension}`, { type: blob.type }));
+      })
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted && selectionId === selectionIdRef.current)
+          setGuestMessage(error instanceof Error ? error.message : 'Không thể tải lại ảnh tạm.');
+      });
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    if (!authToken || !prediction?.dto.guestToken || !guestSaveRequested) return;
+    let active = true;
+    setSavingGuest(true);
+    setGuestMessage('Đang lưu kết quả vào tài khoản...');
+    saveGuestPrediction(prediction.dto.guestToken, authToken)
+      .then((saved) => {
+        if (!active) return;
+        setSavingGuest(false);
+        clearGuestPredictionDraft();
+        selectionIdRef.current += 1;
+        if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+        previewRef.current = null;
+        setPreviewUrl(saved.diagnosis.originalImageUrl);
+        setPrediction(saved);
+        onPredictionCreated?.(saved.diagnosis);
+        setGuestSaveRequested(false);
+        setGuestMessage('Đã lưu kết quả vào lịch sử tài khoản.');
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setSavingGuest(false);
+        setGuestSaveRequested(false);
+        writeGuestPredictionDraft(prediction);
+        setGuestMessage(
+          error instanceof Error ? error.message : 'Chưa lưu được kết quả. Vui lòng thử lại.',
+        );
+      });
+    return () => {
+      active = false;
+      setSavingGuest(false);
+    };
+  }, [authToken, prediction, guestSaveRequested, onPredictionCreated]);
+
+  const requestGuestSave = () => {
+    if (!prediction?.dto.guestToken || savingGuest) return;
+    writeGuestPredictionDraft(prediction, true);
+    setGuestSaveRequested(true);
+    if (!authToken) {
+      setGuestMessage('Đăng nhập hoặc tạo tài khoản để lưu kết quả vừa kiểm tra.');
+      onRequestLogin?.();
+    }
+  };
 
   useGSAP(
     () => {
@@ -132,6 +243,9 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
   );
 
   const clearImage = () => {
+    clearGuestPredictionDraft();
+    setGuestSaveRequested(false);
+    setGuestMessage('');
     selectionIdRef.current += 1;
     requestRef.current?.abort();
     requestRef.current = null;
@@ -141,6 +255,8 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
     setPreviewUrl(null);
     setResolution('');
     setPrediction(null);
+    setShowSaveProfile(false);
+    setSavedProfileName(null);
     setIssue(null);
     setShowComparison(false);
     setIsSample(false);
@@ -151,6 +267,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
   };
 
   const selectFile = (file: File, sample = false) => {
+    if (savingGuest) return;
     clearImage();
     const fileError = getInputIssue(file);
     if (fileError) {
@@ -229,10 +346,22 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
   };
 
   const analyze = async () => {
-    if (!selectedFile || isPreparing || status === 'uploading' || status === 'analyzing') return;
+    if (
+      !selectedFile ||
+      isPreparing ||
+      savingGuest ||
+      status === 'uploading' ||
+      status === 'analyzing'
+    )
+      return;
+    clearGuestPredictionDraft();
+    setGuestSaveRequested(false);
+    setGuestMessage('');
     const controller = new AbortController();
     requestRef.current = controller;
     setPrediction(null);
+    setShowSaveProfile(false);
+    setSavedProfileName(null);
     setIssue(null);
     setShowComparison(false);
     setProgress(0);
@@ -240,6 +369,9 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
     try {
       const result = await createPrediction(selectedFile, {
         token: authToken,
+        ...(selectedAgriculturalProfile && {
+          agriculturalProfileId: selectedAgriculturalProfile.id,
+        }),
         signal: controller.signal,
         onUploadProgress: setProgress,
         onUploadComplete: () => {
@@ -248,7 +380,19 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
       });
       if (controller.signal.aborted) return;
       setPrediction(result);
-      onPredictionCreated(result.diagnosis);
+      if (!authToken && result.dto.guestToken) {
+        if (!writeGuestPredictionDraft(result))
+          setGuestMessage(
+            'Trình duyệt không cho lưu phiên. Kết quả chỉ còn trong trang hiện tại; hãy đăng nhập để lưu trước khi tải lại trang.',
+          );
+      }
+      if (selectedAgriculturalProfile) {
+        setSavedProfileName(selectedAgriculturalProfile.name);
+        onProfileSaved?.(selectedAgriculturalProfile.id);
+      } else {
+        setShowSaveProfile(Boolean(authToken));
+      }
+      onPredictionCreated?.(result.diagnosis);
       const confidenceIssue = getConfidenceIssue(result);
       setIssue(confidenceIssue);
       setStatus(confidenceIssue ? 'attention' : 'success');
@@ -261,7 +405,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
     }
   };
 
-  const busy = status === 'uploading' || status === 'analyzing';
+  const busy = status === 'uploading' || status === 'analyzing' || savingGuest;
   const inputIssue = issue && isInputIssue(issue) ? issue : null;
   const resultIssue = issue && !isInputIssue(issue) ? issue : null;
   const currentStep = busy
@@ -276,12 +420,15 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
   const chooseImage = () => inputRef.current?.click();
 
   return (
-    <div ref={pageRef} className="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:px-12">
+    <div
+      ref={pageRef}
+      className={embedded ? 'min-w-0' : 'mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:px-12'}
+    >
       <Input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png"
-        className="sr-only"
+        accept="image/jpeg,image/png,image/webp"
+        className="sr-only size-px!"
         aria-label="Chọn ảnh lá cây"
         disabled={busy || isPreparing}
         tabIndex={-1}
@@ -291,12 +438,31 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
           e.target.value = '';
         }}
       />
-      <h1 className="sr-only">Chẩn đoán ảnh lá</h1>
-      <AnalysisStepper
-        currentStep={currentStep}
-        hasIssue={!!issue}
-        hasImage={Boolean(selectedFile) || isPreparing}
-      />
+      {!embedded && <h1 className="sr-only">Chẩn đoán ảnh lá</h1>}
+      {!authToken && (
+        <p className="mb-6 text-sm text-muted-foreground">
+          Bạn đang kiểm tra lá với tư cách khách. Kết quả chỉ giữ trong phiên tab này; đăng nhập khi
+          muốn lưu vào tài khoản. Ảnh tạm có thể lưu tối đa 60 phút, hoặc hết hạn sớm nếu máy chủ
+          khởi động lại hay đầy bộ nhớ tạm.
+        </p>
+      )}
+      {selectedAgriculturalProfile && (
+        <div className="mb-6 rounded-card border border-border bg-secondary p-5">
+          <p className="break-words font-semibold text-primary">
+            Đang kiểm tra với hồ sơ “{selectedAgriculturalProfile.name}”.
+          </p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Kết quả phân tích sẽ tự động được lưu vào hồ sơ này.
+          </p>
+        </div>
+      )}
+      {!embedded && (
+        <AnalysisStepper
+          currentStep={currentStep}
+          hasIssue={!!issue}
+          hasImage={Boolean(selectedFile) || isPreparing}
+        />
+      )}
       <div className="grid items-start gap-8 lg:grid-cols-5">
         <section
           className="min-w-0 overflow-hidden rounded-card border border-border bg-surface lg:col-span-3"
@@ -305,7 +471,9 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
             <div>
               <h2 className="font-semibold">Ảnh cần phân tích</h2>
-              <p className="mt-1 text-sm text-muted-foreground">JPG hoặc PNG · tối đa 15 MB</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                JPG, PNG hoặc WEBP · tối đa 15 MB
+              </p>
             </div>
             {previewUrl && (
               <div className="flex gap-1">
@@ -333,7 +501,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
             )}
             {previewUrl ? (
               <div>
-                <NextImage
+                <PrivateImage
                   unoptimized
                   width={640}
                   height={480}
@@ -382,7 +550,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
                 </p>
                 <Button
                   className="mt-5"
-                  disabled={isPreparing}
+                  disabled={busy || isPreparing}
                   onClick={() => inputRef.current?.click()}
                 >
                   <Upload />
@@ -418,6 +586,55 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
                 )}
               </Button>
             )}
+            {prediction?.dto.guestToken && (
+              <div className="mt-3 flex flex-col gap-2">
+                <Button disabled={busy} onClick={requestGuestSave}>
+                  {savingGuest ? 'Đang lưu kết quả...' : 'Lưu kết quả vào tài khoản'}
+                </Button>
+                {!authToken && (
+                  <p className="text-sm text-muted-foreground">
+                    Bạn có thể đóng hộp thoại đăng nhập để tiếp tục xem kết quả.
+                  </p>
+                )}
+              </div>
+            )}
+            {guestMessage && (
+              <p role="status" className="mt-3 text-sm text-muted-foreground">
+                {guestMessage}
+              </p>
+            )}
+            {authToken && prediction && !prediction.dto.guestToken && (
+              <div className="mt-3 grid gap-3">
+                {savedProfileName ? (
+                  <p role="status" className="text-sm text-primary">
+                    Đã lưu kết quả vào hồ sơ “{savedProfileName}”.
+                  </p>
+                ) : (
+                  <Button
+                    size="lg"
+                    className="h-auto min-h-12 w-full whitespace-normal py-3 text-center"
+                    onClick={() => setShowSaveProfile(true)}
+                  >
+                    Lưu vào hồ sơ nông nghiệp
+                  </Button>
+                )}
+                {showSaveProfile && (
+                  <SavePredictionProfileDialog
+                    key={prediction.dto.id}
+                    predictionId={prediction.dto.id}
+                    token={authToken}
+                    profiles={agriculturalProfiles}
+                    ownerName={profileOwnerName}
+                    onCreate={onCreateAgriculturalProfile}
+                    onSaved={(profile) => {
+                      setSavedProfileName(profile.name);
+                      onProfileSaved?.(profile.id);
+                    }}
+                    onClose={() => setShowSaveProfile(false)}
+                  />
+                )}
+              </div>
+            )}
             {status === 'uploading' && (
               <Progress className="mt-4" value={progress} aria-label="Tiến độ tải ảnh" />
             )}
@@ -432,7 +649,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
             showComparison={showComparison}
             onChooseImage={chooseImage}
             onChooseSample={() => void chooseSample()}
-            onShowSupported={() => setShowSupported(true)}
+            onShowSupported={embedded ? undefined : () => setShowSupported(true)}
             onViewComparison={() => setShowComparison(true)}
             onRetry={selectedFile ? analyze : undefined}
           />

@@ -14,7 +14,7 @@ public static class StorageTrafficLimits
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-                (context.Request.Path.StartsWithSegments("/api/predictions") || context.Request.Path.StartsWithSegments("/api/auth"))
+                (context.Request.Path.StartsWithSegments("/api/predictions") || context.Request.Path.StartsWithSegments("/api/auth") || context.Request.Path.StartsWithSegments("/api/users/avatar"))
                     ? RateLimitPartition.GetConcurrencyLimiter("predictions", _ => new ConcurrencyLimiterOptions
                     { PermitLimit = 8, QueueLimit = 0 })
                     : RateLimitPartition.GetNoLimiter("other"));

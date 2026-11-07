@@ -17,6 +17,14 @@ namespace AgriVision.ApiTests.Controllers;
 
 public class PredictionsControllerTests : IClassFixture<AgriVisionFactory>
 {
+    [Fact]
+    public async Task ReadPrivateImage_ShouldRequireAuthentication()
+    {
+        using var client = _factory.CreateClient();
+        var response = await client.GetAsync($"/api/predictions/{Guid.NewGuid()}/images/{Guid.NewGuid()}");
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
     private readonly AgriVisionFactory _factory;
     private readonly HttpClient _client;
 
@@ -91,7 +99,6 @@ public class PredictionsControllerTests : IClassFixture<AgriVisionFactory>
         (await owner.GetAsync(url)).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await guest.GetAsync("/uploads/predictions/leaf.jpg")).StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
-
     [Trait("ApiCase", "existing.PredictionsControllerTests.GuestPrediction_ShouldNotCreatePersonalHistory")]
     [Fact]
     public async Task GuestPrediction_ShouldNotCreatePersonalHistory()

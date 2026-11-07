@@ -22,7 +22,7 @@ public class PredictionDetailConfiguration : IEntityTypeConfiguration<Prediction
 
         builder.Property(pd => pd.PlantDiseaseId)
             .HasColumnName("plant_disease_id")
-            .IsRequired();
+            .IsRequired(false);
 
         builder.Property(pd => pd.Probability)
             .HasColumnName("probability")
@@ -47,6 +47,6 @@ public class PredictionDetailConfiguration : IEntityTypeConfiguration<Prediction
         builder.HasOne(pd => pd.PlantDisease)
             .WithMany(pd => pd.PredictionDetails)
             .HasForeignKey(pd => pd.PlantDiseaseId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

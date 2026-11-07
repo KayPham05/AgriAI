@@ -14,16 +14,16 @@ public class DiseaseService : IDiseaseService
         _diseaseRepository = diseaseRepository;
     }
 
-    public async Task<IEnumerable<DiseaseDto>> GetAllAsync(bool includeInactive = false, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<DiseaseDto>> GetAllAsync(bool includeInactive = false, bool includeUnapproved = false, CancellationToken cancellationToken = default)
     {
         var diseases = await _diseaseRepository.GetAllAsync(includeInactive, cancellationToken);
-        return diseases.Select(MapToDto);
+        return diseases.Select(d => MapToDto(d, includeUnapproved));
     }
 
-    public async Task<DiseaseDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<DiseaseDto?> GetByIdAsync(Guid id, bool includeUnapproved = false, CancellationToken cancellationToken = default)
     {
         var disease = await _diseaseRepository.GetByIdAsync(id, cancellationToken);
-        return disease != null ? MapToDto(disease) : null;
+        return disease != null ? MapToDto(disease, includeUnapproved) : null;
     }
 
     public async Task<DiseaseDto> CreateAsync(CreateDiseaseRequest request, CancellationToken cancellationToken = default)
@@ -31,18 +31,19 @@ public class DiseaseService : IDiseaseService
         var disease = new Disease
         {
             Id = Guid.NewGuid(),
-            Name = request.Name,
-            VietnameseName = request.VietnameseName,
-            Description = request.Description,
-            Symptoms = request.Symptoms,
-            Treatment = request.Treatment,
-            Prevention = request.Prevention,
+            Name = CatalogValidation.Name(request.Name, "Name", 150),
+            ConditionType = ValidateCondition(request.ConditionType ?? "Unknown"),
+            VietnameseName = AgriVision.Application.Common.CatalogText.Name(request.VietnameseName),
+            Description = AgriVision.Application.Common.CatalogText.Normalize(request.Description),
+            Symptoms = AgriVision.Application.Common.CatalogText.Normalize(request.Symptoms),
+            Treatment = AgriVision.Application.Common.CatalogText.Normalize(request.Treatment),
+            Prevention = AgriVision.Application.Common.CatalogText.Normalize(request.Prevention),
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
 
         await _diseaseRepository.AddAsync(disease, cancellationToken);
-        return MapToDto(disease);
+        return MapToDto(disease, true);
     }
 
     public async Task<DiseaseDto> UpdateAsync(Guid id, UpdateDiseaseRequest request, CancellationToken cancellationToken = default)
@@ -53,17 +54,36 @@ public class DiseaseService : IDiseaseService
             throw new KeyNotFoundException($"Disease with ID '{id}' not found.");
         }
 
-        disease.Name = request.Name;
-        disease.VietnameseName = request.VietnameseName;
-        disease.Description = request.Description;
-        disease.Symptoms = request.Symptoms;
-        disease.Treatment = request.Treatment;
-        disease.Prevention = request.Prevention;
+        var name = CatalogValidation.Name(request.Name, "Name", 150);
+        // Omitted metadata preserves the classification for older clients.
+        var condition = ValidateCondition(request.ConditionType ?? disease.ConditionType);
+        if (disease.Name != name || disease.VietnameseName != request.VietnameseName ||
+            disease.Description != request.Description || disease.Symptoms != request.Symptoms ||
+            disease.Treatment != request.Treatment || disease.Prevention != request.Prevention ||
+            disease.IsActive != request.IsActive || disease.ConditionType != condition)
+            disease.IsContentApproved = false;
+        disease.Name = name;
+        disease.ConditionType = condition;
+        disease.VietnameseName = AgriVision.Application.Common.CatalogText.Name(request.VietnameseName);
+        disease.Description = AgriVision.Application.Common.CatalogText.Normalize(request.Description);
+        disease.Symptoms = AgriVision.Application.Common.CatalogText.Normalize(request.Symptoms);
+        disease.Treatment = AgriVision.Application.Common.CatalogText.Normalize(request.Treatment);
+        disease.Prevention = AgriVision.Application.Common.CatalogText.Normalize(request.Prevention);
         disease.IsActive = request.IsActive;
         disease.UpdatedAt = DateTime.UtcNow;
 
         await _diseaseRepository.UpdateAsync(disease, cancellationToken);
-        return MapToDto(disease);
+        return MapToDto(disease, true);
+    }
+
+    public async Task<DiseaseDto> SetApprovalAsync(Guid id, bool approved, CancellationToken cancellationToken = default)
+    {
+        var disease = await _diseaseRepository.GetByIdAsync(id, cancellationToken)
+            ?? throw new KeyNotFoundException("Disease not found.");
+        disease.IsContentApproved = approved;
+        disease.UpdatedAt = DateTime.UtcNow;
+        await _diseaseRepository.UpdateAsync(disease, cancellationToken);
+        return MapToDto(disease, true);
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
@@ -77,18 +97,29 @@ public class DiseaseService : IDiseaseService
         await _diseaseRepository.DeleteAsync(disease, cancellationToken);
     }
 
-    private static DiseaseDto MapToDto(Disease disease)
+    private static string ValidateCondition(string condition) => condition switch
     {
+        "Unknown" or "Healthy" or "NutrientDeficiency" or "Disease" => condition,
+        _ => throw new ArgumentException("ConditionType must be Unknown, Healthy, NutrientDeficiency or Disease.")
+    };
+
+    private static DiseaseDto MapToDto(Disease disease, bool includeUnapproved = false)
+    {
+        // Keep the legacy parameter/approval metadata for existing clients. Saved active content
+        // is public immediately; administrators can also inspect inactive content.
+        var visible = includeUnapproved || disease.IsActive;
+        const string pending = "Thông tin đang được cập nhật";
         return new DiseaseDto(
             disease.Id,
             disease.Name,
             disease.VietnameseName,
-            disease.Description,
-            disease.Symptoms,
-            disease.Treatment,
-            disease.Prevention,
+            visible ? disease.Description : pending,
+            visible ? disease.Symptoms : pending,
+            visible ? disease.Treatment : pending,
+            visible ? disease.Prevention : pending,
             disease.IsActive,
             disease.CreatedAt
-        );
+        ) { IsContentApproved = disease.IsContentApproved, ConditionType = disease.ConditionType,
+            ImageUrl = AgriVision.Application.Common.CatalogImageUrl.Create("diseases", disease.Id, disease.ImageKey) };
     }
 }

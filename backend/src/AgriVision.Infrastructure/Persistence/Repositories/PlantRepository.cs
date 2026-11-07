@@ -41,6 +41,8 @@ public class PlantRepository : IPlantRepository
     public async Task UpdateAsync(Plant plant, CancellationToken cancellationToken = default)
     {
         _context.Plants.Update(plant);
+        // Text/status updates must not overwrite an image replaced by another request.
+        _context.Entry(plant).Property(item => item.ImageKey).IsModified = false;
         await _context.SaveChangesAsync(cancellationToken);
     }
 
@@ -49,6 +51,8 @@ public class PlantRepository : IPlantRepository
         plant.IsActive = false;
         plant.UpdatedAt = DateTime.UtcNow;
         _context.Plants.Update(plant);
+        // Text/status updates must not overwrite an image replaced by another request.
+        _context.Entry(plant).Property(item => item.ImageKey).IsModified = false;
         await _context.SaveChangesAsync(cancellationToken);
     }
 }

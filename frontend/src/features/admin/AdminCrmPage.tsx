@@ -34,15 +34,36 @@ import { AdminOverview } from './AdminOverview';
 import { AdminUsers } from './AdminUsers';
 import { AdminImages } from './AdminImages';
 import { AdminSessions } from './AdminSessions';
+import dynamic from 'next/dynamic';
+import { BookOpen, Leaf, Pill, Bug } from 'lucide-react';
+const KnowledgeAdmin = dynamic(() =>
+  import('@/features/knowledge/KnowledgeAdmin').then((module) => module.KnowledgeAdmin),
+);
 
-type CrmView = 'overview' | 'users' | 'images' | 'sessions';
+type CrmView =
+  | 'overview'
+  | 'users'
+  | 'images'
+  | 'sessions'
+  | 'plants'
+  | 'diseases'
+  | 'medicines'
+  | 'knowledge-documents';
 const NAVIGATION = [
   { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
   { id: 'users', label: 'Người dùng', icon: Users },
   { id: 'images', label: 'Ảnh đã tải lên', icon: Images },
   { id: 'sessions', label: 'Phiên đăng nhập', icon: Monitor },
+  { id: 'plants', label: 'Cây trồng', icon: Leaf },
+  { id: 'diseases', label: 'Bệnh cây', icon: Bug },
+  { id: 'medicines', label: 'Thuốc', icon: Pill },
+  { id: 'knowledge-documents', label: 'Trích xuất', icon: BookOpen },
 ] as const;
 const VIEW_COPY = {
+  plants: { title: 'Quản lý cây trồng' },
+  diseases: { title: 'Quản lý bệnh cây' },
+  medicines: { title: 'Quản lý thuốc' },
+  'knowledge-documents': { title: 'Quản lý trích xuất' },
   overview: {
     title: 'Tổng quan vận hành',
   },
@@ -285,14 +306,22 @@ function AdminWorkspace({ session }: { session: AuthSession }) {
                   onSessions={() => navigate('sessions')}
                 />
               )}
-              {view === 'users' && <AdminUsers key={userSearch} initialQuery={userSearch} />}
-              {view === 'images' && <AdminImages />}
-              {view === 'sessions' && <AdminSessions />}
+              {view === 'users' && (
+                <AdminUsers key={userSearch} initialQuery={userSearch} token={session.token} />
+              )}
+              {view === 'images' && <AdminImages token={session.token} />}
+              {view === 'sessions' && <AdminSessions token={session.token} />}
+              {(view === 'plants' ||
+                view === 'diseases' ||
+                view === 'medicines' ||
+                view === 'knowledge-documents') && (
+                <KnowledgeAdmin key={view} kind={view} token={session.token} />
+              )}
             </AdminMotion>
             {view !== 'overview' && (
               <footer className="mt-2 flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border pt-2 text-xs text-muted-foreground">
-                <p>AgriAI Quản trị / Giao diện quản trị người dùng</p>
-                <p>Nguồn dữ liệu: Mock frontend</p>
+                <p>AgriAI Quản trị</p>
+                <p>Nguồn dữ liệu: API AgriAI</p>
               </footer>
             )}
           </main>

@@ -1,5 +1,7 @@
-﻿import { render, screen, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/react';
+import { json } from '../../helpers/knowledge';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { clearAuthSession, saveAuthSession } from '@/services/authApi';
 import { AdminCrmPage } from '@/features/admin/AdminCrmPage';
@@ -17,8 +19,61 @@ async function setup() {
     createdAt: '2026-10-01T00:00:00Z',
   };
   saveAuthSession({ token: 'admin-token', user: admin }, true);
-  const requests = vi.fn(async (url: string) => {
+  let isActive = true;
+  let ended = false;
+  let lockReason: string | null = null;
+  const requests = vi.fn(async (url: string, init?: RequestInit) => {
     if (url === '/api/auth/me') return { ok: true, json: async () => admin };
+    if (url.endsWith('/status')) {
+      const change = JSON.parse(String(init?.body));
+      isActive = change.isActive;
+      lockReason = change.reason;
+      if (!isActive) ended = true;
+      return json({});
+    }
+    if (url.endsWith('/logout-all')) {
+      ended = true;
+      return new Response(null, { status: 204 });
+    }
+    if (url.endsWith('/warnings')) return new Response(null, { status: 204 });
+    if (url.endsWith('/content')) return new Response(new Blob(['image'], { type: 'image/jpeg' }));
+    const identity = { userId: 'user', userName: 'Nguyễn Văn An', userEmail: 'an@example.test' };
+    const items = url.includes('/api/admin/users?')
+      ? [
+          {
+            ...admin,
+            id: 'user',
+            fullName: identity.userName,
+            email: identity.userEmail,
+            role: 'User',
+            isActive,
+            lockReason,
+            predictionCount: 1,
+          },
+        ]
+      : url.includes('/api/admin/images?')
+        ? [
+            {
+              ...identity,
+              id: 'image',
+              status: 'Available',
+              uploadedAt: admin.createdAt,
+              expiresAt: '2027-01-01',
+            },
+          ]
+        : url.includes('/api/admin/sessions?')
+          ? [
+              {
+                ...identity,
+                id: 'session',
+                status: ended ? 'Ended' : 'Active',
+                createdAt: admin.createdAt,
+                expiresAt: '2027-01-01',
+                endedAt: ended ? admin.createdAt : null,
+              },
+            ]
+          : null;
+    if (items) return json({ items, totalPages: 1, totalCount: 1, pageNumber: 1, pageSize: 10 });
     throw new Error(`Unexpected request: ${url}`);
   });
   vi.stubGlobal('fetch', requests);
@@ -35,83 +90,91 @@ function accountRow(name = 'Nguyễn Văn An') {
 
 async function confirm(label: string) {
   await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: label }));
-  expect(screen.queryByRole('dialog')).toBeNull();
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 }
 
-describe('Admin frontend integration with real mock provider and components', () => {
+describe('Admin frontend integration through authenticated HTTP requests', () => {
   it('locks and restores an account while its ended session stays ended across navigation', async () => {
     const { user, requests } = await setup();
     await user.click(screen.getByRole('button', { name: 'Người dùng' }));
+    await screen.findByText('Nguyễn Văn An');
     await user.click(accountRow().getByRole('button', { name: 'Khóa tài khoản' }));
-    await user.type(screen.getByLabelText('Lý do'), 'Kiểm tra luồng mock');
+    await user.type(screen.getByLabelText('Lý do'), 'Vi phạm nội dung');
     await confirm('Xác nhận khóa');
-    expect(accountRow().getByText('Đã khóa')).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Tổng quan' }));
-    const attention = within(screen.getByRole('region', { name: 'Cần chú ý' }));
-    expect(attention.getByText('Tài khoản bị khóa').nextElementSibling).toHaveTextContent('1');
-    expect(
-      within(screen.getByRole('region', { name: 'Phiên đăng nhập' })).getByText('0 còn hiệu lực'),
-    ).toBeVisible();
+    expect(await screen.findByText('Đã khóa')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Phiên đăng nhập' }));
     const sessions = screen.getByRole('region', { name: 'Danh sách phiên đăng nhập' });
-    const row = within(sessions).getByText('Nguyễn Văn An').closest('li') as HTMLElement;
+    const row = (await within(sessions).findByText('Nguyễn Văn An')).closest('li') as HTMLElement;
     expect(within(row).getByText('Đã đăng xuất')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Người dùng' }));
+    await screen.findByText('Nguyễn Văn An');
     await user.click(accountRow().getByRole('button', { name: 'Khôi phục tài khoản' }));
     await confirm('Xác nhận khôi phục');
-    expect(accountRow().getByText('Hoạt động')).toBeVisible();
+    expect(await screen.findByText('Hoạt động')).toBeVisible();
     expect(accountRow().queryByText(/Lý do khóa/)).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Phiên đăng nhập' }));
-    const restoredRow = screen.getByText('Nguyễn Văn An').closest('li') as HTMLElement;
+    const restoredRow = (await screen.findByText('Nguyễn Văn An')).closest('li') as HTMLElement;
     expect(within(restoredRow).getByText('Đã đăng xuất')).toBeVisible();
-    expect(requests.mock.calls.map(([url]) => url)).toEqual(['/api/auth/me']);
+    expect(requests.mock.calls.filter(([url]) => url.endsWith('/status'))).toHaveLength(2);
   });
 
-  it('accumulates image and account warnings on the same owner across tabs', async () => {
+  it('sends image and account warnings to the correct endpoints across tabs', async () => {
     const { user, requests } = await setup();
     await user.click(screen.getByRole('button', { name: 'Ảnh đã tải lên' }));
-    const imageRow = screen.getByText('Nguyễn Văn An').closest('li') as HTMLElement;
+    const imageRow = (await screen.findByText('Nguyễn Văn An')).closest('li') as HTMLElement;
     await user.click(within(imageRow).getByRole('button', { name: 'Cảnh báo ảnh vi phạm' }));
     await user.type(screen.getByLabelText('Nội dung cảnh báo'), 'Ảnh minh họa');
     await confirm('Gửi cảnh báo');
-    expect(within(imageRow).getByText('Còn lưu trữ')).toBeVisible();
+    expect(await screen.findByText('Còn lưu trữ')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Người dùng' }));
-    expect(accountRow().getByText('1 cảnh báo đã gửi')).toBeVisible();
+    await screen.findByText('Nguyễn Văn An');
     await user.click(accountRow().getByRole('button', { name: 'Gửi cảnh báo' }));
     await user.type(screen.getByLabelText('Nội dung cảnh báo'), 'Tài khoản minh họa');
     await confirm('Gửi cảnh báo');
-    expect(accountRow().getByText('2 cảnh báo đã gửi')).toBeVisible();
-    expect(accountRow('Trần Thị Bình').getByText('0 cảnh báo đã gửi')).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Tổng quan' }));
-    const attention = within(screen.getByRole('region', { name: 'Cần chú ý' }));
-    expect(attention.getByText('Cảnh báo đã gửi').nextElementSibling).toHaveTextContent('2');
-    expect(attention.queryByText('Chưa ghi nhận tài khoản bị khóa hoặc cảnh báo.')).toBeNull();
-    expect(requests.mock.calls.map(([url]) => url)).toEqual(['/api/auth/me']);
+    expect(requests).toHaveBeenCalledWith(
+      '/api/admin/images/image/warnings',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ message: 'Ảnh minh họa' }),
+      }),
+    );
+    expect(requests).toHaveBeenCalledWith(
+      '/api/admin/users/user/warnings',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ message: 'Tài khoản minh họa' }),
+      }),
+    );
   });
 
   it('cancels a lock without changing the account or active session', async () => {
     const { user } = await setup();
     await user.click(screen.getByRole('button', { name: 'Người dùng' }));
+    await screen.findByText('Nguyễn Văn An');
     await user.click(accountRow().getByRole('button', { name: 'Khóa tài khoản' }));
     await user.type(screen.getByLabelText('Lý do'), 'Không xác nhận');
     await user.click(screen.getByRole('button', { name: 'Hủy' }));
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(accountRow().getByText('Hoạt động')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Phiên đăng nhập' }));
-    const row = screen.getByText('Nguyễn Văn An').closest('li') as HTMLElement;
+    const row = (await screen.findByText('Nguyễn Văn An')).closest('li') as HTMLElement;
     expect(within(row).getByText('Còn hiệu lực')).toBeVisible();
   });
 
-  it('simulates forced logout without clearing the actual admin login', async () => {
+  it('requests forced logout without clearing the admin login', async () => {
     const { user, requests } = await setup();
     await user.click(screen.getByRole('button', { name: 'Người dùng' }));
+    await screen.findByText('Nguyễn Văn An');
     await user.click(accountRow().getByRole('button', { name: 'Cưỡng chế đăng xuất' }));
     await confirm('Xác nhận đăng xuất');
-    expect(accountRow().getByText('Hoạt động')).toBeVisible();
+    expect(await screen.findByText('Hoạt động')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Phiên đăng nhập' }));
-    const row = screen.getByText('Nguyễn Văn An').closest('li') as HTMLElement;
+    const row = (await screen.findByText('Nguyễn Văn An')).closest('li') as HTMLElement;
     expect(within(row).getByText('Đã đăng xuất')).toBeVisible();
     expect(localStorage.getItem('leafai_auth_session')).toContain('admin-token');
-    expect(requests.mock.calls.map(([url]) => url)).toEqual(['/api/auth/me']);
+    expect(requests).toHaveBeenCalledWith(
+      '/api/admin/users/user/logout-all',
+      expect.objectContaining({ method: 'POST', headers: { Authorization: 'Bearer admin-token' } }),
+    );
   });
 });

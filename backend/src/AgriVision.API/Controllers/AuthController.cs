@@ -1,9 +1,11 @@
 using System.Security.Claims;
-using Microsoft.AspNetCore.RateLimiting;
+using AgriVision.Application.Common.Interfaces.Authentication;
 using AgriVision.Application.DTOs.Auth;
 using AgriVision.Application.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using System.ComponentModel.DataAnnotations;
 
 namespace AgriVision.API.Controllers;
 
@@ -30,8 +32,30 @@ public class AuthController : ControllerBase
     [EnableRateLimiting("auth")]
     public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
-        var result = await _authService.LoginAsync(request, cancellationToken);
-        return Ok(result);
+        try
+        {
+            return Ok(await _authService.LoginAsync(request, cancellationToken));
+        }
+        catch (TwoFactorRequiredException challenge)
+        {
+            return Accepted(new { challengeId = challenge.ChallengeId });
+        }
+    }
+
+    [HttpPost("google")]
+    [EnableRateLimiting("account-challenges")]
+    public async Task<ActionResult<AuthResponse>> Google(
+        GoogleLoginRequest request, [FromServices] IGoogleAccountLogin google, CancellationToken cancellationToken)
+    {
+        var user = await google.AuthenticateAsync(request.Credential, cancellationToken);
+        try
+        {
+            return Ok(await _authService.LoginAccountAsync(user, cancellationToken));
+        }
+        catch (TwoFactorRequiredException challenge)
+        {
+            return Accepted(new { challengeId = challenge.ChallengeId });
+        }
     }
 
     [Authorize]
@@ -68,3 +92,5 @@ public class AuthController : ControllerBase
         return NoContent();
     }
 }
+
+public sealed record GoogleLoginRequest([Required, StringLength(8192)] string Credential);

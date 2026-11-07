@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { PlantDetailRoute } from '@/features/plants/PlantDetailRoute';
+import { CatalogRoute } from '@/features/knowledge/CatalogRoute';
 import { SUPPORTED_PLANTS } from '@/data/plantData';
 export async function generateMetadata({
   params,
@@ -12,5 +12,5 @@ export async function generateMetadata({
 }
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <PlantDetailRoute id={id} />;
+  return <CatalogRoute kind="plants" id={id} />;
 }

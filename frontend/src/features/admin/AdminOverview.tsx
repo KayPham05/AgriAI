@@ -49,6 +49,10 @@ export function AdminOverview({
   const stats = buildAdminOverviewStats(data, asOf, dateFilter);
   return (
     <div className="admin-overview min-h-0 flex-1 overflow-auto p-1">
+      <p role="note" className="mb-3 text-sm text-muted-foreground">
+        Trang Tổng quan hiện dùng dữ liệu minh họa. Các mục Người dùng, Ảnh đã tải lên và Phiên đăng
+        nhập lấy dữ liệu thật từ hệ thống.
+      </p>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <p role="status" aria-label="Bộ lọc thời gian" className="text-xs text-muted-foreground">

@@ -10,7 +10,8 @@ public class UserActionTokenConfiguration : IEntityTypeConfiguration<UserActionT
     {
         builder.ToTable("user_action_tokens", table =>
         {
-            table.HasCheckConstraint("ck_user_action_tokens_purpose", "purpose IN ('EmailVerification', 'PasswordReset')");
+            table.HasCheckConstraint("ck_user_action_tokens_purpose",
+                "purpose IN ('EmailVerification', 'PasswordReset', 'TwoFactorSetup', 'TwoFactorDisable', 'TwoFactorLogin', 'PasswordChange')");
             table.HasCheckConstraint("ck_user_action_tokens_expiry", "expires_at > created_at");
             table.HasCheckConstraint("ck_user_action_tokens_hash", "token_hash ~ '^[0-9a-f]{64}$'");
         });
@@ -22,6 +23,7 @@ public class UserActionTokenConfiguration : IEntityTypeConfiguration<UserActionT
         builder.Property(token => token.CreatedAt).HasColumnName("created_at");
         builder.Property(token => token.ExpiresAt).HasColumnName("expires_at");
         builder.Property(token => token.ConsumedAt).HasColumnName("consumed_at");
+        builder.Property(token => token.FailedAttempts).HasColumnName("failed_attempts");
         builder.HasIndex(token => token.TokenHash).IsUnique();
         builder.HasIndex(token => token.ExpiresAt);
         builder.HasOne(token => token.User).WithMany().HasForeignKey(token => token.UserId)

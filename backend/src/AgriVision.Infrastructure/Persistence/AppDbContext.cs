@@ -11,6 +11,7 @@ public class AppDbContext : DbContext
 
     public DbSet<PendingImageUpload> PendingImageUploads => Set<PendingImageUpload>();
     public DbSet<User> Users => Set<User>();
+    public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
     public DbSet<Plant> Plants => Set<Plant>();
     public DbSet<Disease> Diseases => Set<Disease>();
     public DbSet<PlantDisease> PlantDiseases => Set<PlantDisease>();

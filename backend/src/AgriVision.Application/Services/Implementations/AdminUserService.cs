@@ -14,24 +14,29 @@ public class AdminUserService : IAdminUserService
     private readonly IAdminAuditLogRepository _auditLogRepository;
     private readonly IPredictionRepository _predictionRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IUserNotificationRepository _notifications;
+    private readonly ISessionNoticePublisher _sessionNotices;
 
     public AdminUserService(
         IUserRepository userRepository,
         IUserSessionRepository userSessionRepository,
         IAdminAuditLogRepository auditLogRepository,
         IPredictionRepository predictionRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork, IUserNotificationRepository notifications,
+        ISessionNoticePublisher sessionNotices)
     {
         _userRepository = userRepository;
         _userSessionRepository = userSessionRepository;
         _auditLogRepository = auditLogRepository;
         _predictionRepository = predictionRepository;
         _unitOfWork = unitOfWork;
+        _notifications = notifications;
+        _sessionNotices = sessionNotices;
     }
 
     public async Task<PagedResult<AdminUserListItemDto>> GetUsersAsync(AdminUserFilterParams filterParams, CancellationToken cancellationToken = default)
     {
-        if (filterParams.PageNumber < 1 || filterParams.PageSize < 1)
+        if (filterParams.PageNumber is < 1 or > 1000000 || filterParams.PageSize is < 1 or > 100 || filterParams.Search?.Length > 150)
         {
             throw new ArgumentException("Page number and page size must be positive.");
         }
@@ -61,31 +66,37 @@ public class AdminUserService : IAdminUserService
         return MapToDto(user, predictionCount);
     }
 
-    public async Task<AdminUserListItemDto> SetUserStatusAsync(Guid adminId, Guid targetUserId, bool isActive, CancellationToken cancellationToken = default)
+    public async Task<AdminUserListItemDto> SetUserStatusAsync(Guid adminId, Guid targetUserId, bool isActive, CancellationToken cancellationToken = default, string? reason = null)
     {
+        if (reason?.Trim().Length > 500) throw new ArgumentException("Lý do khóa không được vượt quá 500 ký tự.");
         if (adminId == targetUserId && !isActive)
         {
             throw new InvalidOperationException("Admin cannot deactivate their own account.");
         }
 
-        var user = await _userRepository.GetByIdAsync(targetUserId, cancellationToken);
-        if (user == null)
-        {
-            throw new KeyNotFoundException($"User with ID '{targetUserId}' not found.");
-        }
-
-        if (user.IsActive != isActive)
-        {
-            await _unitOfWork.ExecuteInTransactionAsync(async () =>
+        User user = null!;
+        Guid[] revokedSessionIds = [];
+        await _unitOfWork.ExecuteInTransactionAsync(async () =>
             {
+                // Serialize status transitions with login and other administrators.
+                user = await _userRepository.GetByIdForUpdateAsync(targetUserId, cancellationToken)
+                    ?? throw new KeyNotFoundException($"User with ID '{targetUserId}' not found.");
+                if (user.IsActive == isActive) return;
                 user.IsActive = isActive;
+                user.LockReason = isActive ? null : reason?.Trim();
+                user.LockedAt = isActive ? null : DateTime.UtcNow;
                 user.UpdatedAt = DateTime.UtcNow;
                 await _userRepository.UpdateAsync(user, cancellationToken);
 
                 if (!isActive)
                 {
-                    await _userSessionRepository.RevokeAllSessionsByUserIdAsync(targetUserId, cancellationToken);
+                    revokedSessionIds = (await _userSessionRepository.GetActiveSessionsByUserIdAsync(targetUserId, cancellationToken))
+                        .Select(session => session.Id).ToArray();
+                    await _userSessionRepository.RevokeAllByAdminAsync(targetUserId, cancellationToken);
                 }
+                else
+                    await _notifications.AddAsync(new UserNotification { UserId = targetUserId, ActorUserId = adminId,
+                        Kind = "AccountRestored", Message = "Tài khoản của bạn đã được khôi phục. Bạn có thể sử dụng các chức năng trở lại." }, cancellationToken);
 
                 await _auditLogRepository.AddAsync(new AdminAuditLog
                 {
@@ -96,8 +107,9 @@ public class AdminUserService : IAdminUserService
                     OccurredAt = DateTime.UtcNow
                 }, cancellationToken);
             }, cancellationToken);
-        }
 
+        if (revokedSessionIds.Length > 0)
+            await _sessionNotices.PublishAsync(revokedSessionIds, SessionNotice.Locked(user.LockReason));
         var predictionCount = await _predictionRepository.GetCountByUserIdAsync(targetUserId, cancellationToken);
         return MapToDto(user, predictionCount);
     }
@@ -177,6 +189,8 @@ public class AdminUserService : IAdminUserService
         u.EmailVerifiedAt,
         u.CreatedAt,
         u.UpdatedAt,
-        predictionCount
+        predictionCount,
+        u.LockReason,
+        u.LockedAt
     );
 }

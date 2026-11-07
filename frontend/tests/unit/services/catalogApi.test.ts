@@ -4,7 +4,7 @@ import { getDiseases, getPlants, type DiseaseDto, type PlantDto } from '@/servic
 afterEach(() => vi.unstubAllGlobals());
 
 describe('backend leaf reference metadata', () => {
-  it('keeps the four non-model crop references accessible without activating backend rows', async () => {
+  it('does not reintroduce inactive plants through local reference templates', async () => {
     const record: PlantDto = {
       id: 'archived-potato',
       name: 'Potato',
@@ -16,12 +16,7 @@ describe('backend leaf reference metadata', () => {
     };
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify([record]))));
     const plants = await getPlants();
-    expect(plants.map((plant) => plant.id)).toEqual(['pomelo', 'potato', 'banana', 'watermelon']);
-    const potato = plants.find((plant) => plant.id === 'potato');
-    expect(potato?.backendId).toBeUndefined();
-    expect(potato?.detectableCount).toBe(0);
-    expect(potato?.description).toContain('Cây tham khảo');
-    expect(potato?.conditions.find((item) => item.isHealthy)?.imageUrl).toBeTruthy();
+    expect(plants).toEqual([]);
   });
   it('matches canonical Esca without replacing the grape photo or hiding its unverified status', async () => {
     const record: DiseaseDto = {
@@ -64,6 +59,74 @@ describe('backend leaf reference metadata', () => {
 
 describe('backend plant photograph matching', () => {
   it.each([
+    ['Lua', 'Lúa'],
+    ['Mang_cau_fixture', 'Mãng cầu mới'],
+  ])(
+    'uses the uploaded photo for %s, including plants without a local template',
+    async (name, vietnameseName) => {
+      const imageUrl = '/api/catalog/plants/backend-plant-id/image?v=uploaded.png';
+      const record: PlantDto = {
+        id: 'backend-plant-id',
+        name,
+        vietnameseName,
+        imageUrl,
+        scientificName: null,
+        description: null,
+        isActive: true,
+        createdAt: '',
+      };
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify([record]))));
+
+      const [plant] = await getPlants();
+
+      expect(plant.imageUrl).toBe(imageUrl);
+      expect(plant.backendId).toBe(record.id);
+      expect(plant.name).toBe(vietnameseName);
+    },
+  );
+
+  it.each([null, undefined])(
+    'uses the default logo for an unknown plant with no uploaded image (%s)',
+    async (imageUrl) => {
+      const record: PlantDto = {
+        id: 'unknown-plant',
+        name: 'UnlistedPlantFixture',
+        vietnameseName: 'Cây mới',
+        imageUrl,
+        scientificName: null,
+        description: null,
+        isActive: true,
+        createdAt: '',
+      };
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify([record]))));
+      expect((await getPlants())[0].imageUrl).toBe('/images/agriai-leaf-mark.png');
+    },
+  );
+
+  it('uses the uploaded disease photo while preserving the reference identity and content', async () => {
+    const imageUrl = '/api/catalog/diseases/esca-backend/image?v=uploaded.jpg';
+    const record: DiseaseDto = {
+      id: 'esca-backend',
+      name: 'Esca',
+      vietnameseName: 'Esca',
+      imageUrl,
+      description: 'Backend description',
+      symptoms: null,
+      treatment: null,
+      prevention: null,
+      isActive: true,
+      createdAt: '',
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify([record]))));
+
+    const disease = (await getDiseases()).find((item) => item.id === 'grape-esca');
+
+    expect(disease?.heroImage).toBe(imageUrl);
+    expect(disease?.backendId).toBe(record.id);
+    expect(disease?.overview).toContain('Backend description');
+  });
+
+  it.each([
     ['Ca_chua', 'Cà chua', 'tomato', 'cà chua banner.jpg'],
     ['Ca_phe', 'Cà phê', 'coffee', 'cà phề banner.jpg'],
     ['Cam', 'Cam', 'orange', 'cam banner.jpg'],
@@ -95,6 +158,7 @@ describe('backend plant photograph matching', () => {
     expect(decodeURI(plant.imageUrl)).toContain(`/assets/banner/${filename}`);
     expect(plant.backendId).toBe(record.id);
     if (vietnameseName) expect(plant.name).toBe(vietnameseName);
-    expect(plant.category).not.toBe('Khác');
+    // Photo matching must not override the backend's unspecified category.
+    expect(plant.category).toBe('Khác');
   });
 });
