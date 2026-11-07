@@ -44,3 +44,10 @@ The user authorized resolving the seven conflicts in PR #60. Fetched both refs a
 Combined-source verification: Unit 225/225, API 286/286, Integration 82/82 on the November 7 rerun (real AI/R2 excluded). The November 6 integration process was interrupted without a result. Frontend full run passed 569/570; after correcting the populated-catalog fixture, 4/4 targeted landing cases passed, covering all 570 cases across the runs. Typecheck, scoped Biome, unique manifest routes and Git whitespace/conflict checks passed. Build passed with C# 12, zero errors and two NU1900 warnings; default-language build and GitHub Actions remain unverified. Staged paths include incoming target example/configuration files but no local runtime credentials or generated evidence.
 
 Prepared a merge commit and revised PR verification text; remote push and mergeability verification follow. Preserve Draft status and reviewers. No live migration, rebuild, AI startup, R2 operation, PR merge or self-approval.
+
+
+## Conflict resolution delivered — 2026-11-07
+
+Created and pushed merge commit `d18a665ef551333ca3c56f7368a549412ba5b4e4`, whose parents are source `64f1c23` and target `16a0115`. Push was a normal fast-forward update of the PR source branch. GitHub API confirmed PR #60 points to that exact commit and now reports `mergeable=true`, `mergeable_state=unstable`: the seven source/target conflicts are resolved; CI checks were still in progress at this observation. Updated and read back the PR description with combined-source verification and remaining limits. Reviewers remain `KayPham05` and `trunthong09012005`.
+
+The API now reports `draft=false`, unlike the earlier snapshot. This workflow did not change draft/readiness state: the PATCH contained only title and body. Preserved the current open/ready status. A documentation-only follow-up records this delivery; local checks are not a claim of CI completion. No target merge or deployment was performed.

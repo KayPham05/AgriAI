@@ -33,3 +33,8 @@ Recorded checks on the combined source:
 Checks use disposable PostgreSQL containers and AI/storage doubles; real checkpoint and R2 categories are excluded. No live migration, deployment, R2 relocation or AI startup is part of this conflict resolution.
 
 The local build uses the previously documented `-p:LangVersion=12.0` workaround. Default-language build and GitHub Actions success are separate checks and are not implied by local results.
+
+
+## Remote delivery
+
+On November 7, merge commit `d18a665` was pushed to PR #60's source branch. GitHub verified the exact SHA and `mergeable=true`; `mergeable_state=unstable` reflected checks still in progress. PR title/body were verified after updating the test evidence. Current state was open and `draft=false`; readiness was not changed by this workflow. The target remains `AGRI-128-backend-improvement`, with both requested reviewers retained. CI completion and reviewer approval remain separate from conflict resolution.
