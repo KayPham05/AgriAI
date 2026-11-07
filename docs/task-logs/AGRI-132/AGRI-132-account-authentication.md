@@ -69,3 +69,9 @@
 - Updated backend password-change tests and frontend profile tests to exercise the required email verification challenge; fixed frontend error mapping for generic 503/429 responses and fake-timer interaction setup.
 - Verification: targeted backend API tests passed 40/40; targeted frontend suites (UserProfilePage, LoginModal, AdminOverview) passed 19/19; `git diff --check` passed. Full CI remains for remote confirmation.
 - Branch: `AGRI-132-forgot-password`. Changes are prepared for commit and push; unrelated local artifacts remain untouched.
+
+## Backend CI manifest remediation — 2026-11-07
+
+- Reproduced the GitHub failure locally: `Manifest_ReferencesOnlyDiscoverableUniqueApiCases` reported `Missing test: users.password.verification` because the manifest mapped the new password-code routes to a trait that had no discoverable xUnit test.
+- Added `Password_VerificationCode_CanBeIssuedAndResendIsThrottled` with the matching trait and coverage for the issue/resend endpoints.
+- Verification: API manifest mapping test passed 5/5; API project build passed with 0 warnings and 0 errors. Full API execution was attempted locally but Testcontainers/Docker infrastructure was unavailable, causing environment-wide failures.

@@ -206,6 +206,19 @@ public class UserAuthContractTests(AgriVisionFactory factory) : IClassFixture<Ag
     }
 
     [Fact]
+    [Trait("ApiCase", "users.password.verification")]
+    public async Task Password_VerificationCode_CanBeIssuedAndResendIsThrottled()
+    {
+        using var client = factory.CreateClient();
+        var auth = await ApiTestClient.Register(client);
+        var challenge = await IssuePasswordChangeCodeAsync(client, auth.Token, auth.User.Email);
+        using var resend = await client.PostAsJsonAsync("/api/users/change-password/code/resend", new
+        {
+            challengeId = challenge.ChallengeId
+        });
+        resend.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+    }
+    [Fact]
     [Trait("ApiCase", "users.password.minimum")]
     public async Task Password_SixCharacters_AcceptsAndRevokesOldSession()
     {
