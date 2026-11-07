@@ -106,8 +106,8 @@ describe('authentication API', () => {
 it('revokes only the current bearer session and accepts an already expired session', async () => {
   const fetchMock = vi
     .fn()
-    .mockResolvedValueOnce({ ok: true, status: 204 })
-    .mockResolvedValueOnce({ ok: false, status: 401 });
+    .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    .mockResolvedValueOnce(new Response(null, { status: 401 }));
   vi.stubGlobal('fetch', fetchMock);
   await expect(revokeSession('current')).resolves.toBeUndefined();
   expect(fetchMock).toHaveBeenCalledWith(

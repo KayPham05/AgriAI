@@ -33,6 +33,8 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.AvatarUrl).HasColumnName("avatar_url");
         builder.Property(u => u.EmailVerifiedAt).HasColumnName("email_verified_at");
         builder.Property(u => u.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+        builder.Property(u => u.LockReason).HasColumnName("lock_reason").HasMaxLength(500);
+        builder.Property(u => u.LockedAt).HasColumnName("locked_at");
         builder.Property(u => u.EmailTwoFactorEnabled).HasColumnName("email_two_factor_enabled");
 
         builder.Property(u => u.Role)

@@ -25,7 +25,7 @@ public class MigrationTests
             INSERT INTO users (id, full_name, email, created_at) VALUES ({owner}, 'Forward owner', 'forward@example.test', now());
             INSERT INTO agricultural_profiles (id, user_id, name, created_at) VALUES ({profile}, {owner}, 'Keep this profile', now());
             """);
-        // The latest email 2FA migration also rejects downgrade before any data is removed.
+        // The current schema rejects downgrade at its forward-only boundary before removing data.
         var before = (await database.Database.GetAppliedMigrationsAsync()).ToArray();
         Func<Task> downgrade = () => database.GetService<IMigrator>().MigrateAsync("20261017084014_DatabaseImprovement");
         await downgrade.Should().ThrowAsync<NotSupportedException>().WithMessage("*forward-only*");

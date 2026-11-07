@@ -1,6 +1,8 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { readGuestPredictionDraft } from '@/features/diagnosis/guestPredictionDraft';
+import { SUPPORTED_PLANTS } from '@/data/plantData';
 import { IntroPage } from '@/views/IntroPage';
 import { successfulPrediction } from '../../helpers/prediction';
 
@@ -57,6 +59,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks();
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 async function selectLeaf() {
@@ -87,7 +90,7 @@ describe('landing prediction without persistence', () => {
     const previousHistory = JSON.stringify([successfulPrediction.diagnosis]);
     localStorage.setItem('leafai_history', previousHistory);
     const writeStorage = vi.spyOn(Storage.prototype, 'setItem');
-    render(<IntroPage onLogin={vi.fn()} onRegister={vi.fn()} />);
+    render(<IntroPage plants={SUPPORTED_PLANTS} onLogin={vi.fn()} onRegister={vi.fn()} />);
     const trial = await selectLeaf();
     expect(PredictionRequest.latest).toBeUndefined();
     expect(within(trial).queryByRole('combobox')).not.toBeInTheDocument();
@@ -106,8 +109,36 @@ describe('landing prediction without persistence', () => {
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
   });
 
+  it('preserves the guest result and requests login only when the visitor chooses to save', async () => {
+    const onSaveGuestResult = vi.fn();
+    render(
+      <IntroPage
+        plants={SUPPORTED_PLANTS}
+        onLogin={vi.fn()}
+        onRegister={vi.fn()}
+        onSaveGuestResult={onSaveGuestResult}
+      />,
+    );
+    const trial = await selectLeaf();
+    await userEvent.click(within(trial).getByRole('button', { name: 'Phân tích ngay' }));
+    await act(async () =>
+      PredictionRequest.latest?.respond(200, {
+        ...successfulPrediction.dto,
+        guestToken: 'guest-token',
+      }),
+    );
+    expect(onSaveGuestResult).not.toHaveBeenCalled();
+    await userEvent.click(within(trial).getByRole('button', { name: 'Lưu kết quả vào tài khoản' }));
+    expect(onSaveGuestResult).toHaveBeenCalledOnce();
+    expect(readGuestPredictionDraft()).toMatchObject({
+      saveRequested: true,
+      result: { dto: { guestToken: 'guest-token', id: successfulPrediction.dto.id } },
+    });
+    expect(PredictionRequest.latest?.headers.has('Authorization')).toBe(false);
+  });
+
   it('rejects an empty image without making a prediction request', async () => {
-    render(<IntroPage onLogin={vi.fn()} onRegister={vi.fn()} />);
+    render(<IntroPage plants={SUPPORTED_PLANTS} onLogin={vi.fn()} onRegister={vi.fn()} />);
     const trial = screen.getByRole('region', { name: 'Dự đoán ngay' });
     fireEvent.change(within(trial).getByLabelText('Chọn ảnh lá cây'), {
       target: { files: [new File([], 'empty.jpg', { type: 'image/jpeg' })] },
@@ -117,7 +148,7 @@ describe('landing prediction without persistence', () => {
   });
 
   it('shows a server error and retries with the same selected image', async () => {
-    render(<IntroPage onLogin={vi.fn()} onRegister={vi.fn()} />);
+    render(<IntroPage plants={SUPPORTED_PLANTS} onLogin={vi.fn()} onRegister={vi.fn()} />);
     const trial = await selectLeaf();
     await userEvent.click(within(trial).getByRole('button', { name: 'Phân tích ngay' }));
     await act(async () =>

@@ -3,6 +3,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { AppProvider } from '@/providers/AppProvider';
 import { useHistory, useAgriculturalProfiles } from '@/providers/AppContexts';
 import { restoreAuthSession } from '@/services/authApi';
+import { getPlants, getDiseases } from '@/services/catalogApi';
 import { getAgriculturalProfiles } from '@/services/agriculturalProfileApi';
 import { deletePrediction, getPredictionHistory } from '@/services/predictionApi';
 import { successfulPrediction } from '../../helpers/prediction';
@@ -44,6 +45,8 @@ function Probe() {
 }
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(getPlants).mockResolvedValue([]);
+  vi.mocked(getDiseases).mockResolvedValue([]);
   vi.mocked(restoreAuthSession).mockResolvedValue({
     token: 'owner',
     user: {

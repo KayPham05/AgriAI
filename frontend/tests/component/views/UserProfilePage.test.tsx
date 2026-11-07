@@ -169,7 +169,7 @@ describe('Profile Desktop account management', () => {
     );
   });
   it('handles expired sessions without showing stale forms', async () => {
-    fetcher.mockResolvedValueOnce({ ok: false, status: 401, json: async () => ({}) });
+    fetcher.mockResolvedValueOnce(new Response('{}', { status: 401 }));
     show();
     expect(await screen.findByText(/Phiên đăng nhập đã hết hạn/)).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Lưu thay đổi' })).not.toBeInTheDocument();

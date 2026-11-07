@@ -3,12 +3,41 @@ import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import { PlantDiseaseManager } from '@/features/knowledge/PlantDiseaseManager';
 import { json, page, pair } from '../../helpers/knowledge';
+vi.hoisted(() => {
+  process.env.NEXT_PUBLIC_API_BASE_URL = '';
+});
+it('displays readable disease names without changing classifier keys', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      url === '/api/diseases'
+        ? json([{ id: 'other', name: 'Dom_la', isActive: true, createdAt: '' }])
+        : json(
+            page([
+              {
+                ...pair,
+                plantName: 'Lua',
+                diseaseName: 'Bac_la_lua',
+                className: 'Lua___Bac_la_lua',
+              },
+            ]),
+          ),
+    ),
+  );
+  render(<PlantDiseaseManager token="admin" plantId={pair.plantId} />);
+  expect(await screen.findByRole('heading', { name: 'Lua / Bac la lua' })).toBeVisible();
+  expect(screen.getByText('Lua___Bac_la_lua (0)')).toBeVisible();
+  await userEvent.click(screen.getByRole('button', { name: 'Bệnh hoặc tình trạng mới' }));
+  expect(screen.getByRole('option', { name: 'Dom la' })).toBeVisible();
+});
+
 it('changes only availability of an existing AI pair after confirmation', async () => {
   let current = pair;
   const writes: unknown[] = [];
   vi.stubGlobal(
     'fetch',
-    vi.fn(async (_url: string, init?: RequestInit) => {
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === '/api/diseases') return json([]);
       if (init?.method === 'PUT') {
         const body = JSON.parse(String(init.body));
         writes.push(body);

@@ -13,8 +13,10 @@ using AgriVision.Application.DTOs.Medicine;
 
 namespace AgriVision.UnitTests.Services;
 
-public class PredictionServiceTests
+public partial class PredictionServiceTests : IDisposable
 {
+    private readonly GuestPredictionStore _guestStore = new();
+    public void Dispose() => _guestStore.Dispose();
     private readonly RecordingPredictionRepository _predictionRepository;
     private readonly StubPlantDiseaseRepository _plantDiseaseRepository;
     private readonly RecordingImageStorage _imageStorage;
@@ -40,7 +42,8 @@ public class PredictionServiceTests
             _diseasePredictor,
             _profileRepository.Object,
             medicines.Object,
-            _journal.Object
+            _journal.Object,
+            guestPredictions: _guestStore
         );
     }
 
@@ -384,7 +387,7 @@ public class PredictionServiceTests
     [InlineData("pair")]
     [InlineData("plant")]
     [InlineData("disease")]
-    public async Task InactiveCatalog_ShouldHideAdviceInPrimaryAndTopK(string inactive)
+    public async Task InactiveCatalog_ShouldRejectBeforeStorage(string inactive)
     {
         ConfigureHealthyClass();
         var pair = _plantDiseaseRepository.PlantDiseases.Single();
@@ -394,11 +397,10 @@ public class PredictionServiceTests
         if (inactive == "plant") pair.Plant.IsActive = false;
         if (inactive == "disease") pair.Disease.IsActive = false;
         _diseasePredictor.Result = new(0, "Tomato___Healthy", 0.95f, [new(0, "Tomato___Healthy", 0.95f)]);
-        var result = await _predictionService.PredictAsync(CreateFile(), null);
-        result.InformationPending.Should().BeTrue();
-        result.PredictedPlantDisease.Disease.Treatment.Should().Be("Thông tin đang được cập nhật");
-        result.PredictionDetails.Single().PlantDisease!.Disease.Treatment.Should().Be("Thông tin đang được cập nhật");
-        result.Medication.Should().BeNull();
+        var action = () => _predictionService.PredictAsync(CreateFile(), Guid.NewGuid());
+        await action.Should().ThrowAsync<ArgumentException>().WithMessage("*ngừng hoạt động*");
+        _imageStorage.UploadCount.Should().Be(0);
+        _predictionRepository.AddedPredictions.Should().BeEmpty();
     }
 
     [Theory]
@@ -789,6 +791,7 @@ public class PredictionServiceTests
 
     private sealed class StubPlantDiseaseRepository : IPlantDiseaseRepository
     {
+        public Task<PlantDisease> LinkAsync(Guid plantId, Guid diseaseId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public IReadOnlyCollection<PlantDisease> PlantDiseases { get; set; } = [];
 
         public Task<(IReadOnlyList<PlantDisease> Items, int Total)> SearchAsync(

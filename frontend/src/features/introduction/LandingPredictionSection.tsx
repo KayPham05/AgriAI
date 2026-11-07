@@ -2,7 +2,7 @@
 
 import { DiagnosePage } from '@/views/DiagnosePage';
 
-export function LandingPredictionSection() {
+export function LandingPredictionSection({ onRequestLogin }: { onRequestLogin: () => void }) {
   return (
     <section
       id="try-prediction"
@@ -21,11 +21,10 @@ export function LandingPredictionSection() {
             Chọn một ảnh lá rõ nét để xem cây trồng, tình trạng dự đoán và độ tin cậy.
           </p>
           <p className="text-sm leading-6 text-muted-foreground">
-            Không cần đăng nhập. Kết quả chỉ hiển thị tại đây, không lưu vào lịch sử.
+            Không cần đăng nhập để kiểm tra. Đăng nhập khi muốn lưu kết quả vào tài khoản.
           </p>
         </div>
-        {/* No auth token or history callback: use the existing non-persistent guest API flow. */}
-        <DiagnosePage embedded />
+        <DiagnosePage embedded onRequestLogin={onRequestLogin} />
       </div>
     </section>
   );

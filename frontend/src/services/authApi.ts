@@ -1,3 +1,4 @@
+import { sessionFetch, getSessionIssue, clearSessionIssue } from './sessionFetch';
 export interface AuthUser {
   id: string;
   fullName: string;
@@ -49,7 +50,7 @@ function getErrorMessage(body: unknown, fallback: string): string {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`${configuredBaseUrl}${path}`, {
+    response = await sessionFetch(`${configuredBaseUrl}${path}`, {
       ...init,
       headers: {
         'Content-Type': 'application/json',
@@ -144,6 +145,7 @@ export function saveAuthSession(session: AuthSession, remember: boolean): void {
 }
 
 export function clearAuthSession(): void {
+  clearSessionIssue();
   localStorage.removeItem(AUTH_STORAGE_KEY);
   sessionStorage.removeItem(AUTH_STORAGE_KEY);
 }
@@ -177,13 +179,14 @@ export async function restoreAuthSession(): Promise<AuthSession | null> {
     });
     return { token: session.token, user };
   } catch {
+    if (getSessionIssue()) return null;
     clearAuthSession();
     return null;
   }
 }
 
 export async function revokeSession(token: string): Promise<void> {
-  const response = await fetch(`${configuredBaseUrl}/api/auth/logout`, {
+  const response = await sessionFetch(`${configuredBaseUrl}/api/auth/logout`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     signal: AbortSignal.timeout(10000),

@@ -1,5 +1,5 @@
 import type React from 'react';
-import NextImage from 'next/image';
+import { PrivateImage } from '@/components/common/PrivateImage';
 import { useEffect, useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
@@ -27,7 +27,17 @@ import {
   type DiagnosisIssue,
 } from '@/features/diagnosis/diagnosisIssues';
 import sampleLeaf from '@/assets/Bệnh lá/cà chua/Cháy lá sớm  đốm vòng.jpg';
-import { createPrediction, type PredictionResponse } from '../services/predictionApi';
+import {
+  createPrediction,
+  readGuestPredictionImage,
+  saveGuestPrediction,
+  type PredictionResponse,
+} from '../services/predictionApi';
+import {
+  clearGuestPredictionDraft,
+  readGuestPredictionDraft,
+  writeGuestPredictionDraft,
+} from '@/features/diagnosis/guestPredictionDraft';
 import type { DiagnosisResult, Plant } from '../types';
 import type {
   AgriculturalProfile,
@@ -40,6 +50,7 @@ type PredictionStatus = 'idle' | 'uploading' | 'analyzing' | 'success' | 'error'
 
 interface DiagnosePageProps {
   authToken?: string;
+  onRequestLogin?: () => void;
   onPredictionCreated?: (result: DiagnosisResult) => void;
   embedded?: boolean;
   supportedPlants?: Plant[];
@@ -51,6 +62,7 @@ interface DiagnosePageProps {
 
 export const DiagnosePage: React.FC<DiagnosePageProps> = ({
   authToken,
+  onRequestLogin,
   onPredictionCreated,
   embedded = false,
   supportedPlants = [],
@@ -70,6 +82,9 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
   const [showSupported, setShowSupported] = useState(false);
   const [showSaveProfile, setShowSaveProfile] = useState(false);
   const [savedProfileName, setSavedProfileName] = useState<string | null>(null);
+  const [guestSaveRequested, setGuestSaveRequested] = useState(false);
+  const [savingGuest, setSavingGuest] = useState(false);
+  const [guestMessage, setGuestMessage] = useState('');
   const [isSample, setIsSample] = useState(false);
   const [isPreparing, setIsPreparing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -85,6 +100,78 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
   const requestRef = useRef<AbortController | null>(null);
   const selectionIdRef = useRef(0);
   const pageRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const draft = readGuestPredictionDraft();
+    if (!draft?.result.dto.guestToken) return;
+    setPrediction(draft.result);
+    setGuestSaveRequested(draft.saveRequested);
+    const confidenceIssue = getConfidenceIssue(draft.result);
+    setIssue(confidenceIssue);
+    setStatus(confidenceIssue ? 'attention' : 'success');
+    const controller = new AbortController();
+    const selectionId = selectionIdRef.current;
+    readGuestPredictionImage(draft.result.dto.guestToken, controller.signal)
+      .then((blob) => {
+        if (controller.signal.aborted || selectionId !== selectionIdRef.current) return;
+        const url = URL.createObjectURL(blob);
+        if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+        previewRef.current = url;
+        setPreviewUrl(url);
+        const extension =
+          blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg';
+        setSelectedFile(new File([blob], `anh-la-trong-phien.${extension}`, { type: blob.type }));
+      })
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted && selectionId === selectionIdRef.current)
+          setGuestMessage(error instanceof Error ? error.message : 'Không thể tải lại ảnh tạm.');
+      });
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    if (!authToken || !prediction?.dto.guestToken || !guestSaveRequested) return;
+    let active = true;
+    setSavingGuest(true);
+    setGuestMessage('Đang lưu kết quả vào tài khoản...');
+    saveGuestPrediction(prediction.dto.guestToken, authToken)
+      .then((saved) => {
+        if (!active) return;
+        setSavingGuest(false);
+        clearGuestPredictionDraft();
+        selectionIdRef.current += 1;
+        if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+        previewRef.current = null;
+        setPreviewUrl(saved.diagnosis.originalImageUrl);
+        setPrediction(saved);
+        onPredictionCreated?.(saved.diagnosis);
+        setGuestSaveRequested(false);
+        setGuestMessage('Đã lưu kết quả vào lịch sử tài khoản.');
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setSavingGuest(false);
+        setGuestSaveRequested(false);
+        writeGuestPredictionDraft(prediction);
+        setGuestMessage(
+          error instanceof Error ? error.message : 'Chưa lưu được kết quả. Vui lòng thử lại.',
+        );
+      });
+    return () => {
+      active = false;
+      setSavingGuest(false);
+    };
+  }, [authToken, prediction, guestSaveRequested, onPredictionCreated]);
+
+  const requestGuestSave = () => {
+    if (!prediction?.dto.guestToken || savingGuest) return;
+    writeGuestPredictionDraft(prediction, true);
+    setGuestSaveRequested(true);
+    if (!authToken) {
+      setGuestMessage('Đăng nhập hoặc tạo tài khoản để lưu kết quả vừa kiểm tra.');
+      onRequestLogin?.();
+    }
+  };
 
   useGSAP(
     () => {
@@ -156,6 +243,9 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
   );
 
   const clearImage = () => {
+    clearGuestPredictionDraft();
+    setGuestSaveRequested(false);
+    setGuestMessage('');
     selectionIdRef.current += 1;
     requestRef.current?.abort();
     requestRef.current = null;
@@ -177,6 +267,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
   };
 
   const selectFile = (file: File, sample = false) => {
+    if (savingGuest) return;
     clearImage();
     const fileError = getInputIssue(file);
     if (fileError) {
@@ -255,7 +346,17 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
   };
 
   const analyze = async () => {
-    if (!selectedFile || isPreparing || status === 'uploading' || status === 'analyzing') return;
+    if (
+      !selectedFile ||
+      isPreparing ||
+      savingGuest ||
+      status === 'uploading' ||
+      status === 'analyzing'
+    )
+      return;
+    clearGuestPredictionDraft();
+    setGuestSaveRequested(false);
+    setGuestMessage('');
     const controller = new AbortController();
     requestRef.current = controller;
     setPrediction(null);
@@ -279,6 +380,12 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
       });
       if (controller.signal.aborted) return;
       setPrediction(result);
+      if (!authToken && result.dto.guestToken) {
+        if (!writeGuestPredictionDraft(result))
+          setGuestMessage(
+            'Trình duyệt không cho lưu phiên. Kết quả chỉ còn trong trang hiện tại; hãy đăng nhập để lưu trước khi tải lại trang.',
+          );
+      }
       if (selectedAgriculturalProfile) {
         setSavedProfileName(selectedAgriculturalProfile.name);
         onProfileSaved?.(selectedAgriculturalProfile.id);
@@ -298,7 +405,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
     }
   };
 
-  const busy = status === 'uploading' || status === 'analyzing';
+  const busy = status === 'uploading' || status === 'analyzing' || savingGuest;
   const inputIssue = issue && isInputIssue(issue) ? issue : null;
   const resultIssue = issue && !isInputIssue(issue) ? issue : null;
   const currentStep = busy
@@ -332,6 +439,13 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
         }}
       />
       {!embedded && <h1 className="sr-only">Chẩn đoán ảnh lá</h1>}
+      {!authToken && (
+        <p className="mb-6 text-sm text-muted-foreground">
+          Bạn đang kiểm tra lá với tư cách khách. Kết quả chỉ giữ trong phiên tab này; đăng nhập khi
+          muốn lưu vào tài khoản. Ảnh tạm có thể lưu tối đa 60 phút, hoặc hết hạn sớm nếu máy chủ
+          khởi động lại hay đầy bộ nhớ tạm.
+        </p>
+      )}
       {selectedAgriculturalProfile && (
         <div className="mb-6 rounded-card border border-border bg-secondary p-5">
           <p className="break-words font-semibold text-primary">
@@ -387,7 +501,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
             )}
             {previewUrl ? (
               <div>
-                <NextImage
+                <PrivateImage
                   unoptimized
                   width={640}
                   height={480}
@@ -436,7 +550,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
                 </p>
                 <Button
                   className="mt-5"
-                  disabled={isPreparing}
+                  disabled={busy || isPreparing}
                   onClick={() => inputRef.current?.click()}
                 >
                   <Upload />
@@ -472,7 +586,24 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
                 )}
               </Button>
             )}
-            {authToken && prediction && (
+            {prediction?.dto.guestToken && (
+              <div className="mt-3 flex flex-col gap-2">
+                <Button disabled={busy} onClick={requestGuestSave}>
+                  {savingGuest ? 'Đang lưu kết quả...' : 'Lưu kết quả vào tài khoản'}
+                </Button>
+                {!authToken && (
+                  <p className="text-sm text-muted-foreground">
+                    Bạn có thể đóng hộp thoại đăng nhập để tiếp tục xem kết quả.
+                  </p>
+                )}
+              </div>
+            )}
+            {guestMessage && (
+              <p role="status" className="mt-3 text-sm text-muted-foreground">
+                {guestMessage}
+              </p>
+            )}
+            {authToken && prediction && !prediction.dto.guestToken && (
               <div className="mt-3 grid gap-3">
                 {savedProfileName ? (
                   <p role="status" className="text-sm text-primary">

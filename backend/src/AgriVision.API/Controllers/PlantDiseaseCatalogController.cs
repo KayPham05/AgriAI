@@ -11,6 +11,11 @@ namespace AgriVision.API.Controllers;
 [ApiController]
 public class PlantDiseaseCatalogController(IPlantDiseaseCatalogService service) : ControllerBase
 {
+    [HttpPost("api/admin/plant-diseases")]
+    [Authorize(Roles = UserRole.Admin)]
+    public async Task<ActionResult<PlantDiseaseLookupDto>> Link(LinkPlantDiseaseRequest request, CancellationToken cancellationToken) =>
+        Ok(await service.LinkAsync(request, cancellationToken));
+
     [HttpGet("api/plant-diseases")]
     [AllowAnonymous]
     public async Task<ActionResult<PagedResult<PlantDiseaseLookupDto>>> List([FromQuery] CatalogFilterParams filter, CancellationToken cancellationToken) =>

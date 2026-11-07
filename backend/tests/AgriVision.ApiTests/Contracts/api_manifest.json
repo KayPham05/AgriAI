@@ -39,6 +39,7 @@
     "method": "GET",
     "route": "/api/auth/me",
     "cases": [
+      "admin.policy.session",
       "auth.register.contract",
       "existing.SecurityAuthorizationTests.ProtectedEndpoints_ShouldRejectInvalidBearer",
       "existing.SecurityAuthorizationTests.LegacyTokenWithoutSid_ShouldBeRejected_EvenWhenNewActiveSessionExists",
@@ -620,11 +621,209 @@
       "knowledge.pair_availability"
     ]
   },
-  {"method": "POST", "route": "/api/auth/forgot-password", "cases": ["auth.password_reset"]},
-  {"method": "POST", "route": "/api/auth/reset-password", "cases": ["auth.password_reset"]},
-  {"method": "POST", "route": "/api/auth/google", "cases": ["auth.google.invalid"]},
-  {"method": "GET", "route": "/api/auth/two-factor", "cases": ["auth.two_factor.lifecycle"]},
-  {"method": "POST", "route": "/api/auth/two-factor/setup", "cases": ["auth.two_factor.lifecycle"]},
-  {"method": "POST", "route": "/api/auth/two-factor/setup/verify", "cases": ["auth.two_factor.lifecycle"]},
-  {"method": "POST", "route": "/api/auth/two-factor/login", "cases": ["auth.two_factor.lifecycle"]}
+  {
+    "method": "GET",
+    "route": "/api/admin/images",
+    "cases": [
+      "admin.workspace.lifecycle",
+      "admin.workspace.authorization",
+      "admin.workspace.validation"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/admin/sessions",
+    "cases": [
+      "admin.workspace.lifecycle",
+      "admin.workspace.authorization",
+      "admin.workspace.validation"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/admin/images/{id:guid}/content",
+    "cases": [
+      "admin.workspace.lifecycle",
+      "admin.workspace.authorization"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/admin/images/{id:guid}",
+    "cases": [
+      "admin.workspace.lifecycle",
+      "admin.workspace.authorization"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/admin/images/{id:guid}/warnings",
+    "cases": [
+      "admin.workspace.lifecycle",
+      "admin.workspace.authorization"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/admin/users/{id:guid}/warnings",
+    "cases": [
+      "admin.workspace.lifecycle",
+      "admin.workspace.authorization",
+      "admin.workspace.validation"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/admin/users/{id:guid}/logout-all",
+    "cases": [
+      "admin.workspace.lifecycle",
+      "admin.workspace.authorization",
+      "admin.workspace.validation"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/users/notifications",
+    "cases": [
+      "admin.workspace.lifecycle",
+      "admin.workspace.validation"
+    ]
+  },
+  {
+    "method": "PUT",
+    "route": "/api/users/notifications/{id:guid}/read",
+    "cases": [
+      "admin.workspace.lifecycle"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/users/notifications/{id:guid}",
+    "cases": [
+      "admin.workspace.lifecycle"
+    ]
+  },
+  {
+    "method": "PUT",
+    "route": "/api/users/notifications/read",
+    "cases": [
+      "admin.workspace.lifecycle",
+      "admin.workspace.validation"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/admin/plant-diseases",
+    "cases": [
+      "admin.policy.pairs"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/users/notifications",
+    "cases": [
+      "admin.workspace.lifecycle",
+      "admin.workspace.validation"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/catalog/{kind}/{id:guid}/image",
+    "cases": [
+      "catalog.images.lifecycle",
+      "catalog.images.size-boundary",
+      "catalog.images.missing-record"
+    ]
+  },
+  {
+    "method": "PUT",
+    "route": "/api/catalog/{kind}/{id:guid}/image",
+    "cases": [
+      "catalog.images.lifecycle",
+      "catalog.images.validation",
+      "catalog.images.size-boundary",
+      "catalog.images.missing-record"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/catalog/{kind}/{id:guid}/image",
+    "cases": [
+      "catalog.images.lifecycle",
+      "catalog.images.missing-record"
+    ]
+  },
+  {
+    "method": "DELETE",
+    "route": "/api/admin/catalog/{kind}/{id:guid}",
+    "cases": [
+      "catalog.permanent-delete",
+      "catalog.permanent-delete.medicine"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/predictions/guest/save",
+    "cases": [
+      "predictions.guest.save_roundtrip",
+      "predictions.guest.save_invalid_token"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/predictions/guest/image",
+    "cases": [
+      "predictions.guest.save_roundtrip",
+      "predictions.guest.preview_missing"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/auth/forgot-password",
+    "cases": [
+      "auth.password_reset"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/auth/reset-password",
+    "cases": [
+      "auth.password_reset"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/auth/google",
+    "cases": [
+      "auth.google.invalid"
+    ]
+  },
+  {
+    "method": "GET",
+    "route": "/api/auth/two-factor",
+    "cases": [
+      "auth.two_factor.lifecycle"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/auth/two-factor/setup",
+    "cases": [
+      "auth.two_factor.lifecycle"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/auth/two-factor/setup/verify",
+    "cases": [
+      "auth.two_factor.lifecycle"
+    ]
+  },
+  {
+    "method": "POST",
+    "route": "/api/auth/two-factor/login",
+    "cases": [
+      "auth.two_factor.lifecycle"
+    ]
+  }
 ]

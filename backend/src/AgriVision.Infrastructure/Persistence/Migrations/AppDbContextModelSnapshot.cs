@@ -121,6 +121,11 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("description");
 
+                    b.Property<string>("ImageKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("image_key");
+
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -394,6 +399,14 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasDefaultValue("Khác")
+                        .HasColumnName("category");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -401,6 +414,11 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description");
+
+                    b.Property<string>("ImageKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("image_key");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
@@ -444,12 +462,11 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<int>("ClassIndex")
+                    b.Property<int?>("ClassIndex")
                         .HasColumnType("integer")
                         .HasColumnName("class_index");
 
                     b.Property<string>("ClassName")
-                        .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("class_name");
@@ -486,7 +503,7 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
 
                     b.ToTable("plant_diseases", null, t =>
                         {
-                            t.HasCheckConstraint("ck_plant_diseases_class_index", "class_index >= 0");
+                            t.HasCheckConstraint("ck_plant_diseases_class_index", "(class_index IS NULL AND class_name IS NULL) OR (class_index IS NOT NULL AND class_index >= 0 AND class_name IS NOT NULL AND length(trim(class_name)) > 0)");
                         });
                 });
 
@@ -518,7 +535,7 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("image_public_id");
 
-                    b.Property<Guid>("PredictedPlantDiseaseId")
+                    b.Property<Guid?>("PredictedPlantDiseaseId")
                         .HasColumnType("uuid")
                         .HasColumnName("predicted_plant_disease_id");
 
@@ -556,7 +573,7 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<Guid>("PlantDiseaseId")
+                    b.Property<Guid?>("PlantDiseaseId")
                         .HasColumnType("uuid")
                         .HasColumnName("plant_disease_id");
 
@@ -684,6 +701,15 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
 
+                    b.Property<string>("LockReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("lock_reason");
+
+                    b.Property<DateTime?>("LockedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("locked_at");
+
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
@@ -804,6 +830,65 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
                     b.ToTable("user_identities", (string)null);
                 });
 
+            modelBuilder.Entity("AgriVision.Domain.Entities.UserNotification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DismissedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("dismissed_at");
+
+                    b.Property<Guid?>("ImageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("image_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasDefaultValue("Warning")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("message");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("read_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorUserId");
+
+                    b.HasIndex("ImageId");
+
+                    b.HasIndex("UserId", "CreatedAt", "Id");
+
+                    b.ToTable("user_notifications", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_user_notifications_message", "btrim(message) <> ''");
+                        });
+                });
+
             modelBuilder.Entity("AgriVision.Domain.Entities.UserSession", b =>
                 {
                     b.Property<Guid>("Id")
@@ -818,6 +903,11 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("ExpiresAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
+
+                    b.Property<string>("RevocationReason")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("revocation_reason");
 
                     b.Property<DateTime?>("RevokedAt")
                         .HasColumnType("timestamp with time zone")
@@ -935,8 +1025,7 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
                     b.HasOne("AgriVision.Domain.Entities.PlantDisease", "PredictedPlantDisease")
                         .WithMany("Predictions")
                         .HasForeignKey("PredictedPlantDiseaseId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("AgriVision.Domain.Entities.User", "User")
                         .WithMany("Predictions")
@@ -955,8 +1044,7 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
                     b.HasOne("AgriVision.Domain.Entities.PlantDisease", "PlantDisease")
                         .WithMany("PredictionDetails")
                         .HasForeignKey("PlantDiseaseId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("AgriVision.Domain.Entities.Prediction", "Prediction")
                         .WithMany("PredictionDetails")
@@ -993,6 +1081,27 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("AgriVision.Domain.Entities.UserIdentity", b =>
                 {
+                    b.HasOne("AgriVision.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("AgriVision.Domain.Entities.UserNotification", b =>
+                {
+                    b.HasOne("AgriVision.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("ActorUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("AgriVision.Domain.Entities.PredictionImage", null)
+                        .WithMany()
+                        .HasForeignKey("ImageId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("AgriVision.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")

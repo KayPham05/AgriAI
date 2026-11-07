@@ -7,7 +7,7 @@ public class Prediction
     public Guid? AgriculturalProfileId { get; set; }
     public string ImagePath { get; set; } = string.Empty;
     public string? ImagePublicId { get; set; }
-    public Guid PredictedPlantDiseaseId { get; set; }
+    public Guid? PredictedPlantDiseaseId { get; set; }
     public double Confidence { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     // Null for legacy records whose original displayed result was not captured.

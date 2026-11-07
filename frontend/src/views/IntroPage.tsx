@@ -13,15 +13,17 @@ import leafTexture from '@/assets/banner-leaves/rice-leaf-cutout.png';
 import { CropMap } from '@/components/common/CropMap';
 import { CropFilmStrip } from '@/components/common/CropFilmStrip';
 import { IntroLeafBackdrop } from '@/components/home/IntroLeafBackdrop';
-import { SUPPORTED_PLANTS } from '@/data/plantData';
+import type { Plant } from '@/types';
 import { CROP_PHOTOS } from '@/data/cropPhotos';
 import { LandingPredictionSection } from '@/features/introduction/LandingPredictionSection';
 
 gsap.registerPlugin(useGSAP);
 
 interface IntroPageProps {
+  plants: Plant[];
   onLogin: () => void;
   onRegister: () => void;
+  onSaveGuestResult?: () => void;
 }
 
 const workflowSteps = [
@@ -46,7 +48,7 @@ const principles = [
   'Kết quả chỉ hỗ trợ tham khảo, không thay thế chuyên gia.',
 ];
 
-export function IntroPage({ onLogin, onRegister }: IntroPageProps) {
+export function IntroPage({ plants, onLogin, onRegister, onSaveGuestResult }: IntroPageProps) {
   const pageRef = useRef<HTMLDivElement>(null);
 
   useGSAP(
@@ -130,7 +132,7 @@ export function IntroPage({ onLogin, onRegister }: IntroPageProps) {
           </a>
           <div className="flex flex-wrap items-center gap-1 sm:gap-2">
             <Button asChild variant="ghost" className="px-2 sm:px-5">
-              <Link href="/knowledge">Tra cứu</Link>
+              <Link href="/plants">Tra cứu</Link>
             </Button>
             <Button type="button" variant="ghost" className="px-2 sm:px-5" onClick={onLogin}>
               Đăng nhập
@@ -149,7 +151,7 @@ export function IntroPage({ onLogin, onRegister }: IntroPageProps) {
         >
           <IntroLeafBackdrop variant="hero" />
           <div className="relative">
-            <CropMap plants={SUPPORTED_PLANTS}>
+            <CropMap plants={plants}>
               <div data-intro-copy className="min-w-0">
                 <p
                   data-intro-reveal
@@ -198,7 +200,7 @@ export function IntroPage({ onLogin, onRegister }: IntroPageProps) {
           </div>
         </section>
 
-        <LandingPredictionSection />
+        <LandingPredictionSection onRequestLogin={onSaveGuestResult ?? onLogin} />
 
         <section id="how-it-works" aria-label="Cách AgriAI hoạt động" className="bg-surface">
           <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:px-8 md:py-16 lg:grid-cols-2 lg:gap-12 lg:px-12">

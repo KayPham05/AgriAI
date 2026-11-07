@@ -306,9 +306,11 @@ function AdminWorkspace({ session }: { session: AuthSession }) {
                   onSessions={() => navigate('sessions')}
                 />
               )}
-              {view === 'users' && <AdminUsers key={userSearch} initialQuery={userSearch} />}
-              {view === 'images' && <AdminImages />}
-              {view === 'sessions' && <AdminSessions />}
+              {view === 'users' && (
+                <AdminUsers key={userSearch} initialQuery={userSearch} token={session.token} />
+              )}
+              {view === 'images' && <AdminImages token={session.token} />}
+              {view === 'sessions' && <AdminSessions token={session.token} />}
               {(view === 'plants' ||
                 view === 'diseases' ||
                 view === 'medicines' ||
@@ -319,10 +321,7 @@ function AdminWorkspace({ session }: { session: AuthSession }) {
             {view !== 'overview' && (
               <footer className="mt-2 flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border pt-2 text-xs text-muted-foreground">
                 <p>AgriAI Quản trị</p>
-                <p>
-                  Nguồn dữ liệu:{' '}
-                  {['users', 'images', 'sessions'].includes(view) ? 'Mock frontend' : 'API AgriAI'}
-                </p>
+                <p>Nguồn dữ liệu: API AgriAI</p>
               </footer>
             )}
           </main>

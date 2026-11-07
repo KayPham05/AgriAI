@@ -4,7 +4,52 @@ import { describe, expect, it, vi } from 'vitest';
 import { KnowledgeAdmin } from '@/features/knowledge/KnowledgeAdmin';
 import { article, medicine, pair, page, json } from '../../helpers/knowledge';
 
+vi.hoisted(() => {
+  process.env.NEXT_PUBLIC_API_BASE_URL = '';
+});
+
 describe('knowledge administration with real API adapter', () => {
+  it.each(['plants', 'diseases', 'medicines'] as const)(
+    'permanently deletes %s only after confirmation and returns to the list',
+    async (kind) => {
+      let deleted = false;
+      const writes: string[] = [];
+      const record = {
+        ...medicine,
+        id: 'delete-me',
+        name: 'Delete me',
+        productName: 'Delete me',
+        vietnameseName: null,
+      };
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (url: string, init?: RequestInit) => {
+          if (init?.method === 'DELETE') {
+            writes.push(url);
+            deleted = true;
+            return new Response(null, { status: 204 });
+          }
+          if (url.includes('plant-diseases')) return json(page([]));
+          if (url.endsWith('/delete-me')) return json(record);
+          return json(
+            kind === 'medicines' ? page(deleted ? [] : [record]) : deleted ? [] : [record],
+          );
+        }),
+      );
+      render(<KnowledgeAdmin kind={kind} token="admin" />);
+      await userEvent.click(await screen.findByRole('button', { name: 'Mở Delete me' }));
+      await userEvent.click(await screen.findByRole('button', { name: 'Xóa vĩnh viễn' }));
+      expect(writes).toEqual([]);
+      const dialog = screen.getByRole('alertdialog');
+      expect(dialog).toHaveTextContent('Lịch sử, ảnh người dùng');
+      await userEvent.click(within(dialog).getByRole('button', { name: 'Xác nhận' }));
+      expect(
+        await screen.findByText('Đã xóa vĩnh viễn. Lịch sử chẩn đoán được giữ lại.'),
+      ).toBeVisible();
+      expect(writes).toEqual([`/api/admin/catalog/${kind}/delete-me`]);
+      expect(await screen.findByText('Chưa có kết quả phù hợp.')).toBeVisible();
+    },
+  );
   it.each(['plants', 'diseases'] as const)(
     'shows read-only metadata below %s status in list and detail',
     async (kind) => {
@@ -46,7 +91,7 @@ describe('knowledge administration with real API adapter', () => {
         expect(within(related).getByRole('heading', { name: 'Cà chua / Cháy lá' })).toBeVisible();
         expect(within(related).queryByText(/Unrelated/)).not.toBeInTheDocument();
         await userEvent.type(screen.getByLabelText('Tên danh mục'), ' mới');
-        expect(within(related).getByRole('button', { name: 'Ngừng liên kết' })).toBeDisabled();
+        expect(within(related).getByRole('button', { name: 'Ngừng liên kết' })).toBeEnabled();
       } else {
         expect(
           screen.queryByRole('region', { name: 'Bệnh và tình trạng liên quan' }),

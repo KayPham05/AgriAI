@@ -5,9 +5,20 @@ namespace AgriVision.Application.Services.Implementations;
 
 internal static class CatalogValidation
 {
+    public static string Name(string? value, string field, int maxLength) =>
+        Text(AgriVision.Application.Common.CatalogText.Name(value), field, maxLength);
+
+    public static string PlantCategory(string? value)
+    {
+        var category = value?.Trim() ?? AgriVision.Domain.Enums.PlantCategory.Other;
+        if (!AgriVision.Domain.Enums.PlantCategory.IsValid(category))
+            throw new ArgumentException("Nhóm cây trồng không hợp lệ.");
+        return category;
+    }
+
     public static string Text(string? value, string field, int? maxLength = null)
     {
-        var trimmed = value?.Trim();
+        var trimmed = AgriVision.Application.Common.CatalogText.Normalize(value);
         if (string.IsNullOrEmpty(trimmed) || (maxLength.HasValue && trimmed.Length > maxLength))
             throw new ArgumentException($"{field} is required" + (maxLength.HasValue ? $" and must not exceed {maxLength} characters." : "."));
         return trimmed;
@@ -24,6 +35,7 @@ internal static class CatalogValidation
 
     public static void Filter(CatalogFilterParams filter)
     {
+        if (filter.Search?.Length > 200) throw new ArgumentException("Search must not exceed 200 characters.");
         if (filter.PageNumber < 1 || filter.PageSize < 1 || filter.PageSize > 100 ||
             (long)(filter.PageNumber - 1) * filter.PageSize > int.MaxValue)
             throw new ArgumentException("PageNumber must be positive and PageSize must be between 1 and 100.");

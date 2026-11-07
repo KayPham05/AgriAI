@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { SearchField } from '@/components/common/CatalogControls';
 import { Badge } from '@/components/ui/badge';
+import { CatalogImageEditor } from './CatalogImageEditor';
 import { CatalogEditor } from './CatalogEditor';
 import { CatalogPager, CatalogSelect, ConfirmAction } from './CatalogControls';
 import { MedicineUses } from './MedicineUses';
@@ -52,7 +53,7 @@ function RelatedCatalogInfo({
         <ul className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground">
           {linked.map((pair) => (
             <li key={pair.id}>
-              <span>{pair.diseaseName}</span>
+              <span>{pair.diseaseName.replace(/_+/g, ' ').trim()}</span>
               {!pair.isActive && ' (liên kết ngừng hoạt động)'}
             </li>
           ))}
@@ -72,6 +73,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
   const [revision, setRevision] = useState(0);
   const [editorVersion, setEditorVersion] = useState(0);
   const [dirty, setDirty] = useState(false);
+  const [imageDirty, setImageDirty] = useState(false);
   const [loading, setLoading] = useState(true);
   const [ownPending, setPending] = useState(false);
   const [usePending, setUsePending] = useState(false);
@@ -132,10 +134,12 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
     const close = () => {
       setRecord(null);
       setDirty(false);
+      setImageDirty(false);
       setError('');
       setNotice('');
     };
-    if (dirty) setConfirm({ text: 'Bỏ các thay đổi nội dung chưa lưu?', action: close });
+    if (dirty || imageDirty)
+      setConfirm({ text: 'Bỏ các thay đổi nội dung chưa lưu?', action: close });
     else close();
   }
   async function refreshRecord() {
@@ -180,7 +184,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
     }
   }
   async function change(
-    action: 'approve' | 'publish' | 'hide' | 'revoke' | 'restore' | 'deactivate',
+    action: 'approve' | 'publish' | 'hide' | 'revoke' | 'restore' | 'deactivate' | 'delete',
   ) {
     if (!record?.id || lock.current || dirty) return;
     lock.current = true;
@@ -189,6 +193,18 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
     setNotice('');
     try {
       const path = `${catalogPath(kind, token)}/${record.id}`;
+      if (action === 'delete') {
+        await catalogRequest(`/api/admin/catalog/${kind}/${record.id}`, {
+          token,
+          method: 'DELETE',
+        });
+        setRecord(null);
+        setDirty(false);
+        setImageDirty(false);
+        setRevision((value) => value + 1);
+        setNotice('Đã xóa vĩnh viễn. Lịch sử chẩn đoán được giữ lại.');
+        return;
+      }
       if (action === 'deactivate') {
         await catalogRequest(path, { token, method: 'DELETE' });
         await refreshRecord();
@@ -212,9 +228,12 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
             body: {
               isActive: true,
               ...(kind === 'knowledge-documents'
-                ? { isApproved: action === 'restore' || action === 'revoke'
-                  ? false
-                  : action === 'approve' || Boolean(record.isApproved) }
+                ? {
+                    isApproved:
+                      action === 'restore' || action === 'revoke'
+                        ? false
+                        : action === 'approve' || Boolean(record.isApproved),
+                  }
                 : {}),
               isPublic: action === 'publish',
             },
@@ -267,7 +286,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
       )}
       {!record ? (
         <>
-          <div className="flex flex-wrap justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <SearchField
               id="catalog-admin-search"
               label="Tìm trong danh mục"
@@ -279,6 +298,7 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
             />
             <Button
               variant="outline"
+              className="self-start sm:self-end sm:shrink-0"
               disabled={loading || pending}
               onClick={() => {
                 setRecord({ id: '', isActive: true, createdAt: '', plantDiseaseIds: [] });
@@ -369,7 +389,9 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
                   </Badge>
                 )}
               </div>
-              {kind !== 'plants' && <RelatedCatalogInfo kind={kind} record={record} pairs={pairs} />}
+              {kind !== 'plants' && (
+                <RelatedCatalogInfo kind={kind} record={record} pairs={pairs} />
+              )}
               <div className="flex flex-wrap gap-2">
                 {!record.isActive ? (
                   <Button disabled={pending || dirty} onClick={() => void change('restore')}>
@@ -388,25 +410,43 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
                     )}
                     {!catalog && (
                       <Button
-                        disabled={pending || dirty || (kind === 'knowledge-documents' && !record.isApproved)}
+                        disabled={
+                          pending || dirty || (kind === 'knowledge-documents' && !record.isApproved)
+                        }
                         onClick={() => void change(record.isPublic ? 'hide' : 'publish')}
                       >
                         {record.isPublic ? 'Ẩn công khai' : 'Công khai'}
                       </Button>
                     )}
-                    <Button
-                      variant="outline"
-                      disabled={pending || dirty}
-                      onClick={() =>
-                        setConfirm({
-                          text: 'Ngừng hoạt động mục này? Dữ liệu được giữ lại và không còn xuất hiện trong tra cứu công khai.',
-                          action: () => void change('deactivate'),
-                        })
-                      }
-                    >
-                      Ngừng hoạt động
-                    </Button>
+                    {kind !== 'medicines' && (
+                      <Button
+                        variant="outline"
+                        disabled={pending || dirty}
+                        onClick={() =>
+                          setConfirm({
+                            text: 'Ngừng hoạt động mục này? Dữ liệu được giữ lại và không còn xuất hiện trong tra cứu công khai.',
+                            action: () => void change('deactivate'),
+                          })
+                        }
+                      >
+                        Ngừng hoạt động
+                      </Button>
+                    )}
                   </>
+                )}
+                {kind !== 'knowledge-documents' && (
+                  <Button
+                    variant="destructive"
+                    disabled={pending || dirty || imageDirty}
+                    onClick={() =>
+                      setConfirm({
+                        text: `Xóa vĩnh viễn “${recordName(record)}”? Liên kết, hướng dẫn gắn với mục này và ảnh danh mục sẽ bị xóa. Lịch sử, ảnh người dùng và các cây, bệnh, thuốc khác được giữ lại. Không thể hoàn tác.`,
+                        action: () => void change('delete'),
+                      })
+                    }
+                  >
+                    Xóa vĩnh viễn
+                  </Button>
                 )}
               </div>
               {dirty && (
@@ -425,20 +465,40 @@ export function KnowledgeAdmin({ kind, token }: { kind: CatalogKind; token: stri
             onDirtyChange={setDirty}
             disabled={pending}
           />
+          {(kind === 'plants' || kind === 'diseases') && (
+            <CatalogImageEditor
+              key={`${kind}-${record.id}`}
+              kind={kind}
+              record={record}
+              token={token}
+              disabled={pending}
+              onDirtyChange={setImageDirty}
+              onBusyChange={(value) => {
+                lock.current = value;
+                setUsePending(value);
+              }}
+              onChange={(imageUrl) => {
+                setRecord((current) => (current ? { ...current, imageUrl } : current));
+                setRevision((value) => value + 1);
+              }}
+            />
+          )}
           {kind === 'plants' && record.id && (
             <PlantDiseaseManager
               key={record.id}
               token={token}
               plantId={record.id}
-              disabled={pending || dirty || !record.isActive}
+              disabled={pending}
+              plantActive={record.isActive}
               onBusyChange={(value) => {
                 lock.current = value;
                 setUsePending(value);
               }}
               onChange={(updated) =>
-                setPairs((current) =>
-                  current.map((pair) => (pair.id === updated.id ? updated : pair)),
-                )
+                setPairs((current) => [
+                  ...current.filter((pair) => pair.id !== updated.id),
+                  updated,
+                ])
               }
             />
           )}

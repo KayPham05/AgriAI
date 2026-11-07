@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, ArrowRight, BookOpen, Leaf, ScanLine, ShieldCheck } from 'lucide-react';
@@ -15,26 +14,32 @@ import {
   type CatalogRecord,
   type PlantDiseasePair,
 } from '@/services/knowledgeApi';
+import { ReferenceImage } from '@/components/common/ReferenceImage';
+import { catalogImageSource } from '@/lib/catalogImages';
+import { plantCategory } from '@/lib/plantCategories';
 import { Button } from '@/components/ui/button';
 import { SearchField } from '@/components/common/CatalogControls';
-import { ReferenceImage } from '@/components/common/ReferenceImage';
 import { findPlantTemplate } from '@/services/catalogApi';
 import { CatalogPager, CatalogSelect } from './CatalogControls';
 import { catalogError, catalogLabels, contentFields, publicPath, safeSource } from './catalogUi';
-import { PublicCatalogCard } from './PublicCatalogCard';
+import { PublicCatalogCard, diseaseIllustration } from './PublicCatalogCard';
+import type { DiseaseSummary } from '@/types';
 
 function PlantDetailContent({
   record,
   plant,
   linkedPairs,
+  conditions,
 }: {
   record: CatalogRecord;
-  plant: NonNullable<ReturnType<typeof findPlantTemplate>>;
+  plant: ReturnType<typeof findPlantTemplate>;
   linkedPairs: PlantDiseasePair[];
+  conditions: DiseaseSummary[];
 }) {
   const name = recordName(record);
-  const scientificName = record.scientificName || plant.scientificName;
-  const description = record.description || plant.description;
+  const scientificName = record.scientificName || plant?.scientificName;
+  const description = record.description || plant?.description;
+  const uploaded = catalogImageSource(record.imageUrl);
 
   return (
     <article className="flex min-w-0 flex-col gap-8">
@@ -51,18 +56,17 @@ function PlantDetailContent({
       >
         <div className="grid md:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
           <div className="min-h-72 bg-surface-muted md:min-h-full">
-            <Image
-              src={plant.imageUrl}
+            <ReferenceImage
+              src={uploaded ?? plant?.imageUrl}
               alt={name}
-              width={960}
-              height={720}
-              sizes="(min-width: 768px) 52vw, 100vw"
               className="h-full min-h-72 w-full object-cover md:min-h-[28rem]"
             />
           </div>
           <div className="flex flex-col justify-center p-6 sm:p-10">
             <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-primary">
-              <span className="rounded-full bg-secondary px-3 py-1.5">{plant.category}</span>
+              <span className="rounded-full bg-secondary px-3 py-1.5">
+                {record.category ? plantCategory(record.category) : (plant?.category ?? 'Khác')}
+              </span>
               <span className="inline-flex items-center gap-1.5 text-muted-foreground">
                 <Leaf className="size-4" aria-hidden="true" />
                 Cẩm nang cây trồng
@@ -83,11 +87,13 @@ function PlantDetailContent({
             <dl className="mt-7 grid grid-cols-2 gap-4 border-y border-border py-4">
               <div>
                 <dt className="text-sm text-muted-foreground">Tình trạng tham khảo</dt>
-                <dd className="mt-1 text-2xl font-bold text-primary">{plant.conditions.length}</dd>
+                <dd className="mt-1 text-2xl font-bold text-primary">{conditions.length}</dd>
               </div>
               <div>
                 <dt className="text-sm text-muted-foreground">Dấu hiệu mô hình nhận biết</dt>
-                <dd className="mt-1 text-2xl font-bold text-primary">{plant.detectableCount}</dd>
+                <dd className="mt-1 text-2xl font-bold text-primary">
+                  {linkedPairs.filter((pair) => pair.classIndex !== null).length}
+                </dd>
               </div>
             </dl>
             <div className="mt-7 flex flex-wrap gap-3">
@@ -118,12 +124,12 @@ function PlantDetailContent({
             </p>
           </div>
           <span className="rounded-full border border-border px-3 py-1.5 text-sm font-semibold text-primary">
-            {plant.conditions.length} tình trạng
+            {conditions.length} tình trạng
           </span>
         </div>
 
         <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {plant.conditions.map((condition) => (
+          {conditions.map((condition) => (
             <article
               key={condition.id}
               className="flex min-w-0 flex-col overflow-hidden rounded-card border border-border bg-surface"
@@ -216,10 +222,12 @@ function CatalogContent({
   kind,
   record,
   pairs,
+  diseases,
 }: {
   kind: CatalogKind;
   record: CatalogRecord;
   pairs: PlantDiseasePair[];
+  diseases: CatalogRecord[];
 }) {
   const source = safeSource(record.sourceUrl);
   const linkedPairs = pairs.filter((pair) =>
@@ -237,8 +245,30 @@ function CatalogContent({
         })
       : undefined;
 
-  if (plant) {
-    return <PlantDetailContent record={record} plant={plant} linkedPairs={linkedPairs} />;
+  if (kind === 'plants') {
+    const conditions = linkedPairs.flatMap((pair) => {
+      const disease = diseases.find((item) => item.id === pair.diseaseId && item.isActive);
+      if (!disease || !pair.isActive) return [];
+      return [
+        {
+          id: disease.id,
+          name: recordName(disease),
+          shortDescription:
+            disease.symptoms || disease.description || 'Thông tin đang được cập nhật.',
+          imageUrl:
+            catalogImageSource(disease.imageUrl) ?? diseaseIllustration(disease, [pair])?.src,
+          isHealthy: disease.conditionType === 'Healthy',
+        },
+      ];
+    });
+    return (
+      <PlantDetailContent
+        record={record}
+        plant={plant}
+        linkedPairs={linkedPairs}
+        conditions={conditions}
+      />
+    );
   }
 
   return (
@@ -257,6 +287,13 @@ function CatalogContent({
           </p>
         )}
       </header>
+      {kind === 'diseases' && record.imageUrl && (
+        <ReferenceImage
+          src={catalogImageSource(record.imageUrl)}
+          alt={recordName(record)}
+          className="max-w-2xl rounded-media"
+        />
+      )}
       {kind === 'medicines' && (
         <p className="rounded-card border border-border bg-surface-muted p-4">
           Thông tin tra cứu không thay thế việc đối chiếu cây, bệnh và hướng dẫn trên nhãn. Chỉ sử
@@ -368,6 +405,7 @@ export function PublicCatalog({ kind, id }: { kind: CatalogKind; id?: string }) 
   const [page, setPage] = useState<CatalogPage | null>(null);
   const [record, setRecord] = useState<CatalogRecord | null>(null);
   const [pairs, setPairs] = useState<PlantDiseasePair[]>([]);
+  const [diseaseRecords, setDiseaseRecords] = useState<CatalogRecord[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [revision, setRevision] = useState(0);
@@ -393,10 +431,14 @@ export function PublicCatalog({ kind, id }: { kind: CatalogKind; id?: string }) 
       id
         ? readPublicDetail(kind, id, controller.signal)
         : readCatalogPage(kind, filter, undefined, controller.signal),
+      kind === 'plants' && id
+        ? catalogRequest<CatalogRecord[]>('/api/diseases', { signal: controller.signal })
+        : Promise.resolve([]),
     ])
-      .then(([choices, result]) => {
+      .then(([choices, result, linkedDiseases]) => {
         if (active) {
           setPairs(choices);
+          setDiseaseRecords(linkedDiseases);
           if ('items' in result) setPage(result);
           else setRecord(result);
         }
@@ -479,7 +521,9 @@ export function PublicCatalog({ kind, id }: { kind: CatalogKind; id?: string }) 
           </Button>
         </div>
       )}
-      {record && <CatalogContent kind={kind} record={record} pairs={pairs} />}
+      {record && (
+        <CatalogContent kind={kind} record={record} pairs={pairs} diseases={diseaseRecords} />
+      )}
       {page && (
         <>
           <ul

@@ -1,5 +1,6 @@
 using AgriVision.Application.Common.Interfaces.Persistence;
 using AgriVision.Application.DTOs.Admin;
+using AgriVision.Application.Services.Interfaces;
 using AgriVision.Application.Services.Implementations;
 using AgriVision.Domain.Entities;
 using AgriVision.Domain.Enums;
@@ -21,6 +22,9 @@ public class AdminUserServiceTests
     {
         _userRepositoryMock = new Mock<IUserRepository>();
         _userSessionRepositoryMock = new Mock<IUserSessionRepository>();
+        _userSessionRepositoryMock
+            .Setup(repository => repository.GetActiveSessionsByUserIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<UserSession>());
         _auditLogRepositoryMock = new Mock<IAdminAuditLogRepository>();
         _predictionRepositoryMock = new Mock<IPredictionRepository>();
         _unitOfWorkMock = new Mock<IUnitOfWork>();
@@ -33,7 +37,7 @@ public class AdminUserServiceTests
             _userSessionRepositoryMock.Object,
             _auditLogRepositoryMock.Object,
             _predictionRepositoryMock.Object,
-            _unitOfWorkMock.Object
+            _unitOfWorkMock.Object, Mock.Of<IUserNotificationRepository>(), Mock.Of<ISessionNoticePublisher>()
         );
     }
 
@@ -149,7 +153,7 @@ public class AdminUserServiceTests
             IsActive = true
         };
 
-        _userRepositoryMock.Setup(r => r.GetByIdAsync(targetUserId, It.IsAny<CancellationToken>()))
+        _userRepositoryMock.Setup(r => r.GetByIdForUpdateAsync(targetUserId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(targetUser);
 
         // Act
@@ -159,7 +163,7 @@ public class AdminUserServiceTests
         result.IsActive.Should().BeFalse();
         targetUser.IsActive.Should().BeFalse();
         _userRepositoryMock.Verify(r => r.UpdateAsync(targetUser, It.IsAny<CancellationToken>()), Times.Once);
-        _userSessionRepositoryMock.Verify(s => s.RevokeAllSessionsByUserIdAsync(targetUserId, It.IsAny<CancellationToken>()), Times.Once);
+        _userSessionRepositoryMock.Verify(s => s.RevokeAllByAdminAsync(targetUserId, It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWorkMock.Verify(u => u.ExecuteInTransactionAsync(It.IsAny<Func<Task>>(), It.IsAny<CancellationToken>()), Times.Once);
         _auditLogRepositoryMock.Verify(a => a.AddAsync(It.Is<AdminAuditLog>(l =>
             l.ActorUserId == adminId &&

@@ -6,6 +6,10 @@ import { LEAF_PHOTOS } from '@/data/leafPhotos';
 import type { CatalogKind, CatalogRecord, PlantDiseasePair } from '@/services/knowledgeApi';
 import { medicine, pair, page, json } from '../../helpers/knowledge';
 
+vi.hoisted(() => {
+  process.env.NEXT_PUBLIC_API_BASE_URL = '';
+});
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
@@ -27,11 +31,14 @@ function showDetail(
   id: string,
   record: CatalogRecord,
   pairs: PlantDiseasePair[] = [pair],
+  diseases: CatalogRecord[] = [],
 ) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string) => {
       if (url.includes('plant-diseases')) return json(page(pairs));
+      if (url === '/api/diseases') return json(diseases);
+      if (url === '/api/plants') return json([record]);
       return json(record);
     }),
   );
@@ -39,6 +46,105 @@ function showDetail(
 }
 
 describe('public catalog card content', () => {
+  it.each(['Ca_chua', 'Cây mới tự thêm'])(
+    'uses the current linked disease image for %s',
+    async (name) => {
+      const plantId = '00000000-0000-0000-0000-000000000001';
+      const imageUrl = '/api/catalog/diseases/disease-a/image?v=replaced.png';
+      showDetail(
+        'plants',
+        plantId,
+        { id: plantId, name, isActive: true, createdAt: '' },
+        [{ ...pair, plantId }],
+        [
+          {
+            id: pair.diseaseId,
+            name: 'Chay_la_som',
+            vietnameseName: 'Cháy lá sớm',
+            imageUrl,
+            description: 'Nội dung mới từ Admin',
+            isActive: true,
+            createdAt: '',
+          },
+        ],
+      );
+
+      expect(await screen.findByRole('img', { name: 'Cháy lá sớm' })).toHaveAttribute(
+        'src',
+        expect.stringContaining(imageUrl),
+      );
+      expect(screen.getByText('Nội dung mới từ Admin')).toBeVisible();
+      expect(screen.getByText('1 tình trạng')).toBeVisible();
+    },
+  );
+
+  it('does not show stale template conditions after their links are removed', async () => {
+    const plantId = '00000000-0000-0000-0000-000000000001';
+    showDetail(
+      'plants',
+      plantId,
+      { id: plantId, name: 'Ca_chua', isActive: true, createdAt: '' },
+      [],
+      [],
+    );
+    await screen.findByRole('heading', { name: 'Dấu hiệu trên lá tham khảo' });
+    expect(screen.getByText('0 tình trạng')).toBeVisible();
+    expect(screen.getAllByRole('img')).toHaveLength(1);
+  });
+  it.each(['plants', 'diseases'] as const)(
+    'prefers the uploaded photo in the new %s card layout',
+    async (kind) => {
+      const imageUrl = `/api/catalog/${kind}/uploaded-record/image?v=admin.png`;
+      show(kind, {
+        id: 'uploaded-record',
+        name: kind === 'plants' ? 'Lua' : 'Chay_la',
+        vietnameseName: 'Ảnh danh mục',
+        imageUrl,
+        category: 'Cây ăn trái',
+        isActive: true,
+        createdAt: '',
+      });
+
+      expect(await screen.findByRole('img', { name: 'Ảnh danh mục' })).toHaveAttribute(
+        'src',
+        expect.stringContaining(imageUrl),
+      );
+      expect(screen.getByRole('link', { name: 'Xem chi tiết' })).toHaveAttribute(
+        'href',
+        `/${kind}/uploaded-record`,
+      );
+      if (kind === 'plants') expect(screen.getByText('Cây ăn trái')).toBeVisible();
+    },
+  );
+
+  it('keeps an uploaded photo and saved category in the expanded plant detail', async () => {
+    const imageUrl = '/api/catalog/plants/rice/image?v=admin.jpg';
+    showDetail('plants', 'rice', {
+      id: 'rice',
+      name: 'Lua',
+      vietnameseName: 'Lúa',
+      imageUrl,
+      category: 'Khác',
+      isActive: true,
+      createdAt: '',
+    });
+
+    expect(await screen.findByRole('img', { name: 'Lúa' })).toHaveAttribute(
+      'src',
+      expect.stringContaining(imageUrl),
+    );
+    expect(screen.getByText('Khác')).toBeVisible();
+  });
+
+  it('allows a catalog-only disease link without an AI class name', async () => {
+    show('diseases', { id: pair.diseaseId, name: 'Bệnh mới', isActive: true, createdAt: '' }, [
+      { ...pair, className: null, classIndex: null },
+    ]);
+
+    expect(await screen.findByRole('heading', { name: 'Bệnh mới' })).toBeVisible();
+    expect(screen.getByText('Chưa có ảnh đối chiếu')).toBeVisible();
+  });
+
   it('presents a plant detail with clear crop information and related actions', async () => {
     showDetail(
       'plants',

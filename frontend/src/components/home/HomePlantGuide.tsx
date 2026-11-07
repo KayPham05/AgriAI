@@ -13,21 +13,7 @@ import {
   CardFooter,
 } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { CORE_PLANT_IDS, SUPPORTED_PLANTS } from '@/data/plantData';
-
-const plants = [...SUPPORTED_PLANTS].sort(
-  (left, right) =>
-    Number(CORE_PLANT_IDS.includes(right.id)) - Number(CORE_PLANT_IDS.includes(left.id)),
-);
-const categories = [...new Set(plants.map((plant) => plant.category))];
-const groups = [
-  { id: 'featured', label: 'Nổi bật', plants: plants.slice(0, 4) },
-  ...categories.map((category) => ({
-    id: category,
-    label: category,
-    plants: plants.filter((plant) => plant.category === category),
-  })),
-];
+import { CORE_PLANT_IDS } from '@/data/plantData';
 const photoTips = [
   {
     title: 'Một lá trong khung hình',
@@ -50,12 +36,27 @@ const photoTips = [
 ];
 
 export function HomePlantGuide({
+  plants: activePlants,
   onNavigate,
   onSelectPlant,
 }: {
+  plants: Plant[];
   onNavigate: (tab: NavigationTab) => void;
   onSelectPlant: (plant: Plant) => void;
 }) {
+  const plants = [...activePlants].sort(
+    (left, right) =>
+      Number(CORE_PLANT_IDS.includes(right.id)) - Number(CORE_PLANT_IDS.includes(left.id)),
+  );
+  const categories = [...new Set(plants.map((plant) => plant.category))];
+  const groups = [
+    { id: 'featured', label: 'Nổi bật', plants: plants.slice(0, 4) },
+    ...categories.map((category) => ({
+      id: category,
+      label: category,
+      plants: plants.filter((plant) => plant.category === category),
+    })),
+  ];
   return (
     <>
       <section
@@ -143,6 +144,7 @@ export function HomePlantGuide({
                     >
                       <Image
                         src={plant.imageUrl}
+                        unoptimized={plant.imageUrl.includes('/api/catalog/')}
                         alt={plant.name}
                         width={640}
                         height={360}
@@ -162,8 +164,7 @@ export function HomePlantGuide({
                           {plant.category}
                         </p>
                         <p className="text-sm leading-6">
-                          {plant.conditions.filter((condition) => !condition.isHealthy).length} bệnh
-                          lá trong cẩm nang
+                          Xem bệnh và tình trạng đang được liên kết với cây.
                         </p>
                       </CardContent>
                       <CardFooter>

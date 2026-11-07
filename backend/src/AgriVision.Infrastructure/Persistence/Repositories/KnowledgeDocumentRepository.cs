@@ -23,8 +23,9 @@ public class KnowledgeDocumentRepository(AppDbContext context) : IKnowledgeDocum
                 (!publicOnly || (l.PlantDisease.IsActive && l.PlantDisease.Plant.IsActive && l.PlantDisease.Disease.IsActive))));
         if (!string.IsNullOrWhiteSpace(filter.Search))
         {
-            var search = filter.Search.Trim().ToLowerInvariant();
-            query = query.Where(d => d.Title.ToLower().Contains(search));
+            var (ids, count) = await CatalogSearch.PageAsync(query.Select(d => new CatalogSearchEntry(d.Id, d.Title, null)), filter, cancellationToken);
+            var matches = await query.Where(d => ids.Contains(d.Id)).ToListAsync(cancellationToken);
+            return (matches.OrderBy(d => Array.IndexOf(ids, d.Id)).ToArray(), count);
         }
         var total = await query.CountAsync(cancellationToken);
         var items = await query.OrderBy(d => d.Title).ThenBy(d => d.Id)

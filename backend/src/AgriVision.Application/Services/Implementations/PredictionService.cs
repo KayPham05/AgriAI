@@ -24,6 +24,7 @@ public class PredictionService : IPredictionService
     private readonly IAgriculturalProfileRepository _profileRepository;
     private readonly IMedicineService _medicineService;
     private readonly ILogger<PredictionService> _logger;
+    private readonly IGuestPredictionStore? _guestPredictions;
 
     private static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png", ".webp" };
     private static readonly JsonSerializerOptions SnapshotJsonOptions = new(JsonSerializerDefaults.Web);
@@ -36,7 +37,8 @@ public class PredictionService : IPredictionService
         IAgriculturalProfileRepository profileRepository,
         IMedicineService medicineService,
         IImageUploadJournal uploadJournal,
-        ILogger<PredictionService>? logger = null)
+        ILogger<PredictionService>? logger = null,
+        IGuestPredictionStore? guestPredictions = null)
     {
         _predictionRepository = predictionRepository;
         _plantDiseaseRepository = plantDiseaseRepository;
@@ -46,6 +48,7 @@ public class PredictionService : IPredictionService
         _profileRepository = profileRepository;
         _medicineService = medicineService;
         _logger = logger ?? NullLogger<PredictionService>.Instance;
+        _guestPredictions = guestPredictions;
     }
 
     public async Task<PredictionResultDto> PredictAsync(IFormFile file, Guid? userId, Guid? agriculturalProfileId = null, CancellationToken cancellationToken = default)
@@ -92,8 +95,9 @@ public class PredictionService : IPredictionService
             throw new InvalidOperationException("AI class index/name does not match the database catalog.");
         }
 
-        // Guests receive the result without storing images or personal history.
-        var uploadResult = new ImageUploadResult(string.Empty, string.Empty);
+        // Never replace a disabled winning class with a lower-confidence class.
+        if (!primaryPlantDisease.IsActive || !primaryPlantDisease.Plant.IsActive || !primaryPlantDisease.Disease.IsActive)
+            throw new ArgumentException("Cây hoặc tình trạng được nhận diện hiện đã ngừng hoạt động. Chưa thể cung cấp kết quả dự đoán cho ảnh này.");
 
         // 4. Create Prediction domain entity
         var prediction = new Prediction
@@ -114,6 +118,8 @@ public class PredictionService : IPredictionService
             if (pdItem == null || pdItem.ClassName != topItem.ClassName)
                 throw new InvalidOperationException("AI top-k class index/name does not match the database catalog.");
 
+            if (!pdItem.IsActive || !pdItem.Plant.IsActive || !pdItem.Disease.IsActive) continue;
+
             prediction.PredictionDetails.Add(new PredictionDetail
             {
                 Id = Guid.NewGuid(),
@@ -128,47 +134,120 @@ public class PredictionService : IPredictionService
         // Resolve recommendations before upload so a catalog failure cannot leave an orphan image.
         var medicines = await _medicineService.RecommendAsync(primaryPlantDisease.Id, aiResult.Confidence, cancellationToken);
 
+        var result = MapToResultDto(prediction, primaryPlantDisease) with
+        {
+            RecommendedMedicines = medicines,
+            Medication = medicines.Count == 0 ? null : string.Join("\n\n", medicines.Select(m =>
+                $"{m.ProductName} ({m.ActiveIngredient})\n{m.LabelDirections}\n{m.SafetyWarning}\nNguồn: {m.SourceUrl}\nNhãn: {m.LabelReference}"))
+        };
+        result = result with { PredictionDetails = result.PredictionDetails.ToArray() };
+        if (!userId.HasValue)
+            return _guestPredictions?.Store(result, imageBytes, $"guest{extension}") ?? result;
+
+        return await PersistAsync(prediction, result, imageBytes, file.FileName, userId.Value, cancellationToken);
+    }
+
+    public async Task<ImageDownloadResult?> ReadGuestImageAsync(string guestToken, CancellationToken cancellationToken = default)
+    {
+        var entry = _guestPredictions?.Find(guestToken);
+        if (entry == null) return null;
+        await entry.Gate.WaitAsync(cancellationToken);
+        try
+        {
+            if (entry.IsSaved || entry.ExpiresAt <= DateTime.UtcNow) return null;
+            var contentType = Path.GetExtension(entry.FileName).ToLowerInvariant() switch
+            {
+                ".png" => "image/png", ".webp" => "image/webp", _ => "image/jpeg"
+            };
+            return new ImageDownloadResult(entry.Image, contentType);
+        }
+        finally { entry.Gate.Release(); }
+    }
+
+    public async Task<PredictionResultDto> SaveGuestAsync(string guestToken, Guid userId, CancellationToken cancellationToken = default)
+    {
+        var entry = _guestPredictions?.Find(guestToken)
+            ?? throw new KeyNotFoundException("Kết quả tạm đã hết hạn hoặc máy chủ đã khởi động lại. Vui lòng kiểm tra lá lại.");
+        await entry.Gate.WaitAsync(cancellationToken);
+        try
+        {
+            if (entry.ExpiresAt <= DateTime.UtcNow || (entry.OwnerId.HasValue && entry.OwnerId != userId))
+                throw new KeyNotFoundException("Không tìm thấy kết quả tạm cho tài khoản này.");
+            var existing = await _predictionRepository.GetByIdAsync(entry.Result.Id, cancellationToken);
+            if (existing != null)
+            {
+                if (existing.UserId != userId) throw new KeyNotFoundException("Không tìm thấy kết quả.");
+                entry.OwnerId = userId;
+                entry.IsSaved = true;
+                return ReadStoredResult(existing);
+            }
+            if (entry.IsSaved)
+                throw new KeyNotFoundException("Kết quả đã được lưu trước đó và không còn trong lịch sử. Vui lòng kiểm tra lá lại.");
+
+            // Bind the first save attempt to its authenticated owner, including retries.
+            entry.OwnerId = userId;
+            var primary = await _plantDiseaseRepository.GetByIdAsync(entry.Result.PredictedPlantDisease.Id, cancellationToken);
+            var prediction = new Prediction
+            {
+                Id = entry.Result.Id, UserId = userId, CreatedAt = entry.Result.CreatedAt,
+                PredictedPlantDiseaseId = primary?.Id, Confidence = entry.Result.Confidence
+            };
+            var rank = 1;
+            foreach (var detail in entry.Result.PredictionDetails)
+            {
+                var pair = detail.PlantDisease == null ? null
+                    : await _plantDiseaseRepository.GetByIdAsync(detail.PlantDisease.Id, cancellationToken);
+                prediction.PredictionDetails.Add(new PredictionDetail
+                {
+                    PredictionId = prediction.Id, PlantDiseaseId = pair?.Id,
+                    Probability = detail.Confidence, Rank = rank++
+                });
+            }
+            var saved = await PersistAsync(prediction, entry.Result, entry.Image, entry.FileName, userId, cancellationToken);
+            entry.IsSaved = true;
+            return saved;
+        }
+        finally { entry.Gate.Release(); }
+    }
+
+    private async Task<PredictionResultDto> PersistAsync(Prediction prediction, PredictionResultDto result,
+        byte[] imageBytes, string fileName, Guid userId, CancellationToken cancellationToken)
+    {
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+
         string? pendingKey = null;
         var persisted = false;
         var uploadAcknowledged = false;
         try
         {
-            if (userId.HasValue)
+            var uploadedAt = DateTime.UtcNow;
+            var image = new PredictionImage
             {
-                var image = new PredictionImage
-                {
-                    PredictionId = prediction.Id, Position = 0,
-                    Confidence = prediction.Confidence, UploadedAt = prediction.CreatedAt,
-                    ExpiresAt = prediction.CreatedAt.AddDays(30)
-                };
-                var context = new ImageStorageContext(userId.Value, prediction.Id, image.Id);
-                var key = ImageStorageKey.Create(context, extension);
-                await _uploadJournal.ReserveAsync(context, key, cancellationToken);
-                pendingKey = key;
-                await using var storageStream = new MemoryStream(imageBytes, writable: false);
-                uploadResult = await _imageStorage.UploadImageAsync(storageStream, file.FileName, context, cancellationToken);
-                uploadAcknowledged = true;
-                pendingKey = uploadResult.PublicId;
-                prediction.ImagePublicId = image.ImagePublicId = uploadResult.PublicId;
-                image.ImagePath = $"/api/predictions/{prediction.Id}/images/{image.Id}";
-                prediction.ImagePath = image.ImagePath;
-                prediction.Images.Add(image);
-            }
-
-            var result = MapToResultDto(prediction, primaryPlantDisease) with
+                PredictionId = prediction.Id, Position = 0,
+                Confidence = prediction.Confidence, UploadedAt = uploadedAt,
+                ExpiresAt = uploadedAt.AddDays(30)
+            };
+            var context = new ImageStorageContext(userId, prediction.Id, image.Id);
+            var key = ImageStorageKey.Create(context, extension);
+            await _uploadJournal.ReserveAsync(context, key, cancellationToken);
+            pendingKey = key;
+            await using var storageStream = new MemoryStream(imageBytes, writable: false);
+            var uploadResult = await _imageStorage.UploadImageAsync(storageStream, fileName, context, cancellationToken);
+            uploadAcknowledged = true;
+            pendingKey = uploadResult.PublicId;
+            prediction.ImagePublicId = image.ImagePublicId = uploadResult.PublicId;
+            image.ImagePath = $"/api/predictions/{prediction.Id}/images/{image.Id}";
+            prediction.ImagePath = image.ImagePath;
+            prediction.Images.Add(image);
+            result = result with
             {
-                HasHistoricalSnapshot = userId.HasValue,
-                RecommendedMedicines = medicines,
-                // Preserve the string contract while sourcing new advice only from verified catalog uses.
-                Medication = medicines.Count == 0 ? null : string.Join("\n\n", medicines.Select(m =>
-                    $"{m.ProductName} ({m.ActiveIngredient})\n{m.LabelDirections}\n{m.SafetyWarning}\nNguồn: {m.SourceUrl}\nNhãn: {m.LabelReference}"))
+                ImagePath = prediction.ImagePath, ImagePublicId = prediction.ImagePublicId,
+                Images = ProjectImages(prediction), HasHistoricalSnapshot = true,
+                GuestToken = null, GuestExpiresAt = null
             };
             prediction.ResultSnapshotJson = JsonSerializer.Serialize(result, SnapshotJsonOptions);
-            if (userId.HasValue)
-            {
-                await _predictionRepository.AddAsync(prediction, cancellationToken);
-                persisted = true;
-            }
+            await _predictionRepository.AddAsync(prediction, cancellationToken);
+            persisted = true;
             return result;
         }
         finally
@@ -300,7 +379,7 @@ public class PredictionService : IPredictionService
     private static PredictionResultDto MapToResultDto(Prediction prediction, PlantDisease primaryPlantDisease)
     {
         var plantDto = primaryPlantDisease.Plant != null
-            ? new PlantDto(primaryPlantDisease.Plant.Id, primaryPlantDisease.Plant.Name, primaryPlantDisease.Plant.VietnameseName, primaryPlantDisease.Plant.ScientificName, primaryPlantDisease.Plant.Description, primaryPlantDisease.Plant.IsActive, primaryPlantDisease.Plant.CreatedAt)
+            ? new PlantDto(primaryPlantDisease.Plant.Id, primaryPlantDisease.Plant.Name, primaryPlantDisease.Plant.VietnameseName, primaryPlantDisease.Plant.ScientificName, primaryPlantDisease.Plant.Description, primaryPlantDisease.Plant.IsActive, primaryPlantDisease.Plant.CreatedAt, primaryPlantDisease.Plant.Category)
             : new PlantDto(Guid.Empty, "Unknown", "Chưa xác định", null, null, true, DateTime.UtcNow);
 
         var disease = primaryPlantDisease.Disease;
@@ -330,7 +409,7 @@ public class PredictionService : IPredictionService
         {
             var pd = d.PlantDisease ?? primaryPlantDisease;
             var detailVisible = pd.IsActive && pd.Plant?.IsActive == true && pd.Disease?.IsActive == true;
-            var pdPlant = pd.Plant != null ? new PlantDto(pd.Plant.Id, pd.Plant.Name, pd.Plant.VietnameseName, pd.Plant.ScientificName, pd.Plant.Description, pd.Plant.IsActive, pd.Plant.CreatedAt) : plantDto;
+            var pdPlant = pd.Plant != null ? new PlantDto(pd.Plant.Id, pd.Plant.Name, pd.Plant.VietnameseName, pd.Plant.ScientificName, pd.Plant.Description, pd.Plant.IsActive, pd.Plant.CreatedAt, pd.Plant.Category) : plantDto;
             var pdDisease = pd.Disease != null ? new DiseaseDto(pd.Disease.Id, pd.Disease.Name, pd.Disease.VietnameseName,
                 detailVisible ? pd.Disease.Description ?? pending : pending,
                 detailVisible ? pd.Disease.Symptoms ?? pending : pending,
@@ -340,7 +419,7 @@ public class PredictionService : IPredictionService
                 { IsContentApproved = pd.Disease.IsContentApproved, ConditionType = pd.Disease.ConditionType } : diseaseDto;
 
             var pdDto = new PlantDiseaseDto(pd.Id, pd.PlantId, pd.DiseaseId, pd.ClassName, pd.ClassIndex, pd.IsActive, pdPlant, pdDisease);
-            return new PredictionDetailDto(pd.ClassIndex, pd.ClassName, d.Probability, pdDto);
+            return new PredictionDetailDto(pd.ClassIndex ?? throw new InvalidOperationException("Prediction has no AI mapping."), pd.ClassName!, d.Probability, pdDto);
         });
 
         return new PredictionResultDto(
@@ -371,6 +450,15 @@ public class PredictionService : IPredictionService
                 image.Confidence, image.ExpiresAt, expired);
         }).ToList();
 
+    public static void PreserveBeforeCatalogDeletion(Prediction prediction)
+    {
+        if (prediction.ResultSnapshotJson != null) return;
+        var snapshot = JsonSerializer.SerializeToNode(MapToResultDto(prediction, prediction.PredictedPlantDisease), SnapshotJsonOptions)!;
+        // Preserve legacy content without claiming it was captured at prediction time.
+        snapshot["capturedBeforeCatalogDeletion"] = true;
+        prediction.ResultSnapshotJson = snapshot.ToJsonString();
+    }
+
     private static PredictionResultDto ReadStoredResult(Prediction prediction)
     {
         var result = prediction.ResultSnapshotJson == null
@@ -386,7 +474,8 @@ public class PredictionService : IPredictionService
             Images = images,
             ImagePath = images.FirstOrDefault()?.ImagePath ?? string.Empty,
             ImagePublicId = expired || images.FirstOrDefault()?.ImagePath == null ? null : prediction.ImagePublicId,
-            HasHistoricalSnapshot = prediction.ResultSnapshotJson != null
+            HasHistoricalSnapshot = prediction.ResultSnapshotJson != null &&
+                !System.Text.Json.Nodes.JsonNode.Parse(prediction.ResultSnapshotJson)!.AsObject().ContainsKey("capturedBeforeCatalogDeletion")
         };
     }
 }

@@ -1,3 +1,4 @@
+import { sessionFetch, reportSessionIssue } from './sessionFetch';
 import type { DiagnosisResult, TopPrediction } from '../types';
 import type { DiseaseDto, PlantDto } from './catalogApi';
 import {
@@ -50,6 +51,8 @@ interface PredictionResultDto {
   confidence: number;
   predictionDetails: PredictionDetailDto[];
   createdAt: string;
+  guestToken?: string | null;
+  guestExpiresAt?: string | null;
 }
 
 interface PredictionHistoryDto {
@@ -208,7 +211,7 @@ async function authenticatedRequest<T>(
   token: string,
   init?: RequestInit,
 ): Promise<T> {
-  const response = await fetch(`${predictionUrl}${path}`, {
+  const response = await sessionFetch(`${predictionUrl}${path}`, {
     ...init,
     headers: { Authorization: `Bearer ${token}`, ...init?.headers },
   });
@@ -253,6 +256,7 @@ export function createPrediction(
     xhr.onabort = () => finish(new Error('Yêu cầu đã được hủy.'));
     xhr.onload = () => {
       const body = xhr.response as unknown;
+      reportSessionIssue(xhr.status, body, options.token);
       if (xhr.status < 200 || xhr.status >= 300) {
         finish(getPredictionError(body, xhr.status));
         return;
@@ -305,6 +309,41 @@ export async function getPredictionHistory(token: string): Promise<DiagnosisResu
   return result.items.map(mapHistoryItem);
 }
 
+export async function saveGuestPrediction(
+  guestToken: string,
+  token: string,
+): Promise<PredictionResponse> {
+  const dto = await authenticatedRequest<PredictionResultDto>('/guest/save', token, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ guestToken }),
+  });
+  const diagnosis = mapPredictionResult(dto);
+  return {
+    dto,
+    diagnosis,
+    crop: diagnosis.plant,
+    disease: diagnosis.prediction,
+    confidence: dto.confidence,
+  };
+}
+
+export async function readGuestPredictionImage(
+  guestToken: string,
+  signal: AbortSignal,
+): Promise<Blob> {
+  const response = await fetch(`${predictionUrl}/guest/image`, {
+    headers: { 'X-Guest-Prediction': guestToken },
+    cache: 'no-store',
+    signal,
+  });
+  if (!response.ok)
+    throw new Error(
+      'Ảnh tạm đã hết hạn hoặc không còn khả dụng. Bạn vẫn có thể xem nội dung kết quả trong tab này.',
+    );
+  return response.blob();
+}
+
 export async function getPredictionById(id: string, token: string): Promise<DiagnosisResult> {
   const dto = await authenticatedRequest<PredictionResultDto>(`/${id}`, token);
   return mapPredictionResult(dto);
@@ -337,7 +376,7 @@ export async function assignPredictionProfile(
 }
 
 export async function deletePrediction(id: string, token: string): Promise<void> {
-  const response = await fetch(`${predictionUrl}/${id}`, {
+  const response = await sessionFetch(`${predictionUrl}/${id}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });

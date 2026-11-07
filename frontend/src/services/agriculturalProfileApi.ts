@@ -1,3 +1,4 @@
+import { sessionFetch } from './sessionFetch';
 export interface AgriculturalProfile {
   id: string;
   userId: string;
@@ -26,7 +27,7 @@ function getErrorMessage(body: unknown, status: number): string {
 }
 
 async function request<T>(path: string, token: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${profilesUrl}${path}`, {
+  const response = await sessionFetch(`${profilesUrl}${path}`, {
     ...init,
     headers: {
       Authorization: `Bearer ${token}`,
@@ -34,11 +35,12 @@ async function request<T>(path: string, token: string, init?: RequestInit): Prom
       ...init?.headers,
     },
   });
-  const body = response.status === 204
-    ? null
-    : typeof response.json === 'function'
-      ? ((await response.json().catch(() => null)) as unknown)
-      : null;
+  const body =
+    response.status === 204
+      ? null
+      : typeof response.json === 'function'
+        ? ((await response.json().catch(() => null)) as unknown)
+        : null;
   if (!response.ok) throw new Error(getErrorMessage(body, response.status));
   return body as T;
 }

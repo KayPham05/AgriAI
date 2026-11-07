@@ -31,7 +31,8 @@ public class CatalogContractTests(AgriVisionFactory factory) : IClassFixture<Agr
         using var update = await client.PutAsJsonAsync($"/api/{resource}/{id}", payload);
         update.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         using var detail = await client.GetAsync($"/api/{resource}/{id}");
-        (await ApiTestClient.Json(detail)).GetProperty(field).GetString().Should().Be(new string('a', max));
+        var expectedValue = field == "vietnameseName" ? "A" + new string('a', max - 1) : new string('a', max);
+        (await ApiTestClient.Json(detail)).GetProperty(field).GetString().Should().Be(expectedValue);
         payload["name"] = "Over_" + Guid.NewGuid().ToString("N");
         using var invalidCreate = await client.PostAsJsonAsync("/api/" + resource, payload);
         invalidCreate.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -45,14 +46,15 @@ public class CatalogContractTests(AgriVisionFactory factory) : IClassFixture<Agr
     {
         using var admin = factory.CreateClient();
         await ApiTestClient.Admin(admin, factory);
-        var name = $"contract-{Guid.NewGuid():N}";
+        var suffix = Guid.NewGuid().ToString("N");
+        var name = $"contract-{suffix}";
         using var created = await admin.PostAsJsonAsync($"/api/{resource}", Body(name));
         created.StatusCode.Should().Be(HttpStatusCode.Created);
         created.Headers.Location.Should().NotBeNull();
         created.Content.Headers.ContentType!.MediaType.Should().Be("application/json");
         var body = await ApiTestClient.Json(created);
         body.GetProperty("id").GetGuid().Should().NotBeEmpty();
-        body.GetProperty("name").GetString().Should().Be(name);
+        body.GetProperty("name").GetString().Should().Be($"Contract-{suffix}");
         body.GetProperty("vietnameseName").GetString().Should().Be("Tên thử");
         body.GetProperty("description").ValueKind.Should().Be(JsonValueKind.Null);
         body.GetProperty("isActive").GetBoolean().Should().BeTrue();
@@ -96,11 +98,11 @@ public class CatalogContractTests(AgriVisionFactory factory) : IClassFixture<Agr
     {
         using var client = factory.CreateClient();
         await ApiTestClient.Admin(client, factory);
-        var name = Guid.NewGuid().ToString("N").PadRight(length, 'x');
+        var name = ("boundary_" + Guid.NewGuid().ToString("N")).PadRight(length, 'x');
         using var response = await client.PostAsJsonAsync($"/api/{resource}", Body(name));
         response.StatusCode.Should().Be(expected);
         if (expected == HttpStatusCode.Created)
-            (await ApiTestClient.Json(response)).GetProperty("name").GetString().Should().Be(name);
+            (await ApiTestClient.Json(response)).GetProperty("name").GetString().Should().Be("B" + name[1..]);
     }
 
     [Theory]
@@ -148,7 +150,8 @@ public class CatalogContractTests(AgriVisionFactory factory) : IClassFixture<Agr
         using var admin = factory.CreateClient();
         await ApiTestClient.Admin(admin, factory);
         var id = await Create(admin, resource);
-        var name = $"updated-{Guid.NewGuid():N}";
+        var suffix = Guid.NewGuid().ToString("N");
+        var name = $"updated-{suffix}";
         using var update = await admin.PutAsJsonAsync($"/api/{resource}/{id}", new
         {
             name, vietnameseName = "Đã sửa", scientificName = "Scientific", description = "Description",
@@ -161,7 +164,7 @@ public class CatalogContractTests(AgriVisionFactory factory) : IClassFixture<Agr
         using var read = await admin.GetAsync($"/api/{resource}/{id}");
         read.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await ApiTestClient.Json(read);
-        body.GetProperty("name").GetString().Should().Be(name);
+        body.GetProperty("name").GetString().Should().Be($"Updated-{suffix}");
         body.GetProperty("vietnameseName").GetString().Should().Be("Đã sửa");
         body.GetProperty("description").GetString().Should().Be("Description");
         body.GetProperty("isActive").GetBoolean().Should().BeFalse();
@@ -246,13 +249,14 @@ public class CatalogContractTests(AgriVisionFactory factory) : IClassFixture<Agr
     {
         using var admin = factory.CreateClient();
         await ApiTestClient.Admin(admin, factory);
-        var name = $"unique-{Guid.NewGuid():N}";
+        var suffix = Guid.NewGuid().ToString("N");
+        var name = $"unique-{suffix}";
         using var first = await admin.PostAsJsonAsync("/api/plants", Body(name));
         first.StatusCode.Should().Be(HttpStatusCode.Created);
         using var duplicate = await admin.PostAsJsonAsync("/api/plants", Body(name));
         duplicate.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         using var list = await admin.GetAsync("/api/plants?includeInactive=true");
-        (await ApiTestClient.Json(list)).EnumerateArray().Count(x => x.GetProperty("name").GetString() == name).Should().Be(1);
+        (await ApiTestClient.Json(list)).EnumerateArray().Count(x => x.GetProperty("name").GetString() == $"Unique-{suffix}").Should().Be(1);
     }
 
     [Theory]
@@ -283,7 +287,8 @@ public class CatalogContractTests(AgriVisionFactory factory) : IClassFixture<Agr
     {
         using var admin = factory.CreateClient();
         await ApiTestClient.Admin(admin, factory);
-        var name = $"same-{Guid.NewGuid():N}";
+        var suffix = Guid.NewGuid().ToString("N");
+        var name = $"same-{suffix}";
         using var first = await admin.PostAsJsonAsync("/api/diseases", Body(name));
         using var second = await admin.PostAsJsonAsync("/api/diseases", Body(name));
         first.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -291,7 +296,7 @@ public class CatalogContractTests(AgriVisionFactory factory) : IClassFixture<Agr
         var id = (await ApiTestClient.Json(first)).GetProperty("id").GetGuid();
         using var original = await admin.GetAsync($"/api/diseases/{id}");
         original.StatusCode.Should().Be(HttpStatusCode.OK);
-        (await ApiTestClient.Json(original)).GetProperty("name").GetString().Should().Be(name);
+        (await ApiTestClient.Json(original)).GetProperty("name").GetString().Should().Be($"Same-{suffix}");
     }
 
     private static object Body(string name) => new { name, vietnameseName = "Tên thử", isActive = true };

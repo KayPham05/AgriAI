@@ -96,6 +96,7 @@ export function PlantsPage({ plants, onSelectPlant, onDiagnosePlant }: PlantsVie
                 >
                   <Image
                     src={plant.imageUrl}
+                    unoptimized={plant.imageUrl.includes('/api/catalog/')}
                     alt={plant.name}
                     loading="lazy"
                     width={640}

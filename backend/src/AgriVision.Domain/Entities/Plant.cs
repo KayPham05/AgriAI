@@ -1,3 +1,5 @@
+using AgriVision.Domain.Enums;
+
 namespace AgriVision.Domain.Entities;
 
 public class Plant
@@ -7,6 +9,8 @@ public class Plant
     public string? VietnameseName { get; set; }
     public string? ScientificName { get; set; }
     public string? Description { get; set; }
+    public string Category { get; set; } = PlantCategory.Other;
+    public string? ImageKey { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
