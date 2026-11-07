@@ -62,3 +62,10 @@
 - Added resend endpoints for login 2FA, setup/disable 2FA and profile password-change codes. Each code expires after 60 seconds; the UI shows a 60-second countdown and enables resend when it reaches zero.
 - Profile password changes now request an eight-digit email code first and include the verified challenge in the final password update request. Existing password validation and session revocation remain in place.
 - Verification: backend build passed with 0 warnings and 0 errors; 182 backend unit tests passed; changed frontend files passed Biome formatting and lint. Full API/browser/Docker verification remains blocked by the unavailable Docker daemon and older local Node runtime.
+
+## CI failure remediation — 2026-11-07
+
+- Updated API contract coverage for five authentication and password-change routes introduced by the backend improvement merge, and aligned the reset-email subject assertion with the implementation.
+- Updated backend password-change tests and frontend profile tests to exercise the required email verification challenge; fixed frontend error mapping for generic 503/429 responses and fake-timer interaction setup.
+- Verification: targeted backend API tests passed 40/40; targeted frontend suites (UserProfilePage, LoginModal, AdminOverview) passed 19/19; `git diff --check` passed. Full CI remains for remote confirmation.
+- Branch: `AGRI-132-forgot-password`. Changes are prepared for commit and push; unrelated local artifacts remain untouched.

@@ -83,11 +83,19 @@ describe('Profile Desktop account management', () => {
     await user.type(screen.getByLabelText('Mật khẩu hiện tại'), 'wrongpass');
     await user.type(screen.getByLabelText('Mật khẩu mới'), 'newpass');
     await user.type(screen.getByLabelText('Xác nhận mật khẩu mới'), 'newpass');
-    fetcher.mockResolvedValueOnce({
-      ok: false,
-      status: 400,
-      json: async () => ({ message: 'Mật khẩu hiện tại không chính xác.' }),
+    fetcher.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (String(url).endsWith('/api/users/change-password/code'))
+        return { ok: true, status: 200, json: async () => ({ challengeId: 'password-challenge' }) };
+      if (String(url).endsWith('/api/users/change-password'))
+        return { ok: false, status: 400, json: async () => ({ message: 'Mật khẩu hiện tại không chính xác.' }) };
+      return {
+        ok: true,
+        status: init?.method === 'POST' ? 204 : 200,
+        json: async () => (init?.method === 'PUT' ? { ...dto, fullName: 'Trần Minh' } : dto),
+      };
     });
+    await user.click(screen.getByRole('button', { name: 'Gửi mã xác nhận' }));
+    await user.type(screen.getByLabelText('Mã xác nhận email'), '01234567');
     await user.click(screen.getByRole('button', { name: 'Cập nhật mật khẩu' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Mật khẩu hiện tại không chính xác.',
@@ -149,11 +157,22 @@ describe('Profile Desktop account management', () => {
     await user.type(screen.getByLabelText('Mật khẩu hiện tại'), 'oldpass');
     await user.type(screen.getByLabelText('Mật khẩu mới'), 'newpass');
     await user.type(screen.getByLabelText('Xác nhận mật khẩu mới'), 'wrong');
-    await user.click(screen.getByRole('button', { name: 'Cập nhật mật khẩu' }));
+    await user.click(screen.getByRole('button', { name: 'Gửi mã xác nhận' }));
     expect(screen.getByRole('alert')).toHaveTextContent('không khớp');
     expect(onLogout).not.toHaveBeenCalled();
     await user.clear(screen.getByLabelText('Xác nhận mật khẩu mới'));
     await user.type(screen.getByLabelText('Xác nhận mật khẩu mới'), 'newpass');
+    fetcher.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (String(url).endsWith('/api/users/change-password/code'))
+        return { ok: true, status: 200, json: async () => ({ challengeId: 'password-challenge' }) };
+      return {
+        ok: true,
+        status: init?.method === 'POST' ? 204 : 200,
+        json: async () => (init?.method === 'PUT' ? { ...dto, fullName: 'Trần Minh' } : dto),
+      };
+    });
+    await user.click(screen.getByRole('button', { name: 'Gửi mã xác nhận' }));
+    await user.type(screen.getByLabelText('Mã xác nhận email'), '01234567');
     await user.click(screen.getByRole('button', { name: 'Cập nhật mật khẩu' }));
     await waitFor(() => expect(onLogout).toHaveBeenCalledOnce());
     expect(fetcher).toHaveBeenLastCalledWith(
@@ -164,6 +183,8 @@ describe('Profile Desktop account management', () => {
           currentPassword: 'oldpass',
           newPassword: 'newpass',
           confirmPassword: 'newpass',
+          verificationChallengeId: 'password-challenge',
+          verificationCode: '01234567',
         }),
       }),
     );

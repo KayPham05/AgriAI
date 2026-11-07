@@ -134,6 +134,7 @@ describe('LoginModal entry mode', () => {
       vi
         .fn()
         .mockResolvedValueOnce(new Response(null, { status: 202 }))
+        .mockResolvedValueOnce(new Response(null, { status: 204 }))
         .mockResolvedValueOnce(new Response(null, { status: 204 })),
     );
     const user = userEvent.setup();
@@ -143,9 +144,11 @@ describe('LoginModal entry mode', () => {
     await user.click(screen.getByRole('button', { name: 'Gửi mã' }));
     await user.type(
       await screen.findByLabelText('Mã trong email'),
-      '0123456789ABCDEF0123456789ABCDEF',
+      '01234567',
     );
+    await user.click(screen.getByRole('button', { name: 'Tiếp theo' }));
     await user.type(screen.getByLabelText('Mật khẩu mới'), 'new-password123');
+    await user.type(screen.getByLabelText('Xác nhận mật khẩu mới'), 'new-password123');
     await user.click(screen.getByRole('button', { name: 'Đổi mật khẩu' }));
 
     expect(await screen.findByText(/Mật khẩu đã được cập nhật/)).toBeInTheDocument();

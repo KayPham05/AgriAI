@@ -29,11 +29,9 @@ export class UserApiError extends Error {
         ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
         : (status === 429 || status === 503) && message
           ? message
-          : status === 503
-            ? 'Dịch vụ email chưa được cấu hình. Vui lòng liên hệ quản trị viên.'
-            : status === 400 && message
-              ? message
-              : 'Không thể hoàn tất yêu cầu. Vui lòng thử lại.',
+          : status === 400 && message
+            ? message
+            : 'Không thể hoàn tất yêu cầu. Vui lòng thử lại.',
     );
     this.name = 'UserApiError';
   }

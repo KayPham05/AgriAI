@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
+using System.Text.RegularExpressions;
 using AgriVision.Application.Common.Interfaces.Authentication;
 using AgriVision.Application.Common.Interfaces.Persistence;
 using AgriVision.Application.DTOs.Auth;
@@ -68,6 +69,21 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>, IDisposabl
         return new AppDbContext(builder.Options);
     }
 
+    private async Task<(Guid ChallengeId, string Code)> IssuePasswordChangeCodeAsync(
+        HttpClient client, string token, string email)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/users/change-password/code");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        using var response = await client.SendAsync(request);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<ChallengeResponse>();
+        body.Should().NotBeNull();
+        var message = _factory.Inbox.Read(email, "Mã đổi mật khẩu AgriAI").Should().ContainSingle().Which;
+        var code = Regex.Match(message, @"\b[0-9]{8}\b").Value;
+        code.Should().HaveLength(8);
+        return (body!.ChallengeId, code);
+    }
+
     private string CreateToken(Guid userId, Guid? sessionId, bool omitSid = false, string? customSid = null)
     {
         var configuration = _factory.Services.GetRequiredService<IConfiguration>();
@@ -95,6 +111,8 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>, IDisposabl
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
+
+    private sealed record ChallengeResponse(Guid ChallengeId);
 
     private static async Task WaitForLockWaitAsync(string connectionString, int waiterPid, int blockerPid, TimeSpan timeout)
     {
@@ -298,10 +316,13 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>, IDisposabl
         var login = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(email, oldPassword));
         var auth2 = (await login.Content.ReadFromJsonAsync<AuthResponse>())!;
 
+        var challenge = await IssuePasswordChangeCodeAsync(client, auth1.Token, email);
+
         // Change password using Session 1
         using var changeReq = new HttpRequestMessage(HttpMethod.Post, "/api/users/change-password")
         {
-            Content = JsonContent.Create(new ChangePasswordRequest(oldPassword, newPassword, newPassword))
+            Content = JsonContent.Create(new ChangePasswordRequest(oldPassword, newPassword, newPassword,
+                challenge.ChallengeId, challenge.Code))
         };
         changeReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", auth1.Token);
         using var changeResp = await client.SendAsync(changeReq);
@@ -339,6 +360,8 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>, IDisposabl
         registration.StatusCode.Should().Be(HttpStatusCode.OK);
         var auth = (await registration.Content.ReadFromJsonAsync<AuthResponse>())!;
 
+        var challenge = await IssuePasswordChangeCodeAsync(client, auth.Token, email);
+
         var blocker = new GateDbCommandInterceptor("UPDATE users", pauseAfterExecution: true);
         var waiter = new GateDbCommandInterceptor("FOR UPDATE");
         using var changeFactory = CreateRaceFactory(blocker);
@@ -347,7 +370,8 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>, IDisposabl
         using var loginClient = loginFactory.CreateClient();
         using var changeRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/change-password")
         {
-            Content = JsonContent.Create(new ChangePasswordRequest(oldPassword, newPassword, newPassword))
+            Content = JsonContent.Create(new ChangePasswordRequest(oldPassword, newPassword, newPassword,
+                challenge.ChallengeId, challenge.Code))
         };
         changeRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", auth.Token);
         var changeTask = changeClient.SendAsync(changeRequest);
@@ -390,6 +414,8 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>, IDisposabl
         registration.StatusCode.Should().Be(HttpStatusCode.OK);
         var auth = (await registration.Content.ReadFromJsonAsync<AuthResponse>())!;
 
+        var challenge = await IssuePasswordChangeCodeAsync(client, auth.Token, email);
+
         var blocker = new GateDbCommandInterceptor("FOR UPDATE", pauseAfterExecution: true);
         var waiter = new GateDbCommandInterceptor("FOR UPDATE");
         using var loginFactory = CreateRaceFactory(blocker);
@@ -402,7 +428,8 @@ public class AuthImprovementTests : IClassFixture<AgriVisionFactory>, IDisposabl
             await blocker.CommandExecutedEvent.Task.WaitAsync(TimeSpan.FromSeconds(30));
             using var changeRequest = new HttpRequestMessage(HttpMethod.Post, "/api/users/change-password")
             {
-                Content = JsonContent.Create(new ChangePasswordRequest(oldPassword, newPassword, newPassword))
+                Content = JsonContent.Create(new ChangePasswordRequest(oldPassword, newPassword, newPassword,
+                    challenge.ChallengeId, challenge.Code))
             };
             changeRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", auth.Token);
             var changeTask = changeClient.SendAsync(changeRequest);

@@ -28,7 +28,7 @@ public class AuthControllerTests : IClassFixture<AgriVisionFactory>
         await RegisterAsync(email);
         var request = await _client.PostAsJsonAsync("/api/auth/forgot-password", new { email });
         request.StatusCode.Should().Be(HttpStatusCode.Accepted);
-        var message = _inbox.Read(email, "Đặt lại mật khẩu AgriAI").Should().ContainSingle().Which;
+        var message = _inbox.Read(email, "Mã đặt lại mật khẩu AgriAI").Should().ContainSingle().Which;
         var code = Regex.Match(message, @"\b[0-9]{8}\b").Value;
 
         var verify = await _client.PostAsJsonAsync("/api/auth/reset-password/verify", new { code });

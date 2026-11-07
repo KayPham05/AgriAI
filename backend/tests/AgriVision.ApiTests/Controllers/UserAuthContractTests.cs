@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.RegularExpressions;
 using AgriVision.ApiTests.Helpers;
 using AgriVision.Application.DTOs.Auth;
 using AgriVision.TestSupport;
@@ -11,6 +12,21 @@ namespace AgriVision.ApiTests.Controllers;
 
 public class UserAuthContractTests(AgriVisionFactory factory) : IClassFixture<AgriVisionFactory>
 {
+    private async Task<(Guid ChallengeId, string Code)> IssuePasswordChangeCodeAsync(
+        HttpClient client, string token, string email)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/users/change-password/code");
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        using var response = await client.SendAsync(request);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = await response.Content.ReadFromJsonAsync<ChallengeResponse>();
+        body.Should().NotBeNull();
+        var message = factory.Inbox.Read(email, "Mã đổi mật khẩu AgriAI").Should().ContainSingle().Which;
+        var code = Regex.Match(message, @"\b[0-9]{8}\b").Value;
+        code.Should().HaveLength(8);
+        return (body!.ChallengeId, code);
+    }
+
     [Theory]
     [InlineData("logout")]
     [InlineData("password")]
@@ -34,9 +50,20 @@ public class UserAuthContractTests(AgriVisionFactory factory) : IClassFixture<Ag
         }
         using var before = await client.GetAsync("/api/auth/me");
         before.StatusCode.Should().Be(HttpStatusCode.OK);
+        var challenge = operation == "password"
+            ? await IssuePasswordChangeCodeAsync(client,
+                client.DefaultRequestHeaders.Authorization!.Parameter!, account.User.Email)
+            : default;
         using var response = operation == "logout"
             ? await client.PostAsync("/api/auth/logout", null)
-            : await client.PostAsJsonAsync("/api/users/change-password", new { currentPassword = ApiTestClient.Password, newPassword = "Changed123!", confirmPassword = "Changed123!" });
+            : await client.PostAsJsonAsync("/api/users/change-password", new
+            {
+                currentPassword = ApiTestClient.Password,
+                newPassword = "Changed123!",
+                confirmPassword = "Changed123!",
+                verificationChallengeId = challenge.ChallengeId,
+                verificationCode = challenge.Code
+            });
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         using var after = await client.GetAsync("/api/auth/me");
         after.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
@@ -184,10 +211,20 @@ public class UserAuthContractTests(AgriVisionFactory factory) : IClassFixture<Ag
     {
         using var client = factory.CreateClient();
         var auth = await ApiTestClient.Register(client);
-        using var change = await client.PostAsJsonAsync("/api/users/change-password", new { currentPassword = ApiTestClient.Password, newPassword = "123456", confirmPassword = "123456" });
+        var challenge = await IssuePasswordChangeCodeAsync(client, auth.Token, auth.User.Email);
+        using var change = await client.PostAsJsonAsync("/api/users/change-password", new
+        {
+            currentPassword = ApiTestClient.Password,
+            newPassword = "123456",
+            confirmPassword = "123456",
+            verificationChallengeId = challenge.ChallengeId,
+            verificationCode = challenge.Code
+        });
         change.StatusCode.Should().Be(HttpStatusCode.NoContent);
         (await client.GetAsync("/api/auth/me")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         using var login = await client.PostAsJsonAsync("/api/auth/login", new LoginRequest(auth.User.Email, "123456"));
         login.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 }
+
+file sealed record ChallengeResponse(Guid ChallengeId);
