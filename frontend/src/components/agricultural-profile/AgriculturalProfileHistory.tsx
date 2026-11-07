@@ -1,24 +1,64 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { getProfilePredictionHistory } from '@/services/predictionApi';
+import { getProfilePredictionHistory, removePredictionProfile } from '@/services/predictionApi';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
 import type { DiagnosisResult } from '@/types';
 
 export function AgriculturalProfileHistory({
   profileId,
   token,
   onView,
+  onRemoved,
 }: {
   profileId: string;
   token: string;
   onView: (result: DiagnosisResult) => Promise<void>;
+  onRemoved?: () => void;
 }) {
   const [request, setRequest] = useState({ page: 1 });
+  const [removing, setRemoving] = useState<DiagnosisResult | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+  const pending = useRef(false);
+  const confirmRemoval = async () => {
+    if (!removing || pending.current) return;
+    pending.current = true;
+    setSaving(true);
+    setRemoveError(null);
+    try {
+      await removePredictionProfile(removing.id, profileId, token);
+      setState((current) => ({
+        ...current,
+        items: current.items.filter((item) => item.id !== removing.id),
+      }));
+      setRemoving(null);
+      setSearch('');
+      setPlantFilter('');
+      setRequest({ page: 1 });
+      onRemoved?.();
+    } catch (cause) {
+      setRemoveError(
+        cause instanceof Error ? cause.message : 'Không thể xóa lượt dự đoán khỏi hồ sơ.',
+      );
+    } finally {
+      pending.current = false;
+      setSaving(false);
+    }
+  };
   const [search, setSearch] = useState('');
   const [plantFilter, setPlantFilter] = useState('');
   const page = request.page;
@@ -155,9 +195,22 @@ export function AgriculturalProfileHistory({
                   <p className="break-words leading-6">{result.prediction}</p>
                   <p className="text-xs leading-5 text-muted-foreground">{result.timestamp}</p>
                 </div>
-                <Button variant="outline" className="shrink-0" onClick={() => void onView(result)}>
-                  Xem kết quả đã lưu
-                </Button>
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <Button variant="outline" onClick={() => void onView(result)}>
+                    Xem kết quả đã lưu
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="text-destructive"
+                    disabled={saving}
+                    onClick={() => {
+                      setRemoveError(null);
+                      setRemoving(result);
+                    }}
+                  >
+                    Xóa khỏi hồ sơ
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>
@@ -187,6 +240,37 @@ export function AgriculturalProfileHistory({
             </nav>
           </>
         )}
+        <AlertDialog
+          open={removing !== null}
+          onOpenChange={(open) => {
+            if (!open && !pending.current) setRemoving(null);
+          }}
+        >
+          <AlertDialogContent
+            onEscapeKeyDown={(event) => {
+              if (pending.current) event.preventDefault();
+            }}
+          >
+            <AlertDialogHeader>
+              <AlertDialogTitle>Chắc chắn xóa lượt dự đoán khỏi hồ sơ?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {removing?.plant} · {removing?.prediction}. Kết quả vẫn được giữ trong Mẫu đã lưu.
+                Số lượt chẩn đoán của hồ sơ sẽ được cập nhật.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            {removeError && (
+              <p role="alert" className="text-sm text-destructive">
+                {removeError}
+              </p>
+            )}
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={saving}>Hủy</AlertDialogCancel>
+              <Button variant="destructive" disabled={saving} onClick={() => void confirmRemoval()}>
+                {saving ? 'Đang xóa...' : 'Xác nhận xóa'}
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );

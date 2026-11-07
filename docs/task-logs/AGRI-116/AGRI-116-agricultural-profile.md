@@ -224,3 +224,41 @@ và không đụng vào source hoặc artifact trong `ai/`.
   schema has 11 migrations and retains the profile assignment guard.
 - Local checks passed: frontend 494/494, backend 180 unit + 256 API + 65
   integration, and frontend production build. See [verification and limits](../../reports/AGRI-116/README.md).
+
+## Cập nhật từ AGRI-128 — 2026-11-06
+
+- Fast-forward nhánh 116-extend đến 16a0115 của 128, không conflict.
+- Typecheck và 30/30 test regression hồ sơ/chẩn đoán pass.
+- Merge local. Các kiểm tra backend/full suite/CI chưa chạy lại.
+
+## Đồng bộ xóa dự đoán với hồ sơ — 2026-11-06
+
+- Xóa Mẫu đã lưu thành công sẽ tải lại số lượt các hồ sơ. Lịch sử hồ sơ đang mở
+  tải lại khi số lượt thay đổi. Phân biệt lỗi xóa và lỗi tải lại hồ sơ.
+- Regression liên quan 9/9 pass, typecheck/lint pass. Chưa commit/push.
+- [Chi tiết và giới hạn](../../reports/AGRI-116/README.md).
+- Full frontend run có timeout ở nhóm Admin/startup và đã dừng, chưa có kết quả
+  tổng. Các test mục tiêu pass riêng, xem report để biết giới hạn.
+
+## Xóa lượt dự đoán khỏi hồ sơ — 2026-11-06
+
+- Thêm nút và popup xác nhận gỡ lượt dự đoán, giữ kết quả/ảnh trong Mẫu đã lưu.
+  Thành công cập nhật số lượt hồ sơ và tải lại lịch sử.
+- Thêm API DELETE gỡ liên kết với kiểm tra owner và manifest/API regression.
+- Frontend 44/44 test liên quan, TypeScript/lint pass. Chưa commit/push.
+  [Bằng chứng và phạm vi](../../reports/AGRI-116/README.md).
+- Backend mới: 25/25 API profile/contract + 43/43 service unit pass trong .NET 9
+  container với PostgreSQL disposable. Docker ứng dụng chưa rebuild, chưa CI.
+
+## Docker local — 2026-11-06
+
+- Build/recreate frontend và backend mới, healthy. Áp dụng ba migration upstream
+  sau pg_dump backup đã kiểm tra, xem report.
+- Trang hồ sơ 200, bundle phục vụ chứa nút mới, backend health 200, API Guest 401.
+- Chưa browser acceptance hoặc commit/push.
+
+## Push 116-extend — 2026-11-06
+
+- Chuẩn bị bàn giao luồng xóa/gỡ dự đoán, đồng bộ bộ đếm, API/tests và docs.
+- Kiểm tra mới trước commit: TypeScript và 44/44 test frontend liên quan pass.
+- Giới hạn full suite/CI và kiểm chứng backend/Docker xem report.

@@ -26,6 +26,7 @@ interface HistoryState {
   viewHistoryItem: (result: DiagnosisResult) => Promise<void>;
 }
 interface AgriculturalProfileState {
+  removePrediction?: (profileId: string) => void;
   recordPrediction?: (profileId: string) => void;
   profiles: AgriculturalProfile[];
   isLoading: boolean;

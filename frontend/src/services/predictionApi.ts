@@ -346,3 +346,15 @@ export async function deletePrediction(id: string, token: string): Promise<void>
     throw new Error(getBackendError(body, response.status));
   }
 }
+
+export async function removePredictionProfile(
+  id: string,
+  profileId: string,
+  token: string,
+): Promise<void> {
+  await authenticatedRequest<unknown>(
+    `/${encodeURIComponent(id)}/agricultural-profile/${encodeURIComponent(profileId)}`,
+    token,
+    { method: 'DELETE' },
+  );
+}

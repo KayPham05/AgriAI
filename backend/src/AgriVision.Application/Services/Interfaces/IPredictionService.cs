@@ -7,6 +7,7 @@ namespace AgriVision.Application.Services.Interfaces;
 
 public interface IPredictionService
 {
+    Task RemoveProfileAsync(Guid id, Guid userId, Guid profileId, CancellationToken cancellationToken = default);
     Task AssignProfileAsync(Guid id, Guid userId, Guid profileId, CancellationToken cancellationToken = default);
     Task<PredictionResultDto> PredictAsync(IFormFile file, Guid? userId, Guid? agriculturalProfileId = null, CancellationToken cancellationToken = default);
     Task<PredictionResultDto?> GetPredictionByIdAsync(Guid id, CancellationToken cancellationToken = default, Guid? userId = null);
