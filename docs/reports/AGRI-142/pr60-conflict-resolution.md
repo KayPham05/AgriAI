@@ -38,3 +38,12 @@ The local build uses the previously documented `-p:LangVersion=12.0` workaround.
 ## Remote delivery
 
 On November 7, merge commit `d18a665` was pushed to PR #60's source branch. GitHub verified the exact SHA and `mergeable=true`; `mergeable_state=unstable` reflected checks still in progress. PR title/body were verified after updating the test evidence. Current state was open and `draft=false`; readiness was not changed by this workflow. The target remains `AGRI-128-backend-improvement`, with both requested reviewers retained. CI completion and reviewer approval remain separate from conflict resolution.
+
+
+## Frontend CI lint follow-up — 2026-11-07
+
+GitHub run `42331242171` failed the frontend lint step because `HomePlantGuide.test.tsx` used a non-null assertion on the rice fixture. `biome lint . --error-on-warnings` treats the warning as failure. Reproduced locally with the exact lint script: one `noNonNullAssertion` warning across 278 files. Earlier scoped lint did not include this file; passing component tests did not establish full frontend CI success.
+
+Replaced the assertion with an explicit missing-fixture error, retaining type narrowing and test failure if the rice fixture disappears. No lint rules or production code changed. Fresh local verification: `corepack pnpm run lint` passed all 278 files, `corepack pnpm typecheck` passed, and `corepack pnpm test tests/component/home/HomePlantGuide.test.tsx --maxWorkers=1` passed 4/4. Full tests/build were not repeated for this two-line test-only change.
+
+GitHub API confirmed the preceding commit's backend-tests, python-tests, compose-smoke, secret-scan and commitlint jobs succeeded; frontend and dependent ci-gate failed. A new CI run after delivery must establish the corrected commit's result independently.

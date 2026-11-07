@@ -6,7 +6,8 @@ import { SUPPORTED_PLANTS } from '@/data/plantData';
 
 describe('HomePlantGuide', () => {
   it('shows only supplied active crops and their categories', () => {
-    const rice = SUPPORTED_PLANTS.find((plant) => plant.id === 'rice')!;
+    const rice = SUPPORTED_PLANTS.find((plant) => plant.id === 'rice');
+    if (!rice) throw new Error('Expected the rice fixture in SUPPORTED_PLANTS');
     render(<HomePlantGuide plants={[rice]} onNavigate={vi.fn()} onSelectPlant={vi.fn()} />);
     expect(screen.getByRole('button', { name: `Tìm hiểu cây ${rice.name}` })).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Tìm hiểu cây Cà chua' })).not.toBeInTheDocument();

@@ -51,3 +51,8 @@ Prepared a merge commit and revised PR verification text; remote push and mergea
 Created and pushed merge commit `d18a665ef551333ca3c56f7368a549412ba5b4e4`, whose parents are source `64f1c23` and target `16a0115`. Push was a normal fast-forward update of the PR source branch. GitHub API confirmed PR #60 points to that exact commit and now reports `mergeable=true`, `mergeable_state=unstable`: the seven source/target conflicts are resolved; CI checks were still in progress at this observation. Updated and read back the PR description with combined-source verification and remaining limits. Reviewers remain `KayPham05` and `trunthong09012005`.
 
 The API now reports `draft=false`, unlike the earlier snapshot. This workflow did not change draft/readiness state: the PATCH contained only title and body. Preserved the current open/ready status. A documentation-only follow-up records this delivery; local checks are not a claim of CI completion. No target merge or deployment was performed.
+
+
+## Frontend lint correction — 2026-11-07
+
+The user reported the failing frontend job on PR #60. Reproduced the exact full lint failure and replaced the non-null assertion in `frontend/tests/component/home/HomePlantGuide.test.tsx` with an explicit fixture guard. Full frontend lint (278 files), TypeScript and all four HomePlantGuide tests passed. Updated the technical report with the original failure, verification scope and GitHub run `42331242171`; backend and other independent jobs passed on that earlier run. No production code, lint configuration, Docker runtime or data changed. Fetch confirmed local source and remote match before delivery. Prepare the focused correction commit and push to the existing PR; do not claim the new CI run has passed before it completes.
