@@ -789,7 +789,7 @@ namespace AgriVision.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_user_action_tokens_hash", "token_hash ~ '^[0-9a-f]{64}$'");
 
-                            t.HasCheckConstraint("ck_user_action_tokens_purpose", "purpose IN ('EmailVerification', 'PasswordReset', 'TwoFactorSetup', 'TwoFactorDisable', 'TwoFactorLogin')");
+                            t.HasCheckConstraint("ck_user_action_tokens_purpose", "purpose IN ('EmailVerification', 'PasswordReset', 'TwoFactorSetup', 'TwoFactorDisable', 'TwoFactorLogin', 'PasswordChange')");
                         });
                 });
 

@@ -29,11 +29,22 @@ public sealed class PasswordRecoveryController(IPasswordRecovery recovery) : Con
 
         return NoContent();
     }
+
+    [HttpPost("reset-password/verify")]
+    public async Task<IActionResult> VerifyResetCode(VerifyResetCodeRequest request, CancellationToken cancellationToken)
+    {
+        return await recovery.VerifyAsync(request.Code, cancellationToken)
+            ? NoContent()
+            : BadRequest(new { message = "Mã đặt lại mật khẩu không hợp lệ hoặc đã hết hạn." });
+    }
 }
 
 public sealed record ForgotPasswordRequest(
     [Required, EmailAddress, StringLength(254)] string Email);
 
 public sealed record ResetPasswordRequest(
-    [Required, RegularExpression("^[a-fA-F0-9]{32}$")] string Code,
+    [Required, RegularExpression("^[0-9]{8}$")] string Code,
     [Required, StringLength(72, MinimumLength = 6)] string Password);
+
+public sealed record VerifyResetCodeRequest(
+    [Required, RegularExpression("^[0-9]{8}$")] string Code);

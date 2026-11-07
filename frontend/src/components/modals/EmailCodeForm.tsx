@@ -1,11 +1,39 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-export function EmailCodeForm({ onVerify }: { onVerify: (code: string) => Promise<void> }) {
+export function EmailCodeForm({
+  onVerify,
+  onResend,
+}: {
+  onVerify: (code: string) => Promise<void>;
+  onResend: () => Promise<void>;
+}) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
+  const [secondsLeft, setSecondsLeft] = useState(60);
+  const [resending, setResending] = useState(false);
+
+  useEffect(() => {
+    if (secondsLeft === 0) return;
+    const timer = window.setInterval(() => setSecondsLeft((value) => Math.max(0, value - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [secondsLeft]);
+
+  async function resend() {
+    if (secondsLeft > 0 || resending) return;
+    setResending(true);
+    setError('');
+    try {
+      await onResend();
+      setSecondsLeft(60);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Không thể gửi lại mã.');
+    } finally {
+      setResending(false);
+    }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -40,6 +68,18 @@ export function EmailCodeForm({ onVerify }: { onVerify: (code: string) => Promis
           </p>
         )}
         <Button type="submit">{pending ? 'Đang xác minh…' : 'Xác minh mã'}</Button>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => void resend()}
+          disabled={secondsLeft > 0 || resending || pending}
+        >
+          {resending
+            ? 'Đang gửi lại…'
+            : secondsLeft > 0
+              ? `Gửi lại mã sau ${secondsLeft}s`
+              : 'Gửi lại mã'}
+        </Button>
       </fieldset>
     </form>
   );

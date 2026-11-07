@@ -49,3 +49,16 @@
 
 - Owner authorized commit/push of integrated code to `origin/AGRI-132-forgot-password`; prepare authentication/config/tests and related reports, with landing/draft changes in a separate AGRI-128 commit. Keep unrelated notes/artifacts and the pre-merge stash local.
 - Recheck build/typecheck and staged diff before commit; retain the full-suite frontend timeout limitation documented in the merge evidence. User will create the PR.
+
+## Follow-up — 2026-11-07 password recovery and security email UX
+
+- Changed password recovery codes to eight digits and added a non-consuming code verification endpoint. The frontend now requires email, code verification, new password and confirmation as separate steps; the recovery title and login link are centered.
+- Added styled HTML email templates for reset and two-factor codes, an enable-two-factor success notice, and a successful password-change notice. SMTP messages are marked as HTML while preserving the existing sender configuration.
+- Verification: `dotnet build backend/AgriVision.sln --no-restore` passed with 0 warnings and 0 errors; `git diff --check` passed. API Testcontainers could not start because the Docker daemon was unavailable. Frontend local runners could not execute because the installed Node runtime is older than the repository requirement.
+- Docker rebuild was attempted with `docker compose build backend frontend`, but the local Docker credential/daemon access failed before image build (`permission denied` / terminated logon session). No images or containers were changed.
+
+## Follow-up — 2026-11-07 resend codes and profile password verification
+
+- Added resend endpoints for login 2FA, setup/disable 2FA and profile password-change codes. Each code expires after 60 seconds; the UI shows a 60-second countdown and enables resend when it reaches zero.
+- Profile password changes now request an eight-digit email code first and include the verified challenge in the final password update request. Existing password validation and session revocation remain in place.
+- Verification: backend build passed with 0 warnings and 0 errors; 182 backend unit tests passed; changed frontend files passed Biome formatting and lint. Full API/browser/Docker verification remains blocked by the unavailable Docker daemon and older local Node runtime.

@@ -26,6 +26,7 @@ import {
   login,
   loginWithGoogle,
   register,
+  resendEmailLogin,
   saveAuthSession,
   verifyEmailLogin,
 } from '../../services/authApi';
@@ -247,6 +248,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           </DialogHeader>
           <EmailCodeForm
             onVerify={async (code) => completeLogin(await verifyEmailLogin(challengeId, code))}
+            onResend={async () => {
+              const next = await resendEmailLogin(challengeId);
+              setChallengeId(next.challengeId);
+            }}
           />
           <Button
             type="button"
@@ -552,6 +557,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               <Button
                 type="button"
                 variant="ghost"
+                className="mx-auto block"
                 disabled={isSubmitting}
                 onClick={() => setRecoveringPassword(true)}
               >

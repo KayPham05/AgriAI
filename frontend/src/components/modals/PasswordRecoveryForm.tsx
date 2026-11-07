@@ -1,9 +1,9 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { requestPasswordReset, resetPassword } from '@/services/authApi';
+import { requestPasswordReset, resetPassword, verifyPasswordResetCode } from '@/services/authApi';
 
 interface PasswordRecoveryFormProps {
   initialEmail: string;
@@ -11,10 +11,34 @@ interface PasswordRecoveryFormProps {
 }
 
 export function PasswordRecoveryForm({ initialEmail, onBack }: PasswordRecoveryFormProps) {
-  const [step, setStep] = useState<'email' | 'code' | 'done'>('email');
+  const [step, setStep] = useState<'email' | 'code' | 'password' | 'done'>('email');
   const [email, setEmail] = useState(initialEmail);
+  const [code, setCode] = useState('');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
+  const [secondsLeft, setSecondsLeft] = useState(60);
+  const [resending, setResending] = useState(false);
+
+  useEffect(() => {
+    if (step !== 'code' || secondsLeft === 0) return;
+    const timer = window.setInterval(() => setSecondsLeft((value) => Math.max(0, value - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [secondsLeft, step]);
+
+  async function resendCode() {
+    if (secondsLeft > 0 || resending) return;
+    setResending(true);
+    setError('');
+    try {
+      await requestPasswordReset(email.trim());
+      setCode('');
+      setSecondsLeft(60);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Không thể gửi lại mã.');
+    } finally {
+      setResending(false);
+    }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -24,9 +48,17 @@ export function PasswordRecoveryForm({ initialEmail, onBack }: PasswordRecoveryF
     try {
       if (step === 'email') {
         await requestPasswordReset(email.trim());
+        setSecondsLeft(60);
         setStep('code');
+      } else if (step === 'code') {
+        await verifyPasswordResetCode(code.trim());
+        setStep('password');
       } else {
-        await resetPassword(String(data.get('code')).trim(), String(data.get('password')));
+        const password = String(data.get('password'));
+        if (password !== String(data.get('confirmPassword'))) {
+          throw new Error('Mật khẩu xác nhận không khớp.');
+        }
+        await resetPassword(code.trim(), password);
         setStep('done');
       }
     } catch (cause) {
@@ -39,11 +71,11 @@ export function PasswordRecoveryForm({ initialEmail, onBack }: PasswordRecoveryF
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Đặt lại mật khẩu</DialogTitle>
+        <DialogTitle className="text-center">Đặt lại mật khẩu</DialogTitle>
         <DialogDescription>
           {step === 'email' && 'Nhập email bạn đã dùng để đăng ký AgriAI.'}
-          {step === 'code' &&
-            'Nếu email có tài khoản phù hợp, bạn sẽ nhận được mã có hiệu lực trong 15 phút.'}
+          {step === 'code' && 'Nhập mã 8 chữ số trong email để tiếp tục.'}
+          {step === 'password' && 'Tạo mật khẩu mới rồi xác nhận để hoàn tất.'}
           {step === 'done' && 'Mật khẩu đã được cập nhật. Bạn có thể đăng nhập bằng mật khẩu mới.'}
         </DialogDescription>
       </DialogHeader>
@@ -65,29 +97,53 @@ export function PasswordRecoveryForm({ initialEmail, onBack }: PasswordRecoveryF
               </div>
             ) : (
               <>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="recovery-code">Mã trong email</Label>
-                  <Input
-                    id="recovery-code"
-                    name="code"
-                    autoComplete="one-time-code"
-                    pattern="[a-fA-F0-9]{32}"
-                    maxLength={32}
-                    required
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="recovery-password">Mật khẩu mới</Label>
-                  <Input
-                    id="recovery-password"
-                    name="password"
-                    type="password"
-                    autoComplete="new-password"
-                    minLength={6}
-                    maxLength={72}
-                    required
-                  />
-                </div>
+                {step === 'code' && (
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="recovery-code">Mã trong email</Label>
+                    <Input
+                      id="recovery-code"
+                      name="code"
+                      autoComplete="one-time-code"
+                      pattern="[0-9]{8}"
+                      maxLength={8}
+                      inputMode="numeric"
+                      value={code}
+                      onChange={(event) =>
+                        setCode(event.target.value.replace(/\D/g, '').slice(0, 8))
+                      }
+                      required
+                    />
+                  </div>
+                )}
+                {step === 'password' && <input type="hidden" name="code" value={code} />}
+                {step === 'password' && (
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="recovery-password">Mật khẩu mới</Label>
+                    <Input
+                      id="recovery-password"
+                      name="password"
+                      type="password"
+                      autoComplete="new-password"
+                      minLength={6}
+                      maxLength={72}
+                      required
+                    />
+                  </div>
+                )}
+                {step === 'password' && (
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="recovery-confirm-password">Xác nhận mật khẩu mới</Label>
+                    <Input
+                      id="recovery-confirm-password"
+                      name="confirmPassword"
+                      type="password"
+                      autoComplete="new-password"
+                      minLength={6}
+                      maxLength={72}
+                      required
+                    />
+                  </div>
+                )}
               </>
             )}
             {error && (
@@ -96,18 +152,39 @@ export function PasswordRecoveryForm({ initialEmail, onBack }: PasswordRecoveryF
               </p>
             )}
             <Button type="submit">
-              {pending ? 'Đang xử lý…' : step === 'email' ? 'Gửi mã' : 'Đổi mật khẩu'}
+              {pending
+                ? 'Đang xử lý…'
+                : step === 'email'
+                  ? 'Gửi mã'
+                  : step === 'code'
+                    ? 'Tiếp theo'
+                    : 'Đổi mật khẩu'}
             </Button>
             {step === 'code' && (
               <Button
                 type="button"
                 variant="ghost"
+                onClick={() => void resendCode()}
+                disabled={secondsLeft > 0 || resending || pending}
+              >
+                {resending
+                  ? 'Đang gửi lại…'
+                  : secondsLeft > 0
+                    ? `Gửi lại mã sau ${secondsLeft}s`
+                    : 'Gửi lại mã'}
+              </Button>
+            )}
+            {(step === 'code' || step === 'password') && (
+              <Button
+                type="button"
+                variant="ghost"
                 onClick={() => {
                   setError('');
-                  setStep('email');
+                  setStep(step === 'password' ? 'code' : 'email');
+                  if (step === 'password') setSecondsLeft(0);
                 }}
               >
-                Gửi lại mã hoặc đổi email
+                Đổi tài khoản email
               </Button>
             )}
           </fieldset>
