@@ -34,3 +34,7 @@ Hai test `KnowledgeMedicineTests` fail vì logic public medicine đã yêu cầu
 ## CI follow-up 2026-11-08 (second regression)
 
 `Relations_ShouldRejectUnknownPairs_AndPublishSavedUses` yêu cầu use legacy với `ConditionType=Unknown` vẫn xuất hiện public. Predicate map/filter đã cho phép `Disease` hoặc `Unknown`; các loại `Healthy` và `NutrientDeficiency` tiếp tục bị ẩn, còn recommendation chỉ nhận `Disease`.
+
+## CI follow-up 2026-11-08 (third regression)
+
+Sau khi xóa use cuối cùng, test vẫn gọi GET medicine public và kỳ vọng `200` với danh sách use rỗng. Detail service đã cho phép medicine active/public không có use; các medicine có use vẫn phải có ít nhất một quan hệ active. Public list không thay đổi.

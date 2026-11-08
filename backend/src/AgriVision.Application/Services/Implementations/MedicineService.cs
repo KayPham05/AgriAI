@@ -20,7 +20,7 @@ public class MedicineService(IMedicineRepository repository, IPlantDiseaseReposi
     {
         var medicine = await FindAsync(id, false, cancellationToken);
         if (publicOnly && !(medicine.IsActive && medicine.IsPublic &&
-            medicine.Uses.Any(use => CatalogValidation.ActivePair(use.PlantDisease))))
+            (!medicine.Uses.Any() || medicine.Uses.Any(use => CatalogValidation.ActivePair(use.PlantDisease)))))
             throw new KeyNotFoundException("Medicine not found.");
         return Map(medicine, publicOnly);
     }

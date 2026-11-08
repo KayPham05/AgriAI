@@ -394,3 +394,9 @@ nhánh nền AGRI-128 là Jira của task hồ sơ.
 - CI còn một regression ở `Relations_ShouldRejectUnknownPairs_AndPublishSavedUses`: use gắn với bệnh `Unknown` phải tiếp tục hiển thị theo contract legacy.
 - Public medicine use hiện cho phép `Disease` và `Unknown` khi cặp active; `Healthy`/`NutrientDeficiency` vẫn bị ẩn. Recommendation vẫn chỉ dùng `Disease`.
 - Build 0 warning/0 error; unit 228/228 đạt. API test local vẫn cần Docker daemon để xác nhận.
+
+## 2026-11-08 — Giữ detail medicine sau khi xóa use
+
+- CI cho thấy test quan hệ yêu cầu medicine public vẫn trả detail `200` với `uses=[]` sau khi xóa use cuối cùng.
+- Public detail hiện cho phép medicine active/public không có use; nếu có use thì vẫn yêu cầu ít nhất một quan hệ active. Public list tiếp tục chỉ lấy medicine có quan hệ active.
+- Build 0 warning/0 error; unit 228/228 đạt.
