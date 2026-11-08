@@ -382,3 +382,9 @@ nhánh nền AGRI-128 là Jira của task hồ sơ.
 - Đã đồng bộ WEBP giữa validation, prediction key và R2; tách giới hạn đồng thời prediction theo người dùng/IP để auth/avatar không bị nghẽn; CORS chuyển sang allow-list cấu hình.
 - Public knowledge/medicine chỉ còn hiển thị khi có liên kết cây-bệnh đang active (medicine yêu cầu condition `Disease`).
 - Kiểm chứng mới: restore, build solution 0 warning/0 error, unit tests 228/228 đạt, `git diff --check` đạt. API tests mục tiêu đã biên dịch nhưng chạy bị chặn vì Docker daemon không khả dụng (`npipe://./pipe/docker_engine`).
+
+## 2026-11-08 — Sửa tương thích medicine public listing sau CI
+
+- CI phát hiện hai regression ở `KnowledgeMedicineTests`: fixture pair mặc định có `ConditionType=Unknown`, nhưng medicine public vẫn hợp lệ khi liên kết cây-bệnh còn active.
+- Điều chỉnh public list/detail chỉ yêu cầu medicine và liên kết cây-bệnh active; `ConditionType=Disease` tiếp tục được dùng để lọc use công khai và recommendation.
+- Build solution đạt 0 warning/0 error. Hai API test mục tiêu đã thử lại local nhưng bị chặn trước khi chạy bởi Docker daemon không khả dụng.

@@ -23,3 +23,10 @@
 ## Giới hạn còn lại
 
 Cần để GitHub Actions chạy lại API/integration tests sau khi push vì môi trường local hiện không có Docker daemon hoạt động. Kết quả local không thay thế CI.
+
+## CI follow-up 2026-11-08
+
+Hai test `KnowledgeMedicineTests` fail vì logic public medicine đã yêu cầu `ConditionType == Disease` ở cấp medicine. Điều này loại nhầm fixture liên kết active nhưng chưa phân loại (`Unknown`). Đã sửa để cấp medicine chỉ yêu cầu liên kết active; condition `Disease` vẫn kiểm soát các use được expose và recommendation.
+
+- Build: 0 warning / 0 error.
+- Local targeted API run: blocked at Testcontainers setup because Docker daemon is unavailable.
