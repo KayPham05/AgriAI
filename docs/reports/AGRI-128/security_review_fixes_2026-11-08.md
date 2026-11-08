@@ -30,3 +30,7 @@ Hai test `KnowledgeMedicineTests` fail vì logic public medicine đã yêu cầu
 
 - Build: 0 warning / 0 error.
 - Local targeted API run: blocked at Testcontainers setup because Docker daemon is unavailable.
+
+## CI follow-up 2026-11-08 (second regression)
+
+`Relations_ShouldRejectUnknownPairs_AndPublishSavedUses` yêu cầu use legacy với `ConditionType=Unknown` vẫn xuất hiện public. Predicate map/filter đã cho phép `Disease` hoặc `Unknown`; các loại `Healthy` và `NutrientDeficiency` tiếp tục bị ẩn, còn recommendation chỉ nhận `Disease`.

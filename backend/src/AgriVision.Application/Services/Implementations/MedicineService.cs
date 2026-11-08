@@ -136,6 +136,6 @@ public class MedicineService(IMedicineRepository repository, IPlantDiseaseReposi
         medicine.SafetyWarning, medicine.LabelReference, medicine.IsApproved, medicine.IsPublic,
         medicine.IsActive, medicine.CreatedAt, medicine.UpdatedAt,
         medicine.Uses.Where(u => !publicOnly || (CatalogValidation.ActivePair(u.PlantDisease)
-            && u.PlantDisease.Disease.ConditionType == "Disease"))
+            && u.PlantDisease.Disease.ConditionType is "Disease" or "Unknown"))
             .OrderBy(u => u.PlantDiseaseId).Select(u => new MedicineUseDto(u.PlantDiseaseId, u.LabelDirections, u.IsApproved)).ToList());
 }

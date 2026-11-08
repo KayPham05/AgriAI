@@ -388,3 +388,9 @@ nhánh nền AGRI-128 là Jira của task hồ sơ.
 - CI phát hiện hai regression ở `KnowledgeMedicineTests`: fixture pair mặc định có `ConditionType=Unknown`, nhưng medicine public vẫn hợp lệ khi liên kết cây-bệnh còn active.
 - Điều chỉnh public list/detail chỉ yêu cầu medicine và liên kết cây-bệnh active; `ConditionType=Disease` tiếp tục được dùng để lọc use công khai và recommendation.
 - Build solution đạt 0 warning/0 error. Hai API test mục tiêu đã thử lại local nhưng bị chặn trước khi chạy bởi Docker daemon không khả dụng.
+
+## 2026-11-08 — Giữ tương thích use legacy chưa phân loại
+
+- CI còn một regression ở `Relations_ShouldRejectUnknownPairs_AndPublishSavedUses`: use gắn với bệnh `Unknown` phải tiếp tục hiển thị theo contract legacy.
+- Public medicine use hiện cho phép `Disease` và `Unknown` khi cặp active; `Healthy`/`NutrientDeficiency` vẫn bị ẩn. Recommendation vẫn chỉ dùng `Disease`.
+- Build 0 warning/0 error; unit 228/228 đạt. API test local vẫn cần Docker daemon để xác nhận.
