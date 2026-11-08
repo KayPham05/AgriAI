@@ -112,7 +112,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost("avatar")]
-    [EnableRateLimiting("prediction")]
+    [EnableRateLimiting("image")]
     [RequestTimeout("prediction")]
     [RequestSizeLimit(16 * 1024 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = 15 * 1024 * 1024)]

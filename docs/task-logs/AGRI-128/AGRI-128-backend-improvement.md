@@ -374,3 +374,11 @@ nhánh nền AGRI-128 là Jira của task hồ sơ.
   backend đang rỗng; chưa thay cấu hình hoặc restart container. Upload R2 thật còn
   bị chặn bởi cấu hình môi trường. Kết quả test phía trên là của lần chạy đã ghi,
   không được tính lại thành kiểm chứng mới khi push.
+
+## 2026-11-08 — Khắc phục các điểm review bảo mật PR #63
+
+- Phạm vi: sửa các finding SEC-001 đến SEC-005 và bổ sung regression tests trên nhánh `AGRI-128-backend-improvement`.
+- Đã thu hồi toàn bộ `user_sessions` khi reset mật khẩu; mã reset mới hash theo ID token, vẫn đọc được token legacy đang còn hạn.
+- Đã đồng bộ WEBP giữa validation, prediction key và R2; tách giới hạn đồng thời prediction theo người dùng/IP để auth/avatar không bị nghẽn; CORS chuyển sang allow-list cấu hình.
+- Public knowledge/medicine chỉ còn hiển thị khi có liên kết cây-bệnh đang active (medicine yêu cầu condition `Disease`).
+- Kiểm chứng mới: restore, build solution 0 warning/0 error, unit tests 228/228 đạt, `git diff --check` đạt. API tests mục tiêu đã biên dịch nhưng chạy bị chặn vì Docker daemon không khả dụng (`npipe://./pipe/docker_engine`).

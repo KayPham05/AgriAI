@@ -94,3 +94,5 @@ DoD tổng thể AGRI-128 chưa hoàn tất. Các task khác không được tri
 - [Giữ bản nháp khi đóng dialog tạo hồ sơ — 2026-11-03](profile_dialog_dismissal_2026_11_03.md).
 - [Dự đoán trên landing page, không lưu lịch sử — 2026-11-03](landing_prediction_2026_11_03.md).
 - [Build lại AI, migration và kiểm tra catalog DB — 2026-11-03](ai_database_refresh_2026_11_03.md).
+
+- **Security review fixes 2026-11-08:** [chi tiết](security_review_fixes_2026-11-08.md). Các finding SEC-001—SEC-005 đã được sửa và có regression tests; unit 228/228, build sạch. API/integration cần CI xác nhận vì Docker daemon local không khả dụng.

@@ -15,7 +15,9 @@ public class MedicineRepository(AppDbContext context) : IMedicineRepository
         CatalogFilterParams filter, bool publicOnly, CancellationToken cancellationToken = default)
     {
         var query = WithUses().AsNoTracking();
-        if (publicOnly) query = query.Where(m => m.IsActive && m.IsPublic);
+        if (publicOnly) query = query.Where(m => m.IsActive && m.IsPublic &&
+            m.Uses.Any(u => u.PlantDisease.IsActive && u.PlantDisease.Plant.IsActive &&
+                u.PlantDisease.Disease.IsActive && u.PlantDisease.Disease.ConditionType == "Disease"));
         if (filter.PlantId.HasValue || filter.DiseaseId.HasValue)
             query = query.Where(m => m.Uses.Any(u =>
                 (!filter.PlantId.HasValue || u.PlantDisease.PlantId == filter.PlantId) &&

@@ -9,6 +9,7 @@ public class ImageStorageKeyTests
     [InlineData("plants", ".png")]
     [InlineData("plants", ".jpeg")]
     [InlineData("diseases", ".jpg")]
+    [InlineData("plants", ".webp")]
     public void CatalogKeys_AreScopedToOwnerKindAndRecord(string kind, string extension)
     {
         var owner = Guid.NewGuid();
@@ -96,6 +97,17 @@ public class ImageStorageKeyTests
     [InlineData("r2/predictions/leaf.jpeg")]
     [InlineData("r2/predictions/leaf.png")]
     public void ExistingR2Keys_RemainSupported(string key) => ImageStorageKey.IsSupported(key).Should().BeTrue();
+
+    [Fact]
+    public void WebpPredictionKeys_AreSupported()
+    {
+        var context = new ImageStorageContext(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        var key = ImageStorageKey.Create(context, ".webp");
+
+        key.Should().EndWith(".webp");
+        ImageStorageKey.IsSupported(key).Should().BeTrue();
+        ImageStorageKey.Matches(key, context).Should().BeTrue();
+    }
 
     [Fact]
     public void ExistingCatalogKeys_RemainReadableUntilMigrated()

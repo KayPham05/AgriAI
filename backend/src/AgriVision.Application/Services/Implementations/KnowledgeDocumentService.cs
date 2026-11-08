@@ -18,7 +18,8 @@ public class KnowledgeDocumentService(IKnowledgeDocumentRepository repository, I
     public async Task<KnowledgeDocumentDto> GetAsync(Guid id, bool publicOnly, CancellationToken cancellationToken = default)
     {
         var document = await FindAsync(id, false, cancellationToken);
-        if (publicOnly && !(document.IsActive && document.IsApproved && document.IsPublic))
+        if (publicOnly && !(document.IsActive && document.IsApproved && document.IsPublic &&
+            document.PlantDiseases.Any(link => CatalogValidation.ActivePair(link.PlantDisease))))
             throw new KeyNotFoundException("Knowledge document not found.");
         return Map(document, publicOnly);
     }

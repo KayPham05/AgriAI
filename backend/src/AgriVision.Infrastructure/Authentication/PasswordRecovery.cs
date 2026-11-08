@@ -33,14 +33,15 @@ public sealed class PasswordRecovery(
             return;
 
         var code = RandomNumberGenerator.GetInt32(100_000_000).ToString("D8", CultureInfo.InvariantCulture);
-        database.UserActionTokens.Add(new UserActionToken
+        var actionToken = new UserActionToken
         {
             UserId = user.Id,
             Purpose = Purpose,
-            TokenHash = Hash(code),
             CreatedAt = now,
             ExpiresAt = now.AddSeconds(60)
-        });
+        };
+        actionToken.TokenHash = Hash(actionToken.Id, code);
+        database.UserActionTokens.Add(actionToken);
         await database.SaveChangesAsync(cancellationToken);
         try
         {
@@ -57,41 +58,47 @@ public sealed class PasswordRecovery(
 
     public async Task<bool> VerifyAsync(string token, CancellationToken cancellationToken)
     {
-        var hash = Hash(token.Trim());
-        return await database.UserActionTokens.AnyAsync(item => item.Purpose == Purpose
-            && item.TokenHash == hash && item.ConsumedAt == null && item.ExpiresAt > DateTime.UtcNow,
-            cancellationToken);
+        var candidates = await database.UserActionTokens.AsNoTracking().Where(item => item.Purpose == Purpose
+            && item.ConsumedAt == null && item.ExpiresAt > DateTime.UtcNow).ToListAsync(cancellationToken);
+        return candidates.Any(item => Matches(item, token));
     }
 
     public async Task<bool> ResetAsync(string token, string password, CancellationToken cancellationToken)
     {
-        var hash = Hash(token.Trim());
         var now = DateTime.UtcNow;
-        var tokens = database.UserActionTokens.Where(item =>
+        var candidates = database.UserActionTokens.AsNoTracking().Where(item =>
             item.Purpose == Purpose && item.ConsumedAt == null && item.ExpiresAt > now);
-        var userId = await tokens.Where(item => item.TokenHash == hash)
-            .Select(item => (Guid?)item.UserId).SingleOrDefaultAsync(cancellationToken);
-        if (userId is null)
+        var actionToken = (await candidates.ToListAsync(cancellationToken)).SingleOrDefault(item => Matches(item, token));
+        if (actionToken is null)
             return false;
 
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
         await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
         var updated = await database.Users.Where(user =>
-                user.Id == userId && user.IsActive && user.PasswordHash != null)
+                user.Id == actionToken.UserId && user.IsActive && user.PasswordHash != null)
             .ExecuteUpdateAsync(update => update.SetProperty(user => user.PasswordHash, passwordHash)
                 .SetProperty(user => user.UpdatedAt, now), cancellationToken);
-        if (updated != 1 || !await tokens.AnyAsync(item => item.TokenHash == hash, cancellationToken))
+        if (updated != 1)
             return false;
 
-        await database.UserActionTokens.Where(item => item.UserId == userId && item.ConsumedAt == null
+        var consumed = await database.UserActionTokens.Where(item => item.Id == actionToken.Id && item.ConsumedAt == null
+                && item.ExpiresAt > now)
+            .ExecuteUpdateAsync(update => update.SetProperty(item => item.ConsumedAt, now), cancellationToken);
+        if (consumed != 1)
+            return false;
+
+        await database.UserActionTokens.Where(item => item.UserId == actionToken.UserId && item.ConsumedAt == null
                 && (item.Purpose == Purpose || item.Purpose == "TwoFactorLogin"))
             .ExecuteUpdateAsync(update => update.SetProperty(item => item.ConsumedAt, now), cancellationToken);
+        await database.UserSessions.Where(session => session.UserId == actionToken.UserId && session.RevokedAt == null)
+            .ExecuteUpdateAsync(update => update.SetProperty(session => session.RevokedAt, now)
+                .SetProperty(session => session.RevocationReason, "password_reset"), cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         if (emailSender is not null)
         {
             try
             {
-                var user = await database.Users.AsNoTracking().SingleAsync(item => item.Id == userId, cancellationToken);
+                var user = await database.Users.AsNoTracking().SingleAsync(item => item.Id == actionToken.UserId, cancellationToken);
                 await emailSender.SendAsync(user.Email, "Mật khẩu AgriAI đã được đổi",
                     EmailTemplate.Create("Đổi mật khẩu thành công", "Mật khẩu tài khoản của bạn đã được cập nhật.",
                         null, "Nếu bạn không thực hiện thao tác này, hãy liên hệ hỗ trợ ngay."), cancellationToken);
@@ -99,12 +106,18 @@ public sealed class PasswordRecovery(
             catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
             {
                 logger.LogWarning("Password change notification failed for user {UserId} ({ErrorType}).",
-                    userId, exception.GetType().Name);
+                    actionToken.UserId, exception.GetType().Name);
             }
         }
         return true;
     }
 
-    private static string Hash(string token) =>
+    private static bool Matches(UserActionToken token, string code) =>
+        token.TokenHash == Hash(token.Id, code.Trim()) || token.TokenHash == LegacyHash(code.Trim());
+
+    private static string Hash(Guid tokenId, string token) =>
+        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes($"{tokenId:N}:{token}")));
+
+    private static string LegacyHash(string token) =>
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
 }

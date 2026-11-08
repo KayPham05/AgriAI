@@ -19,7 +19,9 @@ public class MedicineService(IMedicineRepository repository, IPlantDiseaseReposi
     public async Task<MedicineDto> GetAsync(Guid id, bool publicOnly, CancellationToken cancellationToken = default)
     {
         var medicine = await FindAsync(id, false, cancellationToken);
-        if (publicOnly && !(medicine.IsActive && medicine.IsPublic))
+        if (publicOnly && !(medicine.IsActive && medicine.IsPublic &&
+            medicine.Uses.Any(use => CatalogValidation.ActivePair(use.PlantDisease) &&
+                use.PlantDisease.Disease.ConditionType == "Disease")))
             throw new KeyNotFoundException("Medicine not found.");
         return Map(medicine, publicOnly);
     }

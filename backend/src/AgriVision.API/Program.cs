@@ -46,9 +46,17 @@ builder.Services.AddRateLimiter(options =>
 });
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    var configuredOrigins = builder.Configuration.GetValue<string>("Cors:AllowedOrigins")?
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Where(origin => Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
+            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray() ?? [];
+    if (configuredOrigins.Length == 0)
+        configuredOrigins = ["http://localhost:3000"];
+    options.AddPolicy("Frontend", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins(configuredOrigins)
               .AllowAnyMethod()
               .AllowAnyHeader();
     });
@@ -222,7 +230,7 @@ if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger
 app.UseHttpsRedirection();
 
 app.UseRouting();
-app.UseCors("AllowAll");
+app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();

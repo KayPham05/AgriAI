@@ -45,6 +45,27 @@ public class AuthControllerTests : IClassFixture<AgriVisionFactory>
     }
 
     [Fact]
+    public async Task ResetPassword_ShouldRevokeExistingSessions()
+    {
+        var email = $"reset_session_{Guid.NewGuid():N}@example.com";
+        var session = await RegisterAsync(email);
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", session.Token);
+        var request = await _client.PostAsJsonAsync("/api/auth/forgot-password", new { email });
+        request.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        var message = _inbox.Read(email, "Mã đặt lại mật khẩu AgriAI").Should().ContainSingle().Which;
+        var code = Regex.Match(message, @"\b[0-9]{8}\b").Value;
+
+        var response = await _client.PostAsJsonAsync("/api/auth/reset-password", new
+        {
+            code,
+            password = "NewPassword123!"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await _client.GetAsync("/api/auth/me")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
     [Trait("ApiCase", "auth.two_factor.lifecycle")]
     public async Task LoginWithTwoFactor_ShouldIssueSessionAndNoticeOnlyAfterCodeVerification()
     {

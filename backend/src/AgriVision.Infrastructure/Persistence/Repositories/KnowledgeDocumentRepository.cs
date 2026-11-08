@@ -15,7 +15,8 @@ public class KnowledgeDocumentRepository(AppDbContext context) : IKnowledgeDocum
         CatalogFilterParams filter, bool publicOnly, CancellationToken cancellationToken = default)
     {
         var query = WithLinks().AsNoTracking();
-        if (publicOnly) query = query.Where(d => d.IsActive && d.IsApproved && d.IsPublic);
+        if (publicOnly) query = query.Where(d => d.IsActive && d.IsApproved && d.IsPublic &&
+            d.PlantDiseases.Any(l => l.PlantDisease.IsActive && l.PlantDisease.Plant.IsActive && l.PlantDisease.Disease.IsActive));
         if (filter.PlantId.HasValue || filter.DiseaseId.HasValue)
             query = query.Where(d => d.PlantDiseases.Any(l =>
                 (!filter.PlantId.HasValue || l.PlantDisease.PlantId == filter.PlantId) &&
