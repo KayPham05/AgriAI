@@ -419,3 +419,9 @@ nhánh nền AGRI-128 là Jira của task hồ sơ.
 - CI API fail 4 auth test do `account-challenges` dùng fixed limit 20 request/phút theo IP; toàn bộ suite chạy song song trên cùng runner IP nên test mới chạm ngưỡng.
 - Production vẫn giữ default 20/phút; limiter đọc `TrafficLimits:AccountChallengesPerMinute`. Test fixture đặt riêng 10000 để không biến rate-limit production thành điều kiện của test.
 - Kiểm chứng: build 0 warning/0 error, unit 228/228, manifest 5/5, `git diff --check` đạt.
+
+## 2026-11-09 — Ép buộc test environment bỏ nhiễu account challenge limiter
+
+- CI vẫn fail bốn auth tests sau khi đọc cấu hình vì `account-challenges` được khởi tạo sớm trong host lifecycle và test setting không luôn được áp dụng trước khi policy tạo.
+- Khi environment là `Testing`, policy bảo đảm budget tối thiểu 10000/phút; production default vẫn 20/phút và vẫn hỗ trợ cấu hình.
+- Build 0 warning/0 error, unit 228/228, manifest 5/5, `git diff --check` đạt.

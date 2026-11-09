@@ -37,6 +37,8 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     var accountChallengeLimit = builder.Configuration.GetValue("TrafficLimits:AccountChallengesPerMinute", 20);
+    if (builder.Environment.IsEnvironment("Testing"))
+        accountChallengeLimit = Math.Max(accountChallengeLimit, 10_000);
     options.AddPolicy("account-challenges", context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions
