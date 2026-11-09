@@ -201,7 +201,7 @@ jobs:
       - name: Run API tests with coverage
         id: api
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        run: dotnet test backend/tests/AgriVision.ApiTests/AgriVision.ApiTests.csproj --no-build --no-restore --settings backend/coverage.runsettings --collect:"XPlat Code Coverage" --logger "trx;LogFileName=api.trx" --results-directory .cache/coverage/backend/api --verbosity normal
+        run: dotnet test backend/tests/AgriVision.ApiTests/AgriVision.ApiTests.csproj --no-build --no-restore --settings backend/coverage.runsettings --collect:"XPlat Code Coverage" --logger "trx;LogFileName=api.trx" --logger "console;verbosity=detailed" --results-directory .cache/coverage/backend/api --verbosity normal
       - name: Verify suites and merge backend coverage
         if: ${{ !cancelled() && steps.unit.outcome == 'success' && steps.integration.outcome == 'success' && steps.api.outcome == 'success' }}
         run: |
