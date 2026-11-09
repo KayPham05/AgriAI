@@ -80,13 +80,15 @@ public class AuthControllerTests : IClassFixture<AgriVisionFactory>
             .StatusCode.Should().Be(HttpStatusCode.Accepted);
         var message = _inbox.Read(email, "Mã đặt lại mật khẩu AgriAI").Should().ContainSingle().Which;
         var code = Regex.Match(message, @"\b[0-9]{8}\b").Value;
+        var wrongCode = (code[0] == '0' ? '1' : '0') + code[1..];
 
-        (await _client.PostAsJsonAsync("/api/auth/reset-password/verify", new { code = "00000000" }))
+        (await _client.PostAsJsonAsync("/api/auth/reset-password/verify", new { code = wrongCode }))
             .StatusCode.Should().Be(HttpStatusCode.BadRequest);
         await using (var scope = _factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            await db.UserActionTokens.Where(item => item.Purpose == "PasswordReset")
+            var userId = await db.Users.Where(item => item.Email == email).Select(item => item.Id).SingleAsync();
+            await db.UserActionTokens.Where(item => item.UserId == userId && item.Purpose == "PasswordReset")
                 .ExecuteUpdateAsync(update => update.SetProperty(item => item.ExpiresAt, DateTime.UtcNow.AddSeconds(-1)));
         }
         (await _client.PostAsJsonAsync("/api/auth/reset-password/verify", new { code }))

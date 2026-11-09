@@ -60,3 +60,7 @@ Bốn test auth fail đồng thời do fixed-window account challenge limiter ha
 ## CI follow-up — test environment limiter 2026-11-09
 
 Run #115 vẫn fail bốn auth tests dù đã thêm config fixture; policy được tạo sớm nên cấu hình UseSetting không ổn định ở CI. Đã thêm guard theo environment Testing để budget account challenge tối thiểu 10000, không thay đổi production default.
+
+## CI follow-up — deterministic reset negative test 2026-11-09
+
+Test negative reset được làm deterministic: mã sai luôn khác mã thật và chỉ token của user test bị expire. Tránh collision ngẫu nhiên và cập nhật nhầm token của test song song.

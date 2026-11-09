@@ -425,3 +425,9 @@ nhánh nền AGRI-128 là Jira của task hồ sơ.
 - CI vẫn fail bốn auth tests sau khi đọc cấu hình vì `account-challenges` được khởi tạo sớm trong host lifecycle và test setting không luôn được áp dụng trước khi policy tạo.
 - Khi environment là `Testing`, policy bảo đảm budget tối thiểu 10000/phút; production default vẫn 20/phút và vẫn hỗ trợ cấu hình.
 - Build 0 warning/0 error, unit 228/228, manifest 5/5, `git diff --check` đạt.
+
+## 2026-11-09 — Làm deterministic password reset negative test
+
+- CI còn fail `ResetPassword_ShouldRejectWrongAndExpiredCodes`; test dùng mã cố định và expire toàn bộ reset tokens trong DB dùng chung.
+- Đổi mã sai bằng cách thay chữ số đầu của mã thật, đồng thời chỉ expire token của user hiện tại. Điều này loại bỏ phụ thuộc ngẫu nhiên và nhiễu giữa test song song.
+- Build 0 warning/0 error, unit 228/228, manifest 5/5, `git diff --check` đạt.
