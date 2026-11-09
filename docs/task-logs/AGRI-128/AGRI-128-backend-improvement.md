@@ -400,3 +400,10 @@ nhánh nền AGRI-128 là Jira của task hồ sơ.
 - CI cho thấy test quan hệ yêu cầu medicine public vẫn trả detail `200` với `uses=[]` sau khi xóa use cuối cùng.
 - Public detail hiện cho phép medicine active/public không có use; nếu có use thì vẫn yêu cầu ít nhất một quan hệ active. Public list tiếp tục chỉ lấy medicine có quan hệ active.
 - Build 0 warning/0 error; unit 228/228 đạt.
+
+## 2026-11-09 — Review P1 follow-up
+
+- Xử lý SMTP password-reset failure: token vừa lưu được xóa khi gửi email lỗi, giữ HTTP 202 không làm lộ trạng thái và cho phép retry ngay.
+- Bổ sung HTTP regression coverage cho setup/login 2FA resend (challenge mới, code mới), password reset sai code/hết hạn và retry sau SMTP failure.
+- Đồng bộ `docs/reports/AGRI-132/README.md` với code 8 chữ số, hiệu lực 60 giây và retry policy.
+- Kiểm chứng: solution build 0 warning/0 error, unit 228/228 đạt, `git diff --check` đạt. API tests đã biên dịch; thực thi local cần Docker/Testcontainers.

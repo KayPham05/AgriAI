@@ -38,3 +38,11 @@ Hai test `KnowledgeMedicineTests` fail vì logic public medicine đã yêu cầu
 ## CI follow-up 2026-11-08 (third regression)
 
 Sau khi xóa use cuối cùng, test vẫn gọi GET medicine public và kỳ vọng `200` với danh sách use rỗng. Detail service đã cho phép medicine active/public không có use; các medicine có use vẫn phải có ít nhất một quan hệ active. Public list không thay đổi.
+
+## Review P1 follow-up — 2026-11-09
+
+Đã sửa SMTP failure của password reset bằng cách xóa token pending sau lỗi gửi; retry tiếp theo không còn bị throttle bởi token chết. Thêm HTTP tests cho resend setup/login 2FA và negative/expired reset. README AGRI-132 đã đồng bộ policy hiện tại.
+
+Verification: build solution 0 warning/0 error; unit 228/228; `git diff --check` pass. API test execution remains Docker-blocked locally.
+
+- Resend 2FA nay consume challenge cũ sau khi phát hành challenge mới, nên code cũ không thể verify lại; test HTTP xác nhận setup/login resend, challenge mới và replay challenge cũ đều bị từ chối.

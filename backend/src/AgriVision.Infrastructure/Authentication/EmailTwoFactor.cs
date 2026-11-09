@@ -121,7 +121,13 @@ public sealed class EmailTwoFactor(
                 && (!accountId.HasValue || item.UserId == accountId.Value))
             .Select(item => item.User)
             .SingleOrDefaultAsync(cancellationToken);
-        return challenge is null ? null : await IssueAsync(challenge, purpose, cancellationToken);
+        if (challenge is null)
+            return null;
+
+        var replacementId = await IssueAsync(challenge, purpose, cancellationToken);
+        await database.UserActionTokens.Where(item => item.Id == challengeId && item.ConsumedAt == null)
+            .ExecuteUpdateAsync(update => update.SetProperty(item => item.ConsumedAt, DateTime.UtcNow), cancellationToken);
+        return replacementId;
     }
 
     public async Task<User?> VerifyPasswordChangeAsync(Guid challengeId, string code, Guid accountId, CancellationToken cancellationToken)

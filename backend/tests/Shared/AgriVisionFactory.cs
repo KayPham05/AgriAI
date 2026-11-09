@@ -73,6 +73,7 @@ public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
     public sealed class TestInbox : IAccountEmailSender
     {
         private readonly ConcurrentQueue<(string Recipient, string Subject, string Body)> _messages = new();
+        public bool FailSends { get; set; }
 
         public IReadOnlyList<string> Read(string recipient, string subject) =>
             _messages.Where(message => message.Recipient == recipient && message.Subject == subject)
@@ -80,6 +81,8 @@ public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
         public Task SendAsync(string recipient, string subject, string body, CancellationToken cancellationToken)
         {
+            if (FailSends)
+                throw new InvalidOperationException("Synthetic SMTP failure.");
             _messages.Enqueue((recipient, subject, body));
             return Task.CompletedTask;
         }

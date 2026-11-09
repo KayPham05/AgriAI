@@ -51,6 +51,8 @@ public sealed class PasswordRecovery(
         }
         catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
         {
+            await database.UserActionTokens.Where(item => item.Id == actionToken.Id)
+                .ExecuteDeleteAsync(CancellationToken.None);
             logger.LogWarning("Password reset email failed for user {UserId} ({ErrorType}).",
                 user.Id, exception.GetType().Name);
         }
