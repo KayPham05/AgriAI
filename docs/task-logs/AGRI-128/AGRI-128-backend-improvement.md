@@ -431,3 +431,9 @@ nhánh nền AGRI-128 là Jira của task hồ sơ.
 - CI còn fail `ResetPassword_ShouldRejectWrongAndExpiredCodes`; test dùng mã cố định và expire toàn bộ reset tokens trong DB dùng chung.
 - Đổi mã sai bằng cách thay chữ số đầu của mã thật, đồng thời chỉ expire token của user hiện tại. Điều này loại bỏ phụ thuộc ngẫu nhiên và nhiễu giữa test song song.
 - Build 0 warning/0 error, unit 228/228, manifest 5/5, `git diff --check` đạt.
+
+## CI follow-up — database expiry constraint 2026-11-09
+
+Root cause của `ResetPassword_ShouldRejectWrongAndExpiredCodes` là fixture chỉ cập nhật `expires_at` về quá khứ trong khi `created_at` vẫn mới hơn, vi phạm constraint PostgreSQL `ck_user_action_tokens_expiry` (`expires_at > created_at`). Test được sửa để đặt `created_at` trước `expires_at` khi tạo trạng thái token hết hạn; không liên quan đến JWT/token thật hoặc môi trường GitHub.
+
+Verification local với Docker Desktop/Testcontainers: solution build 0 warning/0 error; targeted reset test 1/1; unit tests 228/228; full API tests with coverage 293/293; `git diff --check` đạt.

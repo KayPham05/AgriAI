@@ -64,3 +64,9 @@ Run #115 vẫn fail bốn auth tests dù đã thêm config fixture; policy đư�
 ## CI follow-up — deterministic reset negative test 2026-11-09
 
 Test negative reset được làm deterministic: mã sai luôn khác mã thật và chỉ token của user test bị expire. Tránh collision ngẫu nhiên và cập nhật nhầm token của test song song.
+
+## Database expiry constraint follow-up — 2026-11-09
+
+CI failure was reproduced locally with Docker/Testcontainers. The failing fixture updated only `expires_at` while `created_at` remained later than the new expiry, violating PostgreSQL `ck_user_action_tokens_expiry` (`expires_at > created_at`). The test now updates both timestamps so `created_at < expires_at` while keeping the token expired. This is a test-fixture/database-constraint issue, not a missing real token or GitHub environment issue.
+
+Fresh verification: solution build 0 warning/0 error; targeted reset test 1/1; unit tests 228/228; full API coverage suite 293/293; `git diff --check` passed.

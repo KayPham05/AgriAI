@@ -88,8 +88,11 @@ public class AuthControllerTests : IClassFixture<AgriVisionFactory>
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var userId = await db.Users.Where(item => item.Email == email).Select(item => item.Id).SingleAsync();
+            var expiredAt = DateTime.UtcNow.AddSeconds(-1);
             await db.UserActionTokens.Where(item => item.UserId == userId && item.Purpose == "PasswordReset")
-                .ExecuteUpdateAsync(update => update.SetProperty(item => item.ExpiresAt, DateTime.UtcNow.AddSeconds(-1)));
+                .ExecuteUpdateAsync(update => update
+                    .SetProperty(item => item.CreatedAt, expiredAt.AddMinutes(-1))
+                    .SetProperty(item => item.ExpiresAt, expiredAt));
         }
         (await _client.PostAsJsonAsync("/api/auth/reset-password/verify", new { code }))
             .StatusCode.Should().Be(HttpStatusCode.BadRequest);
