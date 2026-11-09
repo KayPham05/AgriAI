@@ -52,3 +52,7 @@ Verification: build solution 0 warning/0 error; unit 228/228; `git diff --check`
 Sửa test isolation cho SMTP failure bằng recipient-specific fault injection; tránh làm nhiễu các test auth chạy song song. Bổ sung mapping manifest cho `auth.password_reset.negative` và `auth.two_factor.resend`.
 
 Verification: solution build sạch, unit 228/228, manifest 5/5. Cần chờ GitHub Actions xác nhận full API suite.
+
+## CI follow-up — rate-limit isolation 2026-11-09
+
+Bốn test auth fail đồng thời do fixed-window account challenge limiter hardcode 20/phút theo IP dùng chung của GitHub runner. Đã cấu hình limit qua `TrafficLimits:AccountChallengesPerMinute`, giữ default production 20 và nâng riêng Testcontainers fixture lên 10000.

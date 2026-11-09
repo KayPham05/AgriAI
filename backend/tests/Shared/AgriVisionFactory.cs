@@ -34,6 +34,7 @@ public class AgriVisionFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("TrafficLimits:PredictionRequestsPerMinute", "10000");
         builder.UseSetting("TrafficLimits:ImageRequestsPerMinute", "10000");
         builder.UseSetting("TrafficLimits:AuthRequestsPerMinute", "10000");
+        builder.UseSetting("TrafficLimits:AccountChallengesPerMinute", "10000");
         builder.UseSetting("ConnectionStrings:DefaultConnection", _dbContainer.GetConnectionString());
         builder.UseSetting("JwtSettings:Secret", new string('x', 32));
         builder.UseSetting("Google:ClientId", "fixture.apps.googleusercontent.com");

@@ -413,3 +413,9 @@ nhánh nền AGRI-128 là Jira của task hồ sơ.
 - CI fail 4 auth tests vì synthetic inbox dùng cờ SMTP failure toàn cục trong khi xUnit chạy song song. Đổi sang `FailRecipient`, chỉ request của test retry bị lỗi.
 - CI manifest fail vì hai ApiCase mới chưa được map: `auth.password_reset.negative` và `auth.two_factor.resend`; đã bổ sung mapping cho các route tương ứng.
 - Kiểm chứng mới: build 0 warning/0 error, unit 228/228, `ApiManifestMappingTests` 5/5, `git diff --check` đạt.
+
+## 2026-11-09 — Sửa rate-limit làm nhiễu API auth tests
+
+- CI API fail 4 auth test do `account-challenges` dùng fixed limit 20 request/phút theo IP; toàn bộ suite chạy song song trên cùng runner IP nên test mới chạm ngưỡng.
+- Production vẫn giữ default 20/phút; limiter đọc `TrafficLimits:AccountChallengesPerMinute`. Test fixture đặt riêng 10000 để không biến rate-limit production thành điều kiện của test.
+- Kiểm chứng: build 0 warning/0 error, unit 228/228, manifest 5/5, `git diff --check` đạt.

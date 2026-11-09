@@ -36,11 +36,12 @@ builder.Services.AddSingleton<ISessionNoticePublisher, SessionNoticePublisher>()
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    var accountChallengeLimit = builder.Configuration.GetValue("TrafficLimits:AccountChallengesPerMinute", 20);
     options.AddPolicy("account-challenges", context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions
         {
-            PermitLimit = 20,
+            PermitLimit = accountChallengeLimit,
             Window = TimeSpan.FromMinutes(1)
         }));
 });
