@@ -46,3 +46,9 @@ Sau khi xóa use cuối cùng, test vẫn gọi GET medicine public và kỳ v�
 Verification: build solution 0 warning/0 error; unit 228/228; `git diff --check` pass. API test execution remains Docker-blocked locally.
 
 - Resend 2FA nay consume challenge cũ sau khi phát hành challenge mới, nên code cũ không thể verify lại; test HTTP xác nhận setup/login resend, challenge mới và replay challenge cũ đều bị từ chối.
+
+## CI follow-up — 2026-11-09
+
+Sửa test isolation cho SMTP failure bằng recipient-specific fault injection; tránh làm nhiễu các test auth chạy song song. Bổ sung mapping manifest cho `auth.password_reset.negative` và `auth.two_factor.resend`.
+
+Verification: solution build sạch, unit 228/228, manifest 5/5. Cần chờ GitHub Actions xác nhận full API suite.

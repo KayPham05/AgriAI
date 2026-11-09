@@ -407,3 +407,9 @@ nhánh nền AGRI-128 là Jira của task hồ sơ.
 - Bổ sung HTTP regression coverage cho setup/login 2FA resend (challenge mới, code mới), password reset sai code/hết hạn và retry sau SMTP failure.
 - Đồng bộ `docs/reports/AGRI-132/README.md` với code 8 chữ số, hiệu lực 60 giây và retry policy.
 - Kiểm chứng: solution build 0 warning/0 error, unit 228/228 đạt, `git diff --check` đạt. API tests đã biên dịch; thực thi local cần Docker/Testcontainers.
+
+## 2026-11-09 — Sửa CI race và manifest mapping
+
+- CI fail 4 auth tests vì synthetic inbox dùng cờ SMTP failure toàn cục trong khi xUnit chạy song song. Đổi sang `FailRecipient`, chỉ request của test retry bị lỗi.
+- CI manifest fail vì hai ApiCase mới chưa được map: `auth.password_reset.negative` và `auth.two_factor.resend`; đã bổ sung mapping cho các route tương ứng.
+- Kiểm chứng mới: build 0 warning/0 error, unit 228/228, `ApiManifestMappingTests` 5/5, `git diff --check` đạt.

@@ -237,7 +237,7 @@ public class AuthControllerTests : IClassFixture<AgriVisionFactory>
     {
         var email = $"retry_{Guid.NewGuid():N}@example.com";
         await RegisterAsync(email);
-        _inbox.FailSends = true;
+        _inbox.FailRecipient = email;
         try
         {
             (await _client.PostAsJsonAsync("/api/auth/forgot-password", new { email }))
@@ -245,7 +245,7 @@ public class AuthControllerTests : IClassFixture<AgriVisionFactory>
         }
         finally
         {
-            _inbox.FailSends = false;
+            _inbox.FailRecipient = null;
         }
 
         (await _client.PostAsJsonAsync("/api/auth/forgot-password", new { email }))

@@ -781,30 +781,32 @@
     "method": "POST",
     "route": "/api/auth/forgot-password",
     "cases": [
-      "auth.password_reset"
+      "auth.password_reset",
+      "auth.password_reset.negative"
     ]
   },
   {
     "method": "POST",
     "route": "/api/auth/reset-password",
     "cases": [
-      "auth.password_reset"
+      "auth.password_reset",
+      "auth.password_reset.negative"
     ]
   },
   {
     "method": "POST",
     "route": "/api/auth/reset-password/verify",
-    "cases": ["auth.password_reset"]
+    "cases": ["auth.password_reset", "auth.password_reset.negative"]
   },
   {
     "method": "POST",
     "route": "/api/auth/two-factor/setup/resend",
-    "cases": ["auth.two_factor.lifecycle"]
+    "cases": ["auth.two_factor.lifecycle", "auth.two_factor.resend"]
   },
   {
     "method": "POST",
     "route": "/api/auth/two-factor/login/resend",
-    "cases": ["auth.two_factor.lifecycle"]
+    "cases": ["auth.two_factor.lifecycle", "auth.two_factor.resend"]
   },
   {
     "method": "POST",
