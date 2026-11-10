@@ -437,3 +437,9 @@ nhánh nền AGRI-128 là Jira của task hồ sơ.
 Root cause của `ResetPassword_ShouldRejectWrongAndExpiredCodes` là fixture chỉ cập nhật `expires_at` về quá khứ trong khi `created_at` vẫn mới hơn, vi phạm constraint PostgreSQL `ck_user_action_tokens_expiry` (`expires_at > created_at`). Test được sửa để đặt `created_at` trước `expires_at` khi tạo trạng thái token hết hạn; không liên quan đến JWT/token thật hoặc môi trường GitHub.
 
 Verification local với Docker Desktop/Testcontainers: solution build 0 warning/0 error; targeted reset test 1/1; unit tests 228/228; full API tests with coverage 293/293; `git diff --check` đạt.
+
+## Follow-up — WEBP API round-trip coverage 2026-11-10
+
+Bổ sung `webp` vào API contract test `SupportedExtension_StoresExactBytesAndServesPrivateImageHeaders`. Case này đi qua multipart upload, predictor fake, storage fake, persistence database và HTTP image read-back; kiểm tra extension/key, bytes nguyên vẹn, `image/webp`, cache-control và `nosniff`. Test helper được cập nhật để gửi multipart `image/webp` và trả đúng MIME khi đọc object.
+
+Verification: targeted format cases 4/4; full API suite with coverage 294/294; solution build and unit suite cần được ghi nhận sau lần chạy hiện tại. External SMTP delivery remains an environment acceptance item and was not claimed as completed.

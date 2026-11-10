@@ -70,3 +70,9 @@ Test negative reset được làm deterministic: mã sai luôn khác mã thật 
 CI failure was reproduced locally with Docker/Testcontainers. The failing fixture updated only `expires_at` while `created_at` remained later than the new expiry, violating PostgreSQL `ck_user_action_tokens_expiry` (`expires_at > created_at`). The test now updates both timestamps so `created_at < expires_at` while keeping the token expired. This is a test-fixture/database-constraint issue, not a missing real token or GitHub environment issue.
 
 Fresh verification: solution build 0 warning/0 error; targeted reset test 1/1; unit tests 228/228; full API coverage suite 293/293; `git diff --check` passed.
+
+## Follow-up — WEBP API round-trip coverage — 2026-11-10
+
+Added the missing WEBP case to the existing full API contract flow. The test now exercises HTTP multipart upload through prediction, fake AI, storage, database persistence, and private image read-back, asserting exact bytes and `image/webp` response headers. Test doubles now preserve WEBP MIME semantics for both upload input and read-back.
+
+Fresh verification: targeted format matrix 4/4; full API coverage suite 294/294. External SMTP delivery remains an authorized-environment acceptance item and is not represented as completed by this change.
