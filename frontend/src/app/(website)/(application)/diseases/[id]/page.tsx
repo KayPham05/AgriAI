@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { DiseaseDetailRoute } from '@/features/diseases/DiseaseDetailRoute';
+import { CatalogRoute } from '@/features/knowledge/CatalogRoute';
 import { ALL_DISEASES } from '@/data/plantData';
 export async function generateMetadata({
   params,
@@ -12,5 +12,5 @@ export async function generateMetadata({
 }
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <DiseaseDetailRoute id={id} />;
+  return <CatalogRoute kind="diseases" id={id} />;
 }

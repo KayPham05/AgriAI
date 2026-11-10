@@ -7,13 +7,23 @@ import { getPlants, getDiseases } from '@/services/catalogApi';
 import { getPredictionHistory } from '@/services/predictionApi';
 
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
-vi.mock('next/navigation', () => ({ usePathname: () => '/', useRouter: () => router }));
+const navigation = vi.hoisted(() => ({ pathname: '/' }));
+vi.mock('next/navigation', () => ({
+  usePathname: () => navigation.pathname,
+  useRouter: () => router,
+}));
 vi.mock('@/services/authApi', () => ({
   restoreAuthSession: vi.fn(),
   clearAuthSession: vi.fn(),
   revokeSession: vi.fn(),
 }));
 vi.mock('@/services/catalogApi', () => ({ getPlants: vi.fn(), getDiseases: vi.fn() }));
+vi.mock('@/services/agriculturalProfileApi', () => ({
+  getAgriculturalProfiles: vi.fn().mockResolvedValue([]),
+  createAgriculturalProfile: vi.fn(),
+  updateAgriculturalProfile: vi.fn(),
+  deleteAgriculturalProfile: vi.fn(),
+}));
 vi.mock('@/services/predictionApi', () => ({
   getPredictionHistory: vi.fn(),
   deletePrediction: vi.fn(),
@@ -35,7 +45,8 @@ function Workspace() {
 describe('logout farewell', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.clearAllMocks();
+    vi.resetAllMocks();
+    navigation.pathname = '/';
     vi.mocked(revokeSession).mockResolvedValue(undefined);
     vi.mocked(restoreAuthSession).mockResolvedValue({
       token: 'isolated',
@@ -78,7 +89,8 @@ describe('logout farewell', () => {
     expect(getPlants).toHaveBeenCalledOnce();
   });
 
-  it('keeps the session and reports failure when revocation fails', async () => {
+  it.each(['/', '/knowledge'])('keeps the session when revocation fails on %s', async (path) => {
+    navigation.pathname = path;
     vi.mocked(revokeSession).mockRejectedValueOnce(new Error('offline'));
     await act(async () =>
       render(
@@ -93,6 +105,33 @@ describe('logout farewell', () => {
     expect(clearAuthSession).not.toHaveBeenCalled();
     await act(async () => screen.getByRole('button', { name: 'Sign out' }).click());
     expect(clearAuthSession).toHaveBeenCalledOnce();
+  });
+
+  it('revokes the restored public-catalog session before clearing local authentication', async () => {
+    navigation.pathname = '/knowledge';
+    let finishRevocation!: () => void;
+    vi.mocked(revokeSession).mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        finishRevocation = resolve;
+      }),
+    );
+    await act(async () =>
+      render(
+        <AppProvider>
+          <Workspace />
+        </AppProvider>,
+      ),
+    );
+    expect(screen.getByText('Private workspace')).toBeVisible();
+    expect(getPredictionHistory).not.toHaveBeenCalled();
+    await act(async () => screen.getByRole('button', { name: 'Sign out' }).click());
+    expect(revokeSession).toHaveBeenCalledWith('isolated');
+    expect(clearAuthSession).not.toHaveBeenCalled();
+    expect(screen.getByText('Private workspace')).toBeVisible();
+    await act(async () => finishRevocation());
+    expect(clearAuthSession).toHaveBeenCalledOnce();
+    expect(screen.queryByText('Private workspace')).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Tạm biệt, Nguyễn Văn An.' })).toBeVisible();
   });
 
   it('cleans up the farewell timer when the provider unmounts', async () => {

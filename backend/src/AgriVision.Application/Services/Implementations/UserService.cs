@@ -1,6 +1,8 @@
 using AgriVision.Application.Common.Interfaces.Persistence;
+using AgriVision.Application.Common.Interfaces.Authentication;
 using AgriVision.Application.DTOs.User;
 using AgriVision.Application.Services.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace AgriVision.Application.Services.Implementations;
 
@@ -9,15 +11,21 @@ public class UserService : IUserService
     private readonly IUserRepository _userRepository;
     private readonly IUserSessionRepository _userSessionRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IAccountEmailSender? _emailSender;
+    private readonly ILogger<UserService>? _logger;
 
     public UserService(
         IUserRepository userRepository,
         IUserSessionRepository userSessionRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IAccountEmailSender? emailSender = null,
+        ILogger<UserService>? logger = null)
     {
         _userRepository = userRepository;
         _userSessionRepository = userSessionRepository;
         _unitOfWork = unitOfWork;
+        _emailSender = emailSender;
+        _logger = logger;
     }
 
     public async Task<UserProfileDto> GetProfileAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -36,7 +44,8 @@ public class UserService : IUserService
             user.IsActive,
             user.CreatedAt,
             user.UpdatedAt,
-            user.EmailVerifiedAt
+            user.EmailVerifiedAt,
+            user.AvatarUrl
         );
     }
 
@@ -71,7 +80,8 @@ public class UserService : IUserService
             user.IsActive,
             user.CreatedAt,
             user.UpdatedAt,
-            user.EmailVerifiedAt
+            user.EmailVerifiedAt,
+            user.AvatarUrl
         );
     }
 
@@ -123,5 +133,20 @@ public class UserService : IUserService
             // Invalidate active sessions to enforce fresh login or updated security state
             await _userSessionRepository.RevokeAllSessionsByUserIdAsync(userId, cancellationToken);
         }, cancellationToken);
+        if (_emailSender is not null)
+        {
+            try
+            {
+                var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+                if (user is not null)
+                    await _emailSender.SendAsync(user.Email, "Mật khẩu AgriAI đã được đổi",
+                        "Mật khẩu tài khoản của bạn đã được cập nhật thành công.", cancellationToken);
+            }
+            catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                _logger?.LogWarning("Password change notification failed for user {UserId} ({ErrorType}).",
+                    userId, exception.GetType().Name);
+            }
+        }
     }
 }

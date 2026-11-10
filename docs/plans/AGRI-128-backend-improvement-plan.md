@@ -158,6 +158,7 @@ flowchart TD
 - [ ] Xây dựng `AdminUsersController` (`api/admin/users`) được bảo vệ bởi `[Authorize(Roles = UserRole.Admin)]`.
 
 ### Task S3-09: Agricultural Knowledge Base & Medicine Management
+
 - [ ] Tạo DTOs trong `AgriVision.Application/DTOs/Knowledge/` và `Medicine/`:
   - `MedicineDto`, `CreateMedicineRequest`, `UpdateMedicineRequest`.
   - `MedicineUseDto`, `AssignMedicineUseRequest`.
@@ -173,6 +174,7 @@ flowchart TD
 - [ ] Tích hợp gợi ý thuốc vào kết quả chẩn đoán: Nếu `confidence > 0.8` và tình trạng là `Disease`, tự động truy xuất các thuốc đã duyệt từ bảng `medicine_uses` để đính kèm vào snapshot kết quả.
 
 ### Task S3-10: Farming Recommendation API (Stretch Goal - ChatGPT Integration)
+
 - [ ] Tạo DTOs trong `AgriVision.Application/DTOs/FarmingAdvisor/`:
   - `FarmingAdviceRequest`: `PredictionId` hoặc (`PlantName`, `DiseaseName`, `Symptoms`, `FarmNotes`).
   - `FarmingAdviceResponse`: `PlantName`, `DiseaseName`, `Summary`, `OrganicSolutions`, `ChemicalSolutions`, `PreventionSteps`, `SoilAndEnvironmentCare`, `SourceReferences`.

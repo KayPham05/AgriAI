@@ -6,7 +6,7 @@ import { SUPPORTED_PLANTS } from '@/data/plantData';
 
 describe('HomePage', () => {
   it('shows the centered landing hero and keeps the original Home guidance', () => {
-    render(<HomePage onNavigate={vi.fn()} onSelectPlant={vi.fn()} />);
+    render(<HomePage plants={SUPPORTED_PLANTS} onNavigate={vi.fn()} onSelectPlant={vi.fn()} />);
     expect(
       screen.getByRole('heading', { name: 'Hiểu từng chiếc lá Giữ trọn mùa xanh' }),
     ).toBeVisible();
@@ -20,7 +20,7 @@ describe('HomePage', () => {
 
   it('keeps the primary tasks reachable', async () => {
     const onNavigate = vi.fn();
-    render(<HomePage onNavigate={onNavigate} onSelectPlant={vi.fn()} />);
+    render(<HomePage plants={SUPPORTED_PLANTS} onNavigate={onNavigate} onSelectPlant={vi.fn()} />);
     expect(
       screen.getByRole('heading', { name: 'Hiểu từng chiếc lá Giữ trọn mùa xanh' }),
     ).toBeInTheDocument();
@@ -32,7 +32,9 @@ describe('HomePage', () => {
   it('opens a plant from its catalog card without the removed selector', async () => {
     const onSelectPlant = vi.fn();
     const user = userEvent.setup();
-    render(<HomePage onNavigate={vi.fn()} onSelectPlant={onSelectPlant} />);
+    render(
+      <HomePage plants={SUPPORTED_PLANTS} onNavigate={vi.fn()} onSelectPlant={onSelectPlant} />,
+    );
     const targetPlant = SUPPORTED_PLANTS.find((plant) => plant.id === 'coffee');
     expect(screen.queryByRole('combobox', { name: 'Cây trong cẩm nang' })).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Tìm hiểu cây Cà phê' }));

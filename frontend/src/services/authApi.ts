@@ -1,15 +1,23 @@
+import { sessionFetch, getSessionIssue, clearSessionIssue } from './sessionFetch';
 export interface AuthUser {
   id: string;
   fullName: string;
   email: string;
   role: string;
   createdAt: string;
+  avatarUrl?: string | null;
 }
 
 export interface AuthSession {
   token: string;
   user: AuthUser;
 }
+
+export interface EmailChallenge {
+  challengeId: string;
+}
+
+export type LoginResult = AuthSession | EmailChallenge;
 
 export interface LoginCredentials {
   email: string;
@@ -42,7 +50,7 @@ function getErrorMessage(body: unknown, fallback: string): string {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`${configuredBaseUrl}${path}`, {
+    response = await sessionFetch(`${configuredBaseUrl}${path}`, {
       ...init,
       headers: {
         'Content-Type': 'application/json',
@@ -61,10 +69,70 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
-export function login(credentials: LoginCredentials): Promise<AuthSession> {
-  return request<AuthSession>('/api/auth/login', {
+export function login(credentials: LoginCredentials): Promise<LoginResult> {
+  return request<LoginResult>('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify(credentials),
+  });
+}
+
+export function loginWithGoogle(credential: string): Promise<LoginResult> {
+  return request('/api/auth/google', {
+    method: 'POST',
+    body: JSON.stringify({ credential }),
+  });
+}
+
+export function verifyEmailLogin(challengeId: string, code: string): Promise<AuthSession> {
+  return request('/api/auth/two-factor/login', {
+    method: 'POST',
+    body: JSON.stringify({ challengeId, code }),
+  });
+}
+
+export function resendEmailLogin(challengeId: string): Promise<EmailChallenge> {
+  return request('/api/auth/two-factor/login/resend', {
+    method: 'POST',
+    body: JSON.stringify({ challengeId }),
+  });
+}
+
+export function getEmailTwoFactor(
+  token: string,
+  signal: AbortSignal,
+): Promise<{ enabled: boolean }> {
+  return request('/api/auth/two-factor', { signal, headers: { Authorization: `Bearer ${token}` } });
+}
+
+export function startEmailTwoFactor(token: string, enabled: boolean): Promise<EmailChallenge> {
+  return request(`/api/auth/two-factor/setup?enabled=${enabled}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function verifyEmailTwoFactor(
+  token: string,
+  challengeId: string,
+  code: string,
+  enabled: boolean,
+): Promise<void> {
+  await request(`/api/auth/two-factor/setup/verify?enabled=${enabled}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ challengeId, code }),
+  });
+}
+
+export function resendEmailTwoFactor(
+  token: string,
+  challengeId: string,
+  enabled: boolean,
+): Promise<EmailChallenge> {
+  return request(`/api/auth/two-factor/setup/resend?enabled=${enabled}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ challengeId }),
   });
 }
 
@@ -75,6 +143,27 @@ export function register(credentials: RegisterCredentials): Promise<AuthSession>
   });
 }
 
+export async function requestPasswordReset(email: string): Promise<void> {
+  await request('/api/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function resetPassword(code: string, password: string): Promise<void> {
+  await request('/api/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ code, password }),
+  });
+}
+
+export async function verifyPasswordResetCode(code: string): Promise<void> {
+  await request('/api/auth/reset-password/verify', {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+  });
+}
+
 export function saveAuthSession(session: AuthSession, remember: boolean): void {
   clearAuthSession();
   const storage = remember ? localStorage : sessionStorage;
@@ -82,8 +171,24 @@ export function saveAuthSession(session: AuthSession, remember: boolean): void {
 }
 
 export function clearAuthSession(): void {
+  clearSessionIssue();
   localStorage.removeItem(AUTH_STORAGE_KEY);
   sessionStorage.removeItem(AUTH_STORAGE_KEY);
+}
+
+export function updateStoredAuthUser(user: AuthUser): void {
+  for (const storage of [localStorage, sessionStorage]) {
+    try {
+      const serialized = storage.getItem(AUTH_STORAGE_KEY);
+      if (!serialized) continue;
+      const session = JSON.parse(serialized) as AuthSession;
+      if (session.user.id === user.id) {
+        storage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ ...session, user }));
+      }
+    } catch {
+      // A stale local cache must not turn a successful account update into a failed save.
+    }
+  }
 }
 
 export async function restoreAuthSession(): Promise<AuthSession | null> {
@@ -100,13 +205,14 @@ export async function restoreAuthSession(): Promise<AuthSession | null> {
     });
     return { token: session.token, user };
   } catch {
+    if (getSessionIssue()) return null;
     clearAuthSession();
     return null;
   }
 }
 
 export async function revokeSession(token: string): Promise<void> {
-  const response = await fetch(`${configuredBaseUrl}/api/auth/logout`, {
+  const response = await sessionFetch(`${configuredBaseUrl}/api/auth/logout`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     signal: AbortSignal.timeout(10000),

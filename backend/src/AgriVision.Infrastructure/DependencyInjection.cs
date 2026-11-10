@@ -10,6 +10,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Amazon.S3;
 using Amazon.Runtime;
+using AgriVision.Application.Services.Interfaces;
+
 
 namespace AgriVision.Infrastructure;
 
@@ -25,9 +27,20 @@ public static class DependencyInjection
 
         // Register Authentication Services
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+        services.AddScoped<IPasswordRecovery, PasswordRecovery>();
+        services.AddScoped<IEmailTwoFactor, EmailTwoFactor>();
+        services.AddScoped<IGoogleAccountLogin, GoogleAccountLogin>();
+        if (!string.IsNullOrWhiteSpace(configuration["Smtp:Host"]))
+            services.AddScoped<IAccountEmailSender, SmtpAccountEmailSender>();
 
         // Register Repositories & Unit of Work
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IAdminWorkspaceService, AdminWorkspaceService>();
+        services.AddScoped<IUserNotificationRepository, UserNotificationRepository>();
+        services.AddScoped<IAdminImageService, AdminImageService>();
+        services.AddScoped<ICatalogImageService, CatalogImageService>();
+        services.AddScoped<ICatalogDeletionService, CatalogDeletionService>();
+        services.AddSingleton<IGuestPredictionStore, GuestPredictionStore>();
         services.AddScoped<IUserSessionRepository, UserSessionRepository>();
         services.AddScoped<IPlantRepository, PlantRepository>();
         services.AddScoped<IDiseaseRepository, DiseaseRepository>();
@@ -36,6 +49,9 @@ public static class DependencyInjection
         services.AddScoped<IAdminAuditLogRepository, AdminAuditLogRepository>();
         services.AddScoped<IAgriculturalProfileRepository, AgriculturalProfileRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IMedicineRepository, MedicineRepository>();
+        services.AddScoped<IKnowledgeDocumentRepository, KnowledgeDocumentRepository>();
+
 
         // Register Image Storage Service
         services.AddSingleton<IAmazonS3>(_ =>

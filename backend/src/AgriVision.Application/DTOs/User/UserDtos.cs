@@ -8,7 +8,8 @@ public record UserProfileDto(
     bool IsActive,
     DateTime CreatedAt,
     DateTime? UpdatedAt,
-    DateTime? EmailVerifiedAt
+    DateTime? EmailVerifiedAt,
+    string? AvatarUrl = null
 );
 
 public record UpdateProfileRequest(string FullName);
@@ -16,5 +17,7 @@ public record UpdateProfileRequest(string FullName);
 public record ChangePasswordRequest(
     string CurrentPassword,
     string NewPassword,
-    string ConfirmPassword
+    string ConfirmPassword,
+    Guid? VerificationChallengeId = null,
+    string? VerificationCode = null
 );

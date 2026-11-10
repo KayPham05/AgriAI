@@ -305,3 +305,141 @@ nhánh nền AGRI-128 là Jira của task hồ sơ.
 - Delivery includes only the auth integration test and its AGRI-128 reports/task log. Unrelated untracked files remain excluded.
 - Revalidated existing TRX and merged coverage before delivery: 91 unit and 140 integration passed; 65.94% branch coverage. No new test execution is claimed by this delivery entry.
 - GitHub CI for the new commit must be checked separately after push; the earlier ba89f19 CI result remains historical.
+
+## 2026-10-25 — User Profile & Password Management frontend
+
+- Người dùng sửa phạm vi: chỉ làm User Profile & Password Management theo frame
+  Figma `Profile / Desktop` (`1:2`), không triển khai S3-03 hồ sơ nông nghiệp.
+- Nhánh đã kiểm tra: `AGRI-128-backend-improvement`. Không commit/push. Giữ nguyên
+  các file local không liên quan và việc xóa appsettings example đã có trước lượt này.
+- Thêm `frontend/src/views/UserProfilePage.tsx`,
+  `frontend/src/components/profile/PasswordChangeForm.tsx`,
+  `frontend/src/services/userApi.ts`; nối ở `features/profile/ProfileRoute.tsx`.
+  Cập nhật AppContexts/AppProvider và authApi để đồng bộ tên tài khoản sau lưu.
+  Giữ trang dùng thử hiện tại và avatar trong phiên; không thêm upload API.
+- Mapping GET/PUT `/api/users/profile` và POST `/api/users/change-password` theo
+  UsersController/UserDtos/UserService. Họ tên trim 1–60 ký tự; đổi mật khẩu tối thiểu
+  6 ký tự, khớp xác nhận, khác mật khẩu hiện tại. Sau 204 xóa phiên và đăng xuất.
+- Kiểm chứng mới: typecheck, lint, production build đạt; full Vitest **368/368** ở
+  **54 file**; format 10 file thay đổi đạt; `git diff --check` đạt.
+- Chromium headless trên production build với HTTP fixtures: 1280/768/375px không
+  tràn ngang, dialog nằm trong viewport, Manrope đúng; lưu tên/Navbar/tải lại, lỗi
+  mật khẩu và logout sau đổi mật khẩu đạt, không có page error.
+- Format toàn frontend chưa đạt do 201 lỗi ngoài phạm vi, chủ yếu CRLF/LF. Không
+  mass-format. Docker daemon/backend không chạy nên chưa nghiệm thu API/DB thật;
+  không chạy backend/AI/CI, chưa đo coverage, không kết luận toàn AGRI-128 Done.
+- Chi tiết contract, đường dẫn source/test và artifact local:
+  [báo cáo frontend](../../reports/AGRI-128/user_profile_frontend.md).
+
+## 2026-10-25 — Hủy avatar, merge origin/main
+
+- Hủy phần AvatarUrl/upload/migration vừa làm dở; giữ Profile/Password và các file
+  local trước đó. Không áp dụng migration.
+- Fetch và fast-forward nhánh hiện tại từ `a43797d` lên `origin/main` `018bf32`
+  (16 commit); HEAD và origin/main bằng nhau. Không push hoặc tạo commit riêng.
+- Khôi phục local sau stash; giải quyết import AppProvider, giữ việc xóa file
+  appsettings example có sẵn; fixture PrivateHistoryImage bổ sung updateAccount.
+- Kiểm tra mới: frontend typecheck/lint đạt, **374/374 test tại 55 file** đạt;
+  `git diff --check` đạt, không còn unmerged paths, không có file staged.
+- Giữ stash dự phòng và snapshot ignored. Không chạy build/backend/AI/CI sau merge.
+  Chi tiết và nơi khôi phục: [báo cáo](../../reports/AGRI-128/user_profile_frontend.md#2026-10-25--hủy-thay-đổi-avatar-và-đồng-bộ-remote-main).
+
+## 2026-10-25 — Thực hiện lại avatar theo yêu cầu mới
+
+- User yêu cầu lại AvatarUrl/upload sau merge main. Thêm nullable `User.AvatarUrl`,
+  migration `20261025094714_UserAvatarUrl`, DTO auth/profile và API upload/đọc ảnh
+  riêng tư. Tái sử dụng R2, quota, transaction lock và upload journal hiện tại.
+- Frontend xác nhận preview trước upload, cho retry khi lỗi, đồng bộ avatar vào
+  profile/Navbar và khi tải lại. Bỏ tên hiển thị riêng, số điện thoại, tỉnh/thành
+  phố; giữ họ tên, email và vai trò. Không triển khai hồ sơ nông nghiệp S3-03.
+- Kiểm chứng mới: backend unit **138/138**, full API **208/208**, integration liên
+  quan migration/catalog/journal **22/22**, không skip; frontend **377/377** tại
+  55 file, typecheck/lint/build đạt. Browser fixtures tại 1280/768/375 px xác nhận
+  upload/retry/persistence, không tràn ngang/page error; `git diff --check` đạt.
+- Lần full integration đầu có hai lỗi kỳ vọng số migration; đã sửa và chạy lại
+  22 test liên quan đạt, chưa chạy lại toàn bộ integration. Full API đã chạy lại
+  đạt sau sửa assertion đếm journal theo đúng owner.
+- Chưa áp dụng migration lên DB ứng dụng, chưa kiểm thử R2 thật/CI/coverage mới.
+  Không commit/push; giữ nguyên thay đổi ngoài phạm vi. Chi tiết affected paths,
+  bằng chứng và giới hạn: [báo cáo avatar](../../reports/AGRI-128/user_avatar.md).
+
+## 2026-10-25 — Chuẩn bị commit/push theo yêu cầu
+
+- User yêu cầu push Profile/Password/avatar lên `AGRI-128-backend-improvement`.
+  Fetch xác nhận nhánh local đang đi trước remote 16 commit từ lần merge main;
+  remote không có commit riêng cần hòa giải.
+- Giữ ngoài commit các file cá nhân, commit-review local, thay đổi whitespace ở
+  kế hoạch và việc xóa appsettings example có sẵn. Không đưa secrets/artifact vào Git.
+- Chẩn đoán presence-only xác nhận cả bốn cấu hình R2 trong `.env` và container
+  backend đang rỗng; chưa thay cấu hình hoặc restart container. Upload R2 thật còn
+  bị chặn bởi cấu hình môi trường. Kết quả test phía trên là của lần chạy đã ghi,
+  không được tính lại thành kiểm chứng mới khi push.
+
+## 2026-11-08 — Khắc phục các điểm review bảo mật PR #63
+
+- Phạm vi: sửa các finding SEC-001 đến SEC-005 và bổ sung regression tests trên nhánh `AGRI-128-backend-improvement`.
+- Đã thu hồi toàn bộ `user_sessions` khi reset mật khẩu; mã reset mới hash theo ID token, vẫn đọc được token legacy đang còn hạn.
+- Đã đồng bộ WEBP giữa validation, prediction key và R2; tách giới hạn đồng thời prediction theo người dùng/IP để auth/avatar không bị nghẽn; CORS chuyển sang allow-list cấu hình.
+- Public knowledge/medicine chỉ còn hiển thị khi có liên kết cây-bệnh đang active (medicine yêu cầu condition `Disease`).
+- Kiểm chứng mới: restore, build solution 0 warning/0 error, unit tests 228/228 đạt, `git diff --check` đạt. API tests mục tiêu đã biên dịch nhưng chạy bị chặn vì Docker daemon không khả dụng (`npipe://./pipe/docker_engine`).
+
+## 2026-11-08 — Sửa tương thích medicine public listing sau CI
+
+- CI phát hiện hai regression ở `KnowledgeMedicineTests`: fixture pair mặc định có `ConditionType=Unknown`, nhưng medicine public vẫn hợp lệ khi liên kết cây-bệnh còn active.
+- Điều chỉnh public list/detail chỉ yêu cầu medicine và liên kết cây-bệnh active; `ConditionType=Disease` tiếp tục được dùng để lọc use công khai và recommendation.
+- Build solution đạt 0 warning/0 error. Hai API test mục tiêu đã thử lại local nhưng bị chặn trước khi chạy bởi Docker daemon không khả dụng.
+
+## 2026-11-08 — Giữ tương thích use legacy chưa phân loại
+
+- CI còn một regression ở `Relations_ShouldRejectUnknownPairs_AndPublishSavedUses`: use gắn với bệnh `Unknown` phải tiếp tục hiển thị theo contract legacy.
+- Public medicine use hiện cho phép `Disease` và `Unknown` khi cặp active; `Healthy`/`NutrientDeficiency` vẫn bị ẩn. Recommendation vẫn chỉ dùng `Disease`.
+- Build 0 warning/0 error; unit 228/228 đạt. API test local vẫn cần Docker daemon để xác nhận.
+
+## 2026-11-08 — Giữ detail medicine sau khi xóa use
+
+- CI cho thấy test quan hệ yêu cầu medicine public vẫn trả detail `200` với `uses=[]` sau khi xóa use cuối cùng.
+- Public detail hiện cho phép medicine active/public không có use; nếu có use thì vẫn yêu cầu ít nhất một quan hệ active. Public list tiếp tục chỉ lấy medicine có quan hệ active.
+- Build 0 warning/0 error; unit 228/228 đạt.
+
+## 2026-11-09 — Review P1 follow-up
+
+- Xử lý SMTP password-reset failure: token vừa lưu được xóa khi gửi email lỗi, giữ HTTP 202 không làm lộ trạng thái và cho phép retry ngay.
+- Bổ sung HTTP regression coverage cho setup/login 2FA resend (challenge mới, code mới), password reset sai code/hết hạn và retry sau SMTP failure.
+- Đồng bộ `docs/reports/AGRI-132/README.md` với code 8 chữ số, hiệu lực 60 giây và retry policy.
+- Kiểm chứng: solution build 0 warning/0 error, unit 228/228 đạt, `git diff --check` đạt. API tests đã biên dịch; thực thi local cần Docker/Testcontainers.
+
+## 2026-11-09 — Sửa CI race và manifest mapping
+
+- CI fail 4 auth tests vì synthetic inbox dùng cờ SMTP failure toàn cục trong khi xUnit chạy song song. Đổi sang `FailRecipient`, chỉ request của test retry bị lỗi.
+- CI manifest fail vì hai ApiCase mới chưa được map: `auth.password_reset.negative` và `auth.two_factor.resend`; đã bổ sung mapping cho các route tương ứng.
+- Kiểm chứng mới: build 0 warning/0 error, unit 228/228, `ApiManifestMappingTests` 5/5, `git diff --check` đạt.
+
+## 2026-11-09 — Sửa rate-limit làm nhiễu API auth tests
+
+- CI API fail 4 auth test do `account-challenges` dùng fixed limit 20 request/phút theo IP; toàn bộ suite chạy song song trên cùng runner IP nên test mới chạm ngưỡng.
+- Production vẫn giữ default 20/phút; limiter đọc `TrafficLimits:AccountChallengesPerMinute`. Test fixture đặt riêng 10000 để không biến rate-limit production thành điều kiện của test.
+- Kiểm chứng: build 0 warning/0 error, unit 228/228, manifest 5/5, `git diff --check` đạt.
+
+## 2026-11-09 — Ép buộc test environment bỏ nhiễu account challenge limiter
+
+- CI vẫn fail bốn auth tests sau khi đọc cấu hình vì `account-challenges` được khởi tạo sớm trong host lifecycle và test setting không luôn được áp dụng trước khi policy tạo.
+- Khi environment là `Testing`, policy bảo đảm budget tối thiểu 10000/phút; production default vẫn 20/phút và vẫn hỗ trợ cấu hình.
+- Build 0 warning/0 error, unit 228/228, manifest 5/5, `git diff --check` đạt.
+
+## 2026-11-09 — Làm deterministic password reset negative test
+
+- CI còn fail `ResetPassword_ShouldRejectWrongAndExpiredCodes`; test dùng mã cố định và expire toàn bộ reset tokens trong DB dùng chung.
+- Đổi mã sai bằng cách thay chữ số đầu của mã thật, đồng thời chỉ expire token của user hiện tại. Điều này loại bỏ phụ thuộc ngẫu nhiên và nhiễu giữa test song song.
+- Build 0 warning/0 error, unit 228/228, manifest 5/5, `git diff --check` đạt.
+
+## CI follow-up — database expiry constraint 2026-11-09
+
+Root cause của `ResetPassword_ShouldRejectWrongAndExpiredCodes` là fixture chỉ cập nhật `expires_at` về quá khứ trong khi `created_at` vẫn mới hơn, vi phạm constraint PostgreSQL `ck_user_action_tokens_expiry` (`expires_at > created_at`). Test được sửa để đặt `created_at` trước `expires_at` khi tạo trạng thái token hết hạn; không liên quan đến JWT/token thật hoặc môi trường GitHub.
+
+Verification local với Docker Desktop/Testcontainers: solution build 0 warning/0 error; targeted reset test 1/1; unit tests 228/228; full API tests with coverage 293/293; `git diff --check` đạt.
+
+## Follow-up — WEBP API round-trip coverage 2026-11-10
+
+Bổ sung `webp` vào API contract test `SupportedExtension_StoresExactBytesAndServesPrivateImageHeaders`. Case này đi qua multipart upload, predictor fake, storage fake, persistence database và HTTP image read-back; kiểm tra extension/key, bytes nguyên vẹn, `image/webp`, cache-control và `nosniff`. Test helper được cập nhật để gửi multipart `image/webp` và trả đúng MIME khi đọc object.
+
+Verification: targeted format cases 4/4; full API suite with coverage 294/294; solution build and unit suite cần được ghi nhận sau lần chạy hiện tại. External SMTP delivery remains an environment acceptance item and was not claimed as completed.

@@ -37,7 +37,15 @@ internal sealed class StorageDouble : IImageStorage
         Objects[key] = bytes.ToArray();
         return new(key, string.Empty);
     }
-    public Task<ImageDownloadResult?> ReadImageAsync(string key, CancellationToken cancellationToken = default) => Task.FromResult<ImageDownloadResult?>(!Missing && Objects.TryGetValue(key, out var bytes) ? new(bytes, key.EndsWith(".png") ? "image/png" : "image/jpeg") : null);
+    public Task<ImageDownloadResult?> ReadImageAsync(string key, CancellationToken cancellationToken = default) => Task.FromResult<ImageDownloadResult?>(
+        !Missing && Objects.TryGetValue(key, out var bytes)
+            ? new(bytes, Path.GetExtension(key).ToLowerInvariant() switch
+            {
+                ".png" => "image/png",
+                ".webp" => "image/webp",
+                _ => "image/jpeg"
+            })
+            : null);
     public Task<bool> DeleteImageAsync(string key, CancellationToken cancellationToken = default)
     {
         Objects.TryRemove(key, out _);

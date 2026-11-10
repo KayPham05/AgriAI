@@ -1,7 +1,11 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Threading.RateLimiting;
 using AgriVision.API.Middleware;
+using AgriVision.API.Hubs;
+using AgriVision.Application.Services.Interfaces;
+using Microsoft.AspNetCore.Http.Connections;
 using AgriVision.Application;
 using AgriVision.Infrastructure;
 using AgriVision.Infrastructure.Persistence;
@@ -12,7 +16,8 @@ using Microsoft.OpenApi.Models;
 
 var migrateOnly = args.SequenceEqual(new[] { "--migrate" });
 var expireImagesOnly = args.SequenceEqual(new[] { "--expire-images" });
-var builder = WebApplication.CreateBuilder(migrateOnly || expireImagesOnly ? Array.Empty<string>() : args);
+var migrateCatalogImagesOnly = args.SequenceEqual(new[] { "--migrate-catalog-images" });
+var builder = WebApplication.CreateBuilder(migrateOnly || expireImagesOnly || migrateCatalogImagesOnly ? Array.Empty<string>() : args);
 
 // The Windows Event Log provider can require elevated permissions and must not
 // turn ordinary application warnings into request failures during local runs.
@@ -26,11 +31,35 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // 2. Configure Controllers & CORS
 builder.Services.AddControllers(options => options.Filters.Add<RequestValidationFilter>());
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<ISessionNoticePublisher, SessionNoticePublisher>();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    var accountChallengeLimit = builder.Configuration.GetValue("TrafficLimits:AccountChallengesPerMinute", 20);
+    if (builder.Environment.IsEnvironment("Testing"))
+        accountChallengeLimit = Math.Max(accountChallengeLimit, 10_000);
+    options.AddPolicy("account-challenges", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = accountChallengeLimit,
+            Window = TimeSpan.FromMinutes(1)
+        }));
+});
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    var configuredOrigins = builder.Configuration.GetValue<string>("Cors:AllowedOrigins")?
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Where(origin => Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
+            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray() ?? [];
+    if (configuredOrigins.Length == 0)
+        configuredOrigins = ["http://localhost:3000"];
+    options.AddPolicy("Frontend", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins(configuredOrigins)
               .AllowAnyMethod()
               .AllowAnyHeader();
     });
@@ -79,6 +108,8 @@ builder.Services.AddAuthentication(options =>
             var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
             if (user == null || !user.IsActive)
             {
+                if (user != null)
+                    context.HttpContext.Items["SessionIssue"] = SessionNotice.Locked(user.LockReason);
                 context.Fail("User account does not exist or has been deactivated.");
                 return;
             }
@@ -101,8 +132,21 @@ builder.Services.AddAuthentication(options =>
                 .FirstOrDefaultAsync(s => s.Id == sessionId && s.UserId == userId);
             if (session == null || session.RevokedAt != null || session.ExpiresAt <= DateTime.UtcNow)
             {
+                if (session?.RevokedAt != null && session.RevocationReason != null)
+                    context.HttpContext.Items["SessionIssue"] = SessionNotice.Revoked(session.RevocationReason);
                 context.Fail("User session has been revoked or expired. Please log in again.");
                 return;
+            }
+        },
+        OnChallenge = async context =>
+        {
+            if (context.HttpContext.Items.TryGetValue("SessionIssue", out var issue))
+            {
+                context.HandleResponse();
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                context.Response.Headers.CacheControl = "no-store";
+                context.Response.Headers.WWWAuthenticate = "Bearer";
+                await context.Response.WriteAsJsonAsync(issue);
             }
         }
     };
@@ -162,6 +206,13 @@ if (migrateOnly)
     return;
 }
 
+if (migrateCatalogImagesOnly)
+{
+    Environment.ExitCode = await CatalogImageMigration.RunAsync(app.Services);
+    await app.DisposeAsync();
+    return;
+}
+
 if (expireImagesOnly)
 {
     Environment.ExitCode = await ImageExpiryCleanup.RunAsync(app.Services);
@@ -181,9 +232,8 @@ if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger
 
 app.UseHttpsRedirection();
 
-app.UseCors("AllowAll");
-
 app.UseRouting();
+app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
@@ -192,6 +242,14 @@ app.UseRequestTimeouts();
 app.MapGet("/", () => Results.Redirect("/swagger"));
 
 app.MapControllers();
+// Held HTTP requests deliver notices immediately through the existing Next.js /api proxy.
+// Bearer tokens remain in headers; no query-string token handling is required.
+app.MapHub<SessionEventsHub>("/api/session-events", options =>
+{
+    options.Transports = HttpTransportType.LongPolling;
+    options.LongPolling.PollTimeout = TimeSpan.FromSeconds(20);
+    options.CloseOnAuthenticationExpiration = true;
+});
 
 // Normal startup checks schema readiness without changing schema or seeding data.
 using (var scope = app.Services.CreateScope())

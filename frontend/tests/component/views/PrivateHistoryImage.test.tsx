@@ -39,6 +39,7 @@ function show(token: string | null) {
         profile: { name: 'User' } as never,
         logout: vi.fn(),
         updateProfile: vi.fn(),
+        updateAccount: vi.fn(),
         openAuthentication: vi.fn(),
       }}
     >
@@ -54,12 +55,10 @@ function show(token: string | null) {
 
 describe('private history image', () => {
   it('loads owner image with JWT and revokes the blob on unmount', async () => {
-    const request = vi
-      .fn()
-      .mockResolvedValue({
-        ok: true,
-        blob: async () => new Blob(['image'], { type: 'image/png' }),
-      });
+    const request = vi.fn().mockResolvedValue({
+      ok: true,
+      blob: async () => new Blob(['image'], { type: 'image/png' }),
+    });
     vi.stubGlobal('fetch', request);
     const page = show('test-token');
     await waitFor(() =>

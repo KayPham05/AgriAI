@@ -103,6 +103,7 @@ public class PredictionContractTests(AgriVisionFactory factory) : IClassFixture<
     [InlineData("jpg", "image/jpeg")]
     [InlineData("jpeg", "image/jpeg")]
     [InlineData("png", "image/png")]
+    [InlineData("webp", "image/webp")]
     [Trait("ApiCase", "predictions.image_formats_contract")]
     public async Task SupportedExtension_StoresExactBytesAndServesPrivateImageHeaders(string extension, string mime)
     {
@@ -329,7 +330,12 @@ public class PredictionContractTests(AgriVisionFactory factory) : IClassFixture<
     {
         var form = new MultipartFormDataContent();
         var file = new ByteArrayContent(bytes ?? [1, 2, 3]);
-        file.Headers.ContentType = new MediaTypeHeaderValue(name.EndsWith(".png") ? "image/png" : "image/jpeg");
+        file.Headers.ContentType = new MediaTypeHeaderValue(Path.GetExtension(name).ToLowerInvariant() switch
+        {
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            _ => "image/jpeg"
+        });
         form.Add(file, "file", name);
         return form;
     }

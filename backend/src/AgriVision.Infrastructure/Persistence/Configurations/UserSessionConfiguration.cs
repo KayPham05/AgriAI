@@ -19,6 +19,7 @@ public class UserSessionConfiguration : IEntityTypeConfiguration<UserSession>
         builder.Property(session => session.CreatedAt).HasColumnName("created_at");
         builder.Property(session => session.ExpiresAt).HasColumnName("expires_at");
         builder.Property(session => session.RevokedAt).HasColumnName("revoked_at");
+        builder.Property(session => session.RevocationReason).HasColumnName("revocation_reason").HasMaxLength(40);
         builder.HasOne(session => session.User).WithMany().HasForeignKey(session => session.UserId).OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(session => new { session.UserId, session.ExpiresAt }).HasFilter("revoked_at IS NULL");
     }

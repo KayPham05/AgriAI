@@ -41,7 +41,7 @@ def error_response(status: int, code: str, message: str) -> JSONResponse:
 def validate_image(data: bytes) -> bool:
     try:
         with Image.open(io.BytesIO(data)) as image:
-            if image.format not in {"JPEG", "PNG"}:
+            if image.format not in {"JPEG", "PNG", "WEBP"}:
                 return False
             if image.width * image.height > MAX_IMAGE_PIXELS:
                 return False
@@ -90,11 +90,11 @@ def create_app(
     ) -> tuple[dict, float] | JSONResponse:
         if app.state.model is None:
             return error_response(503, "MODEL_UNAVAILABLE", "Model is not ready")
-        allowed_types = {"image/jpeg", "image/png"}
+        allowed_types = {"image/jpeg", "image/png", "image/webp"}
         if allow_untyped_image:
             allowed_types.update({"application/octet-stream", None})
         if image.content_type not in allowed_types:
-            return error_response(415, "UNSUPPORTED_IMAGE", "Use a JPEG or PNG image")
+            return error_response(415, "UNSUPPORTED_IMAGE", "Use a JPEG, PNG, or WEBP image")
 
         data = await image.read(MAX_IMAGE_BYTES + 1)
         await image.close()

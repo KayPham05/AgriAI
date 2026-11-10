@@ -1,10 +1,14 @@
 import { afterEach, assert, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createPrediction,
+  assignPredictionProfile,
   deletePrediction,
   getPredictionById,
   getPredictionHistory,
+  getProfilePredictionHistory,
   mapPredictionResult,
+  readGuestPredictionImage,
+  saveGuestPrediction,
 } from '@/services/predictionApi';
 import { DIAGNOSIS_ISSUE_CODES } from '@/features/diagnosis/diagnosisIssues';
 
@@ -88,6 +92,49 @@ const successfulResponse = {
   createdAt: '2026-09-27T10:00:00Z',
 };
 
+describe('guest prediction API transport', () => {
+  it('saves only the opaque guest token with the logged-in credentials', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(successfulResponse), {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const saved = await saveGuestPrediction('guest-secret', 'owner-jwt');
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toMatch(/\/api\/predictions\/guest\/save$/);
+    expect(options.method).toBe('POST');
+    expect(new Headers(options.headers).get('Authorization')).toBe('Bearer owner-jwt');
+    expect(JSON.parse(options.body)).toEqual({ guestToken: 'guest-secret' });
+    expect(saved.dto.id).toBe(successfulResponse.id);
+    expect(saved.diagnosis.plant).toBe('Cà chua');
+  });
+
+  it('keeps the preview token out of the URL and disables caching', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response('leaf', { headers: { 'Content-Type': 'image/jpeg' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    const controller = new AbortController();
+    const image = await readGuestPredictionImage('guest-secret', controller.signal);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toMatch(/\/api\/predictions\/guest\/image$/);
+    expect(url).not.toContain('guest-secret');
+    expect(new Headers(options.headers).get('X-Guest-Prediction')).toBe('guest-secret');
+    expect(options.cache).toBe('no-store');
+    expect(options.signal).toBe(controller.signal);
+    expect(await image.text()).toBe('leaf');
+  });
+
+  it('reports an unavailable temporary image instead of treating an error response as an image', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 404 })));
+    await expect(readGuestPredictionImage('expired', new AbortController().signal)).rejects.toThrow(
+      /Ảnh tạm đã hết hạn/,
+    );
+  });
+});
+
 describe('createPrediction', () => {
   it.each(DIAGNOSIS_ISSUE_CODES)('preserves the structured %s code from the API', async (code) => {
     const request = createPrediction(new File(['leaf'], 'leaf.png', { type: 'image/png' }));
@@ -148,8 +195,8 @@ describe('createPrediction', () => {
     });
 
     expect(diagnosis.top_predictions).toMatchObject([
-      { className: 'Tomato___healthy', label: 'Khỏe mạnh', confidence: 0.6 },
-      { className: 'Potato___healthy', label: 'Khỏe mạnh', confidence: 0.3 },
+      { className: 'Tomato___healthy', plant: 'Cà chua', label: 'Khỏe mạnh', confidence: 0.6 },
+      { className: 'Potato___healthy', plant: 'Cà chua', label: 'Khỏe mạnh', confidence: 0.3 },
     ]);
   });
 
@@ -177,6 +224,21 @@ describe('createPrediction', () => {
     expect(result.disease).toBe('Bệnh cháy lá sớm');
     expect(result.confidence).toBe(0.94);
     expect(result.diagnosis.originalImageUrl).toBe('/uploads/predictions/example.jpg');
+  });
+
+  it('adds the selected agricultural profile to the multipart request', async () => {
+    const request = createPrediction(new File(['leaf-image'], 'leaf.jpg', { type: 'image/jpeg' }), {
+      token: 'jwt-token',
+      agriculturalProfileId: 'profile-1',
+    });
+    const xhr = MockXMLHttpRequest.latest;
+
+    assert(xhr);
+    assert(xhr.sentBody instanceof FormData);
+    expect(xhr.sentBody.get('agriculturalProfileId')).toBe('profile-1');
+
+    xhr.respond(201, successfulResponse);
+    await request;
   });
 
   it('returns the backend error message for an unsuccessful response', async () => {
@@ -288,6 +350,62 @@ describe('createPrediction', () => {
 
 describe('prediction history requests', () => {
   afterEach(() => vi.unstubAllGlobals());
+
+  it('assigns an existing prediction with JSON/auth and accepts a 204 response', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 204,
+      json: async () => {
+        throw new SyntaxError('No content');
+      },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await assignPredictionProfile('prediction-1', 'garden', 'jwt-token');
+    expect(fetchMock).toHaveBeenCalledExactlyOnceWith(
+      '/api/predictions/prediction-1/agricultural-profile',
+      {
+        method: 'PUT',
+        headers: { Authorization: 'Bearer jwt-token', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agriculturalProfileId: 'garden' }),
+      },
+    );
+  });
+
+  it('keeps assignment errors actionable instead of reporting a false save', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: async () => ({ message: 'Hồ sơ không còn tồn tại.' }),
+      }),
+    );
+    await expect(assignPredictionProfile('prediction-1', 'deleted', 'jwt-token')).rejects.toThrow(
+      'Hồ sơ không còn tồn tại.',
+    );
+  });
+
+  it('requests the selected profile and requested page without mixing account history', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        items: [],
+        pageNumber: 2,
+        pageSize: 10,
+        hasNextPage: true,
+        hasPreviousPage: true,
+        totalCount: 23,
+        totalPages: 3,
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const page = await getProfilePredictionHistory('garden', 'jwt-token', 2);
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/predictions?agriculturalProfileId=garden&pageNumber=2&pageSize=10',
+      expect.objectContaining({ headers: { Authorization: 'Bearer jwt-token' } }),
+    );
+    expect(page).toMatchObject({ items: [], pageNumber: 2, hasNextPage: true, totalCount: 23 });
+  });
 
   it('loads history with the user token and maps localized labels', async () => {
     const fetchMock = vi.fn().mockResolvedValue({

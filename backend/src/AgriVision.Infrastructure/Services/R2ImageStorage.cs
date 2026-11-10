@@ -25,7 +25,8 @@ public sealed class R2ImageStorage(IAmazonS3 client, IConfiguration configuratio
         {
             ".jpg" or ".jpeg" => "image/jpeg",
             ".png" => "image/png",
-            _ => throw new ArgumentException("Only JPEG and PNG images are supported.")
+            ".webp" => "image/webp",
+            _ => throw new ArgumentException("Only JPEG, PNG and WEBP images are supported.")
         };
         var key = ImageStorageKey.Create(context, extension);
         try
@@ -60,7 +61,13 @@ public sealed class R2ImageStorage(IAmazonS3 client, IConfiguration configuratio
                 if (buffer.Length + read > maxBytes) throw new ImageStorageException("Stored image exceeds the size limit.");
                 await buffer.WriteAsync(chunk.AsMemory(0, read), cancellationToken);
             }
-            return new ImageDownloadResult(buffer.ToArray(), publicId.EndsWith(".png", StringComparison.Ordinal) ? "image/png" : "image/jpeg");
+            var contentType = Path.GetExtension(publicId).ToLowerInvariant() switch
+            {
+                ".png" => "image/png",
+                ".webp" => "image/webp",
+                _ => "image/jpeg"
+            };
+            return new ImageDownloadResult(buffer.ToArray(), contentType);
         }
         catch (AmazonS3Exception exception) when (exception.StatusCode == HttpStatusCode.NotFound) { return null; }
         catch (AmazonS3Exception) { throw new ImageStorageException("Image storage is unavailable. Please try again."); }

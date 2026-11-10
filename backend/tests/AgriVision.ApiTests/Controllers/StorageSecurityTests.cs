@@ -50,6 +50,10 @@ public class StorageSecurityTests(AgriVisionFactory factory) : IClassFixture<Agr
             await predictor.Started.Task.WaitAsync(TimeSpan.FromSeconds(30));
             using var ninth = Image();
             (await client.PostAsync("/api/predictions", ninth)).StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+            using var authClient = app.CreateClient();
+            (await authClient.PostAsJsonAsync("/api/auth/register", new RegisterRequest(
+                "Limiter isolation", $"limiter_{Guid.NewGuid():N}@example.test", "Password123!")))
+                .StatusCode.Should().Be(HttpStatusCode.OK);
         }
         finally { predictor.Release.TrySetResult(); }
         foreach (var response in await Task.WhenAll(requests)) response.StatusCode.Should().Be(HttpStatusCode.OK);

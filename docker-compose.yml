@@ -41,12 +41,19 @@ services:
       Swagger__Enabled: "true"
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=agrivision_db;Username=agrivision_user;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       JwtSettings__Secret: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      Google__ClientId: ${GOOGLE_CLIENT_ID:-}
+      Cors__AllowedOrigins: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
       AiService__BaseUrl: http://ai-service:8000
       AiService__TimeoutSeconds: ${AI_TIMEOUT_SECONDS:-15}
       R2__ServiceUrl: ${R2_SERVICE_URL:-}
       R2__BucketName: ${R2_BUCKET_NAME:-}
       R2__AccessKeyId: ${R2_ACCESS_KEY_ID:-}
       R2__SecretAccessKey: ${R2_SECRET_ACCESS_KEY:-}
+      Smtp__Host: ${MAIL_HOSTNAME:-}
+      Smtp__Port: "587"
+      Smtp__TimeoutSeconds: ${MAIL_TIMEOUT_SECONDS:-30}
+      Smtp__Sender: ${MAIL_SENDER:-}
+      Smtp__Password: ${MAIL_PASSWORD:-}
     ports:
       - "${API_HOST_PORT:-5080}:8080"
     depends_on:
@@ -66,6 +73,7 @@ services:
       context: ./frontend
       args:
         API_PROXY_TARGET: http://backend:8080
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
     ports:
       - "${FRONTEND_HOST_PORT:-3000}:3000"
     depends_on:

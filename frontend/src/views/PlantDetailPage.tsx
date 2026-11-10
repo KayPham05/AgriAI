@@ -25,6 +25,7 @@ export function PlantDetailPage({
       <section className="grid items-center gap-8 md:grid-cols-2 lg:gap-12">
         <Image
           src={plant.imageUrl}
+          unoptimized={plant.imageUrl.includes('/api/catalog/')}
           alt={plant.name}
           width={640}
           height={480}

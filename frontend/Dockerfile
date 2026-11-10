@@ -6,7 +6,9 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . .
 ARG API_PROXY_TARGET=http://backend:8080
+ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID
 ENV API_PROXY_TARGET=$API_PROXY_TARGET
+ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm run build
 

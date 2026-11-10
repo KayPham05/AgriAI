@@ -7,14 +7,17 @@ public record PlantDto(
     string? ScientificName,
     string? Description,
     bool IsActive,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    string Category = AgriVision.Domain.Enums.PlantCategory.Other,
+    string? ImageUrl = null
 );
 
 public record CreatePlantRequest(
     string Name,
     string? VietnameseName,
     string? ScientificName,
-    string? Description
+    string? Description,
+    string? Category = null
 );
 
 public record UpdatePlantRequest(
@@ -22,5 +25,6 @@ public record UpdatePlantRequest(
     string? VietnameseName,
     string? ScientificName,
     string? Description,
-    bool IsActive
+    bool IsActive,
+    string? Category = null
 );

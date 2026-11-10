@@ -7,7 +7,10 @@ const TAB_PATHS: Record<NavigationTab, string> = {
   'plant-detail': '/plants',
   diseases: '/diseases',
   'disease-detail': '/diseases',
+  knowledge: '/knowledge',
+  medicines: '/medicines',
   history: '/history',
+  'agricultural-profiles': '/agricultural-profiles',
   about: '/about',
   profile: '/profile',
 };
@@ -27,7 +30,7 @@ export function getAppRoute(pathname: string): { tab: NavigationTab; detailId: s
       (key) => TAB_PATHS[key] === `/${segments[0]}`,
     ) ?? 'home';
   let detailId: string | null = null;
-  if ((tab === 'plants' || tab === 'diseases') && segments.length === 2) {
+  if (['plants', 'diseases', 'knowledge', 'medicines'].includes(tab) && segments.length === 2) {
     try {
       detailId = decodeURIComponent(segments[1]);
     } catch {

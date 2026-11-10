@@ -9,7 +9,9 @@ public record AdminUserListItemDto(
     DateTime? EmailVerifiedAt,
     DateTime CreatedAt,
     DateTime? UpdatedAt,
-    int PredictionCount
+    int PredictionCount,
+    string? LockReason = null,
+    DateTime? LockedAt = null
 );
 
 public record AdminUserFilterParams(
@@ -21,7 +23,8 @@ public record AdminUserFilterParams(
 );
 
 public record UpdateUserStatusRequest(
-    bool IsActive
+    bool IsActive,
+    string? Reason = null
 );
 
 public record UpdateUserRoleRequest(

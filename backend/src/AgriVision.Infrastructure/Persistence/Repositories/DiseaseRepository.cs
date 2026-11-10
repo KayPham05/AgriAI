@@ -41,6 +41,8 @@ public class DiseaseRepository : IDiseaseRepository
     public async Task UpdateAsync(Disease disease, CancellationToken cancellationToken = default)
     {
         _context.Diseases.Update(disease);
+        // Text/status updates must not overwrite an image replaced by another request.
+        _context.Entry(disease).Property(item => item.ImageKey).IsModified = false;
         await _context.SaveChangesAsync(cancellationToken);
     }
 
@@ -49,6 +51,8 @@ public class DiseaseRepository : IDiseaseRepository
         disease.IsActive = false;
         disease.UpdatedAt = DateTime.UtcNow;
         _context.Diseases.Update(disease);
+        // Text/status updates must not overwrite an image replaced by another request.
+        _context.Entry(disease).Property(item => item.ImageKey).IsModified = false;
         await _context.SaveChangesAsync(cancellationToken);
     }
 }

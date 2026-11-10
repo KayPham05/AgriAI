@@ -51,6 +51,26 @@ public class R2ImageStorageTests
     }
 
     [Fact]
+    public async Task Upload_WebpPreservesContentTypeAndStorageKey()
+    {
+        PutObjectRequest? sent = null;
+        _client.Setup(client => client.PutObjectAsync(It.IsAny<PutObjectRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((PutObjectRequest request, CancellationToken _) =>
+            {
+                sent = request;
+                return new PutObjectResponse { HttpStatusCode = HttpStatusCode.OK };
+            });
+        var storage = new R2ImageStorage(_client.Object, _configuration);
+        using var stream = new MemoryStream([1, 2, 3]);
+        var context = new ImageStorageContext(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+
+        await storage.UploadImageAsync(stream, "leaf.webp", context);
+
+        sent!.ContentType.Should().Be("image/webp");
+        sent.Key.Should().EndWith(".webp");
+    }
+
+    [Fact]
     public async Task Read_ReturnsBytes_AndMissingObjectReturnsNull()
     {
         _client.Setup(client => client.GetObjectAsync(It.IsAny<GetObjectRequest>(), It.IsAny<CancellationToken>()))

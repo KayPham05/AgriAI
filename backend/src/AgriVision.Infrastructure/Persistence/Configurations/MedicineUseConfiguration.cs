@@ -11,7 +11,6 @@ public class MedicineUseConfiguration : IEntityTypeConfiguration<MedicineUse>
         builder.ToTable("medicine_uses", table =>
         {
             table.HasCheckConstraint("ck_medicine_uses_directions", "btrim(label_directions) <> ''");
-            table.HasCheckConstraint("ck_medicine_uses_approval", "NOT is_approved OR is_label_verified");
         });
         builder.HasKey(use => new { use.MedicineId, use.PlantDiseaseId });
         builder.Property(use => use.MedicineId).HasColumnName("medicine_id");

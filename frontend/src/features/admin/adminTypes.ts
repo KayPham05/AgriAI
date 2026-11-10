@@ -18,7 +18,7 @@ export interface AdminActivity {
 export interface AdminImage {
   id: string;
   predictionId: string;
-  userId: string;
+  userId: string | null;
   userName: string;
   userEmail: string;
   imageUrl: string | null;

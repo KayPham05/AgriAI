@@ -10,8 +10,14 @@ describe('getImageFileError', () => {
     expect(getImageFileError({ type: 'image/png', size: MAX_IMAGE_BYTES })).toBeNull();
   });
 
+  it('accepts a valid WEBP image', () => {
+    expect(getImageFileError({ type: 'image/webp', size: 1024 })).toBeNull();
+  });
+
   it('rejects unsupported file types', () => {
-    expect(getImageFileError({ type: 'application/pdf', size: 1024 })).toContain('JPG hoặc PNG');
+    expect(getImageFileError({ type: 'application/pdf', size: 1024 })).toContain(
+      'JPG, PNG hoặc WEBP',
+    );
   });
 
   it('rejects empty files', () => {

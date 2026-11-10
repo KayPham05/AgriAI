@@ -7,5 +7,6 @@ public class UserSession
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime ExpiresAt { get; set; }
     public DateTime? RevokedAt { get; set; }
+    public string? RevocationReason { get; set; }
     public User User { get; set; } = null!;
 }

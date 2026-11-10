@@ -11,6 +11,7 @@ public class PlantConfiguration : IEntityTypeConfiguration<Plant>
         builder.ToTable("plants");
 
         builder.HasKey(p => p.Id);
+        builder.Property(p => p.ImageKey).HasColumnName("image_key").HasMaxLength(200);
         builder.Property(p => p.Id).HasColumnName("id");
 
         builder.Property(p => p.Name)
@@ -32,6 +33,12 @@ public class PlantConfiguration : IEntityTypeConfiguration<Plant>
 
         builder.Property(p => p.Description)
             .HasColumnName("description");
+
+        builder.Property(p => p.Category)
+            .HasColumnName("category")
+            .HasMaxLength(40)
+            .HasDefaultValue(AgriVision.Domain.Enums.PlantCategory.Other)
+            .IsRequired();
 
         builder.Property(p => p.IsActive)
             .HasColumnName("is_active")

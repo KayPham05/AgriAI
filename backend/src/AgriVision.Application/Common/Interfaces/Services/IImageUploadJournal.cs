@@ -4,4 +4,6 @@ public interface IImageUploadJournal
 {
     Task ReserveAsync(ImageStorageContext context, string key, CancellationToken cancellationToken);
     Task CompleteAsync(string key, CancellationToken cancellationToken);
+    Task RetireAvatarAsync(Guid userId, string key, CancellationToken cancellationToken);
+    Task RetireCatalogAsync(Guid actorId, string kind, Guid id, string key, CancellationToken cancellationToken);
 }

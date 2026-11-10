@@ -31,10 +31,11 @@ public class PlantService : IPlantService
         var plant = new Plant
         {
             Id = Guid.NewGuid(),
-            Name = request.Name,
-            VietnameseName = request.VietnameseName,
-            ScientificName = request.ScientificName,
-            Description = request.Description,
+            Name = CatalogValidation.Name(request.Name, "Name", 100),
+            VietnameseName = AgriVision.Application.Common.CatalogText.Name(request.VietnameseName),
+            ScientificName = AgriVision.Application.Common.CatalogText.Normalize(request.ScientificName),
+            Description = AgriVision.Application.Common.CatalogText.Normalize(request.Description),
+            Category = CatalogValidation.PlantCategory(request.Category),
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -51,10 +52,12 @@ public class PlantService : IPlantService
             throw new KeyNotFoundException($"Plant with ID '{id}' not found.");
         }
 
-        plant.Name = request.Name;
-        plant.VietnameseName = request.VietnameseName;
-        plant.ScientificName = request.ScientificName;
-        plant.Description = request.Description;
+        var category = request.Category is null ? plant.Category : CatalogValidation.PlantCategory(request.Category);
+        plant.Category = category;
+        plant.Name = CatalogValidation.Name(request.Name, "Name", 100);
+        plant.VietnameseName = AgriVision.Application.Common.CatalogText.Name(request.VietnameseName);
+        plant.ScientificName = AgriVision.Application.Common.CatalogText.Normalize(request.ScientificName);
+        plant.Description = AgriVision.Application.Common.CatalogText.Normalize(request.Description);
         plant.IsActive = request.IsActive;
         plant.UpdatedAt = DateTime.UtcNow;
 
@@ -82,7 +85,9 @@ public class PlantService : IPlantService
             plant.ScientificName,
             plant.Description,
             plant.IsActive,
-            plant.CreatedAt
+            plant.CreatedAt,
+            plant.Category,
+            AgriVision.Application.Common.CatalogImageUrl.Create("plants", plant.Id, plant.ImageKey)
         );
     }
 }

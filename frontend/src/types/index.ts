@@ -5,7 +5,10 @@ export type NavigationTab =
   | 'plant-detail'
   | 'diseases'
   | 'disease-detail'
+  | 'knowledge'
+  | 'medicines'
   | 'history'
+  | 'agricultural-profiles'
   | 'about'
   | 'profile';
 
@@ -35,6 +38,8 @@ export interface ValidationResult {
 export interface TopPrediction {
   /** Stable classifier identity; optional for previously saved demo results. */
   className?: string;
+  /** Crop identified for this classifier result, when catalog metadata is available. */
+  plant?: string;
   label: string;
   confidence: number; // e.g. 0.948
   isHealthy?: boolean;

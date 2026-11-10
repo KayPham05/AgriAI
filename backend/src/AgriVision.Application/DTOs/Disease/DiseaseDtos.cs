@@ -10,7 +10,15 @@ public record DiseaseDto(
     string? Prevention,
     bool IsActive,
     DateTime CreatedAt
-);
+)
+{
+    // Older immutable snapshots do not contain this metadata.
+    public bool? IsContentApproved { get; init; }
+    public string? ConditionType { get; init; }
+    public string? ImageUrl { get; init; }
+}
+
+public record DiseaseApprovalRequest(bool IsContentApproved);
 
 public record CreateDiseaseRequest(
     string Name,
@@ -18,7 +26,8 @@ public record CreateDiseaseRequest(
     string? Description,
     string? Symptoms,
     string? Treatment,
-    string? Prevention
+    string? Prevention,
+    string? ConditionType = null
 );
 
 public record UpdateDiseaseRequest(
@@ -28,5 +37,6 @@ public record UpdateDiseaseRequest(
     string? Symptoms,
     string? Treatment,
     string? Prevention,
-    bool IsActive
+    bool IsActive,
+    string? ConditionType = null
 );

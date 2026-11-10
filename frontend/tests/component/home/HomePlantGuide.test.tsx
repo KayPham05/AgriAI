@@ -5,8 +5,18 @@ import { HomePlantGuide } from '@/components/home/HomePlantGuide';
 import { SUPPORTED_PLANTS } from '@/data/plantData';
 
 describe('HomePlantGuide', () => {
+  it('shows only supplied active crops and their categories', () => {
+    const rice = SUPPORTED_PLANTS.find((plant) => plant.id === 'rice');
+    if (!rice) throw new Error('Expected the rice fixture in SUPPORTED_PLANTS');
+    render(<HomePlantGuide plants={[rice]} onNavigate={vi.fn()} onSelectPlant={vi.fn()} />);
+    expect(screen.getByRole('button', { name: `Tìm hiểu cây ${rice.name}` })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Tìm hiểu cây Cà chua' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Cây ăn trái' })).not.toBeInTheDocument();
+  });
   it('presents three photo tips and four featured plant cards', () => {
-    render(<HomePlantGuide onNavigate={vi.fn()} onSelectPlant={vi.fn()} />);
+    render(
+      <HomePlantGuide plants={SUPPORTED_PLANTS} onNavigate={vi.fn()} onSelectPlant={vi.fn()} />,
+    );
     expect(screen.getByRole('heading', { name: 'Trước khi chụp ảnh: 3 lưu ý vàng' })).toBeVisible();
     expect(screen.queryByText(/98%/)).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Bạn đang trồng cây gì?' })).toBeNull();
@@ -26,7 +36,9 @@ describe('HomePlantGuide', () => {
 
   it('filters plant cards by category and opens the chosen plant', async () => {
     const select = vi.fn();
-    render(<HomePlantGuide onNavigate={vi.fn()} onSelectPlant={select} />);
+    render(
+      <HomePlantGuide plants={SUPPORTED_PLANTS} onNavigate={vi.fn()} onSelectPlant={select} />,
+    );
     await userEvent.click(screen.getByRole('tab', { name: 'Cây ăn trái' }));
     const panel = within(screen.getByRole('tabpanel'));
     const expected = SUPPORTED_PLANTS.filter((plant) => plant.category === 'Cây ăn trái');
@@ -38,7 +50,9 @@ describe('HomePlantGuide', () => {
 
   it('keeps category tabs keyboard accessible and links to the existing catalog', async () => {
     const navigate = vi.fn();
-    render(<HomePlantGuide onNavigate={navigate} onSelectPlant={vi.fn()} />);
+    render(
+      <HomePlantGuide plants={SUPPORTED_PLANTS} onNavigate={navigate} onSelectPlant={vi.fn()} />,
+    );
     screen.getByRole('tab', { name: 'Nổi bật' }).focus();
     await userEvent.keyboard('{ArrowRight}');
     expect(screen.getByRole('tab', { name: 'Cây công nghiệp' })).toHaveAttribute(

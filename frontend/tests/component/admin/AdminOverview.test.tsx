@@ -10,13 +10,14 @@ describe('actionable admin overview', () => {
   it('filters metrics, charts and recent images by day, month and year and clears the selection', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-10-21T05:00:00Z'));
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(
       <AdminMockProvider>
         <AdminOverview onImages={vi.fn()} onUsers={vi.fn()} onSessions={vi.fn()} />
       </AdminMockProvider>,
     );
-    await userEvent.click(screen.getByText('Lịch tháng', { selector: 'summary' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Ngày 20/10/2026' }));
+    await user.click(screen.getByText('Lịch tháng', { selector: 'summary' }));
+    await user.click(screen.getByRole('button', { name: 'Ngày 20/10/2026' }));
     expect(screen.getByRole('status', { name: 'Bộ lọc thời gian' })).toHaveTextContent(
       '20/10/2026',
     );
@@ -31,8 +32,8 @@ describe('actionable admin overview', () => {
     expect(screen.queryByRole('button', { name: 'Theo ngày' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Theo tháng' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Theo năm' })).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Chọn tháng' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Tháng 9/2026' }));
+    await user.click(screen.getByRole('button', { name: 'Chọn tháng' }));
+    await user.click(screen.getByRole('button', { name: 'Tháng 9/2026' }));
     expect(screen.getByRole('status', { name: 'Bộ lọc thời gian' })).toHaveTextContent('09/2026');
     expect(
       within(screen.getByRole('region', { name: 'Ảnh gần đây' })).getByText(
@@ -44,12 +45,12 @@ describe('actionable admin overview', () => {
         selector: 'p.text-3xl',
       }),
     ).toBeVisible();
-    await userEvent.click(screen.getByRole('button', { name: 'Chọn năm' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Năm 2026' }));
+    await user.click(screen.getByRole('button', { name: 'Chọn năm' }));
+    await user.click(screen.getByRole('button', { name: 'Năm 2026' }));
     expect(screen.getAllByRole('table', { name: /theo tháng/ })).toHaveLength(3);
-    await userEvent.click(screen.getByRole('button', { name: 'Làm mới số liệu minh họa' }));
+    await user.click(screen.getByRole('button', { name: 'Làm mới số liệu minh họa' }));
     expect(screen.getByRole('status', { name: 'Bộ lọc thời gian' })).toHaveTextContent('2026');
-    await userEvent.click(screen.getByRole('button', { name: 'Bỏ lọc thời gian' }));
+    await user.click(screen.getByRole('button', { name: 'Bỏ lọc thời gian' }));
     expect(screen.getByRole('status', { name: 'Bộ lọc thời gian' })).toHaveTextContent('Toàn bộ');
     for (const table of screen.getAllByRole('table', { name: /theo ngày/ }))
       expect(within(table).getAllByRole('row')).toHaveLength(8);
@@ -60,6 +61,7 @@ describe('actionable admin overview', () => {
   it('shows today and attention with fixed seven-day charts and no period selector', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-10-21T05:00:00Z'));
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const onUsers = vi.fn();
     const onSessions = vi.fn();
     render(
@@ -78,9 +80,9 @@ describe('actionable admin overview', () => {
     expect(sessions.getByText('1 còn hiệu lực')).toBeVisible();
     const attention = within(screen.getByRole('region', { name: 'Cần chú ý' }));
     expect(attention.getByText('Chưa ghi nhận tài khoản bị khóa hoặc cảnh báo.')).toBeVisible();
-    await userEvent.click(attention.getByRole('button', { name: 'Xem tài khoản' }));
+    await user.click(attention.getByRole('button', { name: 'Xem tài khoản' }));
     expect(onUsers).toHaveBeenCalledOnce();
-    await userEvent.click(attention.getByRole('button', { name: 'Xem phiên' }));
+    await user.click(attention.getByRole('button', { name: 'Xem phiên' }));
     expect(onSessions).toHaveBeenCalledOnce();
     expect(screen.queryByRole('group', { name: 'Khoảng thời gian thống kê' })).toBeNull();
     expect(screen.queryByRole('button', { name: '7 ngày' })).toBeNull();
@@ -88,7 +90,7 @@ describe('actionable admin overview', () => {
     for (const table of screen.getAllByRole('table', { name: /theo ngày/ }))
       expect(within(table).getAllByRole('row')).toHaveLength(8);
     vi.setSystemTime(new Date('2026-10-22T05:00:00Z'));
-    await userEvent.click(screen.getByRole('button', { name: 'Làm mới số liệu minh họa' }));
+    await user.click(screen.getByRole('button', { name: 'Làm mới số liệu minh họa' }));
     expect(sessions.getByText('0 lượt hôm nay')).toBeVisible();
     expect(sessions.getByText('0 còn hiệu lực')).toBeVisible();
     expect(screen.getByRole('status', { name: 'Cập nhật số liệu' })).toHaveTextContent(
