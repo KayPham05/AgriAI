@@ -10,7 +10,8 @@
       "test_selector": "GET /api/health",
       "expected": "Returns Healthy/200 when PostgreSQL is reachable, otherwise Degraded/503 without sensitive details.",
       "status": "Not run",
-      "execution": "Automation"
+      "execution": "Automation",
+      "runner": "health"
     },
     {
       "id": "API-PRED-01",
@@ -22,7 +23,9 @@
       "test_selector": "",
       "expected": "Missing or empty file is rejected without storage upload, AI call, or DB prediction.",
       "status": "Not run",
-      "execution": "Automation"
+      "execution": "Automation",
+      "runner": "dotnet",
+      "selector": "FullyQualifiedName~PredictionContractTests.InvalidUpload_IsRejectedBeforeInferenceOrStorage"
     },
     {
       "id": "API-PRED-GUEST-01",
@@ -34,7 +37,8 @@
       "test_selector": "POST /api/predictions without Authorization",
       "expected": "Valid image returns 200 with prediction result and guestToken; no user-authenticated persistence is created.",
       "status": "Not run",
-      "execution": "Automation"
+      "execution": "Automation",
+      "runner": "guest_prediction"
     },
     {
       "id": "API-PRED-02",
@@ -46,7 +50,9 @@
       "test_selector": "",
       "expected": "Unsupported or invalid image is rejected without storage upload, AI call, or DB prediction.",
       "status": "Not run",
-      "execution": "Automation"
+      "execution": "Automation",
+      "runner": "dotnet",
+      "selector": "FullyQualifiedName~PredictionsControllerTests.CreatePrediction_ShouldReturnBadRequest_WhenFileExtensionIsInvalid"
     },
     {
       "id": "VP-API-01",
@@ -67,7 +73,9 @@
       "source_test": "frontend/tests/integration/diagnosis/GuestDiagnosis.test.tsx",
       "expected": "Loading changes to the current prediction result without displaying stale data.",
       "status": "Not run",
-      "execution": "Automation"
+      "execution": "Automation",
+      "runner": "vitest",
+      "selector": "runs anonymously, retains the tab result"
     },
     {
       "id": "WEB-PRED-02",
@@ -75,10 +83,12 @@
       "tab": "WEB-DIAG-01 Diagnosis",
       "requirement": ["FR-05"],
       "viewpoint": ["VP-WEB-02"],
-      "source_test": "frontend/tests/integration/diagnosis/GuestDiagnosis.test.tsx",
+      "source_test": "frontend/tests/integration/diagnosis/LandingPrediction.test.tsx",
       "expected": "API/network failure shows an actionable error and retry without showing a stale result.",
       "status": "Not run",
-      "execution": "Automation"
+      "execution": "Automation",
+      "runner": "vitest",
+      "selector": "shows a server error and retries"
     }
   ]
 }

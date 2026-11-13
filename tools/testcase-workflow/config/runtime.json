@@ -1,0 +1,5 @@
+{
+  "health_url": "http://localhost:5080/api/health",
+  "guest_prediction_url": "http://localhost:5080/api/predictions",
+  "guest_fixture": "frontend/src/assets/Bệnh lá/Ớt/ớt khỏe mạnh.jpg"
+}

@@ -7,7 +7,11 @@
       "summary_tab": "Report bug",
       "template_tab": "Template",
       "detail_prefix": "API-",
-      "legacy_policy": "preserve"
+      "legacy_policy": "preserve",
+      "detail_mapping": {"id": "A", "detail_tab": "B", "requirement_refs": "C", "viewpoint_refs": "D", "source_path": "E", "expected_result": "F", "status": "G", "execution": "H", "actual": "I", "evidence": "J", "run_id": "K", "run_at": "L"},
+      "summary_mode": "dashboard",
+      "dashboard_mapping": {"range": "A1:M50", "data_start_row": 4, "sheet_name_column": "B", "name_column": "C", "total_column": "D", "passed_column": "E", "failed_column": "F", "blocked_column": "G", "not_run_column": "H", "automation_column": "I", "manual_column": "J", "na_column": "K", "status_column": "L", "progress_column": "M", "total_label": "Total", "total_label_column": "B"},
+      "summary_labels": {"total": ["Total Testcase", "Total"], "passed": ["Passed"], "failed": ["Failed"], "blocked": ["Blocked"], "not_run": ["Not run", "Not Run"], "automation": ["Automation"], "manual": ["Manual"], "na": ["N/A"]}
     },
     "viewpoint": {
       "id": "1wFM32VTHADjP-DnB3yLTZ5WjbPwDEs2HDOgnvcN0TbA",
@@ -15,7 +19,11 @@
       "summary_tab": "Overview",
       "template_tab": "Template",
       "detail_prefix": "VP-",
-      "legacy_policy": "preserve"
+      "legacy_policy": "preserve",
+      "detail_mapping": {"id": "A", "detail_tab": "B", "requirement_refs": "C", "viewpoint_refs": "D", "source_path": "E", "expected_result": "F", "status": "G", "execution": "H", "actual": "I", "evidence": "J", "run_id": "K", "run_at": "L"},
+      "summary_mode": "dashboard",
+      "dashboard_mapping": {"range": "A1:M50", "data_start_row": 4, "sheet_name_column": "B", "name_column": "C", "total_column": "D", "passed_column": "E", "failed_column": "F", "blocked_column": "G", "not_run_column": "H", "automation_column": "I", "manual_column": "J", "na_column": "K", "status_column": "L", "progress_column": "M", "total_label": "Total", "total_label_column": "B"},
+      "summary_labels": {"total": ["Total Testcase", "Total"], "passed": ["Passed"], "failed": ["Failed"], "blocked": ["Blocked"], "not_run": ["Not run", "Not Run"], "automation": ["Automation"], "manual": ["Manual"], "na": ["N/A"]}
     },
     "screen": {
       "id": "1p1CN5KM1PVFcYvPD_rvfziO8rxcYgljG56LUb0DSCIQ",
@@ -23,7 +31,11 @@
       "summary_tab": "Report",
       "template_tab": "Template Mẫu",
       "detail_prefix": "WEB-",
-      "legacy_policy": "preserve"
+      "legacy_policy": "preserve",
+      "detail_mapping": {"id": "A", "detail_tab": "B", "requirement_refs": "C", "viewpoint_refs": "D", "source_path": "E", "expected_result": "F", "status": "G", "execution": "H", "actual": "I", "evidence": "J", "run_id": "K", "run_at": "L"},
+      "summary_mode": "dashboard",
+      "dashboard_mapping": {"range": "A1:M50", "data_start_row": 4, "sheet_name_column": "B", "name_column": "C", "total_column": "D", "passed_column": "E", "failed_column": "F", "blocked_column": "G", "not_run_column": "H", "automation_column": "I", "manual_column": "J", "na_column": "K", "status_column": "L", "progress_column": "M", "total_label": "Total", "total_label_column": "B"},
+      "summary_labels": {"total": ["Total Testcase", "Total"], "passed": ["Passed"], "failed": ["Failed"], "blocked": ["Blocked"], "not_run": ["Not run", "Not Run"], "automation": ["Automation"], "manual": ["Manual"], "na": ["N/A"]}
     }
   }
 }

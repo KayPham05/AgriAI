@@ -18,12 +18,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Install workflow dependencies
+        run: python -m pip install -r tools/testcase-workflow/requirements.txt
       - name: Validate workflow syntax
         run: python -m py_compile tools/testcase-workflow/workflow.py tools/testcase-workflow/sheets_client.py
       - name: Run workflow smoke tests
         run: python -m unittest tools.testcase-workflow.test_workflow -v
       - name: Run idempotent dry run
         run: python tools/testcase-workflow/workflow.py sync --dry-run
+      - name: Verify credential files are ignored
+        shell: bash
+        run: |
+          test "$(git check-ignore --no-index angelic-tracer-477405-b6-4e7d814654bf.json)" = "angelic-tracer-477405-b6-4e7d814654bf.json"
+          ! git ls-files -z | grep -Eiq '(^|/)(service-account|google-credentials|angelic-tracer-.*)\.json$'
 
   playwright-contract:
     if: ${{ vars.AGRIVISION_RUN_PLAYWRIGHT == 'true' }}
@@ -33,7 +40,42 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Install workflow dependencies
+        run: python -m pip install -r tools/testcase-workflow/requirements.txt
       - name: Install browser test dependency
         run: python -m pip install playwright && python -m playwright install --with-deps chromium
       - name: Run configured Playwright group
         run: python tools/testcase-workflow/workflow.py run playwright
+
+  sheets-sync:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AGRIVISION_WRITE_SHEETS == 'true' }}
+    runs-on: ubuntu-latest
+    environment: testcase-sheets
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install workflow dependencies
+        run: python -m pip install -r tools/testcase-workflow/requirements.txt
+      - name: Decode Service Account key
+        env:
+          GCP_SA_KEY_BASE64: ${{ secrets.GCP_SA_KEY_BASE64 }}
+        run: |
+          set -euo pipefail
+          test -n "$GCP_SA_KEY_BASE64"
+          umask 077
+          key_path="$RUNNER_TEMP/google-service-account.json"
+          printf '%s' "$GCP_SA_KEY_BASE64" | base64 --decode > "$key_path"
+          chmod 600 "$key_path"
+          python -c 'import json,sys; d=json.load(open(sys.argv[1], encoding="utf-8")); assert d.get("client_email") == "sheets-test-runner@angelic-tracer-477405-b6.iam.gserviceaccount.com" and d.get("project_id") == "angelic-tracer-477405-b6"' "$key_path"
+          echo "GOOGLE_SHEETS_SERVICE_ACCOUNT_FILE=$key_path" >> "$GITHUB_ENV"
+      - name: Sync testcases and latest results
+        env:
+          AGRIVISION_WRITE_SHEETS: "true"
+        run: python tools/testcase-workflow/workflow.py sync --sheets
+      - name: Remove Service Account key
+        if: ${{ always() }}
+        run: rm -f "$RUNNER_TEMP/google-service-account.json"
