@@ -195,6 +195,15 @@ def upsert_row(client: SheetsClient, spreadsheet_id: str, tab_name: str, case: d
     for row_number, value in rows:
         if value == case["id"] or (detail_mode == "viewpoint_table" and case["id"] in value):
             if detail_mode == "viewpoint_table":
+                if result and result.get("evidence"):
+                    existing = client.values(spreadsheet_id, tab_name, f"A{row_number}:G{row_number}")
+                    prior = existing[0] if existing else [""] * 7
+                    note = redact_sensitive(str(result["evidence"]))
+                    current_note = prior[6] if len(prior) > 6 else ""
+                    if note not in current_note:
+                        prior = (prior + [""] * 7)[:7]
+                        prior[6] = f"{current_note}; {note}".strip("; ")
+                        client.update(spreadsheet_id, tab_name, f"A{row_number}:G{row_number}", [prior])
                 return {"action": "unchanged", "tab": tab_name, "row": row_number}
             existing = client.values(spreadsheet_id, tab_name, f"A{row_number}:{end_column}{row_number}")
             prior = existing[0] if existing else []
@@ -238,7 +247,10 @@ def update_summary_dashboard(client: SheetsClient, spreadsheet_id: str, sheet: d
     if not metadata:
         raise RuntimeError(f"Summary tab {tab_name!r} was not found; refusing to write")
     used_rows = {str(row[column_number(mapping["sheet_name_column"]) - 1]).strip(): index for index, row in enumerate(values, start=1) if len(row) >= column_number(mapping["sheet_name_column"]) and str(row[column_number(mapping["sheet_name_column"]) - 1]).strip()}
-    total_row = next((index for index, row in enumerate(values, start=1) if any(str(cell).strip().casefold() == mapping["total_label"].casefold() for cell in row)), None)
+    label_index = column_number(mapping.get("total_label_column", "A")) - 1
+    total_row = next((index for index, row in enumerate(values, start=1) if len(row) > label_index and str(row[label_index]).strip().casefold() == mapping["total_label"].casefold()), None)
+    if total_row is None:
+        total_row = next((index for index, row in enumerate(values, start=1) if any(str(cell).strip().casefold() == mapping["total_label"].casefold() for cell in row)), None)
     if total_row is None:
         raise RuntimeError(f"Summary tab {tab_name!r} has no total row; refusing to corrupt dashboard")
     updates = []
@@ -291,12 +303,15 @@ def update_summary_list(client: SheetsClient, spreadsheet_id: str, sheet: dict[s
     status_column = column_number(mapping["status_column"]) - 1
     remarks_column = column_number(mapping["remarks_column"]) - 1
     updates = []
+    next_row = max(mapping["data_start_row"], len(values) + 1)
     for case in cases:
         result = latest.get(case["id"], {})
         status = result.get("status", case.get("status", "Not run"))
         evidence = redact_sensitive(result.get("evidence", case.get("evidence", "")))
         found = next((index for index, row in enumerate(values, start=1) if len(row) > sheet_column and case["detail_tab"] == str(row[sheet_column]).strip()), None)
-        row_number = found or max(mapping["data_start_row"], len(values) + 1)
+        row_number = found or next_row
+        if not found:
+            next_row += 1
         if found:
             existing = values[row_number - 1]
             row = list(existing) + [""] * max(0, remarks_column + 1 - len(existing))
