@@ -137,3 +137,6 @@ backend/.api-*.log
 *.userprefs
 *.suo
 appsettings.Development.json
+# Generated local state from the shared testcase workflow
+tools/testcase-workflow/config/state.json
+tools/testcase-workflow/__pycache__/

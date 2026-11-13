@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "spreadsheets": {
+    "api": {
+      "id": "1BBHMgQMQMMFzrMlxzjRHDd73QATmPVUvqpf6gKkjsUg",
+      "summary_tabs": ["Report bug"],
+      "template_tab": "Template",
+      "detail_prefix": "API-",
+      "legacy_policy": "preserve"
+    },
+    "viewpoint": {
+      "id": "1wFM32VTHADjP-DnB3yLTZ5WjbPwDEs2HDOgnvcN0TbA",
+      "summary_tabs": ["Overview"],
+      "template_tab": "Template",
+      "detail_prefix": "VP-",
+      "legacy_policy": "preserve"
+    },
+    "screen": {
+      "id": "1p1CN5KM1PVFcYvPD_rvfziO8rxcYgljG56LUb0DSCIQ",
+      "summary_tabs": ["Report"],
+      "template_tab": "Template Mẫu",
+      "detail_prefix": "WEB-",
+      "legacy_policy": "preserve"
+    }
+  }
+}

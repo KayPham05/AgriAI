@@ -1,0 +1,39 @@
+name: Testcase workflow
+
+on:
+  pull_request:
+    paths:
+      - "tools/testcase-workflow/**"
+      - ".github/workflows/testcase-workflow.yml"
+  push:
+    paths:
+      - "tools/testcase-workflow/**"
+      - ".github/workflows/testcase-workflow.yml"
+
+jobs:
+  workflow-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate workflow syntax
+        run: python -m py_compile tools/testcase-workflow/workflow.py tools/testcase-workflow/sheets_client.py
+      - name: Run workflow smoke tests
+        run: python -m unittest tools.testcase-workflow.test_workflow -v
+      - name: Run idempotent dry run
+        run: python tools/testcase-workflow/workflow.py sync --dry-run
+
+  playwright-contract:
+    if: ${{ vars.AGRIVISION_RUN_PLAYWRIGHT == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install browser test dependency
+        run: python -m pip install playwright && python -m playwright install --with-deps chromium
+      - name: Run configured Playwright group
+        run: python tools/testcase-workflow/workflow.py run playwright
