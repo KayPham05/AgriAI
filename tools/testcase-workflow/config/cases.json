@@ -25,6 +25,18 @@
       "execution": "Automation"
     },
     {
+      "id": "API-PRED-GUEST-01",
+      "kind": "api",
+      "tab": "API-PRED-01 POST /api/predictions",
+      "requirement": ["FR-05", "FR-06"],
+      "viewpoint": ["VP-API-02", "VP-E2E-01"],
+      "source_test": "backend/src/AgriVision.API/Controllers/PredictionsController.cs",
+      "test_selector": "POST /api/predictions without Authorization",
+      "expected": "Valid image returns 200 with prediction result and guestToken; no user-authenticated persistence is created.",
+      "status": "Not run",
+      "execution": "Automation"
+    },
+    {
       "id": "API-PRED-02",
       "kind": "api",
       "tab": "API-PRED-01 POST /api/predictions",

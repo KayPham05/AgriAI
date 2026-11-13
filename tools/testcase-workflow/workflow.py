@@ -6,8 +6,10 @@ from __future__ import annotations
 import argparse
 import json
 import subprocess
+import mimetypes
+import uuid
 from urllib.error import HTTPError, URLError
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -113,6 +115,30 @@ def check_health(url: str) -> None:
     print(json.dumps(asdict(result), ensure_ascii=False, indent=2))
 
 
+def check_guest_prediction(url: str, image_path: str) -> None:
+    started = datetime.now(timezone.utc).isoformat()
+    boundary = f"----AgriVision{uuid.uuid4().hex}"
+    content_type = mimetypes.guess_type(image_path)[0] or "application/octet-stream"
+    file_name = Path(image_path).name
+    file_bytes = Path(image_path).read_bytes()
+    body = (
+        f"--{boundary}\r\nContent-Disposition: form-data; name=\"File\"; filename=\"{file_name}\"\r\n"
+        f"Content-Type: {content_type}\r\n\r\n"
+    ).encode() + file_bytes + f"\r\n--{boundary}--\r\n".encode()
+    request = Request(url, data=body, method="POST", headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
+    try:
+        with urlopen(request, timeout=120) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+            has_guest_token = bool(payload.get("guestToken"))
+            status = "Passed" if response.status == 200 and has_guest_token else "Failed"
+            result = CaseResult("API-PRED-GUEST-01", status, "Automation", actual=f"HTTP {response.status}; class={payload.get('predictedPlantDisease', {}).get('className')}; confidence={payload.get('confidence')}; guestToken={'present' if has_guest_token else 'missing'}", command=f"POST {url} -F File=@{image_path}", evidence="live multipart HTTP response", run_at=started)
+    except HTTPError as error:
+        result = CaseResult("API-PRED-GUEST-01", "Failed", "Automation", actual=f"HTTP {error.code}", command=f"POST {url} -F File=@{image_path}", evidence="live multipart HTTP response", run_at=started)
+    except (URLError, TimeoutError, OSError, json.JSONDecodeError) as error:
+        result = CaseResult("API-PRED-GUEST-01", "Blocked", "Automation", blocker=str(error), command=f"POST {url} -F File=@{image_path}", run_at=started)
+    print(json.dumps(asdict(result), ensure_ascii=False, indent=2))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -123,13 +149,18 @@ def main() -> None:
     run_parser.add_argument("group", choices=["api", "screen", "playwright"])
     health_parser = subparsers.add_parser("check-health")
     health_parser.add_argument("--url", default="http://localhost:5000/api/health")
+    prediction_parser = subparsers.add_parser("check-guest-prediction")
+    prediction_parser.add_argument("--url", default="http://localhost:5000/api/predictions")
+    prediction_parser.add_argument("--file", required=True)
     args = parser.parse_args()
     if args.command == "sync":
         sync(args.dry_run, args.sheets)
     elif args.command == "run":
         run_group(args.group)
-    else:
+    elif args.command == "check-health":
         check_health(args.url)
+    else:
+        check_guest_prediction(args.url, args.file)
 
 
 if __name__ == "__main__":

@@ -10,6 +10,7 @@ python tools/testcase-workflow/workflow.py run screen
 python tools/testcase-workflow/workflow.py run api
 python tools/testcase-workflow/workflow.py run playwright
 python tools/testcase-workflow/workflow.py check-health --url http://localhost:5000/api/health
+python tools/testcase-workflow/workflow.py check-guest-prediction --url http://localhost:5080/api/predictions --file "frontend/src/assets/Bệnh lá/Ớt/ớt khỏe mạnh.jpg"
 ```
 
 The workflow uses stable IDs and preserves summary, template, and legacy tabs. The local state file is generated only after a non-dry-run sync and is ignored by Git. Google Sheets writing is intentionally isolated behind the configured tab/ID mapping so the connector or Apps Script adapter can be added without changing case generation or test execution.

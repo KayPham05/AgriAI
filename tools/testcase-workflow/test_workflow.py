@@ -19,7 +19,7 @@ class WorkflowSmokeTests(unittest.TestCase):
             check=True,
         )
         payload = json.loads(result.stdout)
-        self.assertEqual(payload["case_count"], 6)
+        self.assertEqual(payload["case_count"], 7)
         self.assertTrue(payload["dry_run"])
 
     def test_test_groups_include_playwright(self):
