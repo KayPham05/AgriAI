@@ -66,6 +66,10 @@ class SheetsClient:
         url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values/{self._range(tab_name, a1)}?valueInputOption=USER_ENTERED"
         return self.request("PUT", url, {"range": f"'{tab_name}'!{a1}", "majorDimension": "ROWS", "values": values})
 
+    def clear(self, spreadsheet_id: str, tab_name: str, a1: str) -> dict:
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values/{self._range(tab_name, a1)}:clear"
+        return self.request("POST", url, {})
+
     def append(self, spreadsheet_id: str, tab_name: str, row: list[str]) -> dict:
         encoded_range = self._range(tab_name, "A:Z")
         url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values/{encoded_range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS"
@@ -79,12 +83,15 @@ class SheetsClient:
         sheets = self.sheet_metadata(spreadsheet_id)
         existing = next((sheet for sheet in sheets if sheet.get("title") == tab_name), None)
         if existing:
+            existing["created"] = False
             return existing
         template = next((sheet for sheet in sheets if sheet.get("title") == template_tab), None) if template_tab else None
         operation = {"duplicateSheet": {"sourceSheetId": template["sheetId"], "newSheetName": tab_name}} if template else {"addSheet": {"properties": {"title": tab_name}}}
         response = self.request("POST", f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}:batchUpdate", {"requests": [operation]})
         reply = response.get("replies", [{}])[0]
-        return reply.get("duplicateSheet", {}).get("properties") or reply.get("addSheet", {}).get("properties", {})
+        properties = reply.get("duplicateSheet", {}).get("properties") or reply.get("addSheet", {}).get("properties", {})
+        properties["created"] = True
+        return properties
 
     def insert_row(self, spreadsheet_id: str, sheet_id: int, row_number: int) -> dict:
         body = {"requests": [{"insertDimension": {"range": {"sheetId": sheet_id, "dimension": "ROWS", "startIndex": row_number - 1, "endIndex": row_number}, "inheritFromBefore": True}}]}

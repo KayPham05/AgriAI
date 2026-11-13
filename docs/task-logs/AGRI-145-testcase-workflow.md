@@ -18,11 +18,11 @@ Implemented the shared testcase registry, three-kind routing, Service Account Sh
 
 ## 3. Results and Verification
 
-See [AGRI-145 technical report](../reports/AGRI-145/README.md). Local API suite reported 294 passed; health and guest probes returned HTTP 200.
+See [AGRI-145 technical report](../reports/AGRI-145/README.md). Local API suite reported 294 passed; health and guest probes returned HTTP 200; Service Account sync passed with read-back verification on all three sheets.
 
 ## 4. Issues or Blockers
 
-Live Service Account sync was not run locally because the sandbox could not install `google-auth`; CI must install the pinned dependency and the Service Account must be Editor on all three spreadsheets.
+Playwright full browser script remains environment-gated and was not green while Docker/browser access was unavailable; its runner records a `RUN-playwright` result without falsely marking individual cases.
 
 ## 5. Remaining Work or Follow-up
 

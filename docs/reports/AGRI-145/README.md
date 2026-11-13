@@ -19,8 +19,9 @@ Service Account authentication uses the Sheets-only scope through `GOOGLE_SHEETS
 - Docker guest prediction: `POST /api/predictions` returned HTTP 200 with prediction and guest-token presence.
 - API suite run: 294 passed, 0 failed.
 - Screen integration run: 9 passed, 0 failed (recorded before the runner mapping was changed to run-level evidence).
+- Service Account read/write/read-back sync completed for API (`Report bug`), Screen (`Report`) and Viewpoint (`Overview`); detail rows and summary totals were verified through the Sheets API.
 
-The live Service Account Sheet write is gated until the CI runner installs `google-auth` and the Service Account is granted Editor access on all three spreadsheets. A local attempt without that dependency fails closed without writing state or Sheets.
+The live Service Account Sheet write now passes locally with `google-auth` and the supplied key. CI still requires the same key as protected `GCP_SA_KEY_BASE64` and Editor access on all three spreadsheets.
 
 ## Execution policy
 

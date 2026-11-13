@@ -136,6 +136,25 @@ def build_sheet_row(case: dict[str, Any], mapping: dict[str, str], result: dict[
     result = result or {}
     fields = {
         "id": case["id"], "detail_tab": case["detail_tab"], "kind": case.get("kind", ""),
+        "item": case.get("item", "Prediction"),
+        "test_name": case.get("name", case.get("expected_result", "")),
+        "precondition": case.get("precondition", "System under test is available"),
+        "test_data": case.get("test_data", "Configured fixture/input"),
+        "params": case.get("params", ""),
+        "request_body": case.get("request_body", ""),
+        "expected_status": case.get("expected_status", ""),
+        "expected_body": case.get("expected_body", case.get("expected_result", "")),
+        "expected_database": case.get("expected_database", ""),
+        "system": case.get("system", "AgriVision AI"),
+        "major": case.get("major", "Prediction"),
+        "middle": case.get("middle", "Upload ảnh"),
+        "minor": case.get("minor", case.get("expected_result", "")),
+        "confirmation": case.get("confirmation", case.get("expected_result", "")),
+        "main_category": case.get("main_category", "Prediction"),
+        "sub_category": case.get("sub_category", "Diagnosis"),
+        "type": case.get("type", "Function"),
+        "test_description": case.get("test_description", case.get("expected_result", "")),
+        "steps": case.get("steps", "Execute configured testcase"),
         "requirement_refs": ", ".join(map(str, case.get("requirement_refs", []))),
         "viewpoint_refs": ", ".join(map(str, case.get("viewpoint_refs", []))),
         "source_path": case.get("source_path", ""), "expected_result": case.get("expected_result", ""),
@@ -145,7 +164,7 @@ def build_sheet_row(case: dict[str, Any], mapping: dict[str, str], result: dict[
         "evidence": redact_sensitive(result.get("evidence", case.get("evidence", ""))),
         "run_id": result.get("run_id", ""), "run_at": result.get("run_at", ""),
     }
-    indexes = {column: index for index, column in enumerate(mapping.values())}
+    indexes = {column: column_number(column) - 1 for column in mapping.values()}
     row = [""] * (max(indexes.values(), default=-1) + 1)
     for field, column in mapping.items():
         row[indexes[column]] = str(fields.get(field, ""))
@@ -167,16 +186,26 @@ def column_name(number: int) -> str:
     return result
 
 
-def upsert_row(client: SheetsClient, spreadsheet_id: str, tab_name: str, case: dict[str, Any], mapping: dict[str, str], result: dict[str, Any] | None = None) -> dict[str, Any]:
+def upsert_row(client: SheetsClient, spreadsheet_id: str, tab_name: str, case: dict[str, Any], mapping: dict[str, str], result: dict[str, Any] | None = None, detail_mode: str = "table", data_start_row: int = 1) -> dict[str, Any]:
     id_column = mapping.get("id", "A")
     values = client.values(spreadsheet_id, tab_name, f"{id_column}:{id_column}")
     rows = [(index, str(row[0]).strip()) for index, row in enumerate(values, start=1) if row and str(row[0]).strip()]
     row = build_sheet_row(case, mapping, result)
     end_column = column_name(max(len(row), 1))
     for row_number, value in rows:
-        if value == case["id"]:
-            client.update(spreadsheet_id, tab_name, f"A{row_number}:{end_column}{row_number}", [row])
+        if value == case["id"] or (detail_mode == "viewpoint_table" and case["id"] in value):
+            if detail_mode == "viewpoint_table":
+                return {"action": "unchanged", "tab": tab_name, "row": row_number}
+            existing = client.values(spreadsheet_id, tab_name, f"A{row_number}:{end_column}{row_number}")
+            prior = existing[0] if existing else []
+            merged = [(new_value if new_value else (prior[index] if index < len(prior) else "")) for index, new_value in enumerate(row)]
+            client.update(spreadsheet_id, tab_name, f"A{row_number}:{end_column}{row_number}", [merged])
             return {"action": "update", "tab": tab_name, "row": row_number}
+    full_values = client.values(spreadsheet_id, tab_name, "A:Z")
+    blank_row = next((index for index in range(data_start_row, len(full_values) + 1) if not any(str(cell).strip() for cell in full_values[index - 1])), None)
+    if blank_row is not None:
+        client.update(spreadsheet_id, tab_name, f"A{blank_row}:{end_column}{blank_row}", [row])
+        return {"action": "add", "tab": tab_name, "row": blank_row}
     client.append(spreadsheet_id, tab_name, row)
     return {"action": "add", "tab": tab_name}
 
@@ -198,7 +227,7 @@ def update_summary_dashboard(client: SheetsClient, spreadsheet_id: str, sheet: d
     tab_name = sheet["summary_tab"]
     mapping = sheet["dashboard_mapping"]
     values = client.values(spreadsheet_id, tab_name, mapping["range"])
-    headers = {str(cell).strip().casefold() for row in values[:4] for cell in row}
+    headers = {str(cell).strip().casefold() for row in values[:6] for cell in row}
     required_headers = {"sheet name", "total testcase", "passed", "failed", "blocked", "not run"}
     if not required_headers.issubset(headers):
         raise RuntimeError(f"Summary tab {tab_name!r} header schema drift; refusing to write")
@@ -209,7 +238,7 @@ def update_summary_dashboard(client: SheetsClient, spreadsheet_id: str, sheet: d
     if not metadata:
         raise RuntimeError(f"Summary tab {tab_name!r} was not found; refusing to write")
     used_rows = {str(row[column_number(mapping["sheet_name_column"]) - 1]).strip(): index for index, row in enumerate(values, start=1) if len(row) >= column_number(mapping["sheet_name_column"]) and str(row[column_number(mapping["sheet_name_column"]) - 1]).strip()}
-    total_row = next((index for index, row in enumerate(values, start=1) if len(row) >= column_number(mapping["total_label_column"]) and str(row[column_number(mapping["total_label_column"]) - 1]).strip().casefold() == mapping["total_label"].casefold()), None)
+    total_row = next((index for index, row in enumerate(values, start=1) if any(str(cell).strip().casefold() == mapping["total_label"].casefold() for cell in row)), None)
     if total_row is None:
         raise RuntimeError(f"Summary tab {tab_name!r} has no total row; refusing to corrupt dashboard")
     updates = []
@@ -227,9 +256,13 @@ def update_summary_dashboard(client: SheetsClient, spreadsheet_id: str, sheet: d
         done = counts["passed"] + counts["failed"] + counts["blocked"]
         progress = f"{round(done / total * 100) if total else 0}%"
         status = "Test Done" if total and counts["not_run"] == 0 else "To do" if counts["not_run"] == total else "In progress"
-        row = [detail_tab, name, total, counts["passed"], counts["failed"], counts["blocked"], counts["not_run"], counts["automation"], counts["manual"], counts["na"], status, progress]
+        row = [detail_tab, name, total, counts["passed"], counts["failed"], counts["blocked"], counts["not_run"], counts["automation"], counts["manual"], counts["na"]]
+        if mapping.get("status_column"):
+            row.append(status)
+        if mapping.get("progress_column"):
+            row.append(progress)
         start = mapping["sheet_name_column"] + str(row_number)
-        end = mapping["progress_column"] + str(row_number)
+        end = (mapping.get("progress_column") or mapping["na_column"]) + str(row_number)
         client.update(spreadsheet_id, tab_name, f"{start}:{end}", [row])
         updates.append({"detail_tab": detail_tab, "row": row_number, "status": status, "progress": progress})
     values = client.values(spreadsheet_id, tab_name, mapping["range"])
@@ -239,8 +272,64 @@ def update_summary_dashboard(client: SheetsClient, spreadsheet_id: str, sheet: d
         total_values.append(sum(int(str(row[index]).replace(",", "")) for row_index, row in enumerate(values, start=1) if row_index != total_row and len(row) > index and str(row[index]).replace(",", "").isdigit()))
     done = total_values[1] + total_values[2] + total_values[3]
     total_progress = f"{round(done / total_values[0] * 100) if total_values[0] else 0}%"
-    client.update(spreadsheet_id, tab_name, f"{mapping['total_column']}{total_row}:{mapping['progress_column']}{total_row}", [total_values + ["Total", total_progress]])
+    client.update(spreadsheet_id, tab_name, f"{mapping['total_column']}{total_row}:{mapping['na_column']}{total_row}", [total_values])
+    if mapping.get("status_column"):
+        client.clear(spreadsheet_id, tab_name, f"{mapping['status_column']}{total_row}:{mapping['status_column']}{total_row}")
+    if mapping.get("progress_column"):
+        client.update(spreadsheet_id, tab_name, f"{mapping['progress_column']}{total_row}:{mapping['progress_column']}{total_row}", [[total_progress]])
     return updates
+
+
+def update_summary_list(client: SheetsClient, spreadsheet_id: str, sheet: dict[str, Any], cases: list[dict[str, Any]], latest: dict[str, Any]) -> list[dict[str, Any]]:
+    mapping = sheet["list_mapping"]
+    tab_name = sheet["summary_tab"]
+    values = client.values(spreadsheet_id, tab_name, "A1:E100")
+    headers = {str(cell).strip().casefold() for cell in (values[0] if values else [])}
+    if not {"sheet name", "status", "remarks"}.issubset(headers):
+        raise RuntimeError(f"Summary tab {tab_name!r} list schema drift; refusing to write")
+    sheet_column = column_number(mapping["sheet_name_column"]) - 1
+    status_column = column_number(mapping["status_column"]) - 1
+    remarks_column = column_number(mapping["remarks_column"]) - 1
+    updates = []
+    for case in cases:
+        result = latest.get(case["id"], {})
+        status = result.get("status", case.get("status", "Not run"))
+        evidence = redact_sensitive(result.get("evidence", case.get("evidence", "")))
+        found = next((index for index, row in enumerate(values, start=1) if len(row) > sheet_column and case["detail_tab"] == str(row[sheet_column]).strip()), None)
+        row_number = found or max(mapping["data_start_row"], len(values) + 1)
+        if found:
+            existing = values[row_number - 1]
+            row = list(existing) + [""] * max(0, remarks_column + 1 - len(existing))
+        else:
+            row = [""] * (remarks_column + 1)
+            row[sheet_column] = case["detail_tab"]
+        row[status_column] = str(status)
+        row[remarks_column] = evidence or case.get("expected_result", "")
+        client.update(spreadsheet_id, tab_name, f"A{row_number}:E{row_number}", [row[:5]])
+        updates.append({"detail_tab": case["detail_tab"], "row": row_number, "status": status})
+    return updates
+
+
+def validate_detail_schema(client: SheetsClient, spreadsheet_id: str, tab_name: str, mode: str) -> None:
+    ranges = {
+        "api_table": ("A13:M14", {"id", "item", "testcase name", "result", "excution"}),
+        "screen_table": ("A13:K14", {"no.", "main category", "testing result", "excution"}),
+        "viewpoint_table": ("A1:G2", {"no.", "đối tượng test", "mục xác nhận", "ghi chú"}),
+    }
+    a1, required = ranges.get(mode, ("A1:M5", set()))
+    values = client.values(spreadsheet_id, tab_name, a1)
+    headers = {str(cell).strip().casefold() for row in values for cell in row}
+    if not required.issubset(headers):
+        raise RuntimeError(f"Detail tab {tab_name!r} schema drift for {mode}; refusing to write")
+
+
+def clear_template_case_rows(client: SheetsClient, spreadsheet_id: str, tab_name: str, start_row: int) -> None:
+    values = client.values(spreadsheet_id, tab_name, "A:Z")
+    for row_number in range(start_row, len(values) + 1):
+        row = values[row_number - 1]
+        if not any(str(cell).strip() for cell in row):
+            break
+        client.clear(spreadsheet_id, tab_name, f"A{row_number}:Z{row_number}")
 
 
 def sync(dry_run: bool, write_sheets: bool) -> None:
@@ -269,13 +358,17 @@ def sync(dry_run: bool, write_sheets: bool) -> None:
     for case in cases:
         sheet = sheets[case["kind"]]
         result = latest.get(case["id"])
-        client.ensure_sheet(sheet["id"], case["detail_tab"], sheet.get("template_tab"))
-        if not any(str(cell).strip() for row in client.values(sheet["id"], case["detail_tab"], "A1:L5") for cell in row):
-            raise RuntimeError(f"Detail tab {case['detail_tab']!r} has no template/header data; refusing to write")
-        upsert_row(client, sheet["id"], case["detail_tab"], case, sheet["detail_mapping"], result)
+        detail_meta = client.ensure_sheet(sheet["id"], case["detail_tab"], sheet.get("template_tab"))
+        if detail_meta.get("created"):
+            clear_template_case_rows(client, sheet["id"], case["detail_tab"], sheet.get("detail_data_start_row", 1))
+        validate_detail_schema(client, sheet["id"], case["detail_tab"], sheet.get("detail_mode", "table"))
+        upsert_row(client, sheet["id"], case["detail_tab"], case, sheet["detail_mapping"], result, sheet.get("detail_mode", "table"), sheet.get("detail_data_start_row", 1))
     for kind, kind_cases in grouped.items():
         sheet = sheets[kind]
-        update_summary_dashboard(client, sheet["id"], sheet, kind_cases, latest)
+        if sheet.get("summary_mode") == "list":
+            update_summary_list(client, sheet["id"], sheet, kind_cases, latest)
+        else:
+            update_summary_dashboard(client, sheet["id"], sheet, kind_cases, latest)
     write_json_atomic(STATE, state)
 
 
