@@ -195,15 +195,6 @@ def upsert_row(client: SheetsClient, spreadsheet_id: str, tab_name: str, case: d
     for row_number, value in rows:
         if value == case["id"] or (detail_mode == "viewpoint_table" and case["id"] in value):
             if detail_mode == "viewpoint_table":
-                if result and result.get("evidence"):
-                    existing = client.values(spreadsheet_id, tab_name, f"A{row_number}:G{row_number}")
-                    prior = existing[0] if existing else [""] * 7
-                    note = redact_sensitive(str(result["evidence"]))
-                    current_note = prior[6] if len(prior) > 6 else ""
-                    if note not in current_note:
-                        prior = (prior + [""] * 7)[:7]
-                        prior[6] = f"{current_note}; {note}".strip("; ")
-                        client.update(spreadsheet_id, tab_name, f"A{row_number}:G{row_number}", [prior])
                 return {"action": "unchanged", "tab": tab_name, "row": row_number}
             existing = client.values(spreadsheet_id, tab_name, f"A{row_number}:{end_column}{row_number}")
             prior = existing[0] if existing else []
