@@ -80,6 +80,11 @@ def sync(dry_run: bool, write_sheets: bool) -> None:
                 continue
             row = [case["id"], case["tab"], case.get("expected", ""), case.get("status", "Not run"), case.get("execution", "N/A")]
             client.append(sheet["id"], case["tab"], row)
+            summary_tab = sheet["summary_tab"]
+            summary_ids = existing_ids.setdefault(summary_tab, client.first_column(sheet["id"], summary_tab))
+            if case["id"] not in summary_ids:
+                client.append(sheet["id"], summary_tab, [case["id"], case["tab"], case.get("status", "Not run"), case.get("execution", "N/A"), case.get("expected", "")])
+                summary_ids.add(case["id"])
 
 
 def run_group(group_name: str) -> None:
