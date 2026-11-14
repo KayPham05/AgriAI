@@ -1,0 +1,94 @@
+{
+  "cases": [
+    {
+      "id": "API-HEALTH-01",
+      "kind": "api",
+      "tab": "API-HEALTH-01 GET /api/health",
+      "requirement": ["NFR-03"],
+      "viewpoint": ["VP-API-03"],
+      "source_test": "backend/src/AgriVision.API/Controllers/HealthController.cs",
+      "test_selector": "GET /api/health",
+      "expected": "Returns Healthy/200 when PostgreSQL is reachable, otherwise Degraded/503 without sensitive details.",
+      "status": "Not run",
+      "execution": "Automation",
+      "runner": "health"
+    },
+    {
+      "id": "API-PRED-01",
+      "kind": "api",
+      "tab": "API-PRED-01 POST /api/predictions",
+      "requirement": ["FR-04"],
+      "viewpoint": ["VP-API-01"],
+      "source_test": "backend/tests/AgriVision.ApiTests/Controllers/GuestPredictionsControllerTests.cs",
+      "test_selector": "",
+      "expected": "Missing or empty file is rejected without storage upload, AI call, or DB prediction.",
+      "status": "Not run",
+      "execution": "Automation",
+      "runner": "dotnet",
+      "selector": "FullyQualifiedName~GuestPredictionsControllerTests.InvalidGuestUpload_ShouldFailBeforeInferenceOrStorage"
+    },
+    {
+      "id": "API-PRED-GUEST-01",
+      "kind": "api",
+      "tab": "API-PRED-01 POST /api/predictions",
+      "requirement": ["FR-05", "FR-06"],
+      "viewpoint": ["VP-API-02", "VP-E2E-01"],
+      "source_test": "backend/src/AgriVision.API/Controllers/PredictionsController.cs",
+      "test_selector": "POST /api/predictions without Authorization",
+      "expected": "Valid image returns 200 with prediction result and guestToken; no user-authenticated persistence is created.",
+      "status": "Not run",
+      "execution": "Automation",
+      "runner": "guest_prediction"
+    },
+    {
+      "id": "API-PRED-02",
+      "kind": "api",
+      "tab": "API-PRED-01 POST /api/predictions",
+      "requirement": ["FR-04"],
+      "viewpoint": ["VP-API-01"],
+      "source_test": "backend/tests/AgriVision.ApiTests/Controllers/PredictionsControllerTests.cs",
+      "test_selector": "",
+      "expected": "Unsupported or invalid image is rejected without storage upload, AI call, or DB prediction.",
+      "status": "Not run",
+      "execution": "Automation",
+      "runner": "dotnet",
+      "selector": "FullyQualifiedName~PredictionsControllerTests.CreatePrediction_ShouldReturnBadRequest_WhenFileExtensionIsInvalid"
+    },
+    {
+      "id": "VP-API-01",
+      "kind": "viewpoint",
+      "tab": "VP-API-01 Prediction Upload",
+      "requirement": ["FR-04", "NFR-02"],
+      "source_test": "docs/notes/agri_test_viewpoints.md",
+      "expected": "Upload validation protects AI, storage, and persistence boundaries.",
+      "status": "Not run",
+      "execution": "N/A"
+    },
+    {
+      "id": "WEB-PRED-01",
+      "kind": "screen",
+      "tab": "WEB-DIAG-01 Diagnosis",
+      "requirement": ["FR-05"],
+      "viewpoint": ["VP-WEB-02"],
+      "source_test": "frontend/tests/integration/diagnosis/GuestDiagnosis.test.tsx",
+      "expected": "Loading changes to the current prediction result without displaying stale data.",
+      "status": "Not run",
+      "execution": "Automation",
+      "runner": "vitest",
+      "selector": "runs anonymously, retains the tab result"
+    },
+    {
+      "id": "WEB-PRED-02",
+      "kind": "screen",
+      "tab": "WEB-DIAG-01 Diagnosis",
+      "requirement": ["FR-05"],
+      "viewpoint": ["VP-WEB-02"],
+      "source_test": "frontend/tests/integration/diagnosis/LandingPrediction.test.tsx",
+      "expected": "API/network failure shows an actionable error and retry without showing a stale result.",
+      "status": "Not run",
+      "execution": "Automation",
+      "runner": "vitest",
+      "selector": "shows a server error and retries"
+    }
+  ]
+}

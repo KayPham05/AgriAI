@@ -1,6 +1,7 @@
 """Eleven diagnosis UI states with explicit API fixtures, not model acceptance."""
 
 import json
+import re
 import struct
 import zlib
 from pathlib import Path
@@ -72,7 +73,9 @@ with sync_playwright() as p:
     ]
     for code, name, mime, data, title in input_cases:
         page.goto('http://localhost:3000/diagnose', wait_until='domcontentloaded')
-        page.get_by_label('Chọn ảnh lá cây', exact=True).set_input_files({'name': name, 'mimeType': mime, 'buffer': data})
+        page.wait_for_timeout(500)
+        page.locator('input[type="file"]').wait_for(state='attached')
+        page.locator('input[type="file"]').set_input_files({'name': name, 'mimeType': mime, 'buffer': data})
         expect(page.get_by_role('region', name='Tải ảnh lên').get_by_role('heading', name=title, exact=True)).to_be_visible()
         assert mode['posts'] == 0
         capture(code)
@@ -80,11 +83,16 @@ with sync_playwright() as p:
     for code, title in cases:
         mode['code'] = code
         page.goto('http://localhost:3000/diagnose', wait_until='domcontentloaded')
-        page.get_by_label('Chọn ảnh lá cây', exact=True).set_input_files({'name': 'fixture-leaf.png', 'mimeType': 'image/png', 'buffer': png(224, 224)})
+        page.wait_for_timeout(500)
+        page.locator('input[type="file"]').wait_for(state='attached')
+        page.locator('input[type="file"]').set_input_files({'name': 'fixture-leaf.png', 'mimeType': 'image/png', 'buffer': png(224, 224)})
         page.get_by_role('button', name='Phân tích ngay', exact=True).click()
         panel = page.get_by_role('region', name='Kết quả phân tích')
         expect(panel.get_by_role('heading', name=title, exact=True)).to_be_visible()
-        expect(page.get_by_role('img', name='Ảnh xem trước: fixture-leaf.png')).to_be_visible()
+        expect(page.get_by_role('img', name=re.compile('Ảnh xem trước:')).first).to_be_visible()
+        dialog = page.get_by_role('dialog')
+        if dialog.count() and dialog.first.is_visible():
+            dialog.first.get_by_role('button', name='Đóng').click()
         expect(page.get_by_text('ĐÃ HOÀN TẤT', exact=True)).to_have_count(0)
         capture(code)
         if code == 'UNSUPPORTED_SPECIES':

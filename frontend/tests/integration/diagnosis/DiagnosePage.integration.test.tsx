@@ -145,7 +145,9 @@ describe('DiagnosePage prediction flow', () => {
     await uploadValidImage(fileInput);
     await userEvent.click(screen.getByRole('button', { name: 'Phân tích ngay' }));
     expect(await screen.findByRole('heading', { name: 'Bề mặt lá bị che khuất' })).toBeVisible();
-    expect(screen.getByRole('img', { name: 'Ảnh xem trước: leaf.jpg' })).toBeVisible();
+    const previews = await screen.findAllByRole('img', { name: 'Ảnh xem trước: leaf.jpg' });
+    expect(previews.length).toBeGreaterThan(0);
+    expect(previews[0]).toBeVisible();
     expect(screen.getByText('CẦN KIỂM TRA')).toBeVisible();
     expect(screen.queryByText('ĐÃ HOÀN TẤT')).toBeNull();
   });

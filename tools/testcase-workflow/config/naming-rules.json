@@ -1,0 +1,6 @@
+{
+  "api": "API-<AREA>-<NN> <METHOD> <route>",
+  "viewpoint": "VP-<AREA>-<NN> <AreaName>",
+  "screen": "WEB-<AREA>-<NN> <ScreenName>",
+  "reserved_tabs": ["Report", "Report bug", "Overview", "Template", "Template Mẫu"]
+}
