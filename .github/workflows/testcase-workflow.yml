@@ -23,6 +23,12 @@ on:
       - "backend/tests/**"
       - "backend/**/*.csproj"
   workflow_dispatch:
+    inputs:
+      force_sheets_sync:
+        description: "Run protected Google Sheets sync"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   workflow-smoke:
@@ -228,7 +234,7 @@ jobs:
 
   sheets-sync:
     needs: [test-result-summary]
-    if: ${{ needs.test-result-summary.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AGRIVISION_WRITE_SHEETS == 'true' }}
+    if: ${{ needs.test-result-summary.result == 'success' && ((github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AGRIVISION_WRITE_SHEETS == 'true') || (github.event_name == 'workflow_dispatch' && inputs.force_sheets_sync == true)) }}
     runs-on: ubuntu-latest
     environment: testcase-sheets
     concurrency:
