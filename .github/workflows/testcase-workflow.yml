@@ -125,6 +125,11 @@ jobs:
       CORS_ALLOWED_ORIGINS: http://localhost:3000
       COMPOSE_FILE: docker-compose.yml:docker-compose.ci.yml
       COMPOSE_PROJECT_NAME: testcase-${{ github.run_id }}-${{ github.run_attempt }}
+      AI_TIMEOUT_SECONDS: "120"
+      R2_SERVICE_URL: https://ci-test.r2.cloudflarestorage.com
+      R2_BUCKET_NAME: agriai-ci-contract
+      R2_ACCESS_KEY_ID: ci-contract-access
+      R2_SECRET_ACCESS_KEY: ci-contract-secret
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -259,4 +264,4 @@ jobs:
           python tools/testcase-workflow/workflow.py sync --sheets
       - name: Remove Service Account key
         if: ${{ always() }}
-        run: rm -f "$RUNNER_TEMP/google-service-account.json"\n\n\n
+        run: rm -f "$RUNNER_TEMP/google-service-account.json"\n\n\n\n
