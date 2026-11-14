@@ -1,14 +1,28 @@
 name: Testcase workflow
 
+permissions:
+  contents: read
+
 on:
   pull_request:
     paths:
       - "tools/testcase-workflow/**"
       - ".github/workflows/testcase-workflow.yml"
+      - "frontend/tests/**"
+      - "frontend/package.json"
+      - "frontend/pnpm-lock.yaml"
+      - "backend/tests/**"
+      - "backend/**/*.csproj"
   push:
     paths:
       - "tools/testcase-workflow/**"
       - ".github/workflows/testcase-workflow.yml"
+      - "frontend/tests/**"
+      - "frontend/package.json"
+      - "frontend/pnpm-lock.yaml"
+      - "backend/tests/**"
+      - "backend/**/*.csproj"
+  workflow_dispatch:
 
 jobs:
   workflow-smoke:
@@ -21,9 +35,9 @@ jobs:
       - name: Install workflow dependencies
         run: python -m pip install -r tools/testcase-workflow/requirements.txt
       - name: Validate workflow syntax
-        run: python -m py_compile tools/testcase-workflow/workflow.py tools/testcase-workflow/sheets_client.py
+        run: python -m py_compile tools/testcase-workflow/workflow.py tools/testcase-workflow/sheets_client.py tools/testcase-workflow/validate_results.py
       - name: Run workflow smoke tests
-        run: python -m unittest tools.testcase-workflow.test_workflow -v
+        run: python -m unittest tools.testcase-workflow.test_workflow tools.testcase-workflow.test_sheets_client -v
       - name: Run idempotent dry run
         run: python tools/testcase-workflow/workflow.py sync --dry-run
       - name: Verify credential files are ignored
@@ -33,10 +47,29 @@ jobs:
           ! git ls-files -z | grep -Eiq '(^|/)(service-account|google-credentials|angelic-tracer-.*)\.json$'
 
   playwright-contract:
-    if: ${{ vars.AGRIVISION_RUN_PLAYWRIGHT == 'true' }}
+    needs: [workflow-smoke]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install and build frontend
+        working-directory: frontend
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+          mkdir -p ../.cache
+          nohup pnpm run start > ../.cache/frontend.log 2>&1 &
+      - name: Wait for frontend
+        run: |
+          for i in $(seq 1 60); do curl --fail --silent http://127.0.0.1:3000/diagnose >/dev/null && exit 0; sleep 2; done
+          exit 1
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -45,19 +78,165 @@ jobs:
       - name: Install browser test dependency
         run: python -m pip install playwright && python -m playwright install --with-deps chromium
       - name: Run configured Playwright group
+        env:
+          AGRIVISION_RESULT_DIR: .cache/test-results/playwright
         run: python tools/testcase-workflow/workflow.py run playwright
+      - name: Upload Playwright results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: testcase-playwright-results
+          path: |
+            .cache/test-results/playwright
+            .cache/diagnosis-errors
+          if-no-files-found: warn
 
-  sheets-sync:
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AGRIVISION_WRITE_SHEETS == 'true' }}
+  backend-tests:
+    needs: [workflow-smoke]
     runs-on: ubuntu-latest
-    environment: testcase-sheets
-    permissions:
-      contents: read
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+      - name: Restore and run API tests
+        env:
+          AGRIVISION_RESULT_DIR: .cache/test-results/backend
+        run: |
+          docker info --format '{{.ServerVersion}}'
+          dotnet restore backend/tests/AgriVision.ApiTests/AgriVision.ApiTests.csproj
+          python tools/testcase-workflow/workflow.py run api
+      - name: Upload backend results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: testcase-backend-results
+          path: .cache/test-results/backend
+          if-no-files-found: warn
+
+  live-contract:
+    needs: [workflow-smoke]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      POSTGRES_PASSWORD: agriai_ci_password
+      JWT_SECRET: agriai_ci_jwt_secret_012345678901234567890123
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+      COMPOSE_FILE: docker-compose.yml:docker-compose.ci.yml
+      COMPOSE_PROJECT_NAME: testcase-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Install workflow dependencies
+        run: python -m pip install -r tools/testcase-workflow/requirements.txt
+      - name: Download and verify AI checkpoints
+        run: |
+          set -euo pipefail
+          mkdir -p .cache/compose ai/models
+          curl --fail --location --silent --show-error --max-time 300 \
+            "https://drive.usercontent.google.com/download?id=1G7xkhJE-ZXVIXHoBn11wbSZayQk1Cm6V&export=download&authuser=0&confirm=t" \
+            --output .cache/ai-model.rar
+          echo "a55ee86d1f57a44c93a3a0b09f91cd6493490c4edf0c88c3d9b300d0bb171e72  .cache/ai-model.rar" | sha256sum --check
+          sudo apt-get update
+          sudo apt-get install --yes libarchive-tools
+          bsdtar -xf .cache/ai-model.rar -C ai/models --strip-components 1 \
+            ai/checkpoints/plant/best_convnext_tiny.pth ai/checkpoints/plant/class_to_idx.json \
+            ai/checkpoints/disease/best_convnext_tiny.pth ai/checkpoints/disease/class_to_idx.json
+          echo "d071c13d14ef573430b3867467e5ebfce0b5d3f4bd7099d7e815549073178ea  ai/models/checkpoints/plant/best_convnext_tiny.pth" | sha256sum --check
+          echo "d21d8d6efd3c66e36ce166bfdb03bf0f017a0452ee07508df82e49ca42d429b9  ai/models/checkpoints/disease/best_convnext_tiny.pth" | sha256sum --check
+      - name: Start backend contract stack
+        run: |
+          docker compose config --quiet
+          docker compose up --build --detach --wait --wait-timeout 180
+          for i in $(seq 1 60); do curl --fail --silent http://127.0.0.1:5080/api/health >/dev/null && exit 0; sleep 2; done
+          docker compose logs --no-color backend ai-service postgres migrations
+          exit 1
+      - name: Run live API adapters
+        env:
+          AGRIVISION_RESULT_DIR: .cache/test-results/contracts
+        run: |
+          python tools/testcase-workflow/workflow.py run-case API-HEALTH-01
+          python tools/testcase-workflow/workflow.py run-case API-PRED-GUEST-01
+      - name: Upload live contract results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: testcase-live-contract-results
+          path: .cache/test-results/contracts
+          if-no-files-found: warn
+      - name: Stop contract stack
+        if: ${{ always() }}
+        run: docker compose down -v
+  frontend-tests:
+    needs: [workflow-smoke]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: Run Vitest
+        working-directory: frontend
+        env:
+          AGRIVISION_RESULT_DIR: ../.cache/test-results/frontend
+        run: python ../tools/testcase-workflow/workflow.py run screen
+      - name: Upload frontend results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: testcase-frontend-results
+          path: .cache/test-results/frontend
+          if-no-files-found: warn
+
+  test-result-summary:
+    needs: [backend-tests, frontend-tests, playwright-contract, live-contract]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          path: .cache/test-results
+      - name: Validate result artifacts
+        run: |
+          python tools/testcase-workflow/validate_results.py .cache/test-results \
+            --expected-id RUN-api \
+            --expected-id RUN-screen \
+            --expected-id RUN-playwright \
+            --expected-id API-HEALTH-01 \
+            --expected-id API-PRED-GUEST-01
+
+  sheets-sync:
+    needs: [test-result-summary]
+    if: ${{ needs.test-result-summary.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AGRIVISION_WRITE_SHEETS == 'true' }}
+    runs-on: ubuntu-latest
+    environment: testcase-sheets
+    concurrency:
+      group: google-sheets-sync
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          path: .cache/test-results
       - name: Install workflow dependencies
         run: python -m pip install -r tools/testcase-workflow/requirements.txt
       - name: Decode Service Account key
@@ -75,7 +254,9 @@ jobs:
       - name: Sync testcases and latest results
         env:
           AGRIVISION_WRITE_SHEETS: "true"
-        run: python tools/testcase-workflow/workflow.py sync --sheets
+        run: |
+          python tools/testcase-workflow/workflow.py import-results .cache/test-results
+          python tools/testcase-workflow/workflow.py sync --sheets
       - name: Remove Service Account key
         if: ${{ always() }}
-        run: rm -f "$RUNNER_TEMP/google-service-account.json"
+        run: rm -f "$RUNNER_TEMP/google-service-account.json"\n\n

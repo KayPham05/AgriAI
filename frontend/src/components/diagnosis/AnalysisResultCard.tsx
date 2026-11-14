@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button';
 import { AnalysisIssueNotice, type AnalysisIssueNoticeProps } from './AnalysisIssueNotice';
 import { PredictionComparison } from './PredictionComparison';
+import Image from 'next/image';
 
 interface AnalysisResultCardProps extends Omit<AnalysisIssueNoticeProps, 'issue'> {
   analysisResult: PredictionResponse | null;
@@ -13,6 +14,8 @@ interface AnalysisResultCardProps extends Omit<AnalysisIssueNoticeProps, 'issue'
   onRetry?: () => void;
   issue?: AnalysisIssueNoticeProps['issue'] | null;
   showComparison?: boolean;
+  previewUrl?: string | null;
+  previewAlt?: string;
 }
 
 export function AnalysisResultCard({
@@ -27,6 +30,8 @@ export function AnalysisResultCard({
   onChooseSample,
   onShowSupported,
   onViewComparison,
+  previewUrl,
+  previewAlt = 'Ảnh xem trước: lá cây',
 }: AnalysisResultCardProps) {
   const disease = analysisResult?.dto.predictedPlantDisease.disease;
   return (
@@ -72,6 +77,7 @@ export function AnalysisResultCard({
             </div>
           ) : issue ? (
             <div className="flex flex-col gap-5">
+              {previewUrl && <Image src={previewUrl} alt={previewAlt} width={640} height={480} unoptimized className="aspect-[4/3] w-full rounded-xl object-contain" />}
               <AnalysisIssueNotice
                 issue={issue}
                 onChooseImage={onChooseImage}
@@ -100,6 +106,7 @@ export function AnalysisResultCard({
             </div>
           ) : analysisResult ? (
             <div className="flex flex-col gap-6">
+              {previewUrl && <Image src={previewUrl} alt={previewAlt} width={640} height={480} unoptimized className="aspect-[4/3] w-full rounded-xl object-contain" />}
               <div data-result-enter>
                 <p className="text-sm text-muted-foreground">{analysisResult.crop}</p>
                 <h3 className="mt-2 text-2xl font-semibold">{analysisResult.disease}</h3>

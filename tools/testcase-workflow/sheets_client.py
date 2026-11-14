@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from pathlib import Path
 from urllib.parse import quote
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 
@@ -46,13 +47,21 @@ class SheetsClient:
             "Authorization": f"Bearer {self.access_token}",
             "Content-Type": "application/json",
         })
-        try:
-            with urlopen(request, timeout=30) as response:
-                raw = response.read().decode("utf-8")
-        except HTTPError as error:
-            detail = error.read().decode("utf-8", errors="replace")[:1000]
-            raise RuntimeError(f"Google Sheets API {error.code}: {detail}") from error
-        return json.loads(raw) if raw else {}
+        for attempt in range(4):
+            try:
+                with urlopen(request, timeout=30) as response:
+                    raw = response.read().decode("utf-8")
+                return json.loads(raw) if raw else {}
+            except HTTPError as error:
+                detail = error.read().decode("utf-8", errors="replace")[:1000]
+                if error.code not in {429, 500, 502, 503, 504} or attempt == 3:
+                    raise RuntimeError(f"Google Sheets API {error.code}: {detail}") from error
+                time.sleep(2 ** attempt)
+            except URLError as error:
+                if attempt == 3:
+                    raise RuntimeError(f"Google Sheets API network error: {error}") from error
+                time.sleep(2 ** attempt)
+        raise RuntimeError("Google Sheets API request exhausted retries")
 
     @staticmethod
     def _range(tab_name: str, a1: str) -> str:
@@ -65,6 +74,14 @@ class SheetsClient:
     def update(self, spreadsheet_id: str, tab_name: str, a1: str, values: list[list[str]]) -> dict:
         url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values/{self._range(tab_name, a1)}?valueInputOption=USER_ENTERED"
         return self.request("PUT", url, {"range": f"'{tab_name}'!{a1}", "majorDimension": "ROWS", "values": values})
+
+    def batch_update(self, spreadsheet_id: str, updates: list[tuple[str, str, list[list[str]]]]) -> dict:
+        """Update multiple ranges in one Google Sheets values:batchUpdate request."""
+        data = [{"range": f"'{tab_name}'!{a1}", "majorDimension": "ROWS", "values": values} for tab_name, a1, values in updates]
+        if not data:
+            return {"totalUpdatedRanges": 0}
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values:batchUpdate"
+        return self.request("POST", url, {"valueInputOption": "USER_ENTERED", "data": data})
 
     def clear(self, spreadsheet_id: str, tab_name: str, a1: str) -> dict:
         url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values/{self._range(tab_name, a1)}:clear"

@@ -1,28 +1,36 @@
 # AGRI-145 — Testcase workflow
 
-## Scope
+## Phạm vi
 
-The workflow owns only three testcase kinds: `api`, `screen`, and `viewpoint`. The Git registry in `tools/testcase-workflow/config/cases.json` is the case source; Google Sheets stores execution evidence and dashboards. Existing summary, template, and legacy tabs are preserved.
+Workflow quản lý registry testcase cho `api`, `screen`, `viewpoint`; thực thi nhóm API/.NET, Vitest và Playwright; nhập artifact kết quả rồi đồng bộ Google Sheets. Mapping group → testcase dùng `case_ids`, không fan-out ngầm.
 
-Routing is explicit: API detail tabs write to `Report bug`, Screen detail tabs write to `Report`, and Viewpoint detail tabs write to `Overview`. Summary tabs are dashboards; the workflow updates configured rows and counters and never appends arbitrary testcase rows to them.
+## Thay đổi chính
 
-## Security
+- Validator artifact kiểm tra schema, duplicate, status và trả exit `1` cho `Failed`/`Blocked`.
+- Runner ghi `results.json`, giữ exit code, import artifact trước Sheets sync.
+- Sync bảo vệ cột manual/business, đánh dấu testcase cũ `Deprecated`, retry lỗi mạng/429/5xx và batch value writes.
+- CI có 7 job, gồm live-contract cho health/guest adapters, artifact aggregation, readiness, concurrency cho Sheets sync và quyền tối thiểu `contents: read`.
 
-Service Account authentication uses the Sheets-only scope through `GOOGLE_SHEETS_SERVICE_ACCOUNT_FILE` (with `GOOGLE_APPLICATION_CREDENTIALS` and the legacy short-lived token as fallback). The key basename is ignored by Git and is decoded only in a protected GitHub Actions environment from `GCP_SA_KEY_BASE64`. The workflow redacts bearer, guest, access-token and private-key values before storing evidence.
+## Bằng chứng hiện tại
 
-## Verification
+- `python -m unittest tools.testcase-workflow.test_workflow tools.testcase-workflow.test_sheets_client -q`: **23 pass**.
+- YAML parse bằng PyYAML: **7 jobs**.
+- Docker Compose: postgres, AI, backend, frontend **healthy**; `/diagnose` và `/api/health`: **HTTP 200**.
+- API group: **294 pass, 0 fail**, `RUN-api`, exit `0` (dotnet cases).
+- Explicit API adapters: `API-HEALTH-01` and `API-PRED-GUEST-01` pass locally against Docker; the live-contract CI job is configured but not yet run remotely.
+- Screen group: **9 pass, 0 fail**, `RUN-screen`, exit `0`.
+- Playwright: **11 trạng thái, 3 kích thước**, `RUN-playwright`, exit `0`.
+- Sheets sync với service account: **pass**; chạy lần hai **7/7 unchanged**, không duplicate.\n- Security audit: key không bị Git track, key path bị ignore, không phát hiện secret pattern thật trong workflow/config.
 
-- `python -m unittest tools.testcase-workflow.test_workflow -v`: 9 tests passed locally.
-- Python source compilation check passed.
-- `python tools/testcase-workflow/workflow.py sync --dry-run`: 7 configured cases, no external write.
-- Docker API smoke: `GET /api/health` returned HTTP 200 Healthy.
-- Docker guest prediction: `POST /api/predictions` returned HTTP 200 with prediction and guest-token presence.
-- API suite run: 294 passed, 0 failed.
-- Screen integration run: 9 passed, 0 failed (recorded before the runner mapping was changed to run-level evidence).
-- Service Account read/write/read-back sync completed for API (`Report bug`), Screen (`Report`) and Viewpoint (`Overview`); detail rows and summary totals were verified through the Sheets API.
+## Giới hạn còn lại
 
-The live Service Account Sheet write now passes locally with `google-auth` and the supplied key. CI still requires the same key as protected `GCP_SA_KEY_BASE64` and Editor access on all three spreadsheets.
+- Remote branch vẫn đang dùng workflow cũ (không có `workflow_dispatch`/`live-contract`); local conversion chưa được push nên chưa thể xác minh GitHub Actions mới.
+- Live-contract job đã được thêm vào YAML nhưng chưa có GitHub Actions run từ revision hiện tại.
+- Viewpoint vẫn là evidence/design rows, chưa có runner riêng.
+- Key service account chỉ dùng local/protected secret; không đưa vào Git.
 
-## Execution policy
+## Tài liệu liên quan
 
-Explicit health, guest prediction, .NET filter and Vitest selector adapters update individual cases. Broad API and Playwright commands are stored as `RUN-*` evidence until their native result artifacts are parsed; they never fan out a group exit code into individual cases. Viewpoint cases remain design/evidence rows until a dedicated viewpoint runner is configured.
+- Workflow: `.github/workflows/testcase-workflow.yml`
+- Runner: `tools/testcase-workflow/`
+- Hướng dẫn chuyển đổi: `docs/notes/production_test_automation_guide.md`\n\n\n\n\n

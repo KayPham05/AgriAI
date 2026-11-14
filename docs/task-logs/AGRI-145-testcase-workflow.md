@@ -1,29 +1,12 @@
-# AGRI-145 - testcase workflow
+# AGRI-145 — Task log
 
-- **Owner:**
-- **Completion date:** 2026-11-13
-- **Branch:** AGRI-145-testcase-design-demo
-- **Pull request:** https://github.com/KayPham05/AgriAI/pull/new/AGRI-145-testcase-design-demo
+- Hoàn tất result validator, exit-code propagation, artifact aggregation và mapping `case_ids`.
+- Hoàn tất retry Sheets, batch writes, bảo vệ cột manual và deprecation scan.
+- CI YAML đã có 7 job, gồm live-contract, readiness, artifact gate và Sheets concurrency.
+- Verify local: 23 Python tests pass; API 294 pass; health/guest adapters pass; Vitest 9 pass; Playwright pass; Docker health 200.
+- Verify Sheets: sync protected pass; lần chạy thứ hai 7/7 `unchanged`.\n- Security: service-account key ignored và không tracked.
 
-## 1. Completed Work
+## Còn lại
 
-Implemented the shared testcase registry, three-kind routing, Service Account Sheets client, dashboard-safe summary updates, run-level evidence, redaction, and protected GitHub Actions sync job.
-
-## 2. Main Changes
-
-- Added `google-auth` dependency and Base64 Service Account handling.
-- Preserved summary/template/legacy tabs and duplicated templates for missing detail tabs.
-- Added atomic ignored local state and explicit dry-run/write gates.
-- Added API health and guest prediction live probes.
-
-## 3. Results and Verification
-
-See [AGRI-145 technical report](../reports/AGRI-145/README.md). Local API suite reported 294 passed; health and guest probes returned HTTP 200; Service Account sync passed with read-back verification on all three sheets.
-
-## 4. Issues or Blockers
-
-Playwright full browser script remains environment-gated and was not green while Docker/browser access was unavailable; its runner records a `RUN-playwright` result without falsely marking individual cases.
-
-## 5. Remaining Work or Follow-up
-
-Run-level API/Playwright evidence is intentionally kept as `RUN-*`; explicit health, guest, .NET filter and Vitest selector adapters update individual cases. Add native TRX/Playwright artifact parsers and a viewpoint runner when those result contracts are agreed, then run the protected Sheets sync on the target branch.
+- Remote branch còn workflow cũ; cần push revision local rồi dispatch để xác minh CI thật.
+- Live-contract đã được cấu hình nhưng chưa chạy trên GitHub; viewpoint chưa có runner tự động.\n\n\n\n

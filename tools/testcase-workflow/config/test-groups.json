@@ -6,6 +6,7 @@
       "args": ["test", "tests/AgriVision.ApiTests/AgriVision.ApiTests.csproj", "--no-restore", "--logger", "console;verbosity=minimal"],
       "timeout_seconds": 900,
       "artifact_globs": ["backend/TestResults/**/*.trx"],
+      "case_ids": ["API-PRED-01", "API-PRED-02"],
       "prerequisites": ["write_access", "dotnet_restore"]
     },
     "screen": {
@@ -14,6 +15,7 @@
       "args": ["exec", "vitest", "run", "tests/integration/diagnosis/GuestDiagnosis.test.tsx", "tests/integration/diagnosis/LandingPrediction.test.tsx"],
       "timeout_seconds": 600,
       "artifact_globs": ["frontend/test-results/**/*"],
+      "case_ids": ["WEB-PRED-01", "WEB-PRED-02"],
       "prerequisites": ["write_access", "pnpm_install"]
     },
     "playwright": {
@@ -22,6 +24,7 @@
       "args": ["tests/browser/diagnosis/error_states.py"],
       "timeout_seconds": 300,
       "artifact_globs": ["frontend/playwright-artifacts/**/*"],
+      "case_ids": [],
       "prerequisites": ["write_access", "python_playwright", "frontend_running"]
     }
   }

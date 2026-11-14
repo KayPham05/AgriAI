@@ -20,6 +20,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from sheets_client import SheetsClient
+from validate_results import validate_results
 
 ROOT = Path(__file__).resolve().parents[2]
 CONFIG = ROOT / "tools" / "testcase-workflow" / "config"
@@ -125,6 +126,11 @@ def load_cases() -> list[dict[str, Any]]:
     return cases
 
 
+def deprecated_case_ids(previous_cases: dict[str, Any], current_cases: list[dict[str, Any]]) -> list[str]:
+    current_ids = {case["id"] for case in current_cases}
+    return sorted(case_id for case_id in previous_cases if case_id not in current_ids)
+
+
 def load_sheets() -> dict[str, dict[str, Any]]:
     sheets = read_json(CONFIG / "sheets.json")["spreadsheets"]
     if set(sheets) != KINDS:
@@ -186,7 +192,7 @@ def column_name(number: int) -> str:
     return result
 
 
-def upsert_row(client: SheetsClient, spreadsheet_id: str, tab_name: str, case: dict[str, Any], mapping: dict[str, str], result: dict[str, Any] | None = None, detail_mode: str = "table", data_start_row: int = 1) -> dict[str, Any]:
+def upsert_row(client: SheetsClient, spreadsheet_id: str, tab_name: str, case: dict[str, Any], mapping: dict[str, str], result: dict[str, Any] | None = None, detail_mode: str = "table", data_start_row: int = 1, pending_updates: list[tuple[str, str, list[list[str]]]] | None = None) -> dict[str, Any]:
     id_column = mapping.get("id", "A")
     values = client.values(spreadsheet_id, tab_name, f"{id_column}:{id_column}")
     rows = [(index, str(row[0]).strip()) for index, row in enumerate(values, start=1) if row and str(row[0]).strip()]
@@ -198,15 +204,33 @@ def upsert_row(client: SheetsClient, spreadsheet_id: str, tab_name: str, case: d
                 return {"action": "unchanged", "tab": tab_name, "row": row_number}
             existing = client.values(spreadsheet_id, tab_name, f"A{row_number}:{end_column}{row_number}")
             prior = existing[0] if existing else []
-            merged = [(new_value if new_value else (prior[index] if index < len(prior) else "")) for index, new_value in enumerate(row)]
-            client.update(spreadsheet_id, tab_name, f"A{row_number}:{end_column}{row_number}", [merged])
+            result_fields = {"status", "execution", "actual", "evidence", "run_id", "run_at"}
+            merged = []
+            for field, column in mapping.items():
+                index = column_number(column) - 1
+                prior_value = prior[index] if index < len(prior) else ""
+                new_value = row[index] if index < len(row) else ""
+                merged.append(new_value if field in result_fields and new_value else prior_value)
+            if len(row) > len(merged):
+                merged.extend(prior[len(merged):len(row)])
+            if pending_updates is not None:
+                pending_updates.append((tab_name, f"A{row_number}:{end_column}{row_number}", [merged]))
+            else:
+                client.update(spreadsheet_id, tab_name, f"A{row_number}:{end_column}{row_number}", [merged])
             return {"action": "update", "tab": tab_name, "row": row_number}
     full_values = client.values(spreadsheet_id, tab_name, "A:Z")
     blank_row = next((index for index in range(data_start_row, len(full_values) + 1) if not any(str(cell).strip() for cell in full_values[index - 1])), None)
     if blank_row is not None:
-        client.update(spreadsheet_id, tab_name, f"A{blank_row}:{end_column}{blank_row}", [row])
+        if pending_updates is not None:
+            pending_updates.append((tab_name, f"A{blank_row}:{end_column}{blank_row}", [row]))
+        else:
+            client.update(spreadsheet_id, tab_name, f"A{blank_row}:{end_column}{blank_row}", [row])
         return {"action": "add", "tab": tab_name, "row": blank_row}
-    client.append(spreadsheet_id, tab_name, row)
+    if pending_updates is not None:
+        next_row = len(full_values) + 1
+        pending_updates.append((tab_name, f"A{next_row}:{end_column}{next_row}", [row]))
+    else:
+        client.append(spreadsheet_id, tab_name, row)
     return {"action": "add", "tab": tab_name}
 
 
@@ -245,6 +269,7 @@ def update_summary_dashboard(client: SheetsClient, spreadsheet_id: str, sheet: d
     if total_row is None:
         raise RuntimeError(f"Summary tab {tab_name!r} has no total row; refusing to corrupt dashboard")
     updates = []
+    pending_writes: list[tuple[str, str, list[list[str]]]] = []
     for detail_tab, detail_cases in grouped.items():
         counts = calculate_summary_counts(detail_cases, latest)
         row_number = used_rows.get(detail_tab)
@@ -266,7 +291,7 @@ def update_summary_dashboard(client: SheetsClient, spreadsheet_id: str, sheet: d
             row.append(progress)
         start = mapping["sheet_name_column"] + str(row_number)
         end = (mapping.get("progress_column") or mapping["na_column"]) + str(row_number)
-        client.update(spreadsheet_id, tab_name, f"{start}:{end}", [row])
+        pending_writes.append((tab_name, f"{start}:{end}", [row]))
         updates.append({"detail_tab": detail_tab, "row": row_number, "status": status, "progress": progress})
     values = client.values(spreadsheet_id, tab_name, mapping["range"])
     total_values = []
@@ -275,11 +300,13 @@ def update_summary_dashboard(client: SheetsClient, spreadsheet_id: str, sheet: d
         total_values.append(sum(int(str(row[index]).replace(",", "")) for row_index, row in enumerate(values, start=1) if row_index != total_row and len(row) > index and str(row[index]).replace(",", "").isdigit()))
     done = total_values[1] + total_values[2] + total_values[3]
     total_progress = f"{round(done / total_values[0] * 100) if total_values[0] else 0}%"
-    client.update(spreadsheet_id, tab_name, f"{mapping['total_column']}{total_row}:{mapping['na_column']}{total_row}", [total_values])
+    pending_writes.append((tab_name, f"{mapping['total_column']}{total_row}:{mapping['na_column']}{total_row}", [total_values]))
     if mapping.get("status_column"):
         client.clear(spreadsheet_id, tab_name, f"{mapping['status_column']}{total_row}:{mapping['status_column']}{total_row}")
     if mapping.get("progress_column"):
-        client.update(spreadsheet_id, tab_name, f"{mapping['progress_column']}{total_row}:{mapping['progress_column']}{total_row}", [[total_progress]])
+        pending_writes.append((tab_name, f"{mapping['progress_column']}{total_row}:{mapping['progress_column']}{total_row}", [[total_progress]]))
+    if pending_writes:
+        client.batch_update(spreadsheet_id, pending_writes)
     return updates
 
 
@@ -294,6 +321,7 @@ def update_summary_list(client: SheetsClient, spreadsheet_id: str, sheet: dict[s
     status_column = column_number(mapping["status_column"]) - 1
     remarks_column = column_number(mapping["remarks_column"]) - 1
     updates = []
+    pending_writes = []
     next_row = max(mapping["data_start_row"], len(values) + 1)
     for case in cases:
         result = latest.get(case["id"], {})
@@ -311,8 +339,10 @@ def update_summary_list(client: SheetsClient, spreadsheet_id: str, sheet: dict[s
             row[sheet_column] = case["detail_tab"]
         row[status_column] = str(status)
         row[remarks_column] = evidence or case.get("expected_result", "")
-        client.update(spreadsheet_id, tab_name, f"A{row_number}:E{row_number}", [row[:5]])
+        pending_writes.append((tab_name, f"A{row_number}:E{row_number}", [row[:5]]))
         updates.append({"detail_tab": case["detail_tab"], "row": row_number, "status": status})
+    if pending_writes:
+        client.batch_update(spreadsheet_id, pending_writes)
     return updates
 
 
@@ -343,6 +373,13 @@ def sync(dry_run: bool, write_sheets: bool) -> None:
     sheets = load_sheets()
     state = read_json(STATE) if STATE.exists() else {"schema_version": 2, "cases": {}, "runs": []}
     latest = state.get("latest_results", {})
+    effective_latest = dict(latest)
+    groups = read_json(CONFIG / "test-groups.json")["groups"]
+    for group_name, group in groups.items():
+        group_result = latest.get(f"RUN-{group_name}")
+        if group_result:
+            for case_id in group.get("case_ids", []):
+                effective_latest.setdefault(case_id, group_result)
     changes = []
     for case in cases:
         sheet = sheets[case["kind"]]
@@ -353,7 +390,15 @@ def sync(dry_run: bool, write_sheets: bool) -> None:
     if dry_run:
         return
     state["schema_version"] = 2
-    state["cases"] = {**state.get("cases", {}), **{case["id"]: case for case in cases}}
+    previous_cases = state.get("cases", {})
+    state["cases"] = {**previous_cases, **{case["id"]: case for case in cases}}
+    for case_id in deprecated_case_ids(previous_cases, cases):
+        state.setdefault("latest_results", {})[case_id] = {
+            "id": case_id,
+            "status": "Deprecated",
+            "execution": "N/A",
+            "evidence": "Removed from cases.json; historical row retained.",
+        }
     if not write_sheets:
         write_json_atomic(STATE, state)
         return
@@ -361,20 +406,34 @@ def sync(dry_run: bool, write_sheets: bool) -> None:
         raise RuntimeError("Sheets write blocked. Set AGRIVISION_WRITE_SHEETS=true explicitly.")
     client = SheetsClient()
     grouped = {kind: [case for case in cases if case["kind"] == kind] for kind in KINDS}
+    pending_updates: dict[str, list[tuple[str, str, list[list[str]]]]] = {kind: [] for kind in KINDS}
     for case in cases:
         sheet = sheets[case["kind"]]
-        result = latest.get(case["id"])
+        result = effective_latest.get(case["id"])
         detail_meta = client.ensure_sheet(sheet["id"], case["detail_tab"], sheet.get("template_tab"))
         if detail_meta.get("created"):
             clear_template_case_rows(client, sheet["id"], case["detail_tab"], sheet.get("detail_data_start_row", 1))
         validate_detail_schema(client, sheet["id"], case["detail_tab"], sheet.get("detail_mode", "table"))
-        upsert_row(client, sheet["id"], case["detail_tab"], case, sheet["detail_mapping"], result, sheet.get("detail_mode", "table"), sheet.get("detail_data_start_row", 1))
+        upsert_row(client, sheet["id"], case["detail_tab"], case, sheet["detail_mapping"], result, sheet.get("detail_mode", "table"), sheet.get("detail_data_start_row", 1), pending_updates[case["kind"]])
+    for kind, writes in pending_updates.items():
+        if writes:
+            client.batch_update(sheets[kind]["id"], writes)
     for kind, kind_cases in grouped.items():
         sheet = sheets[kind]
         if sheet.get("summary_mode") == "list":
-            update_summary_list(client, sheet["id"], sheet, kind_cases, latest)
+            update_summary_list(client, sheet["id"], sheet, kind_cases, effective_latest)
         else:
-            update_summary_dashboard(client, sheet["id"], sheet, kind_cases, latest)
+            update_summary_dashboard(client, sheet["id"], sheet, kind_cases, effective_latest)
+    write_json_atomic(STATE, state)
+
+
+def import_results(root: Path) -> None:
+    summary = validate_results(root)
+    state = read_json(STATE) if STATE.exists() else {"schema_version": 2, "cases": {}, "runs": []}
+    latest = state.setdefault("latest_results", {})
+    for result in summary["cases"]:
+        latest[result["id"]] = result
+    state["runs"] = (state.get("runs", []) + summary["cases"])[-200:]
     write_json_atomic(STATE, state)
 
 
@@ -388,13 +447,36 @@ def record_result(result: CaseResult) -> None:
 
 
 def emit_result(result: CaseResult) -> None:
-    record_result(result)
+    result_dir = os.getenv("AGRIVISION_RESULT_DIR")
+    if result_dir:
+        output_dir = Path(result_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / "results.json"
+        payload = {
+            "schema_version": 1,
+            "run_id": os.getenv("GITHUB_RUN_ID", result.run_id),
+            "commit_sha": os.getenv("GITHUB_SHA", ""),
+            "job": os.getenv("GITHUB_JOB", result.group),
+            "cases": [],
+        }
+        if output_path.exists():
+            payload = read_json(output_path)
+        payload.setdefault("cases", []).append(asdict(result))
+        write_json_atomic(output_path, payload)
+    try:
+        record_result(result)
+    except OSError:
+        if not result_dir:
+            raise
     print(json.dumps(asdict(result), ensure_ascii=False, indent=2))
 
 
 def run_group(group_name: str) -> bool:
     group = read_json(CONFIG / "test-groups.json")["groups"][group_name]
-    command = [group["command"], *group["args"]]
+    executable = group["command"]
+    if executable == "pnpm.cmd" and os.name != "nt":
+        executable = "pnpm"
+    command = [executable, *group["args"]]
     started = datetime.now(timezone.utc).isoformat()
     run_id = uuid.uuid4().hex
     started_clock = datetime.now(timezone.utc)
@@ -521,12 +603,15 @@ def main() -> None:
     prediction_parser = subparsers.add_parser("check-guest-prediction")
     prediction_parser.add_argument("--url", default="http://localhost:5080/api/predictions")
     prediction_parser.add_argument("--file", required=True)
+    import_parser = subparsers.add_parser("import-results")
+    import_parser.add_argument("root")
     args = parser.parse_args()
     try:
         if args.command == "sync":
             sync(args.dry_run, args.sheets)
         elif args.command == "run":
-            run_group(args.group)
+            if not run_group(args.group):
+                raise SystemExit(1)
         elif args.command == "run-all":
             run_all(args.sheets, args.guest_image, args.health_url, args.guest_url)
         elif args.command == "run-case":
@@ -534,6 +619,8 @@ def main() -> None:
                 raise SystemExit(1)
         elif args.command == "check-health":
             check_health(args.url)
+        elif args.command == "import-results":
+            import_results(Path(args.root))
         else:
             check_guest_prediction(args.url, args.file)
     except (RuntimeError, ValueError) as error:

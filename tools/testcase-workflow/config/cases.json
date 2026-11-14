@@ -19,13 +19,13 @@
       "tab": "API-PRED-01 POST /api/predictions",
       "requirement": ["FR-04"],
       "viewpoint": ["VP-API-01"],
-      "source_test": "backend/tests/AgriVision.ApiTests/Controllers/PredictionsControllerTests.cs",
+      "source_test": "backend/tests/AgriVision.ApiTests/Controllers/GuestPredictionsControllerTests.cs",
       "test_selector": "",
       "expected": "Missing or empty file is rejected without storage upload, AI call, or DB prediction.",
       "status": "Not run",
       "execution": "Automation",
       "runner": "dotnet",
-      "selector": "FullyQualifiedName~PredictionContractTests.InvalidUpload_IsRejectedBeforeInferenceOrStorage"
+      "selector": "FullyQualifiedName~GuestPredictionsControllerTests.InvalidGuestUpload_ShouldFailBeforeInferenceOrStorage"
     },
     {
       "id": "API-PRED-GUEST-01",
