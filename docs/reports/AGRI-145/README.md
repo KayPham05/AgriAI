@@ -34,4 +34,4 @@ Workflow quản lý registry testcase cho `api`, `screen`, `viewpoint`; thực t
 
 - Workflow: `.github/workflows/testcase-workflow.yml`
 - Runner: `tools/testcase-workflow/`
-- Hướng dẫn chuyển đổi: `docs/notes/production_test_automation_guide.md`\n
+- Hướng dẫn chuyển đổi: `docs/notes/production_test_automation_guide.md`

@@ -9,4 +9,4 @@
 
 ## Còn lại
 
-- GitHub run `43570450037` pass toàn bộ jobs gồm Sheets sync; viewpoint chưa có runner tự động.\n
+- GitHub run `43570450037` pass toàn bộ jobs gồm Sheets sync; viewpoint chưa có runner tự động.
