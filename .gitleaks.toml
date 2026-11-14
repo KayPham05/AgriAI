@@ -1,0 +1,5 @@
+[allowlist]
+description = "Known non-secret CI test placeholder"
+regexes = [
+  '''agriai_ci_jwt_secret_012345678901234567890123'''
+]
