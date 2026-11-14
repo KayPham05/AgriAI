@@ -9,4 +9,4 @@
 ## Còn lại
 
 - Remote branch còn workflow cũ; cần push revision local rồi dispatch để xác minh CI thật.
-- Live-contract đã được cấu hình nhưng chưa chạy trên GitHub; viewpoint chưa có runner tự động.\n\n\n\n
+- Live-contract đã pass trên GitHub; Sheets remote cần secret `GCP_SA_KEY_BASE64`; viewpoint chưa có runner tự động.\n\n\n\n\n

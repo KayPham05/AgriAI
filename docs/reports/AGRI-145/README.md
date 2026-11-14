@@ -20,12 +20,12 @@ Workflow quản lý registry testcase cho `api`, `screen`, `viewpoint`; thực t
 - Explicit API adapters: `API-HEALTH-01` and `API-PRED-GUEST-01` pass locally against Docker; the live-contract CI job is configured but not yet run remotely.
 - Screen group: **9 pass, 0 fail**, `RUN-screen`, exit `0`.
 - Playwright: **11 trạng thái, 3 kích thước**, `RUN-playwright`, exit `0`.
-- Sheets sync với service account: **pass**; chạy lần hai **7/7 unchanged**, không duplicate.\n- Security audit: key không bị Git track, key path bị ignore, không phát hiện secret pattern thật trong workflow/config.
+- Sheets sync local với service account: **pass**; chạy lần hai **7/7 unchanged**, không duplicate. GitHub secret `GCP_SA_KEY_BASE64` chưa được cấu hình nên remote Sheets write chưa chạy.\n- Security audit: key không bị Git track, key path bị ignore, không phát hiện secret pattern thật trong workflow/config.
 
 ## Giới hạn còn lại
 
-- Remote branch vẫn đang dùng workflow cũ (không có `workflow_dispatch`/`live-contract`); local conversion chưa được push nên chưa thể xác minh GitHub Actions mới.
-- Live-contract job đã được thêm vào YAML nhưng chưa có GitHub Actions run từ revision hiện tại.
+- GitHub Actions run `43569299656` trên SHA `5b612b4` **pass**: smoke, live-contract, backend, frontend, Playwright và summary đều xanh; `sheets-sync` skipped vì dispatch trên feature branch không thỏa điều kiện push `main`.
+- Live-contract đã được xác minh trên GitHub: checkpoint/migration stack, health và guest adapter pass.
 - Viewpoint vẫn là evidence/design rows, chưa có runner riêng.
 - Key service account chỉ dùng local/protected secret; không đưa vào Git.
 
@@ -33,4 +33,4 @@ Workflow quản lý registry testcase cho `api`, `screen`, `viewpoint`; thực t
 
 - Workflow: `.github/workflows/testcase-workflow.yml`
 - Runner: `tools/testcase-workflow/`
-- Hướng dẫn chuyển đổi: `docs/notes/production_test_automation_guide.md`\n\n\n\n\n
+- Hướng dẫn chuyển đổi: `docs/notes/production_test_automation_guide.md`\n\n\n\n\n\n
