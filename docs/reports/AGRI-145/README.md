@@ -30,6 +30,12 @@ Workflow quản lý registry testcase cho `api`, `screen`, `viewpoint`; thực t
 - Viewpoint vẫn là evidence/design rows, chưa có runner riêng.
 - Key service account chỉ dùng protected secret; không đưa vào Git.
 
+## PR CI fix (2026-11-14)
+
+- `secret-scan` bắt dummy JWT test-only trong lịch sử; thêm `.gitleaks.toml` allowlist đúng chuỗi placeholder.
+- `frontend` fail vì assertion `getByRole` gặp hai preview ảnh; đổi sang `findAllByRole` và kiểm tra preview đầu tiên.
+- Commit `f348ac1`; PR checks sau push: `secret-scan`, `frontend`, `ci-gate` và các job liên quan đều pass.
+
 ## Tài liệu liên quan
 
 - Workflow: `.github/workflows/testcase-workflow.yml`
