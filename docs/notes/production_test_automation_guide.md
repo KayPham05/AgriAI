@@ -243,5 +243,4 @@ Mọi test job upload result với `if: ${{ always() }}`. Hợp đồng artifact
 - Docker Compose healthy; frontend/backend health HTTP 200.
 - API 294 pass; Vitest 9 pass; Playwright pass với exit code 0.
 - Sheets sync protected pass; lần chạy lặp lại 7/7 `unchanged`.
-- Chưa xác minh GitHub Actions trên revision local vì workflow chưa được push. Viewpoint chưa có runner tự động.\n
-
+- Chưa xác minh GitHub Actions trên revision local vì workflow chưa được push. Viewpoint chưa có runner tự động.\n\n
