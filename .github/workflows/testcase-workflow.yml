@@ -145,7 +145,7 @@ jobs:
           bsdtar -xf .cache/ai-model.rar -C ai/models --strip-components 1 \
             ai/checkpoints/plant/best_convnext_tiny.pth ai/checkpoints/plant/class_to_idx.json \
             ai/checkpoints/disease/best_convnext_tiny.pth ai/checkpoints/disease/class_to_idx.json
-          echo "d071c13d14ef573430b3867467e5ebfce0b5d3f4bd7099d7e815549073178ea  ai/models/checkpoints/plant/best_convnext_tiny.pth" | sha256sum --check
+          echo "d071c13d14ef573430b38674647e5ebfce0b5d3f4bd7099d7e815549073178ea  ai/models/checkpoints/plant/best_convnext_tiny.pth" | sha256sum --check
           echo "d21d8d6efd3c66e36ce166bfdb03bf0f017a0452ee07508df82e49ca42d429b9  ai/models/checkpoints/disease/best_convnext_tiny.pth" | sha256sum --check
       - name: Start backend contract stack
         run: |
@@ -259,4 +259,4 @@ jobs:
           python tools/testcase-workflow/workflow.py sync --sheets
       - name: Remove Service Account key
         if: ${{ always() }}
-        run: rm -f "$RUNNER_TEMP/google-service-account.json"\n\n
+        run: rm -f "$RUNNER_TEMP/google-service-account.json"\n\n\n
