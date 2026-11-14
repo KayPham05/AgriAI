@@ -17,10 +17,11 @@ Workflow quản lý registry testcase cho `api`, `screen`, `viewpoint`; thực t
 - YAML parse bằng PyYAML: **7 jobs**.
 - Docker Compose: postgres, AI, backend, frontend **healthy**; `/diagnose` và `/api/health`: **HTTP 200**.
 - API group: **294 pass, 0 fail**, `RUN-api`, exit `0` (dotnet cases).
-- Explicit API adapters: `API-HEALTH-01` and `API-PRED-GUEST-01` pass locally against Docker; the live-contract CI job is configured but not yet run remotely.
+- Explicit API adapters: `API-HEALTH-01` and `API-PRED-GUEST-01` pass locally and in live-contract CI.
 - Screen group: **9 pass, 0 fail**, `RUN-screen`, exit `0`.
 - Playwright: **11 trạng thái, 3 kích thước**, `RUN-playwright`, exit `0`.
-- Sheets sync local với service account: **pass**; chạy lần hai **7/7 unchanged**, không duplicate. GitHub secret `GCP_SA_KEY_BASE64` chưa được cấu hình nên remote Sheets write chưa chạy.\n- Security audit: key không bị Git track, key path bị ignore, không phát hiện secret pattern thật trong workflow/config.
+- Sheets sync local với service account: **pass**; chạy lần hai **7/7 unchanged**, không duplicate. Remote Sheets write chưa chạy vì `GCP_SA_KEY_BASE64` chưa được cấu hình.
+- Security audit: key không bị Git track, key path bị ignore, không phát hiện secret pattern thật trong workflow/config.
 
 ## Giới hạn còn lại
 
@@ -33,4 +34,4 @@ Workflow quản lý registry testcase cho `api`, `screen`, `viewpoint`; thực t
 
 - Workflow: `.github/workflows/testcase-workflow.yml`
 - Runner: `tools/testcase-workflow/`
-- Hướng dẫn chuyển đổi: `docs/notes/production_test_automation_guide.md`\n\n\n\n\n\n
+- Hướng dẫn chuyển đổi: `docs/notes/production_test_automation_guide.md`
