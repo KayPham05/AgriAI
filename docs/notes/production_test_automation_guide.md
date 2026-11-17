@@ -25,7 +25,7 @@ Dữ liệu xác nhận trực tiếp từ hệ thống Google Sheets của dự
   - Cột I: Expected Body
   - Cột J: Expected Database
   - Cột K: Result (Passed / Failed / Blocked / Not run)
-  - Cột L: Execution (Automation / Manual / N/A)
+  - Cột L: Execution (Auto / Manual / N/A)
   - Cột M: Note / Evidence (Bằng chứng thực thi, mã run_id, stderr nếu có lỗi)
 
 ### 1.2. Sheet 2: Testcase Screen
@@ -43,7 +43,7 @@ Dữ liệu xác nhận trực tiếp từ hệ thống Google Sheets của dự
   - Cột G: Steps
   - Cột H: Expected Result
   - Cột I: Testing result Chrome (Passed / Failed / Blocked / Not run)
-  - Cột J: Execution (Automation / Manual / N/A)
+  - Cột J: Execution (Auto / Manual / N/A)
   - Cột K: Remarks (Bằng chứng, lỗi và ghi chú)
 
 ### 1.3. Sheet 3: Test viewpoint
@@ -180,7 +180,7 @@ Trạng thái trong tài liệu này được hiểu như sau:
     - Nếu Tab chi tiết đã tồn tại: Xác thực cấu trúc tiêu đề (Header Schema Validation).
   - Điền chính xác dữ liệu của từng ca kiểm thử vào các cột tương ứng:
     - Cột thông tin nghiệp vụ: ID, Item, Testcase Name, Precondition, Expected.
-    - Cột kết quả thực thi: Result (Passed), Execution (Automation), Note (Mã run_id và bằng chứng thực thi).
+    - Cột kết quả thực thi: Result (Passed), Execution (Auto), Note (Mã run_id và bằng chứng thực thi).
   - Cập nhật số liệu thống kê lên Tab tổng hợp (Report bug, Report, Overview): Tự động tính lại tổng số lượng testcase, số lượng Passed, tỷ lệ hoàn thành mà không chạm vào dữ liệu của các dự án cũ.
 
 ---
@@ -214,7 +214,7 @@ Developer không cần quyền ghi vào Google Sheets và không cần file Serv
 `.github/workflows/testcase-workflow.yml` là nguồn chuẩn. Workflow hiện có 7 job:
 
 - `workflow-smoke`: compile, test Python workflow/sheets, dry-run và kiểm tra credential không bị Git track.
-- `playwright-contract`: cài frontend, build/start, readiness check, chạy `workflow.py run playwright`, upload `RUN-playwright` và evidence.
+- `playwright-contract`: cài frontend, build/start, readiness check, chạy `workflow.py run playwright` (`frontend/tests/browser/e2e/run_suite.py` ánh xạ 40 mã `E2E-*` trong `test-groups.json`), upload `RUN-playwright` và evidence.
 - `backend-tests`: restore .NET, chạy `workflow.py run api`, upload `RUN-api`.
 - `live-contract`: khởi động PostgreSQL/AI/backend bằng Docker, chạy `API-HEALTH-01` và `API-PRED-GUEST-01`, upload result per-case.
 - `frontend-tests`: cài pnpm, chạy `workflow.py run screen`, upload `RUN-screen`.
@@ -237,10 +237,16 @@ Mọi test job upload result với `if: ${{ always() }}`. Hợp đồng artifact
 
 ---
 
-## Trạng thái kiểm chứng AGRI-145 (2026-11-14)
+## Trạng thái kiểm chứng AGRI-145
 
+### Đợt 2026-11-14 (Khởi tạo workflow & protected sync)
 - 22 test Python workflow/sheets pass; YAML parse được với 7 job.
 - Docker Compose healthy; frontend/backend health HTTP 200.
 - API 294 pass; Vitest 9 pass; Playwright pass với exit code 0.
 - Sheets sync protected pass; lần chạy lặp lại 7/7 `unchanged`.
 - GitHub Actions run `43570450037` pass toàn bộ jobs, gồm `sheets-sync`. Viewpoint chưa có runner tự động.
+
+### Đợt 2026-11-17 (Ánh xạ 40 ca E2E, fix batch sync & `run_all`)
+- `tools/testcase-workflow`: **27/27** Python unit tests pass (bao gồm guard tách biệt 40 Automated E2E / 10 Manual E2E, đồng bộ priority, batch row allocation với `tab_values_cache` và `run_all()` chạy đủ `api`, `screen`, `playwright`).
+- `sync --dry-run`: **47 cases** hợp lệ (`7` hiện có + `40` `E2E-*` trong `playwright.case_ids`).
+- Playwright Browser UI (`run_suite.py`): P0 **13/13** pass, Full **40/40** pass; Live System E2E (`run_live_suite.py`): **40/40** pass trên Docker stack thật. `VP-API-01` giữ trạng thái thiết kế/evidence (`execution: "N/A"`).
