@@ -156,13 +156,13 @@ Omit the AI experiment section only when it does not apply.
 
 ## 4. Task Completion Report
 
-Before or together with pull request creation, every member **MUST** add a short report at:
+Before or together with pull request creation, every member **MUST** add a short report inside a directory named after the Jira key (never create `README.md` inside `docs/task-logs/AGRI-XXX/`):
 
 ```text
-docs/task-logs/AGRI-XXX-<member>.md
+docs/task-logs/AGRI-XXX/AGRI-XXX-<member>.md
 ```
 
-Example: `docs/task-logs/AGRI-24-vinh.md`.
+Example: `docs/task-logs/AGRI-24/AGRI-24-vinh.md`.
 
 ### Task Report Template
 
@@ -199,7 +199,7 @@ The report is required before moving the Jira issue to `Done`.
 
 - [ ] Branch matches `AGRI-XXX-<short-description>`.
 - [ ] Every atomic commit matches `<type>(<optional-scope>): AGRI-XXX <short-description>`.
-- [ ] The task report exists under `docs/task-logs/`.
+- [ ] The task report exists inside `docs/task-logs/AGRI-XXX/` (without a `README.md`).
 - [ ] The pull request uses the template and its title contains the Jira key.
 - [ ] The correct domain reviewer is assigned.
 - [ ] The diff contains no secret or credential.

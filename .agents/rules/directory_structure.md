@@ -94,7 +94,7 @@ snake_case; names must explain their purpose.
 
 | Content | Directory | File name pattern |
 |---|---|---|
-| Jira task completion report | `task-logs/` | `AGRI-XXX-<member>.md` |
+| Jira task completion report | `task-logs/AGRI-XXX/` | `AGRI-XXX-<short-topic-or-member>.md` (never create `README.md` inside `task-logs/AGRI-XXX/`) |
 | Technical evidence for a task | `reports/AGRI-XXX/` | `README.md` + detail files |
 | Implementation plan | `plans/` | `AGRI-XXX-<member>-plan.md` |
 | Shared technical notes | `notes/` | `<topic>.md` |
@@ -123,9 +123,11 @@ docs/reports/AGRI-21/
 - No arbitrary sequence numbers: `preprocessing_compliance.md`, not `01_report.md`.
 - No vague names: never use `final.md`, `new.md`, or similar.
 
-### 3.4. Source references
+### 3.4. Source references and E2E/Manual separation
 
 Every technical report must state the related source file and cite a concrete evidence source (CSV, JSON, or a specific run) for every metric. Do not record estimated or inferred numbers without evidence.
+
+Automated E2E test specifications and Manual test cases/checklists **must never be placed in the same file**, from documentation (`docs/reports/AGRI-XXX/frontend_e2e_test_specification.md` vs `manual_e2e_test_cases.md`) to test source and workflow configurations (`frontend/tests/browser/e2e/`, `tools/testcase-workflow/config/`). Keep testcase IDs strictly disjoint (`overlap = 0`) between automated E2E and manual test files/configs.
 
 ---
 
