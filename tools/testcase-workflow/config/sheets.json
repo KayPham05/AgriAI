@@ -13,7 +13,7 @@
       "detail_mapping": {"id": "A", "item": "B", "test_name": "C", "precondition": "D", "test_data": "E", "params": "F", "request_body": "G", "expected_status": "H", "expected_body": "I", "expected_database": "J", "status": "K", "execution": "L", "evidence": "M"},
       "summary_mode": "dashboard",
       "dashboard_mapping": {"range": "A1:M50", "data_start_row": 5, "sheet_name_column": "B", "name_column": "C", "total_column": "D", "passed_column": "E", "failed_column": "F", "blocked_column": "G", "not_run_column": "H", "automation_column": "I", "manual_column": "J", "na_column": "K", "status_column": "L", "progress_column": "M", "total_label": "Total", "total_label_column": "B"},
-      "summary_labels": {"total": ["Total Testcase", "Total"], "passed": ["Passed"], "failed": ["Failed"], "blocked": ["Blocked"], "not_run": ["Not run", "Not Run"], "automation": ["Automation"], "manual": ["Manual"], "na": ["N/A"]}
+      "summary_labels": {"total": ["Total Testcase", "Total"], "passed": ["Passed"], "failed": ["Failed"], "blocked": ["Blocked"], "not_run": ["Not run", "Not Run"], "automation": ["Auto"], "manual": ["Manual"], "na": ["N/A"]}
     },
     "viewpoint": {
       "id": "1wFM32VTHADjP-DnB3yLTZ5WjbPwDEs2HDOgnvcN0TbA",
@@ -40,7 +40,7 @@
       "detail_mapping": {"id": "A", "main_category": "B", "sub_category": "C", "type": "D", "precondition": "E", "test_description": "F", "steps": "G", "expected_result": "H", "status": "I", "execution": "J", "evidence": "K"},
       "summary_mode": "dashboard",
       "dashboard_mapping": {"range": "A1:M50", "data_start_row": 6, "sheet_name_column": "B", "name_column": "C", "total_column": "D", "passed_column": "E", "failed_column": "F", "blocked_column": "G", "not_run_column": "H", "automation_column": "I", "manual_column": "J", "na_column": "K", "status_column": null, "progress_column": null, "total_label": "Total", "total_label_column": "C"},
-      "summary_labels": {"total": ["Total Testcase", "Total"], "passed": ["Passed", "Testing Result"], "failed": ["Failed"], "blocked": ["Blocked"], "not_run": ["Not run", "Not Run"], "automation": ["Automation"], "manual": ["Manual"], "na": ["N/A"]}
+      "summary_labels": {"total": ["Total Testcase", "Total"], "passed": ["Passed", "Testing Result"], "failed": ["Failed"], "blocked": ["Blocked"], "not_run": ["Not run", "Not Run"], "automation": ["Auto"], "manual": ["Manual"], "na": ["N/A"]}
     }
   }
 }

@@ -3,29 +3,106 @@
     "api": {
       "working_directory": "backend",
       "command": "dotnet",
-      "args": ["test", "tests/AgriVision.ApiTests/AgriVision.ApiTests.csproj", "--no-restore", "--logger", "console;verbosity=minimal"],
+      "args": [
+        "test",
+        "tests/AgriVision.ApiTests/AgriVision.ApiTests.csproj",
+        "--no-restore",
+        "--logger",
+        "console;verbosity=minimal"
+      ],
       "timeout_seconds": 900,
-      "artifact_globs": ["backend/TestResults/**/*.trx"],
-      "case_ids": ["API-PRED-01", "API-PRED-02"],
-      "prerequisites": ["write_access", "dotnet_restore"]
+      "artifact_globs": [
+        "backend/TestResults/**/*.trx"
+      ],
+      "case_ids": [
+        "API-PRED-01",
+        "API-PRED-02"
+      ],
+      "prerequisites": [
+        "write_access",
+        "dotnet_restore"
+      ]
     },
     "screen": {
       "working_directory": "frontend",
       "command": "pnpm.cmd",
-      "args": ["exec", "vitest", "run", "tests/integration/diagnosis/GuestDiagnosis.test.tsx", "tests/integration/diagnosis/LandingPrediction.test.tsx"],
+      "args": [
+        "exec",
+        "vitest",
+        "run",
+        "tests/integration/diagnosis/GuestDiagnosis.test.tsx",
+        "tests/integration/diagnosis/LandingPrediction.test.tsx"
+      ],
       "timeout_seconds": 600,
-      "artifact_globs": ["frontend/test-results/**/*"],
-      "case_ids": ["WEB-PRED-01", "WEB-PRED-02"],
-      "prerequisites": ["write_access", "pnpm_install"]
+      "artifact_globs": [
+        "frontend/test-results/**/*"
+      ],
+      "case_ids": [
+        "WEB-PRED-01",
+        "WEB-PRED-02"
+      ],
+      "prerequisites": [
+        "write_access",
+        "pnpm_install"
+      ]
     },
     "playwright": {
       "working_directory": "frontend",
       "command": "python",
-      "args": ["tests/browser/diagnosis/error_states.py"],
+      "args": [
+        "tests/browser/e2e/run_suite.py"
+      ],
       "timeout_seconds": 300,
-      "artifact_globs": ["frontend/playwright-artifacts/**/*"],
-      "case_ids": [],
-      "prerequisites": ["write_access", "python_playwright", "frontend_running"]
+      "artifact_globs": [
+        "frontend/playwright-artifacts/**/*"
+      ],
+      "case_ids": [
+        "E2E-ADM-01",
+        "E2E-ADM-02",
+        "E2E-ADM-03",
+        "E2E-ADM-04",
+        "E2E-ADM-06",
+        "E2E-ADM-07",
+        "E2E-AUTH-01",
+        "E2E-AUTH-02",
+        "E2E-AUTH-03",
+        "E2E-AUTH-04",
+        "E2E-AUTH-05",
+        "E2E-AUTH-06",
+        "E2E-AUTH-07",
+        "E2E-CAT-01",
+        "E2E-CAT-02",
+        "E2E-CAT-03",
+        "E2E-CAT-04",
+        "E2E-DIAG-01",
+        "E2E-DIAG-02",
+        "E2E-DIAG-03",
+        "E2E-DIAG-05",
+        "E2E-DIAG-07",
+        "E2E-HIST-01",
+        "E2E-HIST-02",
+        "E2E-HIST-03",
+        "E2E-HIST-06",
+        "E2E-HOME-01",
+        "E2E-HOME-02",
+        "E2E-HOME-03",
+        "E2E-HOME-04",
+        "E2E-PROF-01",
+        "E2E-PROF-02",
+        "E2E-PROF-03",
+        "E2E-PROF-04",
+        "E2E-PROF-AGRI-01",
+        "E2E-PROF-AGRI-02",
+        "E2E-PROF-AGRI-03",
+        "E2E-SYS-01",
+        "E2E-SYS-02",
+        "E2E-SYS-04"
+      ],
+      "prerequisites": [
+        "write_access",
+        "python_playwright",
+        "frontend_running"
+      ]
     }
   }
 }

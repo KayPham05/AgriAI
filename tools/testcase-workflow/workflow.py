@@ -192,18 +192,42 @@ def column_name(number: int) -> str:
     return result
 
 
-def upsert_row(client: SheetsClient, spreadsheet_id: str, tab_name: str, case: dict[str, Any], mapping: dict[str, str], result: dict[str, Any] | None = None, detail_mode: str = "table", data_start_row: int = 1, pending_updates: list[tuple[str, str, list[list[str]]]] | None = None) -> dict[str, Any]:
+def upsert_row(
+    client: SheetsClient,
+    spreadsheet_id: str,
+    tab_name: str,
+    case: dict[str, Any],
+    mapping: dict[str, str],
+    result: dict[str, Any] | None = None,
+    detail_mode: str = "table",
+    data_start_row: int = 1,
+    pending_updates: list[tuple[str, str, list[list[str]]]] | None = None,
+    tab_values_cache: dict[tuple[str, str], list[list[str]]] | None = None,
+) -> dict[str, Any]:
     id_column = mapping.get("id", "A")
-    values = client.values(spreadsheet_id, tab_name, f"{id_column}:{id_column}")
-    rows = [(index, str(row[0]).strip()) for index, row in enumerate(values, start=1) if row and str(row[0]).strip()]
+    id_col_index = column_number(id_column) - 1
+    cache_key = (spreadsheet_id, tab_name)
+    cached_sheet = tab_values_cache.get(cache_key) if tab_values_cache is not None else None
+    if cached_sheet is not None:
+        rows = [
+            (index, str(r[id_col_index]).strip())
+            for index, r in enumerate(cached_sheet, start=1)
+            if len(r) > id_col_index and str(r[id_col_index]).strip()
+        ]
+    else:
+        values = client.values(spreadsheet_id, tab_name, f"{id_column}:{id_column}")
+        rows = [(index, str(r[0]).strip()) for index, r in enumerate(values, start=1) if r and str(r[0]).strip()]
     row = build_sheet_row(case, mapping, result)
     end_column = column_name(max(len(row), 1))
     for row_number, value in rows:
         if value == case["id"] or (detail_mode == "viewpoint_table" and case["id"] in value):
             if detail_mode == "viewpoint_table":
                 return {"action": "unchanged", "tab": tab_name, "row": row_number}
-            existing = client.values(spreadsheet_id, tab_name, f"A{row_number}:{end_column}{row_number}")
-            prior = existing[0] if existing else []
+            if cached_sheet is not None:
+                prior = list(cached_sheet[row_number - 1]) if row_number <= len(cached_sheet) else []
+            else:
+                existing = client.values(spreadsheet_id, tab_name, f"A{row_number}:{end_column}{row_number}")
+                prior = existing[0] if existing else []
             result_fields = {"status", "execution", "actual", "evidence", "run_id", "run_at"}
             merged = []
             for field, column in mapping.items():
@@ -213,24 +237,51 @@ def upsert_row(client: SheetsClient, spreadsheet_id: str, tab_name: str, case: d
                 merged.append(new_value if field in result_fields and new_value else prior_value)
             if len(row) > len(merged):
                 merged.extend(prior[len(merged):len(row)])
+            if cached_sheet is not None:
+                while len(cached_sheet) < row_number:
+                    cached_sheet.append([])
+                cached_sheet[row_number - 1] = list(merged)
             if pending_updates is not None:
                 pending_updates.append((tab_name, f"A{row_number}:{end_column}{row_number}", [merged]))
             else:
                 client.update(spreadsheet_id, tab_name, f"A{row_number}:{end_column}{row_number}", [merged])
             return {"action": "update", "tab": tab_name, "row": row_number}
-    full_values = client.values(spreadsheet_id, tab_name, "A:Z")
-    blank_row = next((index for index in range(data_start_row, len(full_values) + 1) if not any(str(cell).strip() for cell in full_values[index - 1])), None)
+    if cached_sheet is not None:
+        full_values = cached_sheet
+    else:
+        full_values = [list(r) for r in client.values(spreadsheet_id, tab_name, "A:Z")]
+        if tab_values_cache is not None:
+            tab_values_cache[cache_key] = full_values
+    claimed_rows = {
+        int(match.group(1))
+        for queued_tab, a1_range, _ in (pending_updates or [])
+        if queued_tab == tab_name and (match := re.match(r"^[A-Z]+(\d+):", a1_range))
+    }
+    blank_row = next(
+        (
+            index
+            for index in range(data_start_row, len(full_values) + 1)
+            if index not in claimed_rows and not any(str(cell).strip() for cell in full_values[index - 1])
+        ),
+        None,
+    )
     if blank_row is not None:
+        while len(full_values) < blank_row:
+            full_values.append([])
+        full_values[blank_row - 1] = list(row)
         if pending_updates is not None:
             pending_updates.append((tab_name, f"A{blank_row}:{end_column}{blank_row}", [row]))
         else:
             client.update(spreadsheet_id, tab_name, f"A{blank_row}:{end_column}{blank_row}", [row])
         return {"action": "add", "tab": tab_name, "row": blank_row}
     if pending_updates is not None:
-        next_row = len(full_values) + 1
+        next_row = max([len(full_values), data_start_row - 1, *claimed_rows]) + 1
+        while len(full_values) < next_row:
+            full_values.append([])
+        full_values[next_row - 1] = list(row)
         pending_updates.append((tab_name, f"A{next_row}:{end_column}{next_row}", [row]))
-    else:
-        client.append(spreadsheet_id, tab_name, row)
+        return {"action": "add", "tab": tab_name, "row": next_row}
+    client.append(spreadsheet_id, tab_name, row)
     return {"action": "add", "tab": tab_name}
 
 
@@ -240,6 +291,8 @@ def calculate_summary_counts(cases: list[dict[str, Any]], latest: dict[str, Any]
         result = latest.get(case["id"], {})
         status = str(result.get("status", case.get("status", "Not run"))).strip().lower().replace(" ", "_")
         execution = str(result.get("execution", case.get("execution", "N/A"))).strip().lower().replace("/", "_")
+        if execution == "auto":
+            execution = "automation"
         if status in counts:
             counts[status] += 1
         if execution in counts:
@@ -250,7 +303,7 @@ def calculate_summary_counts(cases: list[dict[str, Any]], latest: dict[str, Any]
 def update_summary_dashboard(client: SheetsClient, spreadsheet_id: str, sheet: dict[str, Any], cases: list[dict[str, Any]], latest: dict[str, Any]) -> list[dict[str, Any]]:
     tab_name = sheet["summary_tab"]
     mapping = sheet["dashboard_mapping"]
-    values = client.values(spreadsheet_id, tab_name, mapping["range"])
+    values = [list(r) for r in client.values(spreadsheet_id, tab_name, mapping["range"])]
     headers = {str(cell).strip().casefold() for row in values[:6] for cell in row}
     required_headers = {"sheet name", "total testcase", "passed", "failed", "blocked", "not run"}
     if not required_headers.issubset(headers):
@@ -261,7 +314,8 @@ def update_summary_dashboard(client: SheetsClient, spreadsheet_id: str, sheet: d
     metadata = next((item for item in client.sheet_metadata(spreadsheet_id) if item.get("title") == tab_name), None)
     if not metadata:
         raise RuntimeError(f"Summary tab {tab_name!r} was not found; refusing to write")
-    used_rows = {str(row[column_number(mapping["sheet_name_column"]) - 1]).strip(): index for index, row in enumerate(values, start=1) if len(row) >= column_number(mapping["sheet_name_column"]) and str(row[column_number(mapping["sheet_name_column"]) - 1]).strip()}
+    sheet_col_idx = column_number(mapping["sheet_name_column"]) - 1
+    used_rows = {str(row[sheet_col_idx]).strip(): index for index, row in enumerate(values, start=1) if len(row) > sheet_col_idx and str(row[sheet_col_idx]).strip()}
     label_index = column_number(mapping.get("total_label_column", "A")) - 1
     total_row = next((index for index, row in enumerate(values, start=1) if len(row) > label_index and str(row[label_index]).strip().casefold() == mapping["total_label"].casefold()), None)
     if total_row is None:
@@ -274,10 +328,13 @@ def update_summary_dashboard(client: SheetsClient, spreadsheet_id: str, sheet: d
         counts = calculate_summary_counts(detail_cases, latest)
         row_number = used_rows.get(detail_tab)
         if row_number is None:
-            row_number = next((index for index in range(mapping["data_start_row"], total_row) if index > len(values) or not str(values[index - 1][column_number(mapping["sheet_name_column"]) - 1] if len(values) >= index and len(values[index - 1]) >= column_number(mapping["sheet_name_column"]) else "").strip()), None)
+            row_number = next((index for index in range(mapping["data_start_row"], total_row) if index > len(values) or not str(values[index - 1][sheet_col_idx] if len(values) >= index and len(values[index - 1]) > sheet_col_idx else "").strip()), None)
             if row_number is None:
                 client.insert_row(spreadsheet_id, int(metadata["sheetId"]), total_row)
                 row_number = total_row
+                while len(values) < row_number - 1:
+                    values.append([])
+                values.insert(row_number - 1, [])
                 total_row += 1
         name = detail_cases[0].get("summary_name") or detail_cases[0].get("test_selector") or detail_tab
         total = counts["total"]
@@ -289,11 +346,19 @@ def update_summary_dashboard(client: SheetsClient, spreadsheet_id: str, sheet: d
             row.append(status)
         if mapping.get("progress_column"):
             row.append(progress)
+        while len(values) < row_number:
+            values.append([])
+        target_row = list(values[row_number - 1])
+        if len(target_row) < sheet_col_idx + len(row):
+            target_row.extend([""] * (sheet_col_idx + len(row) - len(target_row)))
+        for offset, cell_val in enumerate(row):
+            target_row[sheet_col_idx + offset] = str(cell_val)
+        values[row_number - 1] = target_row
+        used_rows[detail_tab] = row_number
         start = mapping["sheet_name_column"] + str(row_number)
         end = (mapping.get("progress_column") or mapping["na_column"]) + str(row_number)
         pending_writes.append((tab_name, f"{start}:{end}", [row]))
         updates.append({"detail_tab": detail_tab, "row": row_number, "status": status, "progress": progress})
-    values = client.values(spreadsheet_id, tab_name, mapping["range"])
     total_values = []
     for column in (mapping["total_column"], mapping["passed_column"], mapping["failed_column"], mapping["blocked_column"], mapping["not_run_column"], mapping["automation_column"], mapping["manual_column"], mapping["na_column"]):
         index = column_number(column) - 1
@@ -407,14 +472,31 @@ def sync(dry_run: bool, write_sheets: bool) -> None:
     client = SheetsClient()
     grouped = {kind: [case for case in cases if case["kind"] == kind] for kind in KINDS}
     pending_updates: dict[str, list[tuple[str, str, list[list[str]]]]] = {kind: [] for kind in KINDS}
+    prepared_tabs: set[tuple[str, str]] = set()
+    tab_values_cache: dict[tuple[str, str], list[list[str]]] = {}
     for case in cases:
         sheet = sheets[case["kind"]]
         result = effective_latest.get(case["id"])
-        detail_meta = client.ensure_sheet(sheet["id"], case["detail_tab"], sheet.get("template_tab"))
-        if detail_meta.get("created"):
-            clear_template_case_rows(client, sheet["id"], case["detail_tab"], sheet.get("detail_data_start_row", 1))
-        validate_detail_schema(client, sheet["id"], case["detail_tab"], sheet.get("detail_mode", "table"))
-        upsert_row(client, sheet["id"], case["detail_tab"], case, sheet["detail_mapping"], result, sheet.get("detail_mode", "table"), sheet.get("detail_data_start_row", 1), pending_updates[case["kind"]])
+        tab_key = (sheet["id"], case["detail_tab"])
+        if tab_key not in prepared_tabs:
+            detail_meta = client.ensure_sheet(sheet["id"], case["detail_tab"], sheet.get("template_tab"))
+            if detail_meta.get("created"):
+                clear_template_case_rows(client, sheet["id"], case["detail_tab"], sheet.get("detail_data_start_row", 1))
+            validate_detail_schema(client, sheet["id"], case["detail_tab"], sheet.get("detail_mode", "table"))
+            tab_values_cache[tab_key] = [list(r) for r in client.values(sheet["id"], case["detail_tab"], "A:Z")]
+            prepared_tabs.add(tab_key)
+        upsert_row(
+            client,
+            sheet["id"],
+            case["detail_tab"],
+            case,
+            sheet["detail_mapping"],
+            result,
+            sheet.get("detail_mode", "table"),
+            sheet.get("detail_data_start_row", 1),
+            pending_updates[case["kind"]],
+            tab_values_cache,
+        )
     for kind, writes in pending_updates.items():
         if writes:
             client.batch_update(sheets[kind]["id"], writes)
@@ -483,12 +565,12 @@ def run_group(group_name: str) -> bool:
     try:
         completed = subprocess.run(command, cwd=ROOT / group["working_directory"], text=True, capture_output=True, check=False, timeout=group.get("timeout_seconds", 600))
     except OSError as error:
-        result = CaseResult(f"RUN-{group_name}", "Blocked", "Automation", blocker=str(error), command=" ".join(command), run_at=started, run_id=run_id, group=group_name, duration_seconds=(datetime.now(timezone.utc) - started_clock).total_seconds())
+        result = CaseResult(f"RUN-{group_name}", "Blocked", "Auto", blocker=str(error), command=" ".join(command), run_at=started, run_id=run_id, group=group_name, duration_seconds=(datetime.now(timezone.utc) - started_clock).total_seconds())
     except subprocess.TimeoutExpired as error:
-        result = CaseResult(f"RUN-{group_name}", "Blocked", "Automation", blocker=f"timeout after {group.get('timeout_seconds', 600)} seconds", actual=redact_sensitive(str(error.stdout or "")[-4000:]), command=" ".join(command), run_at=started, run_id=run_id, group=group_name, duration_seconds=(datetime.now(timezone.utc) - started_clock).total_seconds())
+        result = CaseResult(f"RUN-{group_name}", "Blocked", "Auto", blocker=f"timeout after {group.get('timeout_seconds', 600)} seconds", actual=redact_sensitive(str(error.stdout or "")[-4000:]), command=" ".join(command), run_at=started, run_id=run_id, group=group_name, duration_seconds=(datetime.now(timezone.utc) - started_clock).total_seconds())
     else:
         status = "Passed" if completed.returncode == 0 else "Failed"
-        result = CaseResult(f"RUN-{group_name}", status, "Automation", actual=redact_sensitive((completed.stdout or "")[-4000:]), evidence=f"run_id={run_id}; stderr={redact_sensitive((completed.stderr or '')[-4000:])}", command=" ".join(command), run_at=started, run_id=run_id, group=group_name, exit_code=completed.returncode, duration_seconds=(datetime.now(timezone.utc) - started_clock).total_seconds())
+        result = CaseResult(f"RUN-{group_name}", status, "Auto", actual=redact_sensitive((completed.stdout or "")[-4000:]), evidence=f"run_id={run_id}; stderr={redact_sensitive((completed.stderr or '')[-4000:])}", command=" ".join(command), run_at=started, run_id=run_id, group=group_name, exit_code=completed.returncode, duration_seconds=(datetime.now(timezone.utc) - started_clock).total_seconds())
     emit_result(result)
     return result.status == "Passed"
 
@@ -499,11 +581,11 @@ def check_health(url: str) -> bool:
     try:
         with urlopen(url, timeout=10) as response:
             body = redact_sensitive(response.read().decode("utf-8", errors="replace")[:2000])
-            result = CaseResult("API-HEALTH-01", "Passed" if response.status == 200 else "Failed", "Automation", actual=f"HTTP {response.status}: {body}", command=f"GET {url}", evidence="live HTTP response", run_at=started, run_id=run_id, evidence_kind="api_contract", selector="GET /api/health")
+            result = CaseResult("API-HEALTH-01", "Passed" if response.status == 200 else "Failed", "Auto", actual=f"HTTP {response.status}: {body}", command=f"GET {url}", evidence="live HTTP response", run_at=started, run_id=run_id, evidence_kind="api_contract", selector="GET /api/health")
     except HTTPError as error:
-        result = CaseResult("API-HEALTH-01", "Failed", "Automation", actual=f"HTTP {error.code}", command=f"GET {url}", evidence="live HTTP response", run_at=started, run_id=run_id, evidence_kind="api_contract", selector="GET /api/health")
+        result = CaseResult("API-HEALTH-01", "Failed", "Auto", actual=f"HTTP {error.code}", command=f"GET {url}", evidence="live HTTP response", run_at=started, run_id=run_id, evidence_kind="api_contract", selector="GET /api/health")
     except (URLError, TimeoutError, OSError) as error:
-        result = CaseResult("API-HEALTH-01", "Blocked", "Automation", blocker=str(error), command=f"GET {url}", run_at=started, run_id=run_id, evidence_kind="api_contract", selector="GET /api/health")
+        result = CaseResult("API-HEALTH-01", "Blocked", "Auto", blocker=str(error), command=f"GET {url}", run_at=started, run_id=run_id, evidence_kind="api_contract", selector="GET /api/health")
     emit_result(result)
     return result.status == "Passed"
 
@@ -521,11 +603,11 @@ def check_guest_prediction(url: str, image_path: str) -> bool:
             payload = json.loads(response.read().decode("utf-8"))
             has_guest_token = bool(payload.get("guestToken"))
             actual = f"HTTP {response.status}; class={payload.get('predictedPlantDisease', {}).get('className')}; confidence={payload.get('confidence')}; guestToken={'present' if has_guest_token else 'missing'}"
-            result = CaseResult("API-PRED-GUEST-01", "Passed" if response.status == 200 and has_guest_token else "Failed", "Automation", actual=actual, command=f"POST {url} -F File=@{file_name}", evidence="live multipart HTTP response; token presence only", run_at=started, run_id=run_id, evidence_kind="api_contract", selector="POST /api/predictions without Authorization")
+            result = CaseResult("API-PRED-GUEST-01", "Passed" if response.status == 200 and has_guest_token else "Failed", "Auto", actual=actual, command=f"POST {url} -F File=@{file_name}", evidence="live multipart HTTP response; token presence only", run_at=started, run_id=run_id, evidence_kind="api_contract", selector="POST /api/predictions without Authorization")
     except HTTPError as error:
-        result = CaseResult("API-PRED-GUEST-01", "Failed", "Automation", actual=f"HTTP {error.code}", command=f"POST {url} -F File=@{file_name}", evidence="live multipart HTTP response", run_at=started, run_id=run_id, evidence_kind="api_contract", selector="POST /api/predictions without Authorization")
+        result = CaseResult("API-PRED-GUEST-01", "Failed", "Auto", actual=f"HTTP {error.code}", command=f"POST {url} -F File=@{file_name}", evidence="live multipart HTTP response", run_at=started, run_id=run_id, evidence_kind="api_contract", selector="POST /api/predictions without Authorization")
     except (URLError, TimeoutError, OSError, json.JSONDecodeError) as error:
-        result = CaseResult("API-PRED-GUEST-01", "Blocked", "Automation", blocker=str(error), command=f"POST {url} -F File=@{file_name}", run_at=started, run_id=run_id, evidence_kind="api_contract", selector="POST /api/predictions without Authorization")
+        result = CaseResult("API-PRED-GUEST-01", "Blocked", "Auto", blocker=str(error), command=f"POST {url} -F File=@{file_name}", run_at=started, run_id=run_id, evidence_kind="api_contract", selector="POST /api/predictions without Authorization")
     emit_result(result)
     return result.status == "Passed"
 
@@ -550,21 +632,24 @@ def run_case(case_id: str, health_url: str | None = None, guest_url: str | None 
             source_path = Path(*source_path.parts[1:])
         command = ["pnpm.cmd", "exec", "vitest", "run", str(source_path), "-t", case["selector"]]
         cwd = ROOT / "frontend"
+    elif runner == "playwright":
+        command = ["python", "tests/browser/e2e/run_suite.py", "--case", case["id"]]
+        cwd = ROOT / "frontend"
     else:
         raise RuntimeError(f"case {case_id} has no explicit runner adapter; group exit cannot mark it Passed")
     started = datetime.now(timezone.utc)
     run_id = uuid.uuid4().hex
     try:
         completed = subprocess.run(command, cwd=cwd, text=True, capture_output=True, check=False, timeout=900)
-        result = CaseResult(case_id, "Passed" if completed.returncode == 0 else "Failed", "Automation", actual=redact_sensitive((completed.stdout or "")[-4000:]), evidence=f"per-case selector={case['selector']}; stderr={redact_sensitive((completed.stderr or '')[-4000:])}", command=" ".join(command), run_at=started.isoformat(), run_id=run_id, evidence_kind="per_case", selector=case["selector"], exit_code=completed.returncode, duration_seconds=(datetime.now(timezone.utc) - started).total_seconds())
+        result = CaseResult(case_id, "Passed" if completed.returncode == 0 else "Failed", "Auto", actual=redact_sensitive((completed.stdout or "")[-4000:]), evidence=f"per-case selector={case['selector']}; stderr={redact_sensitive((completed.stderr or '')[-4000:])}", command=" ".join(command), run_at=started.isoformat(), run_id=run_id, evidence_kind="per_case", selector=case["selector"], exit_code=completed.returncode, duration_seconds=(datetime.now(timezone.utc) - started).total_seconds())
     except (OSError, subprocess.TimeoutExpired) as error:
-        result = CaseResult(case_id, "Blocked", "Automation", blocker=str(error), command=" ".join(command), run_at=started.isoformat(), run_id=run_id, evidence_kind="per_case", selector=case["selector"])
+        result = CaseResult(case_id, "Blocked", "Auto", blocker=str(error), command=" ".join(command), run_at=started.isoformat(), run_id=run_id, evidence_kind="per_case", selector=case["selector"])
     emit_result(result)
     return result.status == "Passed"
 
 
 def run_all(write_sheets: bool, guest_image: str | None = None, health_url: str = "http://localhost:5080/api/health", guest_url: str = "http://localhost:5080/api/predictions") -> None:
-    group_results = [run_group(group_name) for group_name in ("api", "playwright")]
+    group_results = [run_group(group_name) for group_name in ("api", "screen", "playwright")]
     success = all(group_results)
     runtime = read_json(CONFIG / "runtime.json")
     fixture = guest_image or runtime["guest_fixture"]
