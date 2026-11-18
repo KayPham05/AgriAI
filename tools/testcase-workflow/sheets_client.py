@@ -96,13 +96,45 @@ class SheetsClient:
         url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}?fields=sheets.properties"
         return [sheet.get("properties", {}) for sheet in self.request("GET", url).get("sheets", [])]
 
+    def conditional_formats(self, spreadsheet_id: str) -> dict[int, list[dict]]:
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}?fields=sheets(properties(sheetId,title),conditionalFormats)"
+        result: dict[int, list[dict]] = {}
+        for sheet in self.request("GET", url).get("sheets", []):
+            props = sheet.get("properties", {})
+            if "sheetId" in props:
+                result[int(props["sheetId"])] = list(sheet.get("conditionalFormats", []))
+        return result
+
+    @staticmethod
+    def delete_conditional_format_request(sheet_id: int, index: int) -> dict:
+        return {"deleteConditionalFormatRule": {"sheetId": sheet_id, "index": index}}
+
     def ensure_sheet(self, spreadsheet_id: str, tab_name: str, template_tab: str | None = None) -> dict:
         sheets = self.sheet_metadata(spreadsheet_id)
         existing = next((sheet for sheet in sheets if sheet.get("title") == tab_name), None)
         if existing:
             existing["created"] = False
             return existing
-        template = next((sheet for sheet in sheets if sheet.get("title") == template_tab), None) if template_tab else None
+        template = None
+        if template_tab:
+            template = next(
+                (
+                    sheet
+                    for sheet in sheets
+                    if sheet.get("title") == template_tab
+                    or str(sheet.get("title", "")).strip() == str(template_tab).strip()
+                ),
+                None,
+            )
+        if template is None:
+            template = next(
+                (
+                    sheet
+                    for sheet in sheets
+                    if str(sheet.get("title", "")).strip().startswith(("Template", "WEB-DIAG-01", "SR_001"))
+                ),
+                None,
+            )
         operation = {"duplicateSheet": {"sourceSheetId": template["sheetId"], "newSheetName": tab_name}} if template else {"addSheet": {"properties": {"title": tab_name}}}
         response = self.request("POST", f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}:batchUpdate", {"requests": [operation]})
         reply = response.get("replies", [{}])[0]
@@ -113,6 +145,100 @@ class SheetsClient:
     def insert_row(self, spreadsheet_id: str, sheet_id: int, row_number: int) -> dict:
         body = {"requests": [{"insertDimension": {"range": {"sheetId": sheet_id, "dimension": "ROWS", "startIndex": row_number - 1, "endIndex": row_number}, "inheritFromBefore": True}}]}
         return self.request("POST", f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}:batchUpdate", body)
+
+    def batch_requests(self, spreadsheet_id: str, requests: list[dict]) -> dict:
+        if not requests:
+            return {}
+        return self.request("POST", f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}:batchUpdate", {"requests": requests})
+
+    @staticmethod
+    def copy_row_style_requests(
+        sheet_id: int,
+        source_row: int,
+        start_row: int,
+        end_row: int,
+        end_col: int,
+        include_validation: bool = True,
+    ) -> list[dict]:
+        if end_row < start_row:
+            return []
+        source = {
+            "sheetId": sheet_id,
+            "startRowIndex": source_row - 1,
+            "endRowIndex": source_row,
+            "startColumnIndex": 0,
+            "endColumnIndex": end_col,
+        }
+        destination = {
+            "sheetId": sheet_id,
+            "startRowIndex": start_row - 1,
+            "endRowIndex": end_row,
+            "startColumnIndex": 0,
+            "endColumnIndex": end_col,
+        }
+        requests = [{"copyPaste": {"source": source, "destination": destination, "pasteType": "PASTE_FORMAT", "pasteOrientation": "NORMAL"}}]
+        if include_validation:
+            requests.append({"copyPaste": {"source": source, "destination": destination, "pasteType": "PASTE_DATA_VALIDATION", "pasteOrientation": "NORMAL"}})
+        return requests
+
+    @staticmethod
+    def set_hyperlink_request(sheet_id: int, row_number: int, col_index: int, uri: str | None) -> dict:
+        if uri:
+            return {
+                "updateCells": {
+                    "range": {
+                        "sheetId": sheet_id,
+                        "startRowIndex": row_number - 1,
+                        "endRowIndex": row_number,
+                        "startColumnIndex": col_index,
+                        "endColumnIndex": col_index + 1,
+                    },
+                    "rows": [{"values": [{"textFormatRuns": [{"startIndex": 0, "format": {"link": {"uri": uri}}}]}]}],
+                    "fields": "textFormatRuns",
+                }
+            }
+        return {
+            "updateCells": {
+                "range": {
+                    "sheetId": sheet_id,
+                    "startRowIndex": row_number - 1,
+                    "endRowIndex": row_number,
+                    "startColumnIndex": col_index,
+                    "endColumnIndex": col_index + 1,
+                },
+                "rows": [
+                    {
+                        "values": [
+                            {
+                                "textFormatRuns": [],
+                                "userEnteredFormat": {
+                                    "textFormat": {
+                                        "underline": False,
+                                        "foregroundColor": {"red": 0, "green": 0, "blue": 0},
+                                    }
+                                },
+                            }
+                        ]
+                    }
+                ],
+                "fields": "textFormatRuns,userEnteredFormat.textFormat(underline,foregroundColor,link)",
+            }
+        }
+
+    @staticmethod
+    def clear_validation_request(sheet_id: int, row_number: int, col_index: int) -> dict:
+        return {
+            "setDataValidation": {
+                "range": {
+                    "sheetId": sheet_id,
+                    "startRowIndex": row_number - 1,
+                    "endRowIndex": row_number,
+                    "startColumnIndex": col_index,
+                    "endColumnIndex": col_index + 1,
+                },
+                "rule": None,
+            }
+        }
 
     def first_column_with_rows(self, spreadsheet_id: str, tab_name: str) -> list[tuple[int, str]]:
         values = self.values(spreadsheet_id, tab_name, "A:A")
