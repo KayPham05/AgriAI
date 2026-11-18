@@ -44,8 +44,21 @@ Kiểm tra một thông điệp trước khi tạo commit bằng cách đưa chu
 '<type>: AGRI-<number> <description>' | pnpm run commitlint --verbose
 ```
 
-Thay placeholder bằng type, Jira key và mô tả thật. Không cần cài Git hook để chạy
-CI; có thể dùng cùng cấu hình cho hook `commit-msg` nếu nhóm cần phản hồi sớm.
+Thay placeholder bằng type, Jira key và mô tả thật.
+
+## Git hooks cục bộ (`.githooks/`)
+
+Repo cung cấp sẵn cặp Git hook tại [.githooks/](../../.githooks/):
+
+- `pre-commit`: quét thay đổi đã stage bằng Gitleaks kèm [.gitleaks.toml](../../.gitleaks.toml) (ưu tiên `gitleaks` trên `PATH`, fallback sang Docker image `ghcr.io/gitleaks/gitleaks:v8.24.2`). Nếu không có `gitleaks` và Docker daemon chưa bật, hook sẽ chặn commit để tránh bỏ sót kiểm tra secret.
+- `commit-msg`: chạy `commitlint` theo [commitlint.config.cjs](../../commitlint.config.cjs) trên nội dung commit vừa nhập.
+
+Kích hoạt hook bằng cách cài dependency ở root (script `prepare` tự cấu hình `git config core.hooksPath .githooks`) hoặc chạy thủ công:
+
+```powershell
+pnpm install --frozen-lockfile
+pnpm run hooks:install
+```
 
 ## CI
 
