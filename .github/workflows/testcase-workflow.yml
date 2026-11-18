@@ -70,11 +70,14 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           pnpm run build
+          cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
           mkdir -p ../.cache
-          nohup pnpm run start > ../.cache/frontend.log 2>&1 &
+          HOSTNAME=127.0.0.1 PORT=3000 nohup node .next/standalone/server.js > ../.cache/frontend.log 2>&1 &
       - name: Wait for frontend
         run: |
           for i in $(seq 1 60); do curl --fail --silent http://127.0.0.1:3000/diagnose >/dev/null && exit 0; sleep 2; done
+          cat .cache/frontend.log || true
           exit 1
       - uses: actions/setup-python@v5
         with:
@@ -86,6 +89,7 @@ jobs:
       - name: Run configured Playwright group
         env:
           AGRIVISION_RESULT_DIR: .cache/test-results/playwright
+          E2E_BASE_URL: http://127.0.0.1:3000
         run: python tools/testcase-workflow/workflow.py run playwright
       - name: Upload Playwright results
         if: ${{ always() }}

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import struct
 import subprocess
 import time
@@ -632,7 +633,7 @@ def is_server_up(base_url: str) -> bool:
 
 @contextmanager
 def ensure_next_server(base_url: str = DEFAULT_BASE_URL, auto_start: bool = False):
-    """Ensure frontend server is reachable; optionally manage `next start` for local runs."""
+    """Ensure frontend server is reachable; optionally manage Next.js standalone/start server."""
     if is_server_up(base_url):
         yield base_url
         return
@@ -643,10 +644,30 @@ def ensure_next_server(base_url: str = DEFAULT_BASE_URL, auto_start: bool = Fals
     parsed = urlparse(base_url)
     port = str(parsed.port or 3000)
     host = parsed.hostname or "localhost"
-    next_bin = FRONTEND_DIR / "node_modules" / "next" / "dist" / "bin" / "next"
+    standalone_dir = FRONTEND_DIR / ".next" / "standalone"
+    standalone_server = standalone_dir / "server.js"
+    env = os.environ.copy()
+    if standalone_server.is_file():
+        static_src = FRONTEND_DIR / ".next" / "static"
+        static_dst = standalone_dir / ".next" / "static"
+        if static_src.is_dir():
+            shutil.copytree(static_src, static_dst, dirs_exist_ok=True)
+        public_src = FRONTEND_DIR / "public"
+        public_dst = standalone_dir / "public"
+        if public_src.is_dir():
+            shutil.copytree(public_src, public_dst, dirs_exist_ok=True)
+        env["HOSTNAME"] = host
+        env["PORT"] = port
+        cmd = ["node", str(standalone_server)]
+        cwd = standalone_dir
+    else:
+        next_bin = FRONTEND_DIR / "node_modules" / "next" / "dist" / "bin" / "next"
+        cmd = ["node", str(next_bin), "start", "--hostname", host, "--port", port]
+        cwd = FRONTEND_DIR
     proc = subprocess.Popen(
-        ["node", str(next_bin), "start", "--hostname", host, "--port", port],
-        cwd=FRONTEND_DIR,
+        cmd,
+        cwd=cwd,
+        env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
