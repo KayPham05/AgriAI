@@ -45,12 +45,13 @@ Tài liệu này cung cấp hướng dẫn từng bước, lệnh Docker/DevTool
 ### `E2E-DIAG-06` (P1) — Giữ kết quả khi ảnh tạm hết hạn và cho phép thử lại
 1. Mở cửa sổ ẩn danh tới `http://localhost:3000/diagnose` (trạng thái **Guest**).
 2. Tải lên ảnh lá hợp lệ $\rightarrow$ nhấn **`Phân tích ngay`** và chờ có kết quả hiển thị đầy đủ.
-3. Mở **Chrome DevTools (`F12`) $\rightarrow$ Application $\rightarrow$ Session Storage** (hoặc chờ hết TTL ảnh tạm / chạy lệnh dọn ảnh hết hạn trên môi trường test cô lập):
-   - *Cách test nhanh mà không cần đợi 60 phút:* Nếu có ảnh guest cũ đã quá hạn `ExpiresAt` trong DB test, chạy lệnh cleanup trên container backend test:
+3. Chờ hết TTL ảnh tạm (60 phút) hoặc làm mất hiệu lực ảnh guest đang lưu trong RAM `GuestPredictionStore` trên môi trường test cô lập:
+   - *Cơ chế thực tế:* Ảnh guest không ghi xuống DB hay R2 mà lưu tạm trong bộ nhớ RAM của process backend (`GuestPredictionStore`, TTL 60 phút); vì vậy lệnh `--expire-images` (chỉ dọn bảng `prediction_images` trong DB của user đã đăng nhập) **không** áp dụng cho ảnh guest.
+   - *Cách test nhanh mà không cần đợi 60 phút:* Khởi động lại container backend test để xóa bộ nhớ RAM `GuestPredictionStore` rồi tải lại trang:
      ```powershell
-     docker compose exec backend dotnet AgriVision.API.dll --expire-images
+     docker compose restart backend
      ```
-     *(Lưu ý quy chuẩn `TESTING.md`: chỉ chạy lệnh `--expire-images` trên DB test disposable, không chạy trên DB chứa dữ liệu thật; hoặc kiểm tra trực tiếp bằng cách block request tải ảnh `/api/predictions/guest-image/...` trả về `404`/`410` trong DevTools Network để quan sát đúng trạng thái ảnh hết hạn của UI).*
+     *(Khi backend khởi động lại hoặc quá TTL 60 phút, `GET /api/predictions/guest/image` trả về `404 Not Found`; hoặc có thể chặn request `GET /api/predictions/guest/image` trả `404` trong DevTools Network để quan sát đúng trạng thái ảnh hết hạn của UI).*
 4. **Tải lại trang (`F5`)** hoặc mở lại tab `/diagnose`.
 5. **Kiểm tra kết quả:**
    - Thông tin kết quả chẩn đoán (tên bệnh, độ tin cậy, Top-3) vẫn được giữ từ bản nháp phiên tab.
@@ -107,7 +108,7 @@ Tài liệu này cung cấp hướng dẫn từng bước, lệnh Docker/DevTool
    ]).then(async ([getRes, delRes]) => console.log('GET:', getRes.status, 'DELETE:', delRes.status));
    ```
 6. **Kiểm tra kết quả:**
-   - Cả hai request `GET` và `DELETE` của `User B` phải trả về **`403`** hoặc **`404`** (không bao giờ trả `200`/`204`).
+   - Request `GET` của `User B` phải trả về **`404`** (`PredictionService.cs:278`) và request `DELETE` phải trả về **`401`** (`PredictionService.cs:342`, `SecurityAuthorizationTests.cs:172,175`) — không bao giờ trả `200`/`204`.
    - Đăng nhập lại **`User A`**, mở `/history` và xác nhận bản ghi `targetId` **vẫn còn nguyên vẹn**.
 
 ---
