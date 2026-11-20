@@ -39,6 +39,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           node --test .github/scripts/test_lint_commits.cjs
+          node --test .github/scripts/test_secret_scan_scope.cjs
           node .github/scripts/lint_commits.cjs
 
   secret-scan:
@@ -51,7 +52,9 @@ jobs:
       - name: Scan Git history for secrets
         run: |
           mkdir -p .cache/secret-scan
-          docker run --rm --volume "$PWD:/repo:ro" --volume "$PWD/.cache/secret-scan:/reports" ghcr.io/gitleaks/gitleaks:v8.24.2 git /repo --log-opts="--all" --no-banner --redact --verbose --report-format json --report-path /reports/gitleaks.json
+          # Include all ancestors of this checkout, including both PR merge parents.
+          # Other fetched branches must not change this checkout's result.
+          docker run --rm --volume "$PWD:/repo:ro" --volume "$PWD/.cache/secret-scan:/reports" ghcr.io/gitleaks/gitleaks:v8.24.2 git /repo --log-opts="HEAD" --no-banner --redact --verbose --report-format json --report-path /reports/gitleaks.json
       - uses: actions/upload-artifact@v7
         if: always()
         with:

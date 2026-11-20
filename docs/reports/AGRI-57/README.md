@@ -343,3 +343,17 @@ Fast-forwarded AGRI-57 to origin/main `018bf32` (39 incoming commits), preservin
 ## Shared public auth media - 2026-10-31
 
 Prepared 8.85 MB web MP4 from the 75.9 MB original and configured the supplied public R2 host for login/register media. Relevant tests 13/13, scoped Biome and production build/typecheck passed; local Chromium playback verified. **Follow-up: user uploaded both objects; live HTTP delivery and browser playback now pass.** [Source, artifact hashes, verification and remaining work](agri_57_public_auth_media_2026_10_31.md).
+
+
+## Main synchronization - 2026-11-10
+
+Fast-forwarded AGRI-57 from 770df43 to fetched main b3b5d31 (81 incoming commits, 400 paths), preserving local generated declarations. The initial Git-only verification was followed by an authorized backup, legacy-schema reconciliation, standard migrations and healthy local startup. No full application-suite or real-inference claim for that operation. [Chronological evidence and limits](agri_57_main_sync_2026_11_10.md).
+
+
+## Admin login from public lookup pages
+
+[Routing fix and regression evidence](agri_57_admin_lookup_login_routing.md) records the public-entry routing cause, reuse of the existing admin greeting, test execution and remaining browser/deployment limits.
+
+## CI secret-scan scope — 2026-11-20
+
+[CI diagnosis, fix and real-scanner verification](agri_57_ci_secret_scan_scope.md): isolate the checked-out history from unrelated fetched branches while retaining all ancestors and both PR merge parents. Four Node tests and real Gitleaks 8.24.2 probes passed; the updated workflow still needs a remote run.
