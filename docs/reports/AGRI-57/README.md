@@ -348,3 +348,8 @@ Prepared 8.85 MB web MP4 from the 75.9 MB original and configured the supplied p
 ## Main synchronization - 2026-11-10
 
 Fast-forwarded AGRI-57 from 770df43 to fetched main b3b5d31 (81 incoming commits, 400 paths), preserving local generated declarations. The initial Git-only verification was followed by an authorized backup, legacy-schema reconciliation, standard migrations and healthy local startup. No full application-suite or real-inference claim for that operation. [Chronological evidence and limits](agri_57_main_sync_2026_11_10.md).
+
+
+## Admin login from public lookup pages
+
+[Routing fix and regression evidence](agri_57_admin_lookup_login_routing.md) records the public-entry routing cause, reuse of the existing admin greeting, test execution and remaining browser/deployment limits.

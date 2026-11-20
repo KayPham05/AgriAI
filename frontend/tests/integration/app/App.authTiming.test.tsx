@@ -6,9 +6,9 @@ import { restoreAuthSession, type AuthSession } from '@/services/authApi';
 import { getPlants, getDiseases } from '@/services/catalogApi';
 import { getPredictionHistory } from '@/services/predictionApi';
 
-const fixtures = vi.hoisted(() => ({ role: 'User', replace: vi.fn() }));
+const fixtures = vi.hoisted(() => ({ role: 'User', pathname: '/', replace: vi.fn() }));
 vi.mock('next/navigation', () => ({
-  usePathname: () => '/',
+  usePathname: () => fixtures.pathname,
   useRouter: () => ({ push: vi.fn(), replace: fixtures.replace }),
 }));
 vi.mock('@/services/authApi', () => ({ restoreAuthSession: vi.fn(), clearAuthSession: vi.fn() }));
@@ -73,8 +73,9 @@ function Workspace() {
 }
 
 async function signIn() {
+  let view!: ReturnType<typeof render>;
   await act(async () => {
-    render(
+    view = render(
       <AppProvider>
         <Workspace />
       </AppProvider>,
@@ -84,11 +85,13 @@ async function signIn() {
   await act(async () => {
     fireEvent.click(screen.getByRole('button', { name: 'Complete sign-in' }));
   });
+  return view;
 }
 
 describe('authentication announcement timing', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    fixtures.pathname = '/';
     fixtures.replace.mockClear();
     vi.mocked(restoreAuthSession).mockResolvedValue(null);
     vi.mocked(getPlants).mockResolvedValue([]);
@@ -96,6 +99,46 @@ describe('authentication announcement timing', () => {
     vi.mocked(getPredictionHistory).mockResolvedValue([]);
   });
   afterEach(() => vi.useRealTimers());
+
+  it.each([
+    '/plants',
+    '/plants/coffee',
+    '/diseases',
+    '/medicines',
+    '/knowledge',
+    '/about',
+    '/diagnose',
+  ])('enters the admin login flow when signing in from %s', async (pathname) => {
+    fixtures.pathname = pathname;
+    fixtures.role = 'Admin';
+    const view = await signIn();
+    expect(fixtures.replace).toHaveBeenCalledExactlyOnceWith('/');
+    expect(getPredictionHistory).not.toHaveBeenCalled();
+    // Simulate Next completing the route replacement, then finish the entrance.
+    fixtures.pathname = '/';
+    await act(async () => {
+      view.rerender(
+        <AppProvider>
+          <Workspace />
+        </AppProvider>,
+      );
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Finish admin animation' }));
+    act(() => vi.advanceTimersByTime(3999));
+    expect(fixtures.replace).not.toHaveBeenCalledWith('/admin');
+    act(() => vi.advanceTimersByTime(1));
+    expect(fixtures.replace).toHaveBeenLastCalledWith('/admin');
+    expect(getPredictionHistory).not.toHaveBeenCalled();
+  });
+
+  it('keeps a regular user on the public catalog after sign-in', async () => {
+    fixtures.pathname = '/plants';
+    fixtures.role = 'User';
+    await signIn();
+    expect(fixtures.replace).not.toHaveBeenCalled();
+    expect(screen.getByText('Authenticated workspace')).toBeVisible();
+    expect(getPredictionHistory).not.toHaveBeenCalled();
+  });
 
   it.each(['User', 'Admin'])(
     'waits four seconds before entering a fresh %s workspace',

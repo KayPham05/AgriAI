@@ -363,15 +363,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [authSession, addToast],
   );
 
-  const handleAuthSuccess = useCallback((session: AuthSession) => {
-    // Wait for real startup data and the finite brand entrance before entering home.
-    setEntranceReady(false);
-    setNoticeReady(false);
-    setStartupData(null);
-    setStartupError('');
-    setLoginPendingSession(session);
-    setIsLoginOpen(false);
-  }, []);
+  const handleAuthSuccess = useCallback(
+    (session: AuthSession) => {
+      // Reuse the admin entrance even when login starts on a public lookup page.
+      if (session.user.role === 'Admin' && publicPage) router.replace('/');
+      setEntranceReady(false);
+      setNoticeReady(false);
+      setStartupData(null);
+      setStartupError('');
+      setLoginPendingSession(session);
+      setIsLoginOpen(false);
+    },
+    [publicPage, router],
+  );
 
   const logoutPending = useRef(false);
   const logout = useCallback(async () => {
