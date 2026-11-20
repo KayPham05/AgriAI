@@ -353,3 +353,7 @@ Fast-forwarded AGRI-57 from 770df43 to fetched main b3b5d31 (81 incoming commits
 ## Admin login from public lookup pages
 
 [Routing fix and regression evidence](agri_57_admin_lookup_login_routing.md) records the public-entry routing cause, reuse of the existing admin greeting, test execution and remaining browser/deployment limits.
+
+## CI secret-scan scope — 2026-11-20
+
+[CI diagnosis, fix and real-scanner verification](agri_57_ci_secret_scan_scope.md): isolate the checked-out history from unrelated fetched branches while retaining all ancestors and both PR merge parents. Four Node tests and real Gitleaks 8.24.2 probes passed; the updated workflow still needs a remote run.
