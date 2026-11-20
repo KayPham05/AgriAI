@@ -44,3 +44,9 @@ Repository-wide guidance. Explicit user instructions take precedence.
 - Do not invent Jira keys, owners, reviewers, branches, metrics, or experiment results.
 - Do not commit, push, rewrite history, or perform destructive Git operations unless explicitly requested.
 - Explicit user instructions take precedence; report any necessary deviation from repository rules.
+
+## Mobile workspace and branch base
+
+- Mobile base branch is `AGRI-199-initial-mobile-app`, created from main for AGRI-199. Start subsequent mobile task branches from this branch and target mobile integration PRs here unless the user directs otherwise. This mobile-specific instruction overrides the generic main-base/target rule for mobile work.
+- All mobile source, dependencies, assets, config, tests and developer docs belong in reactNative/. Mandatory Jira reports/task logs stay in the root documentation locations. Follow reactNative/AGENTS.md.
+- Do not switch to or change main for routine mobile tasks; preserve dirty work and use a separate worktree when checkout would overwrite it. No commit or push without a user request.
