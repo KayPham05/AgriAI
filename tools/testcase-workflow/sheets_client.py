@@ -12,6 +12,11 @@ from urllib.request import Request, urlopen
 
 
 SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets"
+SYNC_SNAPSHOT_TAB = "_AgriVision Sync State"
+
+
+def quote_sheet_name(tab_name: str) -> str:
+    return "'" + str(tab_name).replace("'", "''") + "'"
 
 
 class SheetsClient:
@@ -65,7 +70,7 @@ class SheetsClient:
 
     @staticmethod
     def _range(tab_name: str, a1: str) -> str:
-        return quote(f"'{tab_name}'!{a1}", safe="")
+        return quote(f"{quote_sheet_name(tab_name)}!{a1}", safe="")
 
     def values(self, spreadsheet_id: str, tab_name: str, a1: str = "A:Z") -> list[list[str]]:
         url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values/{self._range(tab_name, a1)}"
@@ -73,11 +78,14 @@ class SheetsClient:
 
     def update(self, spreadsheet_id: str, tab_name: str, a1: str, values: list[list[str]]) -> dict:
         url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values/{self._range(tab_name, a1)}?valueInputOption=USER_ENTERED"
-        return self.request("PUT", url, {"range": f"'{tab_name}'!{a1}", "majorDimension": "ROWS", "values": values})
+        return self.request("PUT", url, {"range": f"{quote_sheet_name(tab_name)}!{a1}", "majorDimension": "ROWS", "values": values})
 
     def batch_update(self, spreadsheet_id: str, updates: list[tuple[str, str, list[list[str]]]]) -> dict:
         """Update multiple ranges in one Google Sheets values:batchUpdate request."""
-        data = [{"range": f"'{tab_name}'!{a1}", "majorDimension": "ROWS", "values": values} for tab_name, a1, values in updates]
+        data = [
+            {"range": f"{quote_sheet_name(tab_name)}!{a1}", "majorDimension": "ROWS", "values": values}
+            for tab_name, a1, values in updates
+        ]
         if not data:
             return {"totalUpdatedRanges": 0}
         url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values:batchUpdate"
@@ -96,6 +104,57 @@ class SheetsClient:
         url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}?fields=sheets.properties"
         return [sheet.get("properties", {}) for sheet in self.request("GET", url).get("sheets", [])]
 
+    def load_sync_snapshot(self, spreadsheet_id: str) -> dict | None:
+        tab = SYNC_SNAPSHOT_TAB
+        metadata = next((item for item in self.sheet_metadata(spreadsheet_id) if item.get("title") == tab), None)
+        if metadata is None:
+            return None
+        rows = self.values(spreadsheet_id, tab, "A:A")
+        try:
+            version, count = rows[0][0].split(":")
+            size = int(count)
+            if not metadata.get("hidden") or version != "v1" or not 0 < size < len(rows):
+                raise ValueError("invalid snapshot header")
+            state = json.loads("".join(row[0] for row in rows[1:size + 1]))
+            if not isinstance(state, dict) or not isinstance(state.get("cases"), dict) or not isinstance(state.get("pending"), list):
+                raise ValueError("invalid snapshot structure")
+            return state
+        except (IndexError, ValueError) as error:
+            raise RuntimeError(f"Invalid sync snapshot in {tab!r}") from error
+
+    def save_sync_snapshot(self, spreadsheet_id: str, snapshot: dict) -> None:
+        tab = SYNC_SNAPSHOT_TAB
+        payload = json.dumps(snapshot, ensure_ascii=False, separators=(",", ":"))
+        chunks = [payload[i:i + 20_000] for i in range(0, len(payload), 20_000)]
+        rows = [f"v1:{len(chunks)}", *chunks]
+        metadata = self.sheet_metadata(spreadsheet_id)
+        existing = next((item for item in metadata if item.get("title") == tab), None)
+        requests = []
+        if existing is None:
+            used_ids = {item["sheetId"] for item in metadata}
+            sheet_id = next(i for i in range(len(used_ids) + 1) if i not in used_ids)
+            requests.append({"addSheet": {"properties": {
+                "sheetId": sheet_id, "title": tab, "hidden": True,
+                "gridProperties": {"rowCount": len(rows), "columnCount": 1},
+            }}})
+        else:
+            if not existing.get("hidden"):
+                raise RuntimeError(f"Sync snapshot tab {tab!r} must be hidden")
+            sheet_id = existing["sheetId"]
+            missing_rows = len(rows) - existing["gridProperties"]["rowCount"]
+            if missing_rows > 0:
+                requests.append({"appendDimension": {"sheetId": sheet_id, "dimension": "ROWS", "length": missing_rows}})
+        requests.append({"updateCells": {
+            "start": {"sheetId": sheet_id, "rowIndex": 0, "columnIndex": 0},
+            "rows": [{"values": [{"userEnteredValue": {"stringValue": row}}]} for row in rows],
+            "fields": "userEnteredValue",
+        }})
+        self.batch_requests(spreadsheet_id, requests)
+
+    def spreadsheet_locale(self, spreadsheet_id: str) -> str:
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}?fields=properties.locale"
+        return str(self.request("GET", url).get("properties", {}).get("locale", ""))
+
     def conditional_formats(self, spreadsheet_id: str) -> dict[int, list[dict]]:
         url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}?fields=sheets(properties(sheetId,title),conditionalFormats)"
         result: dict[int, list[dict]] = {}
@@ -109,7 +168,14 @@ class SheetsClient:
     def delete_conditional_format_request(sheet_id: int, index: int) -> dict:
         return {"deleteConditionalFormatRule": {"sheetId": sheet_id, "index": index}}
 
-    def ensure_sheet(self, spreadsheet_id: str, tab_name: str, template_tab: str | None = None) -> dict:
+    def ensure_sheet(
+        self,
+        spreadsheet_id: str,
+        tab_name: str,
+        template_tab: str | None = None,
+        *,
+        clear_from_row: int | None = None,
+    ) -> dict:
         sheets = self.sheet_metadata(spreadsheet_id)
         existing = next((sheet for sheet in sheets if sheet.get("title") == tab_name), None)
         if existing:
@@ -135,8 +201,29 @@ class SheetsClient:
                 ),
                 None,
             )
-        operation = {"duplicateSheet": {"sourceSheetId": template["sheetId"], "newSheetName": tab_name}} if template else {"addSheet": {"properties": {"title": tab_name}}}
-        response = self.request("POST", f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}:batchUpdate", {"requests": [operation]})
+        if template is None:
+            requests = [{"addSheet": {"properties": {"title": tab_name}}}]
+        else:
+            duplicate = {"sourceSheetId": template["sheetId"], "newSheetName": tab_name}
+            requests = [{"duplicateSheet": duplicate}]
+            if clear_from_row is not None:
+                grid = template["gridProperties"]
+                if clear_from_row <= grid["rowCount"]:
+                    # Commit the copy and value clearing together so retries can reuse the tab.
+                    used_ids = {sheet["sheetId"] for sheet in sheets}
+                    new_sheet_id = next(i for i in range(len(used_ids) + 1) if i not in used_ids)
+                    duplicate["newSheetId"] = new_sheet_id
+                    requests.append({"updateCells": {
+                        "range": {
+                            "sheetId": new_sheet_id,
+                            "startRowIndex": clear_from_row - 1,
+                            "endRowIndex": grid["rowCount"],
+                            "startColumnIndex": 0,
+                            "endColumnIndex": min(grid["columnCount"], 26),
+                        },
+                        "fields": "userEnteredValue",
+                    }})
+        response = self.batch_requests(spreadsheet_id, requests)
         reply = response.get("replies", [{}])[0]
         properties = reply.get("duplicateSheet", {}).get("properties") or reply.get("addSheet", {}).get("properties", {})
         properties["created"] = True
@@ -239,10 +326,3 @@ class SheetsClient:
                 "rule": None,
             }
         }
-
-    def first_column_with_rows(self, spreadsheet_id: str, tab_name: str) -> list[tuple[int, str]]:
-        values = self.values(spreadsheet_id, tab_name, "A:A")
-        return [(index, str(row[0]).strip()) for index, row in enumerate(values, start=1) if row and str(row[0]).strip()]
-
-    def first_column(self, spreadsheet_id: str, tab_name: str) -> set[str]:
-        return {value for _, value in self.first_column_with_rows(spreadsheet_id, tab_name)}

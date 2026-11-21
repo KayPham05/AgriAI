@@ -5,12 +5,43 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
+from urllib.parse import unquote
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sheets_client import SheetsClient
 
 
 class SheetsClientRetryTests(unittest.TestCase):
+    def test_sync_snapshot_writes_a_hidden_tab_and_reads_only_current_chunks(self):
+        client = SheetsClient(access_token="test")
+        snapshot = {"cases": {"API-01": {"expected": "ảnh" * 9000}}, "pending": []}
+        with patch.object(client, "sheet_metadata", return_value=[{"sheetId": 0, "title": "Report bug"}]), patch.object(client, "batch_requests") as batch:
+            self.assertIsNone(client.load_sync_snapshot("sheet"))
+            client.save_sync_snapshot("sheet", snapshot)
+        created, wrote = batch.call_args.args[1]
+        props = created["addSheet"]["properties"]
+        self.assertTrue(props["hidden"])
+        cells = wrote["updateCells"]
+        self.assertEqual(cells["start"]["sheetId"], props["sheetId"])
+        rows = [[row["values"][0]["userEnteredValue"]["stringValue"]] for row in cells["rows"]]
+        self.assertGreater(len(rows), 2)
+        with patch.object(client, "sheet_metadata", return_value=[props]), patch.object(client, "values", return_value=[*rows, ["stale"]]):
+            self.assertEqual(client.load_sync_snapshot("sheet"), snapshot)
+
+        smaller = {**props, "gridProperties": {"rowCount": 2}}
+        with patch.object(client, "sheet_metadata", return_value=[smaller]), patch.object(client, "batch_requests") as grow:
+            client.save_sync_snapshot("sheet", snapshot)
+        self.assertEqual(grow.call_args.args[1][0], {
+            "appendDimension": {"sheetId": props["sheetId"], "dimension": "ROWS", "length": len(rows) - 2},
+        })
+
+        with (
+            patch.object(client, "sheet_metadata", return_value=[props]),
+            patch.object(client, "values", return_value=rows[:2]),
+            self.assertRaisesRegex(RuntimeError, "Invalid sync snapshot"),
+        ):
+            client.load_sync_snapshot("sheet")
+
     def test_batch_update_sends_multiple_ranges_once(self):
         client = SheetsClient(access_token="test")
         with patch.object(client, "request", return_value={"totalUpdatedRanges": 2}) as request:
@@ -18,6 +49,20 @@ class SheetsClientRetryTests(unittest.TestCase):
         self.assertEqual(result["totalUpdatedRanges"], 2)
         request.assert_called_once()
         self.assertEqual(len(request.call_args.args[2]["data"]), 2)
+
+    def test_value_requests_escape_apostrophes_in_tab_names(self):
+        client = SheetsClient(access_token="test")
+        with patch.object(client, "request", return_value={}) as request:
+            client.values("sheet", "QA's cases", "A1")
+            client.update("sheet", "QA's cases", "A1", [["value"]])
+            client.batch_update("sheet", [("QA's cases", "A1", [["value"]])])
+
+        expected_range = "'QA''s cases'!A1"
+        read, write, batch = request.call_args_list
+        self.assertTrue(unquote(read.args[1]).endswith(f"/values/{expected_range}"))
+        self.assertIn(f"/values/{expected_range}?", unquote(write.args[1]))
+        self.assertEqual(write.args[2]["range"], expected_range)
+        self.assertEqual(batch.args[2]["data"][0]["range"], expected_range)
 
     def test_retries_network_error_then_succeeds(self):
         class Response:
@@ -157,6 +202,46 @@ class SheetsClientRetryTests(unittest.TestCase):
             },
         )
 
+    def test_template_duplicate_clears_case_values_in_same_batch_and_preserves_existing_tab_on_retry(self):
+        client = SheetsClient(access_token="test")
+        template = {
+            "sheetId": 11,
+            "title": "WEB-DIAG-01 Diagnosis",
+            "gridProperties": {"rowCount": 100, "columnCount": 11},
+        }
+        target = {"sheetId": 1, "title": "WEB-FIXTURE"}
+        with (
+            patch.object(client, "sheet_metadata", side_effect=[[{"sheetId": 0}, template], [template, target]]),
+            patch.object(client, "request", side_effect=RuntimeError("lost response after committed batch")) as request,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "lost response"):
+                client.ensure_sheet("sid", target["title"], template["title"], clear_from_row=15)
+            retried = client.ensure_sheet("sid", target["title"], template["title"], clear_from_row=15)
+
+        request.assert_called_once_with(
+            "POST",
+            "https://sheets.googleapis.com/v4/spreadsheets/sid:batchUpdate",
+            {"requests": [
+                {"duplicateSheet": {
+                    "sourceSheetId": 11,
+                    "newSheetId": 1,
+                    "newSheetName": "WEB-FIXTURE",
+                }},
+                {"updateCells": {
+                    "range": {
+                        "sheetId": 1,
+                        "startRowIndex": 14,
+                        "endRowIndex": 100,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": 11,
+                    },
+                    "fields": "userEnteredValue",
+                }},
+            ]},
+        )
+        self.assertFalse(retried["created"])
+        self.assertEqual(retried["sheetId"], 1)
+
     def test_batch_requests_handles_empty_and_retries_http_errors_with_backoff(self):
         client = SheetsClient(access_token="test")
         with patch.object(client, "request") as req:
@@ -181,6 +266,12 @@ class SheetsClientRetryTests(unittest.TestCase):
                 client.batch_requests("sid", [{"deleteSheet": {"sheetId": 123}}])
         self.assertIn("Google Sheets API 400: invalid", str(ctx.exception))
         sleep.assert_not_called()
+
+    def test_spreadsheet_locale_reads_properties_locale(self):
+        client = SheetsClient(access_token="test")
+        with patch.object(client, "request", return_value={"properties": {"locale": "en_US"}}) as req:
+            self.assertEqual(client.spreadsheet_locale("sid"), "en_US")
+        req.assert_called_once_with("GET", "https://sheets.googleapis.com/v4/spreadsheets/sid?fields=properties.locale")
 
 
 if __name__ == "__main__":

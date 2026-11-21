@@ -66,11 +66,11 @@ def main() -> int:
     parser.add_argument("--expected-id", action="append", default=[])
     args = parser.parse_args()
     try:
-        expected = set(args.expected_id) or None
+        expected = set(args.expected_id)
         if args.expected_cases:
             payload = json.loads(args.expected_cases.read_text(encoding="utf-8"))
-            expected = {str(case["id"]) for case in payload["cases"] if str(case.get("runner", "")) != ""}
-        summary = validate_results(args.root, expected)
+            expected.update(str(case["id"]) for case in payload["cases"] if case.get("runner"))
+        summary = validate_results(args.root, expected if args.expected_cases else expected or None)
     except ValueError as error:
         parser.error(str(error))
     print(json.dumps({"valid": not summary["failed_cases"], "case_count": summary["case_count"], "failed_cases": summary["failed_cases"]}))

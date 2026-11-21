@@ -1,5 +1,9 @@
 # AGRI-145 — Testcase workflow
 
+- **Trạng thái (2026-11-21):** Working tree đã qua nghiệm thu cục bộ và chờ duyệt trước commit cho [PR #64](https://github.com/KayPham05/AgriAI/pull/64).
+- **Nghiệm thu:** Xem [kiểm tra trước commit](#kiểm-tra-trước-commit). CI trên bản mới và ghi–đọc lại Sheets sau triển khai còn chờ xác minh.
+- **Task log:** [AGRI-145-testcase-workflow.md](../../task-logs/AGRI-145/AGRI-145-testcase-workflow.md).
+
 ## Phạm vi
 
 Workflow quản lý registry testcase cho `api`, `screen`, `viewpoint`; thực thi nhóm API/.NET, Vitest và Playwright; nhập artifact kết quả rồi đồng bộ Google Sheets. Mapping group → testcase dùng `case_ids`, không fan-out ngầm.
@@ -105,10 +109,113 @@ Workflow quản lý registry testcase cho `api`, `screen`, `viewpoint`; thực t
 - `docker-compose.e2e.yml` cung cấp Mailpit nội bộ; backend production mặc định vẫn dùng STARTTLS, chỉ E2E override dùng SMTP test không mã hóa trên network cô lập.
 - Bộ `run_suite.py` (40 ca Browser UI test dùng `ApiStub` cho CI) và bộ `run_live_suite.py` (40 ca Live System E2E trên Docker stack thật) được duy trì song song và đồng bộ 100% về danh sách 40 mã kiểm thử tự động.
 
+### [2026-11-18 19:05 +07:00] Per-case TRX/Vitest parsing & Git-backed CI state
+
+- **Changed (`tools/testcase-workflow/workflow.py`, `.github/workflows/testcase-workflow.yml`, `tools/testcase-workflow/test_workflow.py`):**
+  - Thêm `parse_trx_case_results()` (dotnet `.trx`) và `parse_vitest_case_results()` (Vitest `--reporter=json`) vào `run_group("api")` / `run_group("screen")` để emit kết quả `per_case` theo từng `selector` (`API-PRED-01`, `API-PRED-02`, `WEB-PRED-01`, `WEB-PRED-02`) thay vì chỉ gán chung `RUN-api`/`RUN-screen`; `run_all()` tránh chạy lặp các case đã nằm trong group; `test-result-summary` kiểm tra đủ 9 `--expected-id`.
+  - Thêm `load_previous_cases_from_git()` (`HEAD` khi working tree bẩn hoặc `HEAD^1` khi sạch) làm nguồn fallback khi `state.json` chưa có `cases` trên CI (`fetch-depth: 0`), và `_mark_deprecated_sheet_rows()` để giữ dòng lịch sử và cập nhật `execution="N/A"` + `evidence` `[Deprecated]` trên tab sẵn có mà không chạm cột status dropdown.
+- **Verified (sau sửa cuối):**
+  - `python -m py_compile tools/testcase-workflow/workflow.py tools/testcase-workflow/sheets_client.py tools/testcase-workflow/validate_results.py`: pass.
+  - `python -m unittest tools.testcase-workflow.test_workflow tools.testcase-workflow.test_sheets_client -v`: **59/59 pass** (`1.210s`).
+  - `yaml.safe_load` trên `.github/workflows/testcase-workflow.yml`: **7 jobs** hợp lệ.
+  - Thực thi thật `workflow.py run screen` + `validate_results.py` (`AGRIVISION_RESULT_DIR=.cache/verify-screen`): **pass** (`WEB-PRED-01`, `WEB-PRED-02`, `RUN-screen` `9/9` tests trong `4.822s`, `valid: true`, `failed_cases: []`).
+- **Remaining:** `run_group("api")` live với `.trx` trên Docker thật chưa chạy lại trong lượt này (Docker Desktop đang tắt; nhánh `.trx` đã kiểm bằng fixture XML). Đồng bộ GitHub Actions thật chờ push lên CI.
+
+### [2026-11-18 19:13 +07:00] Config-driven Sheet layout & locale-aware formulas
+
+- **Changed (`tools/testcase-workflow/config/sheets.json`, `tools/testcase-workflow/sheets_client.py`, `tools/testcase-workflow/workflow.py`, `tools/testcase-workflow/test_workflow.py`, `tools/testcase-workflow/test_sheets_client.py`):**
+  - Bổ sung `detail_header`, `detail_count_field`, `detail_formula_metrics` vào `sheets.json` và chuyển toàn bộ tọa độ/công thức tab chi tiết sang `build_detail_summary_updates()` dùng dải mở `<col><start_row>:<col>` (bỏ giới hạn cứng `1000`/`1108` và bỏ hardcode `C7:C7`, `C10:C11`, `G9:G10`, `C5:C11`, `B1:B3`, `A7:A7`, `A1:A2`).
+  - Thêm `SheetsClient.spreadsheet_locale()` và `formula_separator_for_locale()` để chọn dấu `,` hoặc `;` theo locale thực tế của từng Google Spreadsheet.
+  - Rút gọn `parse_trx_case_results()` và `parse_vitest_case_results()` qua helper chung `_build_parsed_case_result()`.
+- **Verified (sau sửa cuối):** `py_compile` pass; `python -m unittest tools.testcase-workflow.test_workflow tools.testcase-workflow.test_sheets_client -q` **61/61 pass**; `workflow.py sync --dry-run` pass (`47` cases); `git diff --check` pass.
+- **Remaining:** Ghi thử thực tế lên Google Sheet (`sync --sheets`) khi có phiên Sheets hoặc sau push CI.
+
+## 2026-11-21 Kiểm chứng vòng sửa 3 finding
+
+| Bước | Thay đổi | Kết quả review |
+| --- | --- | --- |
+| 1. Kết quả riêng từng testcase | Bỏ lấy `RUN-*` làm kết quả testcase khi sync. Playwright đối chiếu đúng tập ID và đếm `Passed` từ từng bản ghi. CI yêu cầu hợp của các ID có runner trong registry và các ID nhóm, hiện là 46 + 3. | Trước sửa, report Playwright 1/40 vẫn pass, một dòng mới được điền `Passed` từ kết quả nhóm và validator bỏ qua ID nhóm khi dùng cả hai tham số. Sau sửa, suite **63/63** pass. Chạy CLI với artifact giả lập đủ **49** ID pass, bỏ lần lượt `E2E-AUTH-01` hoặc `RUN-playwright` đều bị từ chối. |
+| 2. Report bắt buộc | API, Vitest và Playwright phát kết quả `Blocked` và trả lỗi nếu subprocess exit 0 mà thiếu report. Playwright đọc đường dẫn `--json-report` tường minh và yêu cầu file được tạo hoặc cập nhật trong lượt chạy. | Trước sửa, ba nhóm và trường hợp Playwright dùng report cũ đều báo thành công. Sau sửa, suite **65/65** pass. `run screen` thật pass **9/9** và validator chấp nhận đúng **3** bản ghi gồm `WEB-PRED-01`, `WEB-PRED-02` và `RUN-screen`. |
+| 3. Mốc trước push | Khi runner chưa có snapshot, CI truyền `github.event.before` qua `AGRIVISION_CASES_BEFORE_SHA`. Push tạo ref mới dùng snapshot rỗng. SHA không có trong checkout làm sync dừng trước khi tạo Sheets client. Chạy local và dispatch vẫn dùng mốc Git mặc định khi thiếu SHA. | Repo fixture có commit đầu thay `API-V1`, commit cuối sửa ghi chú. Trước sửa testcase cũ bị bỏ sót. Sau sửa nhận diện đúng `API-V1`, xử lý cả SHA toàn số 0 lẫn SHA không khả dụng. Suite **65/65** pass. |
+
+- **Nguồn:** [workflow.py](../../../tools/testcase-workflow/workflow.py), [validate_results.py](../../../tools/testcase-workflow/validate_results.py), [test_workflow.py](../../../tools/testcase-workflow/test_workflow.py), [testcase-workflow.yml](../../../.github/workflows/testcase-workflow.yml).
+- **Kiểm tra cục bộ:** Python compile, YAML parse **7 jobs**, `git diff --check` và `sync --dry-run` với **47 case** đều pass. Unit tests chạy với thư mục tạm trong workspace và bỏ cấu hình Git được chèn từ host trong tiến trình test.
+- **Playwright UI thật:** Lượt đầu không tìm thấy Chromium ở đường dẫn sandbox mặc định. Runner ghi **40 Blocked** và `RUN-playwright Failed`; validator từ chối. Chạy lại với `PLAYWRIGHT_BROWSERS_PATH` trỏ tới Chromium đã cài và frontend Next.js standalone có sẵn trên loopback: **40/40 pass** trong **106.118 giây**, validator chấp nhận **41** bản ghi. Review cuối bổ sung fixture đổi thời gian truy cập của report cũ và giữ nguyên thời gian sửa đổi; suite cuối **65/65** pass.
+- **Artifact local:** [Unit test log](../../../.cache/agri145-findings-final-tests.log), [Vitest results](../../../.cache/agri145-findings-screen-67b226b9745f412cbb76bf8236317098/results.json), [Playwright results](../../../.cache/agri145-findings-playwright-063fbac8c1354ce29bd0c5afaaad71d2/results.json).
+- **Còn lại:** GitHub Actions chưa xác minh được vì GitHub CLI trả HTTP 401. Docker từ chối kết nối, nên chưa chạy API suite và Live System E2E. Chưa ghi Google Sheets. Refactor hướng 1 là diff tiếp theo.
+
+## 2026-11-21 Kết quả vòng sửa sau review PR
+
+| Finding | Thay đổi và kết quả review |
+| --- | --- |
+| P1 · Gitleaks thiếu bộ quy tắc mặc định | `.gitleaks.toml` bật `extend.useDefault` và giữ allowlist cho JWT giả dùng trong CI. Gitleaks local phát hiện fixture token giả (exit 1), cho qua JWT giả (exit 0), và không báo phát hiện khi quét diff so với `origin/main` hoặc lịch sử 33 commit của nhánh. |
+| P1 · `run-case` có thể ghi `Passed` khi không chạy test | Đọc TRX, Vitest JSON hoặc Playwright JSON theo đúng ID/selector và dùng exit code để xác nhận runner hoàn tất. Fixture có exit 0 nhưng report thiếu kết quả đã thực thi bị chặn ở cả ba adapter. Vitest chạy thật ghi `Passed` khi khớp 1 test và `Blocked` khi khớp 0 test. |
+| P2 · Ảnh riêng tư bị vỡ sau khi lưu chẩn đoán khách | Card kết quả dùng `PrivateImage` ở cả nhánh thành công và cảnh báo. Test tích hợp tái hiện thiếu request ảnh có Bearer trước sửa và xác nhận lưu thành công, fetch đúng header, hiển thị ảnh blob sau sửa. |
+| P2 · Chuyển tab để lại hai dòng active | Sau khi ghi đích, sync đánh dấu ID dòng nguồn `[Moved]`, giữ nguyên cột và evidence lịch sử. Dashboard API và Screen bỏ qua dòng này trong các mục đếm. Fixture xác nhận chuyển đi, chạy lại và chuyển về cùng ID mà không tạo thêm dòng active. |
+
+- **Bằng chứng workflow:** [67 unit tests](../../../.cache/agri145-review-fixes-unit.log), artifact Vitest `run-case` [khớp selector](../../../.cache/agri145-case-configured-yk09int1/results.json) và [không khớp selector](../../../.cache/agri145-case-unmatched-igbl2hw_/results.json). `sync --dry-run` đọc 47 testcase, 47 `unchanged`.
+- **Frontend:** [Vitest đầy đủ](../../../.cache/agri145-review-fixes-vitest.log) **81 file / 576 test pass**. `run screen` pass **9/9**, validator chấp nhận [3 bản ghi](../../../.cache/agri145-review-fixes-screen-e1e2704bc2d44835a0f9ba1a14952bf5/results.json). TypeScript và Biome trên hai file TSX thay đổi đều pass. Chromium chạy kịch bản lưu kết quả với API stub, request ảnh có Bearer trả HTTP 200 và ảnh giải mã được ở chiều rộng 224 px.
+- **Playwright UI:** **40/40 pass** trong **102.523 giây** trên output Next.js đã compile. Validator chấp nhận [41 bản ghi](../../../.cache/agri145-review-fixes-browser-edfb7ee4b35547768d3257b28294472b/results.json). Gitleaks local quét thêm `--all` (**279 commit**) và không báo phát hiện.
+- **Build local:** [Turbopack build](../../../.cache/agri145-review-fixes-build-retry.log) compile và kiểm tra TypeScript thành công rồi dừng vì `EPERM` khi tạo thư mục/symlink để đóng gói `.next/standalone` trên Windows. Kiểm tra Chromium dùng `next start` với output đã compile.
+- **Còn lại:** Chưa chạy API .NET và Live System E2E với Docker do daemon từ chối kết nối. Công thức và thao tác chuyển tab mới được kiểm bằng fixture, chưa ghi lên Google Sheets. Cần CI trên commit chứa bản sửa và approval của reviewer trước khi merge.
+
+## 2026-11-21 Snapshot Sheets và số liệu active
+
+- **Mốc đồng bộ:** `sync --sheets` đọc snapshot từ tab ẩn `_AgriVision Sync State` trong spreadsheet API. Lần đầu khởi tạo dùng state cục bộ hoặc mốc Git. Các lần sau ưu tiên snapshot đã lưu. `sync --dry-run` vẫn đọc local/Git và không mở Sheets client.
+- **Thử lại sau lỗi:** Trước khi ghi dòng đích, lưu những vị trí Sheet có thể được tạo trong lượt hiện tại. Chỉ xác nhận registry mới sau khi ghi chi tiết và dashboard xong. Nếu lượt lỗi giữa chừng, snapshot xác nhận vẫn giữ registry cũ và lượt tiếp theo có thể xử lý cả tab đích đã bị bỏ lại. Snapshot dạng JSON chia đoạn, cập nhật tab ẩn bằng một batch cấu trúc. [Sheets API batchUpdate](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets/batchUpdate)
+- **Số liệu:** Công thức dashboard API/Screen loại cả dòng `[Moved]` và dòng có evidence `[Deprecated]`, kể cả tab nguồn không còn testcase trong registry. Trạng thái cũ vẫn nằm trên dòng lịch sử. Nếu thêm lại ID, sync phục hồi Execution từ cấu hình hoặc kết quả mới và bỏ nhãn Deprecated cũ.
+- **Kiểm chứng:** [69/69 workflow unit tests](../../../.cache/agri145-sync-checkpoint-tests.log), gồm fixture so với snapshot đã xuất bản, ngắt sau khi ghi dòng, phục hồi khi registry quay về, và công thức ở tab chỉ còn dòng lịch sử. `run screen` pass **9/9**, validator nhận [3 bản ghi](../../../.cache/agri145-sync-checkpoint-screen-817950a70b0948eea5643dbc85fa1571/results.json). Dry-run **47/47**, Python syntax và YAML **7 jobs** pass.
+- **Còn lại:** Chưa tạo checkpoint hoặc ghi thử live. Mốc bootstrap cần khớp lần ghi cuối trước khi bật bản mới trên Sheet chính. API và Live System E2E chưa chạy vì Docker từ chối kết nối. Bản sửa chưa có CI từ xa.
+
+### Review plan Level 2
+
+- Tách theo trách nhiệm sau khi chốt baseline mới. Đặt module production là `case_runners.py` hoặc `runners.py`, để unittest discovery chỉ thu test files. Chiều import là `workflow.py` → `runners` → `sheets_sync` → `registry_state`. Hai module trung gian có thể đọc registry qua module gốc.
+- Tách cơ học từng module, chuyển patch tới tên mà hàm tra cứu lúc chạy, rồi đo parity qua CLI và artifact. Giữ re-export tường minh các entrypoint thật sự dùng. Chụp baseline sau bản sửa snapshot, gồm khôi phục sau ghi một phần và bộ lọc `[Deprecated]`.
+- Giữ fallback dashboard, migration conditional format và các key mô tả trong đợt tách. Fixture dashboard hiện có đường chạy thiếu `summary_cell_refs`. Việc biến key này thành bắt buộc là thay đổi hành vi. Dọn fallback, helper thực sự không còn caller và fixture boilerplate trong diff nhỏ sau khi có parity.
+
+### Chuẩn bị tách module Level 2 (2026-11-21)
+
+- [Plan đã chỉnh](../../plans/AGRI-145-testcase-workflow-refactor-plan.md) dùng `case_runners.py`, tách cơ học từng nhóm trước cleanup và bổ sung kiểm tra tương đương theo CLI, artifact và lệnh ghi Sheets trên fixture.
+- Dọn nhẹ `sync()` bằng cách dùng lại bảng tra vị trí hiện tại/đang ghi dở khi dựng journal. So trước/sau cho kết quả giống hệt ở **39 chữ ký**, JSON dry-run **47 case** và **11 bản ghi trace** gồm ghi dòng, cập nhật dashboard và snapshot trong fixture sync bị ngắt rồi thử lại.
+- **69/69** unit tests pass. Hai lượt `run screen` từ repo root và `frontend/` đều pass **9/9**, validator nhận **3** bản ghi mỗi lượt. Hai artifact có nội dung khớp sau khi chuẩn hóa thời lượng, timestamp và run ID. [Baseline và checksum](../../../.cache/agri145-level2-baseline/comparison.json)
+- Chưa thực hiện giai đoạn dời module. Ghi–đọc lại Sheets, API .NET và Live System E2E nằm ngoài lượt baseline cục bộ này.
+
+## 2026-11-21 Kết quả thực thi Level 2
+
+- Tách `registry_state.py`, `sheets_sync.py` và `case_runners.py`. `workflow.py` còn **153 dòng** và giữ vai trò CLI cùng re-export tường minh. Dời **25 test Sheets** và **11 test runner** về đúng module và cập nhật namespace của mock.
+- Sau từng bước dời, suite pass **69/69**. Sau khi đạt parity, bỏ hai helper đọc cột Sheets đã xác nhận thừa. CI `workflow-smoke` compile **6 module production** và dùng discovery lấy đủ **4 suite**.
+- [Artefact đối chiếu](../../../.cache/agri145-level2-baseline/split-comparison.json) xác nhận **39 chữ ký**, tên của **69 test**, JSON dry-run **47 testcase** và thứ tự/payload của **11 thao tác fixture Sheets** khớp baseline. `run screen` từ repo root và `frontend/` đều pass **9/9**, validator nhận **3** bản ghi mỗi lượt. Hai artifact khớp baseline sau chuẩn hóa.
+- `run playwright` với output Next.js đã compile pass **40/40** trong **98.657 giây**. Validator chấp nhận [41 bản ghi](../../../.cache/agri145-level2-baseline/split-playwright/results.json), đủ mọi ID Playwright trong cấu hình và `RUN-playwright`. Gitleaks không báo phát hiện trên diff và các file mới. `git diff --check` pass.
+- API integration và Live System E2E còn bị chặn vì Docker từ chối kết nối. Chưa ghi Google Sheets thật hoặc xác minh CI trên commit chứa bản tách.
+
+## Kiểm tra trước commit
+
+**2026-11-21, branch `AGRI-145-testcase-design-demo`, working tree trên `d9a9afc`.** Tách riêng dòng testcase, công thức, summary, Sheets API và điều phối sync. Runner, parser report và HTTP contract có module riêng. File production lớn nhất còn **429 dòng**. File test lớn nhất còn **521 dòng**. [Plan cập nhật](../../plans/AGRI-145-testcase-workflow-refactor-plan.md)
+
+| Phát hiện | Bản sửa và bằng chứng |
+| --- | --- |
+| Rerun cũ có thể ghi đè Sheets mới | CI đối chiếu SHA với đầu `main` trước bước giải mã khóa, đồng thời yêu cầu bốn job tạo artifact và job tổng hợp thành công. Fixture Git remote cục bộ trả **0** cho SHA hiện tại, **1** cho rerun cũ hoặc remote thiếu `main`. [Log](../../../.cache/agri145-sheets-revision-check.log) |
+| Report lỗi làm mất artifact | TRX, Vitest và Playwright lỗi đọc hoặc sai cấu trúc đều ghi kết quả từng case và `RUN-*`, kèm lý do và exit khác 0. Runner cũng báo lỗi với ID đã cấu hình nhưng thiếu trong registry. Hai lệnh kiểm HTTP trả lỗi đúng exit code và xác minh payload thực tế. |
+| Gián đoạn khi nhân bản tab và trạng thái cũ khi thêm lại testcase | Nhân bản và xóa giá trị testcase mẫu trong cùng batch. Fixture retry giữ tab đã tạo và không để lại dòng mẫu. Testcase được thêm lại dùng trạng thái hiện tại, mặc định `Not run` nếu chưa có kết quả mới. Tên tab có dấu nháy đơn được escape chung ở đọc, ghi và công thức. |
+| Next.js 16.4.1 làm build dừng ở bước kiểm tra bảo mật | Cập nhật lên **16.4.5** và chỉ thay các mục lockfile cần cho bản vá. Frozen install, build standalone và Playwright trên bản mới đều pass. [Bản phát hành Next.js](https://github.com/vercel/next.js/releases/tag/v16.4.5) |
+
+| Kiểm tra cục bộ | Kết quả |
+| --- | --- |
+| Workflow Python, compile, YAML và secret scan | **82/82** unit test ở **3** process mới. `compileall`, `actionlint`, Gitleaks và `git diff --check` pass. [Unit log](../../../.cache/agri145-final/workflow-3.log) |
+| CLI và Sheets fixture | **39** chữ ký, dry-run **47** testcase và thứ tự **11** thao tác giữ nguyên. Payload chỉ thay ở ô của testcase được thêm lại, từ `Passed` cũ sang `Not run`. |
+| API với Testcontainers và Docker local | **294/294** API tests pass. Health và Guest contract thật pass **2/2** sau khi Docker Desktop hoạt động lại. [TRX](../../../.cache/agri145-final/api-verified/api-results.trx) · [Contract log](../../../.cache/agri145-final-live-contract-verified.log) |
+| Frontend và Playwright UI | Vitest **576/576** ở **81** file với 2 workers. `run screen` **9/9** từ repo root và `frontend/`. Chromium trên Next.js 16.4.5 standalone với API stub pass **40/40**. [Vitest](../../../.cache/agri145-final-frontend-verified.log) · [Playwright](../../../.cache/agri145-final-browser-patched.log) |
+| Artifact và Google Sheets chỉ đọc | Validator tổng hợp chấp nhận **49** bản ghi, gồm **46** testcase tự động và **3** bản ghi nhóm. Đối chiếu trực tiếp thấy **47/47** ID xuất hiện đúng một lần ở tab dự kiến trong **13** tab quản lý. Cột execution khớp cấu hình ở **46** dòng API/Screen có cột này. Viewpoint có một ID và chưa có runner. [API](https://docs.google.com/spreadsheets/d/1BBHMgQMQMMFzrMlxzjRHDd73QATmPVUvqpf6gKkjsUg/edit) · [Screen](https://docs.google.com/spreadsheets/d/1p1CN5KM1PVFcYvPD_rvfziO8rxcYgljG56LUb0DSCIQ/edit) · [Viewpoint](https://docs.google.com/spreadsheets/d/1wFM32VTHADjP-DnB3yLTZ5WjbPwDEs2HDOgnvcN0TbA/edit) |
+
+Lượt đầu Vitest có ba timeout và nhóm API đạt 293/294. Lượt API kế tiếp bị lỗi kết nối Docker. Các số trong bảng lấy từ lượt nghiệm thu mới. [Ảnh bằng chứng](../../../.cache/agri145-final/precommit-evidence.png)
+
+**Còn lại trước merge:** duyệt report, sau đó chạy CI đúng commit mới và nhận review theo quy trình PR. Lượt này giữ index rỗng và chỉ đọc Google Sheets thật. Luồng ghi được kiểm bằng fixture. Full Live System E2E riêng chưa chạy lại. Guard SHA áp dụng từ bản workflow này trở đi.
+
 ## Tài liệu liên quan
 
 - Workflow: `.github/workflows/testcase-workflow.yml`
 - Runner: `tools/testcase-workflow/`
+- Kế hoạch tách module: [AGRI-145-testcase-workflow-refactor-plan.md](../../plans/AGRI-145-testcase-workflow-refactor-plan.md)
 - Hướng dẫn chuyển đổi: `docs/notes/production_test_automation_guide.md`
 - Đặc tả ma trận E2E Frontend: [frontend_e2e_test_specification.md](frontend_e2e_test_specification.md)
 - Checklist chạy tay cho các luồng cần hệ thống thật: [manual_e2e_test_cases.md](manual_e2e_test_cases.md)
