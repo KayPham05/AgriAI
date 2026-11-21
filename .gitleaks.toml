@@ -1,3 +1,6 @@
+[extend]
+useDefault = true
+
 [allowlist]
 description = "Known non-secret CI test placeholder"
 regexes = [
