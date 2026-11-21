@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -7,6 +7,8 @@ import {
   type PredictionResponse,
 } from '@/services/predictionApi';
 import { MAX_IMAGE_BYTES } from '@/utils/imageFileValidation';
+import { writeGuestPredictionDraft } from '@/features/diagnosis/guestPredictionDraft';
+import { AuthContext } from '@/providers/AppContexts';
 import { DiagnosePage } from '@/views/DiagnosePage';
 import { successfulPrediction } from '../../helpers/prediction';
 
@@ -42,6 +44,62 @@ async function uploadValidImage(fileInput: HTMLInputElement, fileName = 'leaf.jp
 }
 
 describe('DiagnosePage prediction flow', () => {
+  it('loads the protected preview after saving a guest result to the account', async () => {
+    const imagePath =
+      '/api/predictions/11111111-1111-1111-1111-111111111111/images/22222222-2222-2222-2222-222222222222';
+    const guestResult = {
+      ...successfulPrediction,
+      dto: { ...successfulPrediction.dto, guestToken: 'fixture-guest' },
+    };
+    writeGuestPredictionDraft(guestResult, true);
+    const request = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ ...successfulPrediction.dto, imagePath }),
+      blob: async () => new Blob(['image'], { type: 'image/png' }),
+    }));
+    vi.stubGlobal('fetch', request);
+    render(
+      <AuthContext
+        value={{
+          session: {
+            token: 'jwt-token',
+            user: {
+              id: 'user',
+              fullName: 'User',
+              email: 'user@test.example',
+              role: 'User',
+              createdAt: '',
+            },
+          },
+          profile: { name: 'User' } as never,
+          openAuthentication: vi.fn(),
+          logout: vi.fn(),
+          updateProfile: vi.fn(),
+          updateAccount: vi.fn(),
+        }}
+      >
+        <DiagnosePage authToken="jwt-token" onPredictionCreated={vi.fn()} />
+      </AuthContext>,
+    );
+
+    expect(await screen.findByText('Đã lưu kết quả vào lịch sử tài khoản.')).toBeVisible();
+    await waitFor(() =>
+      expect(request).toHaveBeenCalledWith(
+        imagePath,
+        expect.objectContaining({
+          headers: { Authorization: 'Bearer jwt-token' },
+        }),
+      ),
+    );
+    const result = within(screen.getByRole('region', { name: 'Kết quả phân tích' }));
+    await waitFor(() =>
+      expect(result.getByRole('img', { name: /Ảnh xem trước/i })).toHaveAttribute(
+        'src',
+        'blob:leaf-preview',
+      ),
+    );
+  });
+
   it.each(['garden', 'foreign'])(
     'accepts only an owned profile from the diagnosis link (%s)',
     async (profileId) => {
