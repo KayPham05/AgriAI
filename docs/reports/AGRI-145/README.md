@@ -1,7 +1,7 @@
 # AGRI-145 — Testcase workflow
 
-- **Trạng thái (2026-11-21):** Working tree đã qua nghiệm thu cục bộ và chờ duyệt trước commit cho [PR #64](https://github.com/KayPham05/AgriAI/pull/64).
-- **Nghiệm thu:** Xem [kiểm tra trước commit](#kiểm-tra-trước-commit). CI trên bản mới và ghi–đọc lại Sheets sau triển khai còn chờ xác minh.
+- **Trạng thái (2026-11-21):** [PR #64](https://github.com/KayPham05/AgriAI/pull/64) đã nhận `f088a15`. Bản sửa Playwright sau review đang ở working tree.
+- **Nghiệm thu:** Xem [kiểm tra Playwright sau push](#kiểm-tra-playwright-sau-push). CI trên bản sửa và ghi–đọc lại Sheets sau triển khai còn chờ xác minh.
 - **Task log:** [AGRI-145-testcase-workflow.md](../../task-logs/AGRI-145/AGRI-145-testcase-workflow.md).
 
 ## Phạm vi
@@ -210,6 +210,13 @@ Workflow quản lý registry testcase cho `api`, `screen`, `viewpoint`; thực t
 Lượt đầu Vitest có ba timeout và nhóm API đạt 293/294. Lượt API kế tiếp bị lỗi kết nối Docker. Các số trong bảng lấy từ lượt nghiệm thu mới. [Ảnh bằng chứng](../../../.cache/agri145-final/precommit-evidence.png)
 
 **Còn lại trước merge:** duyệt report, sau đó chạy CI đúng commit mới và nhận review theo quy trình PR. Lượt này giữ index rỗng và chỉ đọc Google Sheets thật. Luồng ghi được kiểm bằng fixture. Full Live System E2E riêng chưa chạy lại. Guard SHA áp dụng từ bản workflow này trở đi.
+
+## Kiểm tra Playwright sau push
+
+- Trên cùng SHA `f088a15`, lượt push chạy **39/40** Playwright. `E2E-CAT-03` fail và validator ghi đúng hai bản ghi lỗi `E2E-CAT-03` và `RUN-playwright` trong **49** bản ghi. Lượt pull request riêng của cùng SHA pass. [Lượt push](https://github.com/KayPham05/AgriAI/actions/runs/44896167556) · [Lượt pull request](https://github.com/KayPham05/AgriAI/actions/runs/44896170058)
+- Artifact cũ chỉ giữ dòng cuối `- alert`, nên chưa xác định được assertion gốc từ lượt đỏ. Ca cũ chạy riêng **8/8** lần pass cục bộ. Đã xác nhận bằng fixture rằng parser cũ làm mất tiêu đề assertion và locator, rồi sửa để giữ hai thông tin đó trong mô tả lỗi có giới hạn.
+- `E2E-CAT-03` giờ chờ URL sau đổi trang và lọc cây, kiểm tra request kết hợp ID cây với từ khóa, rồi bấm liên kết trong đúng thẻ thuốc. Các assertion phân trang, kết quả tìm kiếm và chi tiết thuốc vẫn được kiểm.
+- **Kết quả cục bộ sau sửa:** Catalog pass **4/4** ở cả **3** process mới. Workflow Playwright pass **40/40** trong **89,093 giây** với Chromium headless, Next.js 16.4.5 standalone và ApiStub. Validator chấp nhận **41** bản ghi. Python pass **83/83**, `actionlint`, Gitleaks và `git diff --check` pass. [Ảnh bằng chứng](../../../.cache/agri145-cat03-fixed/evidence.png) · [Artifact Playwright](../../../.cache/agri145-cat03-fixed/group/results.json)
 
 ## Tài liệu liên quan
 

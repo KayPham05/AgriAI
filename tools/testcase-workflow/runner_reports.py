@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -47,6 +48,14 @@ def read_playwright_report(report_path: Path) -> tuple[dict[str, Any], list[dict
     return payload, cases
 
 
+def _playwright_failure_detail(detail: str) -> str:
+    lines = [line.strip() for line in detail.splitlines() if line.strip()]
+    for index in range(len(lines) - 1, -1, -1):
+        if re.match(r"^[\w.]*(?:Error|Exception):", lines[index]):
+            return " ".join(lines[index:])
+    return " ".join(lines)
+
+
 def parse_playwright_group(
     report: Path,
     expected_ids: set[str],
@@ -73,8 +82,8 @@ def parse_playwright_group(
         if status == "Passed":
             actual = f"{case_id} passed via {test_name}"
         else:
-            tail = detail.splitlines()[-1].strip() if detail else ""
-            actual = registry_state.redact_sensitive(f"{case_id} {status.lower()} via {test_name}: {tail}"[:500])
+            reason = _playwright_failure_detail(detail)
+            actual = registry_state.redact_sensitive(f"{case_id} {status.lower()} via {test_name}: {reason}")[:500]
         results.append(replace(
             run,
             id=case_id,

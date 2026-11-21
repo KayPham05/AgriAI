@@ -18,6 +18,8 @@ from case_runners import (
     run_case,
     run_group,
 )
+from registry_state import CaseResult
+from runner_reports import parse_playwright_group
 
 
 class CaseRunnerTests(unittest.TestCase):
@@ -68,6 +70,28 @@ class CaseRunnerTests(unittest.TestCase):
         results = {call.args[0].id: call.args[0] for call in emit.call_args_list}
         self.assertEqual(results["RUN-playwright"].status, "Failed")
         self.assertEqual(results["E2E-ADM-01"].status, "Blocked")
+
+    def test_playwright_failure_retains_assertion_and_locator(self):
+        error = (
+            "Traceback (most recent call last):\n"
+            "  File \"test_catalog.py\", line 163, in test_medicines\n"
+            "AssertionError: Locator expected to be visible\n"
+            "Locator: get_by_text(\"1 result\")\n"
+            "Actual value: <element(s) not found>\n"
+            "- alert"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            report = Path(directory) / "playwright.json"
+            report.write_text(json.dumps({"cases": [{
+                "id": "E2E-CAT-03", "test": "test_medicines", "status": "Failed", "detail": error,
+            }]}), encoding="utf-8")
+            [case], summary = parse_playwright_group(
+                report, {"E2E-CAT-03"}, CaseResult("RUN-playwright", "Blocked", "Auto"), 1,
+            )
+
+        self.assertIn("AssertionError: Locator expected to be visible", case.actual)
+        self.assertIn('get_by_text("1 result")', case.actual)
+        self.assertEqual((case.status, summary.status), ("Failed", "Failed"))
 
     def test_run_all_executes_api_screen_and_playwright_groups(self):
         with patch("case_runners.run_group", return_value=True) as run_group_mock, patch("registry_state.load_cases", return_value=[]), patch("sheets_sync.sync") as sync_mock:

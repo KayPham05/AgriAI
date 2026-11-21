@@ -2,7 +2,7 @@
 
 - **Branch:** `AGRI-145-testcase-design-demo` | **Pull request:** [#64](https://github.com/KayPham05/AgriAI/pull/64).
 - **Report:** [README.md](../../reports/AGRI-145/README.md) | **Status:** Ready for PR.
-- **Next / Blocker:** Chờ duyệt report trước commit, sau đó chạy CI trên commit mới và hoàn tất review PR.
+- **Next / Blocker:** Chạy CI trên bản sửa `E2E-CAT-03` sau commit và push, rồi hoàn tất review PR.
 
 ## Log
 
@@ -95,6 +95,12 @@
 - **Changed:** Tách module Sheets và parser, chặn rerun cũ, xử lý report lỗi, sửa an toàn tab mẫu và phục hồi testcase. Cập nhật Next.js lên 16.4.5 để qua build.
 - **Verified:** **82/82** unit tests × **3**, **294/294** API, **2/2** live contracts, **576/576** Vitest, **40/40** Playwright, **49** bản ghi qua validator và **47/47** ID Sheets đúng tab. [Report và ảnh bằng chứng](../../reports/AGRI-145/README.md#kiểm-tra-trước-commit)
 - **Remaining:** Chờ duyệt report trước commit. CI trên commit mới, full Live System E2E và ghi–đọc lại Sheets thật còn chờ nghiệm thu.
+
+### [2026-11-21 18:02 +07:00] Stabilize medicine catalog browser test
+
+- **Changed:** Đồng bộ bước lọc và tìm thuốc với URL, xác minh request giữ bộ lọc cây và giữ thông báo assertion trong artifact Playwright.
+- **Verified:** GitHub push `f088a15` fail ở `E2E-CAT-03`. Sau sửa, Catalog **4/4** × **3**, Playwright **40/40**, validator **41** bản ghi và Python **83/83** pass cục bộ. [Report và ảnh](../../reports/AGRI-145/README.md#kiểm-tra-playwright-sau-push)
+- **Remaining:** Chạy GitHub Actions trên bản sửa sau commit và push.
 
 ## Còn lại
 

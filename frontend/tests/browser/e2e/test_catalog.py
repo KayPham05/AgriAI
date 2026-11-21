@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import re
+from urllib.parse import parse_qs, urlparse
+
 from playwright.sync_api import expect
 
 from .support import (
@@ -150,19 +152,34 @@ class CatalogBrowserTests(BrowserTestCase):
         expect(page.get_by_role("heading", name="Thuốc Mẫu 01", exact=True)).to_be_visible()
 
         page.get_by_role("button", name="Trang sau", exact=True).click()
+        expect(page).to_have_url(re.compile(r"[?&]pageNumber=2(?:&|$)"))
         expect(page.get_by_text("24 kết quả · Trang 2/2", exact=True)).to_be_visible()
         expect(page.get_by_role("heading", name="Thuốc Mẫu 21", exact=True)).to_be_visible()
 
         page.get_by_role("button", name="Trang trước", exact=True).click()
+        expect(page).to_have_url(re.compile(r"[?&]pageNumber=1(?:&|$)"))
         expect(page.get_by_text("24 kết quả · Trang 1/2", exact=True)).to_be_visible()
 
-        page.get_by_label("Lọc theo cây", exact=True).click()
+        crop_filter = page.get_by_label("Lọc theo cây", exact=True)
+        crop_filter.click()
         page.get_by_role("option", name="Cà chua", exact=True).click()
+        expect(page).to_have_url(re.compile(rf"[?&]plantId={re.escape(tomato['id'])}(?:&|$)"))
+        expect(crop_filter).to_have_text("Cà chua")
         page.get_by_label("Tìm kiếm danh mục", exact=True).fill("Thuốc Mẫu 01")
         page.get_by_role("button", name="Tìm kiếm", exact=True).click()
+        page.wait_for_url(lambda url: parse_qs(urlparse(url).query).get("search") == ["Thuốc Mẫu 01"])
         expect(page.get_by_text("1 kết quả · Trang 1/1", exact=True)).to_be_visible()
+        self.assertTrue(any(
+            request.path == "/api/medicines"
+            and request.query.get("plantId") == [tomato["id"]]
+            and request.query.get("search") == ["Thuốc Mẫu 01"]
+            for request in stub.requests
+        ), "The medicine search must retain the selected crop filter")
 
-        page.get_by_role("link", name="Xem chi tiết", exact=True).first.click()
+        medicine_card = page.get_by_role("listitem").filter(
+            has=page.get_by_role("heading", name="Thuốc Mẫu 01", exact=True),
+        )
+        medicine_card.get_by_role("link", name="Xem chi tiết", exact=True).click()
         expect(page).to_have_url(re.compile(r"/medicines/33333333-3333-4333-8333-000000000001$"))
         expect(page.get_by_role("heading", level=1, name="Thuốc Mẫu 01", exact=True)).to_be_visible()
         expect(page.get_by_text("Mang đồ bảo hộ khi pha và phun.", exact=True)).to_be_visible()
