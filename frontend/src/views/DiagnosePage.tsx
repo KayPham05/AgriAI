@@ -73,6 +73,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [analysisPreviewUrl, setAnalysisPreviewUrl] = useState<string | null>(null);
   const [resolution, setResolution] = useState('');
   const [status, setStatus] = useState<PredictionStatus>('idle');
   const [progress, setProgress] = useState(0);
@@ -253,6 +254,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
     previewRef.current = null;
     setSelectedFile(null);
     setPreviewUrl(null);
+    setAnalysisPreviewUrl(null);
     setResolution('');
     setPrediction(null);
     setShowSaveProfile(false);
@@ -355,6 +357,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
     )
       return;
     clearGuestPredictionDraft();
+    setAnalysisPreviewUrl(previewUrl);
     setGuestSaveRequested(false);
     setGuestMessage('');
     const controller = new AbortController();
@@ -427,7 +430,6 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
       <Input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp"
         className="sr-only size-px!"
         aria-label="Chọn ảnh lá cây"
         disabled={busy || isPreparing}
@@ -499,7 +501,7 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
                 <AnalysisIssueNotice issue={inputIssue} onChooseImage={chooseImage} />
               </div>
             )}
-            {previewUrl ? (
+            {previewUrl && !prediction ? (
               <div>
                 <PrivateImage
                   unoptimized
@@ -652,6 +654,8 @@ export const DiagnosePage: React.FC<DiagnosePageProps> = ({
             onShowSupported={embedded ? undefined : () => setShowSupported(true)}
             onViewComparison={() => setShowComparison(true)}
             onRetry={selectedFile ? analyze : undefined}
+            previewUrl={previewUrl ?? analysisPreviewUrl}
+            previewAlt={`Ảnh xem trước: ${selectedFile?.name ?? 'lá cây'}`}
           />
         </div>
       </div>

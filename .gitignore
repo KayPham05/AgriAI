@@ -137,3 +137,12 @@ backend/.api-*.log
 *.userprefs
 *.suo
 appsettings.Development.json
+# Generated local state from the shared testcase workflow
+tools/testcase-workflow/config/state.json
+tools/testcase-workflow/config/state.lock
+tools/testcase-workflow/__pycache__/
+
+# Google Service Account credentials: never commit keys.
+angelic-tracer-477405-b6-4e7d814654bf.json
+*service-account*.json
+*google-credentials*.json

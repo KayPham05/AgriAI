@@ -2,6 +2,7 @@ import type { PredictionResponse } from '@/services/predictionApi';
 import { Activity, AlertCircle, BrainCircuit, RefreshCw, ScanEye, Upload } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { PrivateImage } from '@/components/common/PrivateImage';
 import { AnalysisIssueNotice, type AnalysisIssueNoticeProps } from './AnalysisIssueNotice';
 import { PredictionComparison } from './PredictionComparison';
 
@@ -13,6 +14,8 @@ interface AnalysisResultCardProps extends Omit<AnalysisIssueNoticeProps, 'issue'
   onRetry?: () => void;
   issue?: AnalysisIssueNoticeProps['issue'] | null;
   showComparison?: boolean;
+  previewUrl?: string | null;
+  previewAlt?: string;
 }
 
 export function AnalysisResultCard({
@@ -27,8 +30,19 @@ export function AnalysisResultCard({
   onChooseSample,
   onShowSupported,
   onViewComparison,
+  previewUrl,
+  previewAlt = 'Ảnh xem trước: lá cây',
 }: AnalysisResultCardProps) {
   const disease = analysisResult?.dto.predictedPlantDisease.disease;
+  const preview = previewUrl && (
+    <PrivateImage
+      src={previewUrl}
+      alt={previewAlt}
+      width={640}
+      height={480}
+      className="aspect-[4/3] w-full rounded-xl object-contain"
+    />
+  );
   return (
     <section aria-label="Kết quả phân tích" aria-live="polite" aria-busy={isLoading}>
       <Card className="gap-0 rounded-card border border-border py-0 shadow-sm ring-0">
@@ -72,6 +86,7 @@ export function AnalysisResultCard({
             </div>
           ) : issue ? (
             <div className="flex flex-col gap-5">
+              {preview}
               <AnalysisIssueNotice
                 issue={issue}
                 onChooseImage={onChooseImage}
@@ -100,6 +115,7 @@ export function AnalysisResultCard({
             </div>
           ) : analysisResult ? (
             <div className="flex flex-col gap-6">
+              {preview}
               <div data-result-enter>
                 <p className="text-sm text-muted-foreground">{analysisResult.crop}</p>
                 <h3 className="mt-2 text-2xl font-semibold">{analysisResult.disease}</h3>

@@ -17,9 +17,9 @@
 |---|---|---|---|---|
 | VP-DATA-01 | Dataset, NFR-05 | Manifest v1.4 cố định; split/group/mapping không bị tạo lại lúc train. | Có pipeline và báo cáo AGRI-21; kiểm thử HTTP với model thật còn chờ. | Cao |
 | VP-ML-01 | Train/evaluate, NFR-05 | Metric validation, chọn checkpoint, test set đóng, nhãn và preprocessing được version hóa. | Có kết quả nội bộ v1.4; chưa kiểm tra xuyên tầng. | Cao |
-| VP-API-01 | Upload, FR-04/NFR-02 | File thiếu/rỗng, sai loại, quá giới hạn, nội dung hỏng không gọi AI/lưu DB. | API kiểm tra file rỗng/đuôi; chưa giới hạn dung lượng hoặc kiểm tra nội dung. | Cao |
+| VP-API-01 | Upload, FR-04/NFR-02 | File thiếu/rỗng, sai loại, quá giới hạn, nội dung hỏng không gọi AI/lưu DB. | API đã kiểm tra file thiếu/rỗng, phần mở rộng (`.jpg`/`.jpeg`/`.png`/`.webp`) và giới hạn dung lượng 15 MiB (`PredictionContractTests.cs:45`, `PredictionService.cs:67-78`); ảnh hỏng/không giải mã được do FastAPI AI kiểm tra và trả lỗi trước khi lưu DB/storage. | Cao |
 | VP-API-02 | Predict, FR-05/06 | AI timeout/lỗi, response sai, class không tồn tại: không trả/lưu kết quả giả. | Adapter AI báo lỗi; mapping DB vẫn có fallback sang lớp đầu tiên. | Rất cao |
-| VP-API-03 | Auth/history, FR-02/07 | Đăng nhập, phân quyền xem/xóa, phân trang, tách dữ liệu từng user. | Có API/test; GET theo ID chưa kiểm tra chủ sở hữu. | Cao |
+| VP-API-03 | Auth/history, FR-02/07 | Đăng nhập, phân quyền xem/xóa, phân trang, tách dữ liệu từng user. | Có API/test; `GET /api/predictions/{id}` đã kiểm tra quyền sở hữu (`PredictionService.cs:278`, trả `404` cho user khác — `SecurityAuthorizationTests.cs:172`) và `DELETE` trả `401` (`PredictionService.cs:342`, `SecurityAuthorizationTests.cs:175`). | Cao |
 | VP-DB-01 | DB, FR-06 | Migration, seed canonical label, transaction và ảnh mồ côi khi lỗi. | Có migration/seed minh họa; mapping chưa khớp checkpoint v1.4. | Cao |
 | VP-WEB-01 | Tải ảnh, FR-04 | Chọn/kéo thả, preview, lỗi file, hủy request, loading. | Có Next.js và Vitest; cần kiểm tra theo policy ảnh thống nhất. | Trung bình |
 | VP-WEB-02 | Kết quả/lịch sử, FR-05/07 | Response thật, thông báo lỗi, không giữ kết quả cũ, quyền lịch sử. | UI có test mock; E2E với AI thật còn chờ. | Trung bình |
