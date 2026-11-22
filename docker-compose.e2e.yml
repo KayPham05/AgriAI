@@ -1,0 +1,18 @@
+services:
+  mailpit:
+    image: axllent/mailpit:v1.21
+    ports:
+      - "127.0.0.1:8025:8025"
+      - "127.0.0.1:1025:1025"
+
+  backend:
+    environment:
+      Smtp__Host: mailpit
+      Smtp__Port: "1025"
+      Smtp__EnableSsl: "false"
+      Smtp__Sender: e2e@agrivision.test
+      Smtp__Password: e2e-test-password
+      Smtp__TimeoutSeconds: "30"
+    depends_on:
+      mailpit:
+        condition: service_started

@@ -137,6 +137,7 @@ export function HistoryPage({
           {filtered.map((item) => (
             <article
               key={item.id}
+              data-prediction-id={item.id}
               className={
                 view === 'cards'
                   ? 'overflow-hidden rounded-card border border-border bg-surface'

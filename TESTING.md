@@ -138,7 +138,9 @@ Các hành vi bắt buộc xem xét khi sửa API liên quan:
 - Mock đúng DTO/status hiện hành, gồm null/empty/error; tránh fixture chỉ chứa happy path. Mock frontend không chứng minh authorization hoặc validation server.
 - Với UI bị thay đổi, xem xét keyboard/focus/label, loading/error/retry, disabled/double submit, responsive, reduced motion và nội dung dài. Chỉ chạy nhóm áp dụng; ghi rõ tự động hay kiểm thủ công.
 - Browser checks phải công bố base URL, build mode, viewport/browser, API thật hay intercepted và checkpoint thật hay fake. Ảnh chụp màn hình không thay assertion chức năng; jsdom không dùng để kết luận layout thật.
+- Báo cáo Playwright phải ghi tên test và kết quả thực thi cho từng ID. Các hành trình live có phạm vi khác contract browser dùng ID riêng. Dùng cơ sở dữ liệu thử nghiệm riêng và chỉ xóa tài nguyên có ID trả về từ thao tác tạo trong lượt hiện tại.
 - E2E ưu tiên hành trình quan trọng: Guest diagnosis; đăng nhập → diagnosis → đọc history/ảnh owner; foreign user bị chặn; Admin quản lý quyền. Chỉ triển khai/chạy khi có scope và môi trường phù hợp, không coi danh sách này là suite đã có.
+- **Tách biệt tuyệt đối E2E tự động (Automation) và Manual test từ tài liệu đến code:** Không được để chung các ca E2E tự động và các ca kiểm thử thủ công (Manual test) trong cùng một file đặc tả, checklist, test script hay cấu hình (`cases.json`, `test-groups.json`). Tài liệu E2E tự động (ví dụ `frontend_e2e_test_specification.md`) và tài liệu Manual test (`manual_e2e_test_cases.md`) phải tách thành các file độc lập, không trùng mã testcase (`overlap = 0`); mã nguồn/runner/config automation chỉ được chứa các mã E2E tự động.
 - Không thêm bypass CAPTCHA/auth hoặc production flag để tiện test. Dùng cơ chế fixture/test được thiết kế riêng; phần cần người dùng tương tác được ghi blocked cho tới khi hoàn tất.
 
 ## 10. FastAPI, model và dữ liệu AI

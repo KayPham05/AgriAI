@@ -154,44 +154,50 @@ Omit the AI experiment section only when it does not apply.
 
 ---
 
-## 4. Task Completion Report
+## 4. Ongoing Task Log & Completion Report
 
-Before or together with pull request creation, every member **MUST** add a short report at:
+Before or together with pull request creation, every member **MUST** maintain a concise task log inside a directory named after the Jira key (never create `README.md` inside `docs/task-logs/AGRI-XXX/`):
 
 ```text
-docs/task-logs/AGRI-XXX-<member>.md
+docs/task-logs/AGRI-XXX/AGRI-XXX-<short-topic-or-member>.md
 ```
 
-Example: `docs/task-logs/AGRI-24-vinh.md`.
+Example: `docs/task-logs/AGRI-24/AGRI-24-vinh.md` or `docs/task-logs/AGRI-145/AGRI-145-testcase-workflow.md`.
 
-### Task Report Template
+### 4.1. Ongoing-Record Rules (Append-Only & Timestamped)
+
+- **Top status block (max 4–5 lines, refreshable):** Keep `Owner`, `Branch`, `Report` link (`docs/reports/AGRI-XXX/README.md`), `Status` (`In Progress` | `Ready for PR` | `Done`), `Pull request`, and a one-line `Next / Blocker` at the top so readers see current state immediately. Only this summary header may be updated in place.
+- **Append-only `## Log` (strictly chronological):** Write entries top-to-bottom from oldest to newest. **Never delete, squash, or rewrite past log entries** when adding a new update. Append a new entry at the bottom of `## Log`; if a prior entry needs correction, note the correction in a new timestamped entry (only broken links or file-path typos may be patched in place).
+- **Mandatory date + hour timestamp:** Heading each entry **MUST** use local time with hours and minutes:
+  `### [YYYY-MM-DD HH:MM +07:00] <Short action title>`
+  (for example `### [2026-11-18 13:35 +07:00] Clean Sheets and verify full local suite`), so multiple updates on the same day stay distinct.
+- **Short visual structure (`3–5` lines per entry):** Keep each entry to at most three bullets (`Changed`, `Verified`, `Remaining`). Never paste raw terminal output or long narratives; state exact checked counts/scopes (and any `Unrun`/`Blocked` scope) and link detailed evidence in `docs/reports/AGRI-XXX/README.md`.
+
+### 4.2. Task Log Template
 
 ```markdown
 # AGRI-XXX - <task-name>
 
-- **Owner:**
-- **Completion date:**
-- **Branch:**
-- **Pull request:**
+- **Owner:** <name> | **Branch:** `AGRI-XXX-<short-description>` | **Pull request:** <link or pending>
+- **Report:** [README.md](../../reports/AGRI-XXX/README.md) | **Status:** In Progress
+- **Next / Blocker:** <1 concise line or None>
 
-## 1. Completed Work
-[Summarize the completed work in three to five lines]
+---
 
-## 2. Main Changes
-- ...
-- ...
+## Log (append-only; do not edit or delete past entries)
 
-## 3. Results and Verification
-[For code, record actual checks. For AI, record the experiment ID and measured metrics]
+### [YYYY-MM-DD HH:MM +07:00] <Short milestone or batch title>
+- **Changed:** `<path1>`, `<path2>` - <1 concise summary sentence>.
+- **Verified:** `<command or scope>` passed (`X/Y`); Unrun/Blocked: `<scope or None>`.
+- **Remaining:** <next concrete step or None>.
 
-## 4. Issues or Blockers
-[Record difficulties, blockers, or reviewer notes]
-
-## 5. Remaining Work or Follow-up
-[Record unfinished work or a concrete follow-up]
+### [YYYY-MM-DD HH:MM +07:00] <Next update title>
+- **Changed:** <what changed in this follow-up>.
+- **Verified:** <fresh checks run after this change>.
+- **Remaining:** <updated remaining work or None>.
 ```
 
-The report is required before moving the Jira issue to `Done`.
+The task log **MUST** be updated with the latest run/check before opening or updating a pull request and before moving the Jira issue to `Done`.
 
 ---
 
@@ -199,7 +205,7 @@ The report is required before moving the Jira issue to `Done`.
 
 - [ ] Branch matches `AGRI-XXX-<short-description>`.
 - [ ] Every atomic commit matches `<type>(<optional-scope>): AGRI-XXX <short-description>`.
-- [ ] The task report exists under `docs/task-logs/`.
+- [ ] The task report exists inside `docs/task-logs/AGRI-XXX/` (without a `README.md`).
 - [ ] The pull request uses the template and its title contains the Jira key.
 - [ ] The correct domain reviewer is assigned.
 - [ ] The diff contains no secret or credential.

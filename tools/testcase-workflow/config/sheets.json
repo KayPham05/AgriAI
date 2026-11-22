@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "spreadsheets": {
+    "api": {
+      "id": "1BBHMgQMQMMFzrMlxzjRHDd73QATmPVUvqpf6gKkjsUg",
+      "summary_tabs": ["Report bug"],
+      "summary_tab": "Report bug",
+      "template_tab": "Template",
+      "detail_prefix": "API-",
+      "legacy_policy": "preserve",
+      "detail_mode": "api_table",
+      "detail_data_start_row": 16,
+      "detail_mapping": {"id": "A", "item": "B", "test_name": "C", "precondition": "D", "test_data": "E", "params": "F", "request_body": "G", "expected_status": "H", "expected_body": "I", "expected_database": "J", "status": "K", "execution": "L", "evidence": "M"},
+      "detail_count_field": "test_name",
+      "detail_formula_metrics": ["passed", "failed", "blocked", "not_run", "automation", "manual", "total"],
+      "detail_header": {"meta_range": "B1:B3", "meta_rows": [["AgriVision AI"], ["{summary_label}"], ["AgriVision QA"]], "label_range": "A7:A7", "label_rows": [["BLOCKED"]]},
+      "summary_mode": "dashboard",
+      "dashboard_mapping": {"range": "A:N", "data_start_row": 5, "no_column": "A", "sheet_name_column": "B", "name_column": "C", "total_column": "D", "passed_column": "E", "failed_column": "F", "blocked_column": "G", "not_run_column": "H", "automation_column": "I", "manual_column": "J", "na_column": "K", "status_column": "L", "progress_column": "M", "remarks_column": "N", "total_label": "Total", "total_label_column": "C"},
+      "summary_cell_refs": {"total": "C11", "passed": "C5", "failed": "C6", "blocked": "C7", "not_run": "C8", "automation": "C9", "manual": "C10", "na_formula": "COUNTIFS({tab}!{exec_col}{start_row}:{exec_col}{sep}\"N/A\"{sep}{tab}!{id_col}{start_row}:{id_col}{sep}\"{moved_criterion}\"{sep}{tab}!{evidence_col}{start_row}:{evidence_col}{sep}\"{deprecated_criterion}\")"},
+      "summary_labels": {"total": ["Total Testcase", "Total"], "passed": ["Passed"], "failed": ["Failed"], "blocked": ["Blocked"], "not_run": ["Not run", "Not Run"], "automation": ["Auto"], "manual": ["Manual"], "na": ["N/A"]}
+    },
+    "viewpoint": {
+      "id": "1wFM32VTHADjP-DnB3yLTZ5WjbPwDEs2HDOgnvcN0TbA",
+      "summary_tabs": ["Overview"],
+      "summary_tab": "Overview",
+      "template_tab": "Template",
+      "detail_prefix": "VP-",
+      "legacy_policy": "preserve",
+      "detail_mode": "viewpoint_table",
+      "detail_data_start_row": 3,
+      "detail_mapping": {"no": "A", "system": "B", "major": "C", "middle": "D", "minor": "E", "confirmation": "F", "id": "G"},
+      "summary_mode": "list",
+      "list_mapping": {"no_column": "A", "sheet_name_column": "B", "screen_column": "C", "status_column": "D", "remarks_column": "E", "data_start_row": 2}
+    },
+    "screen": {
+      "id": "1p1CN5KM1PVFcYvPD_rvfziO8rxcYgljG56LUb0DSCIQ",
+      "summary_tabs": ["Report"],
+      "summary_tab": "Report",
+      "template_tab": "WEB-DIAG-01 Diagnosis",
+      "detail_prefix": "WEB-",
+      "legacy_policy": "preserve",
+      "detail_mode": "screen_table",
+      "detail_data_start_row": 15,
+      "detail_mapping": {"id": "A", "main_category": "B", "sub_category": "C", "type": "D", "precondition": "E", "test_description": "F", "steps": "G", "expected_result": "H", "status": "I", "execution": "J", "evidence": "K"},
+      "detail_count_field": "sub_category",
+      "detail_formula_metrics": ["passed", "failed", "blocked", "not_run", "automation", "manual", "na", "total", "ui", "function", "validate"],
+      "detail_header": {"title_range": "A1:A2", "title_rows": [[""], ["{detail_tab}/{summary_label}"]]},
+      "summary_mode": "dashboard",
+      "dashboard_mapping": {"range": "A:Q", "data_start_row": 6, "no_column": "A", "sheet_name_column": "B", "name_column": "C", "total_column": "D", "passed_column": "E", "failed_column": "F", "blocked_column": "G", "not_run_column": "H", "automation_column": "I", "manual_column": "J", "na_column": "K", "ui_column": "L", "function_column": "M", "validate_column": "N", "status_column": "O", "progress_column": "P", "remarks_column": "Q", "total_label": "Total", "total_label_column": "C"},
+      "summary_cell_refs": {"total": "C11", "passed": "C4", "failed": "C5", "blocked": "C6", "not_run": "C7", "automation": "C8", "manual": "C9", "na": "C10", "ui": "G8", "function": "G9", "validate": "G10"},
+      "summary_labels": {"total": ["Total Testcase", "Total"], "passed": ["Passed", "Testing Result"], "failed": ["Failed"], "blocked": ["Blocked"], "not_run": ["Not run", "Not Run"], "automation": ["Auto"], "manual": ["Manual"], "na": ["N/A"]}
+    }
+  }
+}

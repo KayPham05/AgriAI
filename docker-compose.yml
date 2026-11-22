@@ -51,6 +51,7 @@ services:
       R2__SecretAccessKey: ${R2_SECRET_ACCESS_KEY:-}
       Smtp__Host: ${MAIL_HOSTNAME:-}
       Smtp__Port: "587"
+      Smtp__EnableSsl: ${SMTP_ENABLE_SSL:-true}
       Smtp__TimeoutSeconds: ${MAIL_TIMEOUT_SECONDS:-30}
       Smtp__Sender: ${MAIL_SENDER:-}
       Smtp__Password: ${MAIL_PASSWORD:-}

@@ -20,7 +20,7 @@ public sealed class SmtpAccountEmailSender(IConfiguration configuration) : IAcco
         message.IsBodyHtml = true;
         using var client = new SmtpClient(host, settings.GetValue("Port", 587))
         {
-            EnableSsl = true,
+            EnableSsl = settings.GetValue("EnableSsl", true),
             Credentials = new NetworkCredential(sender, password)
         };
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
