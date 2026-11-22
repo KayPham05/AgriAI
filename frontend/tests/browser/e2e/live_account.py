@@ -26,7 +26,7 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
             page = browser.new_page()
             page.goto(f"{base_url.rstrip('/')}/", wait_until="networkidle")
 
-            # E2E-AUTH-04: wrong CAPTCHA and wrong password (401 from backend)
+            # wrong CAPTCHA and wrong password (401 from backend)
             page.get_by_role("button", name="Đăng nhập", exact=True).click()
             page.get_by_label("Email", exact=True).fill("user@agrivision.ai")
             page.get_by_label("Mật khẩu", exact=True).fill("WrongPassword!000")
@@ -39,7 +39,7 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
             expect(page.get_by_role("alert").filter(has_text="Email hoặc mật khẩu không chính xác.")).to_be_visible(timeout=10_000)
             page.get_by_role("button", name="Đóng", exact=True).click()
 
-            # E2E-AUTH-01: register new account
+            # register new account
             page.get_by_role("button", name="Đăng nhập", exact=True).click()
             page.get_by_role("tab", name="Đăng ký", exact=True).click()
             page.get_by_label("Họ và tên", exact=True).fill("System E2E User")
@@ -49,7 +49,7 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
             page.get_by_role("button", name="Tạo tài khoản", exact=True).click()
             expect(page.get_by_text("System E2E User", exact=True)).to_be_visible(timeout=15_000)
 
-            # E2E-PROF-01: update full name and verify persistence across reload
+            # update full name and verify persistence across reload
             page.goto(f"{base_url.rstrip('/')}/profile", wait_until="domcontentloaded")
             expect(page.get_by_label("Họ và tên", exact=True)).to_be_visible(timeout=15_000)
             full_name = page.get_by_label("Họ và tên", exact=True)
@@ -61,7 +61,7 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
             page.reload(wait_until="domcontentloaded")
             expect(page.get_by_label("Họ và tên", exact=True)).to_have_value("System E2E User Updated")
 
-            # E2E-PROF-02: upload avatar via modal
+            # upload avatar via modal
             page.get_by_label("Chọn ảnh đại diện", exact=True).set_input_files(
                 {"name": "avatar.png", "mimeType": "image/png", "buffer": png_bytes(96, 96)}
             )
@@ -71,13 +71,13 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
                 timeout=15_000
             )
 
-            # E2E-HIST-06: empty history state for newly registered account
+            # empty history state for newly registered account
             page.goto(f"{base_url.rstrip('/')}/history", wait_until="domcontentloaded")
             expect(page.get_by_role("heading", name="Chưa có mẫu nào được lưu", exact=True)).to_be_visible(
                 timeout=15_000
             )
 
-            # E2E-AUTH-03: logout revokes session and clears storage
+            # logout revokes session and clears storage
             page.goto(f"{base_url.rstrip('/')}/profile", wait_until="domcontentloaded")
             expect(page.get_by_role("button", name="Đăng xuất", exact=True)).to_be_visible(timeout=15_000)
             page.get_by_role("button", name="Đăng xuất", exact=True).click()

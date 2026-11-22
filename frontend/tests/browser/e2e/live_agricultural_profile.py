@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import json
+from contextlib import ExitStack
 import re
 import sys
-import urllib.request
 import uuid
 from pathlib import Path
 
@@ -16,30 +15,8 @@ BROWSER_DIR = E2E_DIR.parent
 if str(BROWSER_DIR) not in sys.path:
     sys.path.insert(0, str(BROWSER_DIR))
 
+from e2e.live_resources import created_resource
 from e2e.support import DEFAULT_BASE_URL, env_value, extract_auth_token, read_dialog_captcha  # noqa: E402
-
-
-def _cleanup_profiles(token: str | None, names: set[str]) -> None:
-    if not token:
-        return
-    try:
-        req = urllib.request.Request(
-            "http://localhost:5080/api/agricultural-profiles",
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            profiles = json.load(resp)
-        for item in profiles:
-            if item.get("name") in names or str(item.get("name", "")).startswith("System E2E Profile"):
-                del_req = urllib.request.Request(
-                    f"http://localhost:5080/api/agricultural-profiles/{item['id']}",
-                    method="DELETE",
-                    headers={"Authorization": f"Bearer {token}"},
-                )
-                with urllib.request.urlopen(del_req, timeout=10):
-                    pass
-    except Exception:
-        pass
 
 
 def run(base_url: str = DEFAULT_BASE_URL) -> None:
@@ -50,7 +27,8 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
 
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
-        try:
+        with ExitStack() as cleanup:
+            cleanup.callback(browser.close)
             page = browser.new_page()
             page.goto(f"{base_url.rstrip('/')}/", wait_until="networkidle")
             page.get_by_role("button", name="Đăng nhập", exact=True).click()
@@ -61,14 +39,15 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
             expect(page.get_by_text("Demo Farmer", exact=True)).to_be_visible(timeout=15_000)
             token = extract_auth_token(page)
 
-            # E2E-PROF-AGRI-01: Create agricultural profile and verify persistence across reload
+            # Create agricultural profile and verify persistence across reload
             page.goto(f"{base_url.rstrip('/')}/agricultural-profiles", wait_until="domcontentloaded")
             create_btn = page.get_by_role("button", name=re.compile(r"^Tạo hồ sơ( đầu tiên)?$")).first
             expect(create_btn).to_be_visible(timeout=15_000)
             create_btn.click()
             page.get_by_label("Tên hồ sơ *", exact=True).fill(profile_name)
             page.get_by_label("Mô tả và thông tin canh tác", exact=True).fill("Live persistence check")
-            page.get_by_role("button", name="Tạo hồ sơ", exact=True).click()
+            with created_resource(page, cleanup, token, "/api/agricultural-profiles"):
+                page.get_by_role("button", name="Tạo hồ sơ", exact=True).click()
             expect(page.get_by_role("heading", name=profile_name, exact=True).first).to_be_visible(
                 timeout=15_000
             )
@@ -77,7 +56,7 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
                 timeout=15_000
             )
 
-            # E2E-PROF-AGRI-02: Edit agricultural profile and verify persistence across reload
+            # Edit agricultural profile and verify persistence across reload
             card = page.locator("article", has=page.get_by_role("heading", name=profile_name, exact=True)).first
             card.get_by_role("button", name="Xem chi tiết", exact=True).click()
             expect(page.get_by_role("heading", level=1, name=profile_name, exact=True)).to_be_visible(timeout=15_000)
@@ -91,9 +70,6 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
 
             page.reload(wait_until="domcontentloaded")
             expect(page.get_by_role("heading", name=updated_name, exact=True).first).to_be_visible(timeout=15_000)
-        finally:
-            _cleanup_profiles(token, {profile_name, updated_name})
-            browser.close()
 
 
 if __name__ == "__main__":

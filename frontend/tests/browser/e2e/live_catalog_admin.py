@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import json
+from contextlib import ExitStack
 import sys
-import urllib.request
 import uuid
 from pathlib import Path
 
@@ -15,30 +14,8 @@ BROWSER_DIR = E2E_DIR.parent
 if str(BROWSER_DIR) not in sys.path:
     sys.path.insert(0, str(BROWSER_DIR))
 
+from e2e.live_resources import created_resource
 from e2e.support import DEFAULT_BASE_URL, env_value, extract_auth_token, read_dialog_captcha  # noqa: E402
-
-
-def _cleanup_plants(token: str | None, target_name: str) -> None:
-    if not token:
-        return
-    try:
-        req = urllib.request.Request(
-            "http://localhost:5080/api/plants?includeInactive=true",
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            plants = json.load(resp)
-        for item in plants:
-            if item.get("name") == target_name or str(item.get("name", "")).startswith("System E2E Plant"):
-                del_req = urllib.request.Request(
-                    f"http://localhost:5080/api/admin/catalog/plants/{item['id']}",
-                    method="DELETE",
-                    headers={"Authorization": f"Bearer {token}"},
-                )
-                with urllib.request.urlopen(del_req, timeout=10):
-                    pass
-    except Exception:
-        pass
 
 
 def run(base_url: str = DEFAULT_BASE_URL) -> None:
@@ -49,7 +26,8 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
 
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
-        try:
+        with ExitStack() as cleanup:
+            cleanup.callback(browser.close)
             page = browser.new_page()
             page.goto(f"{base_url.rstrip('/')}/", wait_until="networkidle")
             page.get_by_role("button", name="Đăng nhập", exact=True).click()
@@ -60,7 +38,7 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
             expect(page.get_by_text("System Admin", exact=True)).to_be_visible(timeout=15_000)
             token = extract_auth_token(page)
 
-            # E2E-ADM-07: Create plant in Admin Catalog, reload, verify from real DB, then delete permanently
+            # Create plant in Admin Catalog, reload, verify from real DB, then delete permanently
             page.goto(f"{base_url.rstrip('/')}/admin", wait_until="domcontentloaded")
             page.get_by_role("button", name="Cây trồng", exact=True).click()
             page.get_by_role("button", name="Thêm mới", exact=True).click()
@@ -68,7 +46,8 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
             page.get_by_label("Tên tiếng Việt", exact=True).fill(vi_name)
             page.get_by_label("Mô tả", exact=True).fill("Created by live system E2E")
             page.get_by_label("Tên khoa học", exact=True).fill(f"E2E plantus {suffix}")
-            page.get_by_role("button", name="Lưu nội dung", exact=True).click()
+            with created_resource(page, cleanup, token, "/api/plants", "/api/admin/catalog/plants"):
+                page.get_by_role("button", name="Lưu nội dung", exact=True).click()
             expect(page.get_by_role("heading", name=vi_name, exact=True)).to_be_visible(timeout=15_000)
 
             page.reload(wait_until="domcontentloaded")
@@ -83,9 +62,6 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
             expect(
                 page.get_by_role("status").filter(has_text="Đã xóa vĩnh viễn. Lịch sử chẩn đoán được giữ lại.")
             ).to_be_visible(timeout=15_000)
-        finally:
-            _cleanup_plants(token, plant_name)
-            browser.close()
 
 
 if __name__ == "__main__":

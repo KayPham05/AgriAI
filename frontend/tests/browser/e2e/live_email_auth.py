@@ -60,7 +60,7 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
         try:
             page = browser.new_page()
 
-            # E2E-AUTH-05 & E2E-AUTH-07: Forgot password OTP via Mailpit, reset password, and login
+            # Forgot password OTP via Mailpit, reset password, and login
             page.goto(f"{base_url.rstrip('/')}/", wait_until="networkidle")
             page.get_by_role("button", name="Đăng nhập", exact=True).click()
             page.get_by_role("button", name="Quên mật khẩu?", exact=True).click()
@@ -82,7 +82,7 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
             page.get_by_role("button", name="Đăng nhập", exact=True).click()
             expect(page.get_by_text("Email System E2E", exact=True)).to_be_visible(timeout=15_000)
 
-            # E2E-PROF-04: Enable Email 2FA via Mailpit and verify state persists across reload
+            # Enable Email 2FA via Mailpit and verify state persists across reload
             page.goto(f"{base_url.rstrip('/')}/profile", wait_until="domcontentloaded")
             factor = page.get_by_label("Xác thực hai lớp qua email", exact=True)
             expect(factor).to_be_enabled(timeout=15_000)
@@ -95,7 +95,7 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
             page.reload(wait_until="domcontentloaded")
             expect(page.get_by_label("Xác thực hai lớp qua email", exact=True)).to_be_checked(timeout=15_000)
 
-            # E2E-PROF-03: Change password from profile settings via Mailpit and verify session termination
+            # Change password from profile settings via Mailpit and verify session termination
             page.get_by_role("button", name="Đổi mật khẩu", exact=True).click()
             page.get_by_label("Mật khẩu hiện tại", exact=True).fill(new_password)
             page.get_by_label("Mật khẩu mới", exact=True).fill("E2eChanged!246810")

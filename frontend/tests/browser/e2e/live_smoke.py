@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 import sys
 from pathlib import Path
+from uuid import uuid4
+from urllib.parse import parse_qs, urlsplit
 
 from playwright.sync_api import expect, sync_playwright
 
@@ -16,32 +18,51 @@ if str(BROWSER_DIR) not in sys.path:
 from e2e.support import DEFAULT_BASE_URL, png_bytes  # noqa: E402
 
 
+def run_catalog(route: str, base_url: str = DEFAULT_BASE_URL) -> None:
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        try:
+            page = browser.new_page()
+            response = page.goto(f"{base_url.rstrip('/')}/{route}", wait_until="networkidle")
+            assert response is not None and response.ok, f"Cannot open {route}"
+            card = page.get_by_role("listitem").filter(has=page.get_by_role("link", name="Xem chi tiết")).first
+            heading = card.get_by_role("heading")
+            expect(heading).to_be_visible()
+            title = heading.inner_text()
+            search = page.get_by_label("Tìm kiếm danh mục", exact=True)
+            submit = page.get_by_role("button", name="Tìm kiếm", exact=True)
+            search.fill(f"missing-{uuid4().hex}")
+            submit.click()
+            expect(page.get_by_text("Chưa có nội dung phù hợp được công khai.", exact=True)).to_be_visible()
+            search.fill(title)
+            submit.click()
+            page.wait_for_url(lambda url: parse_qs(urlsplit(url).query).get("search") == [title])
+            match = page.get_by_role("listitem").filter(has=page.get_by_role("heading", name=title, exact=True)).first
+            link = match.get_by_role("link", name="Xem chi tiết")
+            href = link.get_attribute("href")
+            assert href and href.startswith(f"/{route}/"), href
+            link.click()
+            expect(page).to_have_url(re.compile(re.escape(href) + "$"))
+            expect(page.get_by_role("heading", level=1, name=title, exact=True)).to_be_visible()
+        finally:
+            browser.close()
+
+
 def run(base_url: str = DEFAULT_BASE_URL) -> None:
     root_url = base_url.rstrip("/")
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         try:
             page = browser.new_page(viewport={"width": 1280, "height": 900})
-            api_responses: list[tuple[int, str]] = []
+            prediction_requests: list[str] = []
             page.on(
-                "response",
-                lambda response: api_responses.append((response.status, response.url))
-                if "/api/" in response.url
+                "request",
+                lambda request: prediction_requests.append(request.url)
+                if request.method == "POST" and urlsplit(request.url).path == "/api/predictions"
                 else None,
             )
 
-            # E2E-CAT-01..04: Public catalogs list, search, and detail navigation
-            for route in ("/plants", "/diseases", "/medicines", "/knowledge"):
-                response = page.goto(f"{root_url}{route}", wait_until="networkidle")
-                assert response is not None and response.ok, f"{route} did not load"
-                expect(page.get_by_label("Tìm kiếm danh mục", exact=True)).to_be_visible()
-                detail_links = page.get_by_role("link", name="Xem chi tiết", exact=True)
-                if detail_links.count() > 0:
-                    detail_links.first.click()
-                    expect(page).to_have_url(re.compile(rf"{re.escape(route)}/[^/]+$"))
-                    expect(page.get_by_role("heading", level=1).first).to_be_visible()
-
-            # E2E-SYS-04: /about route, desktop & mobile navigation (E2E-SYS-01), and reload
+            # /about route, desktop & mobile navigation (E2E-SYS-01), and reload
             about_resp = page.goto(f"{root_url}/about", wait_until="networkidle")
             assert about_resp is not None and about_resp.status == 200
             expect(page.get_by_role("heading", level=1, name="Hiểu kết quả trước khi sử dụng", exact=True)).to_be_visible()
@@ -49,7 +70,7 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
             page.reload(wait_until="domcontentloaded")
             expect(page.get_by_role("heading", level=1, name="Hiểu kết quả trước khi sử dụng", exact=True)).to_be_visible()
 
-            # E2E-SYS-01: Mobile navigation drawer at 375px on application route
+            # Mobile navigation drawer at 375px on application route
             page.set_viewport_size({"width": 375, "height": 900})
             assert page.locator("body").evaluate("element => element.scrollWidth <= window.innerWidth")
             page.get_by_role("button", name="Mở menu", exact=True).click()
@@ -59,7 +80,7 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
             expect(page).to_have_url(re.compile(r"/plants$"))
             page.set_viewport_size({"width": 1280, "height": 900})
 
-            # E2E-HOME-01..04: Guest landing page (/), sections, responsive viewports, reduced motion, and CTA navigation
+            # Guest landing page (/), sections, responsive viewports, reduced motion, and CTA navigation
             page.goto(f"{root_url}/", wait_until="domcontentloaded")
             expect(page.get_by_role("heading", name="Nhìn kỹ chiếc lá. Hiểu thêm về cây.", exact=True)).to_be_visible()
             expect(page.get_by_role("region", name="Dải ảnh cây trồng", exact=True)).to_be_visible()
@@ -77,14 +98,14 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
             page.get_by_role("banner").get_by_role("link", name="Tra cứu", exact=True).click()
             expect(page).to_have_url(re.compile(r"/plants$"))
 
-            # E2E-SYS-02: 404 route, noindex, and recovery link
+            # 404 route, noindex, and recovery link
             missing = page.goto(f"{root_url}/live-route-does-not-exist", wait_until="domcontentloaded")
             assert missing is not None and missing.status == 404
             assert page.locator('meta[name="robots"]').get_attribute("content") == "noindex"
             expect(page.get_by_role("heading", level=1, name="Không tìm thấy trang", exact=True)).to_be_visible()
             expect(page.get_by_role("link", name="Về trang chủ", exact=True)).to_be_visible()
 
-            # E2E-DIAG-01 & E2E-DIAG-07: Guest diagnosis and client file validation
+            # Guest diagnosis and client file validation
             page.goto(f"{root_url}/diagnose", wait_until="networkidle")
             page.get_by_label("Chọn ảnh lá cây", exact=True).set_input_files(
                 {
@@ -99,19 +120,15 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
             expect(result.get_by_text("Độ tin cậy", exact=True)).to_be_visible()
             expect(page.get_by_role("button", name="Lưu kết quả vào tài khoản", exact=True)).to_be_visible()
 
-            assert any(status == 200 and "/api/plants" in url for status, url in api_responses)
-            prediction_posts_before = sum(1 for status, url in api_responses if status in (200, 201) and "/api/predictions" in url)
-            assert prediction_posts_before >= 1
-
+            assert len(prediction_requests) == 1
             invalid = page.get_by_label("Chọn ảnh lá cây", exact=True)
             invalid.set_input_files({"name": "invalid.pdf", "mimeType": "application/pdf", "buffer": b"%PDF-1.4"})
-            expect(page.get_by_role("alert").first).to_be_visible()
+            expect(page.get_by_text("Định dạng không hỗ trợ", exact=True)).to_be_visible()
             invalid.set_input_files({"name": "tiny.png", "mimeType": "image/png", "buffer": png_bytes(223, 224)})
-            expect(page.get_by_role("alert").first).to_be_visible()
-            prediction_posts_after = sum(1 for status, url in api_responses if status in (200, 201) and "/api/predictions" in url)
-            assert prediction_posts_after == prediction_posts_before
+            expect(page.get_by_text("Ảnh lỗi hoặc độ phân giải quá thấp", exact=True)).to_be_visible()
+            assert len(prediction_requests) == 1, "Client validation sent an invalid upload to the API"
 
-            # E2E-AUTH-06: Guest visiting protected route redirects away
+            # Guest visiting protected route redirects away
             page.goto(f"{root_url}/history", wait_until="domcontentloaded")
             expect(page).not_to_have_url(re.compile(r"/history"), timeout=10_000)
         finally:

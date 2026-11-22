@@ -33,14 +33,14 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
                 else None,
             )
 
-            # E2E-ADM-01 (Part 1: Guest is blocked from /admin)
+            # Guest is blocked from /admin
             page.goto(f"{root_url}/admin", wait_until="domcontentloaded")
             expect(page.get_by_role("status").filter(has_text="Đăng nhập bằng tài khoản Admin để tiếp tục.")).to_be_visible(
                 timeout=15_000
             )
             expect(page.get_by_role("heading", name="Tổng quan vận hành", exact=True)).to_have_count(0)
 
-            # E2E-ADM-01 (Part 2: Normal User is blocked from /admin)
+            # Normal User is blocked from /admin
             page.goto(f"{root_url}/", wait_until="domcontentloaded")
             page.get_by_role("button", name="Đăng nhập", exact=True).click()
             page.get_by_label("Email", exact=True).fill("user@agrivision.ai")
@@ -55,7 +55,7 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
             )
             expect(page.get_by_role("heading", name="Tổng quan vận hành", exact=True)).to_have_count(0)
 
-            # E2E-ADM-01 (Part 3: Admin login succeeds and opens Overview)
+            # Admin login succeeds and opens Overview
             page.evaluate("localStorage.clear(); sessionStorage.clear();")
             page.goto(f"{root_url}/", wait_until="domcontentloaded")
             page.get_by_role("button", name="Đăng nhập", exact=True).click()
@@ -70,7 +70,7 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
                 timeout=15_000
             )
 
-            # E2E-ADM-02: Overview charts and AdminCalendar date filters
+            # Overview charts and AdminCalendar date filters
             expect(page.get_by_role("note").filter(has_text="Trang Tổng quan hiện dùng dữ liệu minh họa.")).to_be_visible()
             summary = page.locator("summary").filter(has_text="Lịch tháng")
             if not summary.evaluate("el => el.parentElement.open"):
@@ -81,7 +81,7 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
             page.get_by_role("button", name="Bỏ lọc thời gian", exact=True).click()
             expect(page.get_by_role("status", name="Bộ lọc thời gian", exact=True)).to_contain_text("Toàn bộ")
 
-            # E2E-ADM-03: Responsive mobile sheet & desktop sidebar navigation across views
+            # Responsive mobile sheet & desktop sidebar navigation across views
             page.set_viewport_size({"width": 375, "height": 900})
             assert page.locator("body").evaluate("element => element.scrollWidth <= window.innerWidth")
             page.get_by_role("button", name="Mở menu quản trị", exact=True).click()
@@ -100,7 +100,7 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
                     timeout=15_000
                 )
 
-            # E2E-ADM-04: Users list search & real backend verification
+            # Users list search & real backend verification
             users_region = page.get_by_role("region", name="Danh sách người dùng", exact=True)
             expect(users_region).to_be_visible(timeout=15_000)
             users_region.get_by_label("Tìm theo tên hoặc email người dùng", exact=True).fill("user@agrivision.ai")
@@ -108,7 +108,7 @@ def run(base_url: str = DEFAULT_BASE_URL) -> None:
             expect(users_region.get_by_role("heading", name="Demo Farmer", exact=True)).to_be_visible(timeout=15_000)
             assert any(status == 200 and "/api/admin/users" in url for status, url in api_responses)
 
-            # E2E-ADM-06: Sessions list search & status badges
+            # Sessions list search & status badges
             nav.get_by_role("button", name="Phiên đăng nhập", exact=True).click()
             expect(page.get_by_role("heading", level=1, name="Phiên đăng nhập", exact=True)).to_be_visible(timeout=15_000)
             sessions_region = page.get_by_role("region", name="Danh sách phiên đăng nhập", exact=True)

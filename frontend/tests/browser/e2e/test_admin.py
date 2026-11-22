@@ -225,11 +225,18 @@ class AdminBrowserTests(BrowserTestCase):
         listing.get_by_role("button", name="Cưỡng chế đăng xuất", exact=True).click()
         page.get_by_role("dialog").get_by_role("button", name="Xác nhận đăng xuất", exact=True).click()
 
+        expect(page.get_by_role("status").filter(has_text="Đã cập nhật tài khoản trên hệ thống.")).to_be_visible()
+
         # Admin session itself remains active
         expect(page.get_by_role("heading", level=1, name="Người dùng", exact=True)).to_be_visible()
-        self.assertTrue(any(r.path == "/api/admin/users/adm-u-1/status" and r.method == "PUT" for r in stub.requests))
-        self.assertTrue(any(r.path == "/api/admin/users/adm-u-1/warnings" and r.method == "POST" for r in stub.requests))
-        self.assertTrue(any(r.path == "/api/admin/users/adm-u-1/logout-all" and r.method == "POST" for r in stub.requests))
+        mutations = [(r.method, r.path.rsplit("/", 1)[-1]) for r in stub.requests
+                     if r.path.startswith("/api/admin/users/adm-u-1/") and r.method != "GET"]
+        self.assertEqual(mutations, [
+            ("PUT", "status"),
+            ("PUT", "status"),
+            ("POST", "warnings"),
+            ("POST", "logout-all"),
+        ])
 
     @case_meta("E2E-ADM-06", "P1")
     def test_admin_sessions_search_and_status_badges(self) -> None:
