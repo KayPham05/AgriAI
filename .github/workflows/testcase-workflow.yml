@@ -5,23 +5,7 @@ permissions:
 
 on:
   pull_request:
-    paths:
-      - "tools/testcase-workflow/**"
-      - ".github/workflows/testcase-workflow.yml"
-      - "frontend/tests/**"
-      - "frontend/package.json"
-      - "frontend/pnpm-lock.yaml"
-      - "backend/tests/**"
-      - "backend/**/*.csproj"
   push:
-    paths:
-      - "tools/testcase-workflow/**"
-      - ".github/workflows/testcase-workflow.yml"
-      - "frontend/tests/**"
-      - "frontend/package.json"
-      - "frontend/pnpm-lock.yaml"
-      - "backend/tests/**"
-      - "backend/**/*.csproj"
   workflow_dispatch:
     inputs:
       force_sheets_sync:

@@ -37,8 +37,13 @@ def validate_results(root: Path, expected_ids: set[str] | None = None) -> dict[s
             missing = REQUIRED_RESULT_FIELDS - set(case)
             if missing:
                 raise ValueError(f"{path}: cases[{index}] missing {sorted(missing)}")
-            case_id = str(case["id"]).strip()
-            status = str(case["status"]).strip()
+            if any(not isinstance(case[field], str) for field in REQUIRED_RESULT_FIELDS):
+                raise ValueError(f"{path}: cases[{index}] must use strings for id, status and execution")
+            case_id = case["id"].strip()
+            status = case["status"].strip()
+            execution = case["execution"].strip()
+            if not execution:
+                raise ValueError(f"{path}: {case_id} has empty execution")
             if not case_id:
                 raise ValueError(f"{path}: cases[{index}] has empty id")
             if status not in ALLOWED_STATUS:
@@ -46,7 +51,7 @@ def validate_results(root: Path, expected_ids: set[str] | None = None) -> dict[s
             if case_id in seen:
                 raise ValueError(f"duplicate testcase result: {case_id}")
             seen.add(case_id)
-            cases.append(case)
+            cases.append({**case, "id": case_id, "status": status, "execution": execution})
 
     if not cases:
         raise ValueError("result artifacts contain no testcase results")
@@ -55,7 +60,11 @@ def validate_results(root: Path, expected_ids: set[str] | None = None) -> dict[s
         missing = sorted(expected_ids - actual_ids)
         if missing:
             raise ValueError(f"missing testcase results: {missing}")
-    failed = [case["id"] for case in cases if case["status"] in {"Failed", "Blocked"}]
+    failed = [
+        case["id"] for case in cases
+        if case["status"] in {"Failed", "Blocked"}
+        or (expected_ids is not None and case["id"] in expected_ids and case["status"] != "Passed")
+    ]
     return {"artifact_files": [str(path) for path in files], "case_count": len(cases), "failed_cases": failed, "cases": cases}
 
 

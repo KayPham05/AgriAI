@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 import os
 import time
+from http.client import IncompleteRead
 from pathlib import Path
 from urllib.parse import quote
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -46,7 +48,7 @@ class SheetsClient:
             return token
         raise RuntimeError("Set GOOGLE_SHEETS_SERVICE_ACCOUNT_FILE (preferred) or GOOGLE_SHEETS_ACCESS_TOKEN for --sheets")
 
-    def request(self, method: str, url: str, body: dict | None = None) -> dict:
+    def request(self, method: str, url: str, body: dict | None = None, *, replay_safe: bool = True) -> dict:
         payload = None if body is None else json.dumps(body).encode("utf-8")
         request = Request(url, data=payload, method=method, headers={
             "Authorization": f"Bearer {self.access_token}",
@@ -61,8 +63,12 @@ class SheetsClient:
                 detail = error.read().decode("utf-8", errors="replace")[:1000]
                 if error.code not in {429, 500, 502, 503, 504} or attempt == 3:
                     raise RuntimeError(f"Google Sheets API {error.code}: {detail}") from error
+                if not replay_safe and error.code != 429:
+                    raise RuntimeError(f"Google Sheets API {error.code}: write may have applied; rerun sync after reading current state") from error
                 time.sleep(2 ** attempt)
-            except URLError as error:
+            except (URLError, TimeoutError, ConnectionError, IncompleteRead) as error:
+                if not replay_safe:
+                    raise RuntimeError("Google Sheets write may have applied; rerun sync after reading current state") from error
                 if attempt == 3:
                     raise RuntimeError(f"Google Sheets API network error: {error}") from error
                 time.sleep(2 ** attempt)
@@ -72,15 +78,18 @@ class SheetsClient:
     def _range(tab_name: str, a1: str) -> str:
         return quote(f"{quote_sheet_name(tab_name)}!{a1}", safe="")
 
-    def values(self, spreadsheet_id: str, tab_name: str, a1: str = "A:Z") -> list[list[str]]:
+    def values(self, spreadsheet_id: str, tab_name: str, a1: str = "A:Z", *, formulas: bool = False) -> list[list[str]]:
         url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values/{self._range(tab_name, a1)}"
+        if formulas:
+            url += "?valueRenderOption=FORMULA"
         return self.request("GET", url).get("values", [])
 
-    def update(self, spreadsheet_id: str, tab_name: str, a1: str, values: list[list[str]]) -> dict:
-        url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values/{self._range(tab_name, a1)}?valueInputOption=USER_ENTERED"
+    def update(self, spreadsheet_id: str, tab_name: str, a1: str, values: list[list[Any]], *, raw: bool = False) -> dict:
+        mode = "RAW" if raw else "USER_ENTERED"
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values/{self._range(tab_name, a1)}?valueInputOption={mode}"
         return self.request("PUT", url, {"range": f"{quote_sheet_name(tab_name)}!{a1}", "majorDimension": "ROWS", "values": values})
 
-    def batch_update(self, spreadsheet_id: str, updates: list[tuple[str, str, list[list[str]]]]) -> dict:
+    def batch_update(self, spreadsheet_id: str, updates: list[tuple[str, str, list[list[Any]]]], *, raw: bool = False) -> dict:
         """Update multiple ranges in one Google Sheets values:batchUpdate request."""
         data = [
             {"range": f"{quote_sheet_name(tab_name)}!{a1}", "majorDimension": "ROWS", "values": values}
@@ -89,16 +98,17 @@ class SheetsClient:
         if not data:
             return {"totalUpdatedRanges": 0}
         url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values:batchUpdate"
-        return self.request("POST", url, {"valueInputOption": "USER_ENTERED", "data": data})
+        return self.request("POST", url, {"valueInputOption": "RAW" if raw else "USER_ENTERED", "data": data})
 
     def clear(self, spreadsheet_id: str, tab_name: str, a1: str) -> dict:
         url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values/{self._range(tab_name, a1)}:clear"
         return self.request("POST", url, {})
 
-    def append(self, spreadsheet_id: str, tab_name: str, row: list[str]) -> dict:
+    def append(self, spreadsheet_id: str, tab_name: str, row: list[str], *, raw: bool = False) -> dict:
         encoded_range = self._range(tab_name, "A:Z")
-        url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values/{encoded_range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS"
-        return self.request("POST", url, {"values": [row]})
+        mode = "RAW" if raw else "USER_ENTERED"
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values/{encoded_range}:append?valueInputOption={mode}&insertDataOption=INSERT_ROWS"
+        return self.request("POST", url, {"values": [row]}, replay_safe=False)
 
     def sheet_metadata(self, spreadsheet_id: str) -> list[dict]:
         url = f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}?fields=sheets.properties"
@@ -231,12 +241,17 @@ class SheetsClient:
 
     def insert_row(self, spreadsheet_id: str, sheet_id: int, row_number: int) -> dict:
         body = {"requests": [{"insertDimension": {"range": {"sheetId": sheet_id, "dimension": "ROWS", "startIndex": row_number - 1, "endIndex": row_number}, "inheritFromBefore": True}}]}
-        return self.request("POST", f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}:batchUpdate", body)
+        return self.request("POST", f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}:batchUpdate", body, replay_safe=False)
 
     def batch_requests(self, spreadsheet_id: str, requests: list[dict]) -> dict:
         if not requests:
             return {}
-        return self.request("POST", f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}:batchUpdate", {"requests": requests})
+        repeatable = {"updateCells", "repeatCell", "copyPaste", "setDataValidation"}
+        replay_safe = all(request.keys() <= repeatable for request in requests)
+        return self.request(
+            "POST", f"https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}:batchUpdate",
+            {"requests": requests}, replay_safe=replay_safe,
+        )
 
     @staticmethod
     def copy_row_style_requests(

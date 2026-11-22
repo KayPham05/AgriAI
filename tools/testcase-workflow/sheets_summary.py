@@ -54,6 +54,39 @@ def _parse_dashboard_int(value: Any) -> int | None:
     return None
 
 
+def _validate_dashboard_headers(values: list[list[str]], mapping: dict[str, Any], tab_name: str) -> None:
+    columns = {
+        "no": ("no.", "no", ""),
+        "sheet_name": ("sheet name",),
+        "name": ("name", "api name", "screen", "screen name"),
+        "total": ("total testcase",),
+        "passed": ("passed",),
+        "failed": ("failed",),
+        "blocked": ("blocked",),
+        "not_run": ("not run",),
+        "automation": ("auto", "automation"),
+        "manual": ("manual",),
+        "na": ("n/a",),
+        "ui": ("ui",),
+        "function": ("function",),
+        "validate": ("validate",),
+        "status": ("status", "status testing", "testing status"),
+        "progress": ("progress", "progress %", "% progress"),
+        "remarks": ("remarks", "notes"),
+    }
+    header_rows = values[:int(mapping["data_start_row"]) - 1]
+    position = 1
+    for field, allowed in columns.items():
+        column = mapping.get(f"{field}_column")
+        if column is None:
+            continue
+        index = column_number(column) - 1
+        labels = {str(row[index]).strip().casefold() for row in header_rows if index < len(row)} - {""}
+        if index + 1 != position or not ((labels or {""}) & set(allowed)):
+            raise RuntimeError(f"Summary tab {tab_name!r} header schema drift at {column}; refusing to write")
+        position += 1
+
+
 def update_summary_dashboard(
     client: SheetsClient, spreadsheet_id: str, sheet: dict[str, Any],
     cases: list[dict[str, Any]], latest: dict[str, Any], moved_source_tabs: set[str] | None = None,
@@ -61,10 +94,7 @@ def update_summary_dashboard(
     tab_name = sheet["summary_tab"]
     mapping = sheet["dashboard_mapping"]
     values = [list(r) for r in client.values(spreadsheet_id, tab_name, mapping["range"])]
-    headers = {str(cell).strip().casefold() for row in values[:6] for cell in row}
-    required_headers = {"sheet name", "total testcase", "passed", "failed", "blocked", "not run"}
-    if not required_headers.issubset(headers):
-        raise RuntimeError(f"Summary tab {tab_name!r} header schema drift; refusing to write")
+    _validate_dashboard_headers(values, mapping, tab_name)
     grouped: dict[str, list[dict[str, Any]]] = {}
     for case in cases:
         grouped.setdefault(case["detail_tab"], []).append(case)
@@ -79,11 +109,15 @@ def update_summary_dashboard(
     no_col_idx = column_number(no_col) - 1 if no_col else None
     sheet_col_idx = column_number(mapping["sheet_name_column"]) - 1
     label_index = column_number(mapping.get("total_label_column", "A")) - 1
-    total_row = next((index for index, row in enumerate(values, start=1) if len(row) > label_index and str(row[label_index]).strip().casefold() == mapping["total_label"].casefold()), None)
-    if total_row is None:
-        total_row = next((index for index, row in enumerate(values, start=1) if any(str(cell).strip().casefold() == mapping["total_label"].casefold() for cell in row)), None)
-    if total_row is None:
-        raise RuntimeError(f"Summary tab {tab_name!r} has no total row; refusing to corrupt dashboard")
+    total_rows = [
+        index for index, row in enumerate(values, start=1)
+        if index >= data_start_row and len(row) > label_index
+        and str(row[label_index]).strip().casefold() == mapping["total_label"].casefold()
+        and (len(row) <= sheet_col_idx or not str(row[sheet_col_idx]).strip())
+    ]
+    if len(total_rows) != 1:
+        raise RuntimeError(f"Summary tab {tab_name!r} must have one total row; refusing to write")
+    total_row = total_rows[0]
     used_rows = {
         str(row[sheet_col_idx]).strip(): index
         for index, row in enumerate(values, start=1)
@@ -120,8 +154,7 @@ def update_summary_dashboard(
             index
             for index in range(data_start_row, total_row)
             if index <= len(values)
-            and len(values[index - 1]) > sheet_col_idx
-            and str(values[index - 1][sheet_col_idx]).strip()
+            and any(str(cell).strip() for cell in values[index - 1])
         ]
         next_candidate = max([data_start_row - 1, *occupied]) + 1
         if next_candidate < total_row:
@@ -307,14 +340,18 @@ def update_summary_list(client: SheetsClient, spreadsheet_id: str, sheet: dict[s
         for key in ("no_column", "sheet_name_column", "screen_column", "status_column", "remarks_column")
         if mapping.get(key)
     ]
-    start_col_num = min(mapped_cols, default=1)
     table_width = max(mapped_cols, default=5)
-    start_col_letter = column_name(start_col_num)
     end_col_letter = column_name(table_width)
     read_range = mapping.get("range") or ("A:Z" if table_width <= 26 else f"A:{end_col_letter}")
-    values = [list(r) for r in client.values(spreadsheet_id, tab_name, read_range)]
-    headers = {str(cell).strip().casefold() for cell in (values[0] if values else [])}
-    if not {"sheet name", "status", "remarks"}.issubset(headers):
+    values = [list(r) for r in client.values(spreadsheet_id, tab_name, read_range, formulas=True)]
+    header = values[0] if values else []
+    expected_columns = {sheet_column: "sheet name", status_column: "status", remarks_column: "remarks"}
+    if no_column is not None:
+        expected_columns[no_column] = "no."
+    if screen_column is not None:
+        expected_columns[screen_column] = "screen"
+    if any(index >= len(header) or str(header[index]).strip().casefold() != label
+           for index, label in expected_columns.items()):
         raise RuntimeError(f"Summary tab {tab_name!r} list schema drift; refusing to write")
     all_sheets = client.sheet_metadata(spreadsheet_id) if hasattr(client, "sheet_metadata") else []
     metadata = next((item for item in all_sheets if item.get("title") == tab_name), None)
@@ -325,13 +362,9 @@ def update_summary_list(client: SheetsClient, spreadsheet_id: str, sheet: dict[s
         grouped.setdefault(case["detail_tab"], []).append(case)
     updates = []
     pending_writes = []
+    contiguous_style = set(mapped_cols) == set(range(1, table_width + 1))
     style_requests: list[dict[str, Any]] = []
-    occupied_rows = [
-        index
-        for index, row in enumerate(values, start=1)
-        if index >= data_start_row and len(row) > sheet_column and str(row[sheet_column]).strip()
-    ]
-    next_row = max([data_start_row - 1, *occupied_rows]) + 1
+    next_row = max(data_start_row, len(values) + 1)
 
     # Pass 1: assign rows for all tabs before computing sequential No. skipping blank gaps
     assigned_rows: dict[str, tuple[int, bool]] = {}
@@ -378,50 +411,26 @@ def update_summary_list(client: SheetsClient, spreadsheet_id: str, sheet: dict[s
         if no_column is not None:
             row[no_column] = no_value
         row[sheet_column] = detail_tab
-        if screen_column is not None and not str(row[screen_column]).strip():
+        keep_screen = screen_column is not None and bool(str(row[screen_column]).strip())
+        if screen_column is not None and not keep_screen:
             row[screen_column] = screen_name
         row[status_column] = status
         row[remarks_column] = evidence or primary.get("expected_result", "")
         if len(values[row_number - 1]) < table_width:
             values[row_number - 1].extend([""] * (table_width - len(values[row_number - 1])))
         values[row_number - 1][:table_width] = row[:table_width]
-        pending_writes.append((tab_name, f"{start_col_letter}{row_number}:{end_col_letter}{row_number}", [row[start_col_num - 1:table_width]]))
+        for col in mapped_cols:
+            if keep_screen and col - 1 == screen_column:
+                continue
+            letter = column_name(col)
+            pending_writes.append((tab_name, f"{letter}{row_number}:{letter}{row_number}", [[row[col - 1]]]))
         if summary_sheet_id is not None:
             style_requests.extend(_row_format_requests(
                 client, summary_sheet_id, data_start_row, row_number, table_width,
-                sheet_column, gid_by_title.get(detail_tab), was_existing,
+                sheet_column, gid_by_title.get(detail_tab), was_existing or not contiguous_style,
             ))
         updates.append({"detail_tab": detail_tab, "row": row_number, "no": no_value, "status": status})
 
-    if no_col_letter and no_column is not None:
-        grouped_rows = {row_num for row_num, _ in assigned_rows.values()}
-        for r_idx, expected_no in seq_by_row.items():
-            if r_idx in grouped_rows:
-                continue
-            current_no = str(values[r_idx - 1][no_column]).strip() if len(values[r_idx - 1]) > no_column else ""
-            if current_no != str(expected_no):
-                pending_writes.append((tab_name, f"{no_col_letter}{r_idx}:{no_col_letter}{r_idx}", [[expected_no]]))
-
-    stray_start_letter = column_name(table_width + 1)
-    for idx, row in enumerate(values, start=1):
-        if len(row) > table_width and any(str(cell).strip() for cell in row[table_width:]):
-            stray_end_col = len(row)
-            stray_end_letter = column_name(stray_end_col)
-            client.clear(spreadsheet_id, tab_name, f"{stray_start_letter}{idx}:{stray_end_letter}{idx}")
-            if summary_sheet_id is not None:
-                style_requests.append({
-                    "repeatCell": {
-                        "range": {
-                            "sheetId": summary_sheet_id,
-                            "startRowIndex": idx - 1,
-                            "endRowIndex": idx,
-                            "startColumnIndex": table_width,
-                            "endColumnIndex": stray_end_col,
-                        },
-                        "cell": {"userEnteredFormat": {}},
-                        "fields": "userEnteredFormat.borders",
-                    }
-                })
     if pending_writes:
         client.batch_update(spreadsheet_id, pending_writes)
     if hasattr(client, "batch_requests") and style_requests:

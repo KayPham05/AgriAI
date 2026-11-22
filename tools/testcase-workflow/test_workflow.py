@@ -2,6 +2,7 @@ import json
 import re
 import subprocess
 import sys
+import time
 import unittest
 import tempfile
 from unittest.mock import patch
@@ -161,12 +162,6 @@ class WorkflowSmokeTests(unittest.TestCase):
                 code_priorities[cid] = prio
         self.assertEqual(code_priorities, spec_priorities, "Priority mismatch between frontend_e2e_test_specification.md and @case_meta in test_*.py")
 
-        live_suite_text = (ROOT / "frontend" / "tests" / "browser" / "e2e" / "run_live_suite.py").read_text(encoding="utf-8")
-        live_ids = re.findall(r'"(E2E-[A-Z0-9-]+)"', live_suite_text)
-        self.assertEqual(len(live_ids), 40)
-        self.assertEqual(set(live_ids), auto_ids)
-
-
     def test_result_artifact_validator_accepts_unique_cases(self):
         path = Path("results.json")
         with patch.object(Path, "rglob", return_value=[path]), patch.object(Path, "read_text", return_value=json.dumps({"cases": [{"id": "API-1", "status": "Passed", "execution": "Auto"}]})):
@@ -196,6 +191,19 @@ class WorkflowSmokeTests(unittest.TestCase):
         with patch.object(Path, "rglob", return_value=[path]), patch.object(Path, "read_text", return_value=json.dumps(payload)):
             self.assertEqual(validate_results(Path("artifacts"))["failed_cases"], ["API-1"])
 
+    def test_artifact_gate_uses_normalized_status_and_requires_pass_for_mandatory_ids(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp)
+            for status in (" Failed ", "Skipped", "Deprecated"):
+                with self.subTest(status=status):
+                    (path / "results.json").write_text(json.dumps({"cases": [
+                        {"id": " REQUIRED ", "status": status, "execution": " Auto "},
+                        {"id": "OPTIONAL", "status": "Skipped", "execution": "Auto"},
+                    ]}), encoding="utf-8")
+                    summary = validate_results(path, {"REQUIRED"})
+                    self.assertEqual(summary["failed_cases"], ["REQUIRED"])
+                    self.assertEqual(summary["cases"][0]["status"], status.strip())
+
     def test_result_artifact_validator_rejects_missing_expected_case(self):
         path = Path("results.json")
         payload = {"cases": [{"id": "API-1", "status": "Passed", "execution": "Auto"}]}
@@ -220,14 +228,84 @@ class WorkflowSmokeTests(unittest.TestCase):
                 self.assertEqual(validate_main(), 0)
 
     def test_emit_result_appends_cases_to_artifact(self):
-        directory = "artifact-output"
-        stored = {}
-        def capture(path, payload):
-            stored["payload"] = payload
-        with patch.dict("os.environ", {"AGRIVISION_RESULT_DIR": directory}), patch("registry_state.record_result"), patch("registry_state.Path.mkdir"), patch("registry_state.Path.exists", side_effect=[False, True]), patch("registry_state.read_json", return_value={"schema_version": 1, "run_id": "run-1", "cases": [{"id": "A", "status": "Passed", "execution": "Auto"}]}), patch("registry_state.write_json_atomic", side_effect=capture):
-            emit_result(CaseResult("A", "Passed", "Auto", run_id="run-1"))
-            emit_result(CaseResult("B", "Failed", "Auto", run_id="run-1"))
-            self.assertEqual([case["id"] for case in stored["payload"]["cases"]], ["A", "B"])
+        with tempfile.TemporaryDirectory() as tmp, patch("registry_state.record_result"), patch.dict(
+            "os.environ", {"AGRIVISION_RESULT_DIR": tmp}, clear=True
+        ):
+            for cid, status in (("A", "Failed"), ("B", "Passed"), ("A", "Passed")):
+                emit_result(CaseResult(cid, status, "Auto", run_id="one"))
+            self.assertEqual(validate_results(Path(tmp), {"A", "B"})["failed_cases"], [])
+            emit_result(CaseResult("A", "Passed", "Auto", run_id="two"))
+            payload = json.loads((Path(tmp) / "results.json").read_text())
+            self.assertEqual(payload["run_id"], "two")
+            self.assertEqual(validate_results(Path(tmp), {"A"})["case_count"], 1)
+
+    def test_cli_replaces_previous_execution_and_keeps_results_within_run_all(self):
+        def run_fixture(*_args):
+            emit_result(CaseResult("A", "Passed", "Auto", run_id="subgroup1"))
+            emit_result(CaseResult("B", "Passed", "Auto", run_id="subgroup2"))
+
+        with tempfile.TemporaryDirectory() as tmp, patch("registry_state.record_result"), patch.dict(
+            "os.environ", {"AGRIVISION_RESULT_DIR": tmp}, clear=True
+        ), patch.object(sys, "argv", ["workflow.py", "run-all"]):
+            path = Path(tmp) / "results.json"
+            with patch("workflow.run_all", side_effect=run_fixture):
+                main()
+            self.assertEqual(validate_results(Path(tmp), {"A", "B"})["case_count"], 2)
+            first = json.loads(path.read_text())
+            with patch("workflow.run_all", side_effect=SystemExit(1)), self.assertRaises(SystemExit):
+                main()
+            second = json.loads(path.read_text())
+            self.assertNotEqual(first["run_id"], second["run_id"])
+            self.assertEqual(second["cases"], [])
+
+    def test_execution_lock_blocks_active_writer_and_recovers_after_process_kill(self):
+        from registry_state import artifact_execution
+
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(
+            "os.environ", {"AGRIVISION_RESULT_DIR": tmp, "AGRIVISION_EXECUTION_ID": "", "GITHUB_RUN_ID": ""}
+        ):
+            path = Path(tmp) / "results.json"
+            script = (
+                "from registry_state import artifact_execution; import time\n"
+                "with artifact_execution(): time.sleep(30)"
+            )
+            with subprocess.Popen([sys.executable, "-c", script], cwd=WORKFLOW.parent) as child:
+                try:
+                    deadline = time.monotonic() + 5
+                    while not path.exists() and child.poll() is None and time.monotonic() < deadline:
+                        time.sleep(0.01)
+                    self.assertTrue(path.exists(), "Child must acquire its lock and initialize the artifact")
+                    first_id = json.loads(path.read_text())["run_id"]
+                    with self.assertRaisesRegex(RuntimeError, "state lock is held"), artifact_execution():
+                        self.fail("A second writer must fail while the first process holds the lock")
+                finally:
+                    if child.poll() is None:
+                        child.kill()
+                    child.wait(timeout=5)
+            self.assertTrue((Path(tmp) / "execution.lock").exists())
+            with artifact_execution():
+                self.assertNotEqual(json.loads(path.read_text())["run_id"], first_id)
+
+    def test_ci_artifact_keeps_both_commands_and_resets_on_attempt_change(self):
+        with tempfile.TemporaryDirectory() as tmp, patch("registry_state.record_result"), patch.dict(
+            "os.environ", {"AGRIVISION_RESULT_DIR": tmp, "GITHUB_RUN_ID": "42",
+                           "GITHUB_RUN_ATTEMPT": "1", "GITHUB_SHA": "old", "GITHUB_JOB": "live-contract"}, clear=True
+        ):
+            for case_id in ("API-HEALTH-01", "API-PRED-GUEST-01"):
+                with patch.object(sys, "argv", ["workflow.py", "run-case", case_id]), patch(
+                    "workflow.run_case", side_effect=lambda cid, *_args: emit_result(CaseResult(cid, "Passed", "Auto")) or True
+                ):
+                    main()
+            self.assertEqual(validate_results(Path(tmp), {"API-HEALTH-01", "API-PRED-GUEST-01"})["case_count"], 2)
+            with patch.dict("os.environ", {"GITHUB_RUN_ATTEMPT": "2", "GITHUB_SHA": "new"}):
+                emit_result(CaseResult("API-HEALTH-01", "Passed", "Auto"))
+            payload = json.loads((Path(tmp) / "results.json").read_text())
+            self.assertEqual((payload["run_id"], payload["run_attempt"], payload["commit_sha"]), ("42", "2", "new"))
+            self.assertEqual([item["id"] for item in payload["cases"]], ["API-HEALTH-01"])
+
+    def test_ci_accepts_source_only_pull_requests_and_pushes(self):
+        workflow = (ROOT / ".github/workflows/testcase-workflow.yml").read_text()
+        self.assertRegex(workflow, r"(?m)^on:\s*\n  pull_request:\n  push:\n  workflow_dispatch:")
 
     def test_cases_json_schema_guards(self):
         cases = json.loads((ROOT / "tools" / "testcase-workflow" / "config" / "cases.json").read_text(encoding="utf-8"))["cases"]

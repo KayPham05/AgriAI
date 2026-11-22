@@ -50,6 +50,18 @@ class SheetsClientRetryTests(unittest.TestCase):
         request.assert_called_once()
         self.assertEqual(len(request.call_args.args[2]["data"]), 2)
 
+    def test_raw_viewpoint_writes_keep_number_like_text(self):
+        client = SheetsClient(access_token="test")
+        with patch.object(client, "request", return_value={}) as request:
+            client.update("sheet", "VP", "B3", [["001"]], raw=True)
+            client.append("sheet", "VP", ["001"], raw=True)
+            client.batch_update("sheet", [("VP", "B3", [["001"]])], raw=True)
+        update, append, batch = request.call_args_list
+        self.assertIn("valueInputOption=RAW", update.args[1])
+        self.assertIn("valueInputOption=RAW", append.args[1])
+        self.assertEqual(batch.args[2]["valueInputOption"], "RAW")
+        self.assertEqual(batch.args[2]["data"][0]["values"], [["001"]])
+
     def test_value_requests_escape_apostrophes_in_tab_names(self):
         client = SheetsClient(access_token="test")
         with patch.object(client, "request", return_value={}) as request:
@@ -200,6 +212,7 @@ class SheetsClientRetryTests(unittest.TestCase):
                     }
                 ]
             },
+            replay_safe=False,
         )
 
     def test_template_duplicate_clears_case_values_in_same_batch_and_preserves_existing_tab_on_retry(self):
@@ -238,6 +251,7 @@ class SheetsClientRetryTests(unittest.TestCase):
                     "fields": "userEnteredValue",
                 }},
             ]},
+            replay_safe=False,
         )
         self.assertFalse(retried["created"])
         self.assertEqual(retried["sheetId"], 1)
@@ -256,7 +270,7 @@ class SheetsClientRetryTests(unittest.TestCase):
         err_429 = HTTPError("https://example.test", 429, "Too Many Requests", hdrs=None, fp=io.BytesIO(b"quota"))
         err_503 = HTTPError("https://example.test", 503, "Unavailable", hdrs=None, fp=io.BytesIO(b"busy"))
         with patch("sheets_client.urlopen", side_effect=[err_429, err_503, Response()]), patch("sheets_client.time.sleep") as sleep:
-            res = client.batch_requests("sid", [{"deleteSheet": {"sheetId": 123}}])
+            res = client.batch_requests("sid", [{"updateCells": {"fields": "userEnteredValue"}}])
         self.assertEqual(res, {"replies": [{}]})
         self.assertEqual([call.args[0] for call in sleep.call_args_list], [1, 2])
 
@@ -266,6 +280,37 @@ class SheetsClientRetryTests(unittest.TestCase):
                 client.batch_requests("sid", [{"deleteSheet": {"sheetId": 123}}])
         self.assertIn("Google Sheets API 400: invalid", str(ctx.exception))
         sleep.assert_not_called()
+
+    def test_uncertain_structural_writes_are_never_replayed(self):
+        client = SheetsClient(access_token="test")
+        mutations = (
+            lambda: client.insert_row("fixture", 5, 60),
+            lambda: client.append("fixture", "Cases", ["NEW"]),
+            lambda: client.batch_requests("fixture", [{"deleteConditionalFormatRule": {"sheetId": 5, "index": 0}}]),
+        )
+        for mutate in mutations:
+            for error in (URLError("connection lost after commit"), TimeoutError("timeout after commit"),
+                          HTTPError("https://example.test", 503, "Unavailable", None, io.BytesIO(b"busy"))):
+                with (
+                    self.subTest(mutation=mutate, error=type(error).__name__),
+                    patch("sheets_client.urlopen", side_effect=error) as send,
+                    patch("sheets_client.time.sleep") as sleep,
+                ):
+                    with self.assertRaisesRegex(RuntimeError, "write may have applied"):
+                        mutate()
+                    send.assert_called_once()
+                    sleep.assert_not_called()
+
+    def test_structural_write_can_retry_after_explicit_quota_rejection(self):
+        client = SheetsClient(access_token="test")
+        quota = HTTPError("https://example.test", 429, "Too Many Requests", None, io.BytesIO(b"quota"))
+        from unittest.mock import MagicMock
+
+        response = MagicMock()
+        response.__enter__.return_value.read.return_value = b'{"replies":[{}]}'
+        with patch("sheets_client.urlopen", side_effect=[quota, response]) as send, patch("sheets_client.time.sleep"):
+            self.assertEqual(client.insert_row("fixture", 5, 60), {"replies": [{}]})
+        self.assertEqual(send.call_count, 2)
 
     def test_spreadsheet_locale_reads_properties_locale(self):
         client = SheetsClient(access_token="test")

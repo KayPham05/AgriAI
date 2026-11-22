@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import json
 import os
 import re
 import subprocess
 from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from validate_results import validate_results
 
@@ -56,17 +59,26 @@ def write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
 
 
 @contextmanager
-def state_lock():
-    lock_path = STATE.with_suffix(".lock")
-    try:
-        descriptor = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-    except FileExistsError as error:
-        raise RuntimeError(f"state lock exists: {lock_path}") from error
-    try:
-        os.close(descriptor)
+def state_lock(path: Path | None = None, *, wait: bool = False):
+    lock_path = (path or STATE).with_suffix(".lock")
+    # The kernel releases the lock on exit, including when the process is killed.
+    # Keep the lock file so other processes always open the same inode.
+    with lock_path.open("a+b") as handle:
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK if wait else msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(handle, fcntl.LOCK_EX if wait else fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as error:
+            if error.errno not in {errno.EACCES, errno.EAGAIN}:
+                raise
+            raise RuntimeError(f"state lock is held: {lock_path}") from error
         yield
-    finally:
-        lock_path.unlink(missing_ok=True)
 
 
 def normalize_tab_name(value: str) -> str:
@@ -178,23 +190,67 @@ def load_sheets() -> dict[str, dict[str, Any]]:
     return sheets
 
 
+def load_state() -> dict[str, Any]:
+    return read_json(STATE) if STATE.exists() else {"schema_version": 2, "cases": {}, "runs": []}
+
+
 def import_results(root: Path) -> None:
     summary = validate_results(root)
-    state = read_json(STATE) if STATE.exists() else {"schema_version": 2, "cases": {}, "runs": []}
-    latest = state.setdefault("latest_results", {})
-    for result in summary["cases"]:
-        latest[result["id"]] = result
-    state["runs"] = (state.get("runs", []) + summary["cases"])[-200:]
-    write_json_atomic(STATE, state)
+    with state_lock(wait=True):
+        state = load_state()
+        latest = state.setdefault("latest_results", {})
+        for result in summary["cases"]:
+            latest[result["id"]] = result
+        state["runs"] = (state.get("runs", []) + summary["cases"])[-200:]
+        write_json_atomic(STATE, state)
 
 
 def record_result(result: CaseResult) -> None:
-    with state_lock():
-        state = read_json(STATE) if STATE.exists() else {"schema_version": 2, "cases": {}, "runs": []}
+    with state_lock(wait=True):
+        state = load_state()
         state.setdefault("latest_results", {})[result.id] = asdict(result)
         state.setdefault("runs", []).append(asdict(result))
         state["runs"] = state["runs"][-200:]
         write_json_atomic(STATE, state)
+
+
+_local_execution = ContextVar("local_execution", default="")
+
+
+def _artifact_header(fallback: str) -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "run_id": os.getenv("AGRIVISION_EXECUTION_ID") or os.getenv("GITHUB_RUN_ID") or _local_execution.get() or fallback,
+        "run_attempt": os.getenv("GITHUB_RUN_ATTEMPT", ""),
+        "commit_sha": os.getenv("GITHUB_SHA", ""),
+        "job": os.getenv("GITHUB_JOB", ""),
+    }
+
+
+def _current_artifact(path: Path, fallback: str) -> dict[str, Any]:
+    header = _artifact_header(fallback)
+    if path.exists():
+        existing = read_json(path)
+        if all(existing.get(k) == v for k, v in header.items()):
+            return existing
+    return {**header, "cases": []}
+
+
+@contextmanager
+def artifact_execution():
+    directory = os.getenv("AGRIVISION_RESULT_DIR")
+    if not directory:
+        yield
+        return
+    path = Path(directory) / "results.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with state_lock(path.parent / "execution.lock"):
+        token = _local_execution.set(uuid4().hex)
+        try:
+            write_json_atomic(path, _current_artifact(path, ""))
+            yield
+        finally:
+            _local_execution.reset(token)
 
 
 def emit_result(result: CaseResult) -> None:
@@ -203,17 +259,10 @@ def emit_result(result: CaseResult) -> None:
         output_dir = Path(result_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         output_path = output_dir / "results.json"
-        payload = {
-            "schema_version": 1,
-            "run_id": os.getenv("GITHUB_RUN_ID", result.run_id),
-            "commit_sha": os.getenv("GITHUB_SHA", ""),
-            "job": os.getenv("GITHUB_JOB", result.group),
-            "cases": [],
-        }
-        if output_path.exists():
-            payload = read_json(output_path)
-        payload.setdefault("cases", []).append(asdict(result))
-        write_json_atomic(output_path, payload)
+        with state_lock(output_path):
+            payload = _current_artifact(output_path, result.run_id)
+            payload["cases"] = [case for case in payload["cases"] if case["id"] != result.id] + [asdict(result)]
+            write_json_atomic(output_path, payload)
     try:
         record_result(result)
     except OSError:

@@ -140,6 +140,7 @@ appsettings.Development.json
 # Generated local state from the shared testcase workflow
 tools/testcase-workflow/config/state.json
 tools/testcase-workflow/config/state.lock
+tools/testcase-workflow/config/sheets-sync.lock
 tools/testcase-workflow/__pycache__/
 
 # Google Service Account credentials: never commit keys.

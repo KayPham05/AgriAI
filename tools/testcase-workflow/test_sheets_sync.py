@@ -66,7 +66,7 @@ class SheetsSyncTests(unittest.TestCase):
                     ids = {"WEB-DIAG-01 Diagnosis": 101, "API-HEALTH-01 GET /api/health": 201}
                     return {"sheetId": ids[tab_name], "title": tab_name, "created": False}
 
-                def values(self, _sid, tab_name, a1="A:Z"):
+                def values(self, _sid, tab_name, a1="A:Z", **kwargs):
                     if tab_name == "WEB-DIAG-01 Diagnosis":
                         if a1 == "A13:K14":
                             return [
@@ -87,14 +87,14 @@ class SheetsSyncTests(unittest.TestCase):
                         return rows
                     if tab_name == "Report":
                         return [
-                            ["", "Sheet Name", "Name", "Total Testcase", "Passed", "Failed", "Blocked", "Not run", "Auto", "Manual", "N/A"],
+                            ["", "Sheet Name", "Name", "Total Testcase", "Passed", "Failed", "Blocked", "Not run", "Auto", "Manual", "N/A", "UI", "Function", "Validate", "Status Testing", "Progress", "Remarks"],
                             [], [], [], [],
                             ["1", "WEB-DIAG-01 Diagnosis", "Diag", "2", "2", "0", "0", "0", "2", "0", "0"],
                             ["", "", "Total", "2", "2", "0", "0", "0", "2", "0", "0"],
                         ]
                     if tab_name == "Report bug":
                         return [
-                            ["No.", "Sheet name", "API name", "Total Testcase", "Passed", "Failed", "Blocked", "Not run", "Automation", "Manual", "N/A"],
+                            ["No.", "Sheet name", "API name", "Total Testcase", "Passed", "Failed", "Blocked", "Not run", "Automation", "Manual", "N/A", "Status Testing", "Progress", "Remarks"],
                             [], [], [],
                             ["1", "API-HEALTH-01 GET /api/health", "GetHealth", "1", "1", "0", "0", "0", "1", "0", "0"],
                             ["", "", "Total", "1", "1", "0", "0", "0", "1", "0", "0"],
@@ -169,8 +169,8 @@ class SheetsSyncTests(unittest.TestCase):
             screen_updates = fake_client.updates_by_sid[sheets_cfg["screen"]["id"]]
             new_row = next(rows[0] for tab, rng, rows in screen_updates if tab == "WEB-DIAG-01 Diagnosis" and rng == "A16:K16")
             self.assertEqual(new_row[8:11], ["Not run", "Auto", ""])
-            existing_row = next(rows[0] for tab, rng, rows in screen_updates if tab == "WEB-DIAG-01 Diagnosis" and rng == "A15:K15")
-            self.assertEqual(existing_row[8:11], ["Passed", "Auto", "ev1"])
+            self.assertFalse(any(tab == "WEB-DIAG-01 Diagnosis" and rng == "A15:K15"
+                                 for tab, rng, _ in screen_updates))
             self.assertIn(("WEB-DIAG-01 Diagnosis", "A1:A2", [[""], ["WEB-DIAG-01 Diagnosis/Diag"]]), screen_updates)
             screen_summary = next(rows for tab, rng, rows in screen_updates if tab == "WEB-DIAG-01 Diagnosis" and rng == "C4:C11")
             self.assertEqual(screen_summary[3], ['=C11-SUM(C4:C6)'])
@@ -214,16 +214,17 @@ class SheetsSyncTests(unittest.TestCase):
                     self.updates = []
                 def ensure_sheet(self, _sid, tab_name, _tpl=None, *, clear_from_row=None):
                     return {"sheetId": 201, "title": tab_name, "created": False}
-                def values(self, _sid, tab_name, a1="A:Z"):
+                def values(self, _sid, tab_name, a1="A:Z", **kwargs):
                     if tab_name == "API-X-01 GET /api/x":
                         if a1 == "A13:M14":
-                            return [["ID", "Item", "Testcase Name", "Precondition", "Test data", "Request", "", "Expected", "", "DB", "Result", "Excution", "Note"], []]
+                            return [["ID", "Item", "Testcase Name", "Precondition", "Test data", "Request", "", "Expected", "", "DB", "Result", "Excution", "Note"],
+                                    ["", "", "", "", "", "params", "body", "Status code", "Body"]]
                         rows = [[""] for _ in range(15)]
                         rows.append(["API-X-01", "Health", "Old auto name", "Old pre", "GET", "None", "None", "200 OK", "Old expected", "", "Passed", "Manual", "manual note"])
                         return rows
                     if tab_name == "Report bug":
                         return [
-                            ["No.", "Sheet name", "API name", "Total Testcase", "Passed", "Failed", "Blocked", "Not run", "Automation", "Manual", "N/A"],
+                            ["No.", "Sheet name", "API name", "Total Testcase", "Passed", "Failed", "Blocked", "Not run", "Automation", "Manual", "N/A", "Status Testing", "Progress", "Remarks"],
                             [], [], [],
                             ["1", "API-X-01 GET /api/x", "GetX", "1", "1", "0", "0", "0", "0", "1", "0"],
                             ["", "", "Total", "1", "1", "0", "0", "0", "0", "1", "0"],
@@ -312,13 +313,15 @@ class SheetsSyncTests(unittest.TestCase):
                 def ensure_sheet(self, _sid, tab_name, _tpl=None, *, clear_from_row=None):
                     return {"sheetId": 201, "title": tab_name, "created": False}
 
-                def values(self, _sid, tab_name, a1="A:Z"):
+                def values(self, _sid, tab_name, a1="A:Z", **kwargs):
                     if tab_name in {"API-HEALTH-01 GET /api/health", "API-OLD-01 GET /api/old"}:
                         if a1 == "A13:M14":
-                            return [["ID", "Item", "Testcase Name", "Precondition", "Test data", "Request", "", "Expected", "", "DB", "Result", "Excution", "Note"], []]
+                            return [["ID", "Item", "Testcase Name", "Precondition", "Test data", "Request", "", "Expected", "", "DB", "Result", "Excution", "Note"],
+                                    ["", "", "", "", "", "params", "body", "Status code", "Body"]]
                         rows = [[""] for _ in range(15)]
                         cid = "API-HEALTH-01" if "health" in tab_name else "API-OLD-01"
-                        rows.append([cid, "Health", cid, "Ready", "GET", "None", "None", "200 OK", "Healthy", "", "Passed", "Auto", "old"])
+                        evidence = "001\nReviewer evidence" if cid == "API-OLD-01" else "old"
+                        rows.append([cid, "Health", cid, "Ready", "GET", "None", "None", "200 OK", "Healthy", "", "Passed", "Auto", evidence])
                         for written_tab, cell, values in self.updates:
                             if written_tab == tab_name and cell == "L16:L16":
                                 rows[-1][11] = values[0][0]
@@ -327,7 +330,7 @@ class SheetsSyncTests(unittest.TestCase):
                         return rows
                     if tab_name == "Report bug":
                         return [
-                            ["No.", "Sheet name", "API name", "Total Testcase", "Passed", "Failed", "Blocked", "Not run", "Automation", "Manual", "N/A"],
+                            ["No.", "Sheet name", "API name", "Total Testcase", "Passed", "Failed", "Blocked", "Not run", "Automation", "Manual", "N/A", "Status Testing", "Progress", "Remarks"],
                             [], [], [],
                             ["1", "API-HEALTH-01 GET /api/health", "GetHealth", "1", "1", "0", "0", "0", "1", "0", "0"],
                             ["", "", "Total", "1", "1", "0", "0", "0", "1", "0", "0"],
@@ -380,7 +383,7 @@ class SheetsSyncTests(unittest.TestCase):
 
             self.assertIn(("API-OLD-01 GET /api/old", "L16:L16", [["N/A"]]), fake_client.updates)
             self.assertIn(
-                ("API-OLD-01 GET /api/old", "M16:M16", [["[Deprecated] Removed from cases.json; historical row retained."]]),
+                ("API-OLD-01 GET /api/old", "M16:M16", [["[Deprecated] Removed from cases.json; historical row retained.\n001\nReviewer evidence"]]),
                 fake_client.updates,
             )
             # Status column K must NOT be overwritten with an invalid dropdown token
@@ -395,10 +398,51 @@ class SheetsSyncTests(unittest.TestCase):
                 rows[0] for tab, rng, rows in fake_client.updates
                 if tab == old_case["detail_tab"] and rng == "A16:M16"
             )
-            self.assertEqual(restored[10:13], ["Not run", "Auto", ""])
+            self.assertEqual(restored[10:13], ["Not run", "Auto", "'001\nReviewer evidence"])
             current = json.loads(tmp_state.read_text(encoding="utf-8"))
             self.assertIn("API-OLD-01", current["cases"])
             self.assertNotIn("API-OLD-01", current["latest_results"])
+
+    def test_viewpoint_retry_uses_pending_baseline_and_publishes_after_summary(self):
+        config = json.loads((CONFIG / "sheets.json").read_text(encoding="utf-8"))["spreadsheets"]
+        case = normalize_case({"id": "VP-1", "kind": "viewpoint", "tab": "VP", "confirmation": "B"})
+        old = dict(case, confirmation="A")
+        current = dict(case, confirmation="C")
+        mapping = config["viewpoint"]["detail_mapping"]
+        cells = [[], [], build_sheet_row(case, mapping, detail_mode="viewpoint_table")]
+        cells[2][4] = "=Reviewer!A1"
+        from registry_state import CaseResult, record_result
+
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            patch("registry_state.STATE", Path(tmp) / "state.json"),
+            patch("registry_state.load_sheets", return_value=config),
+            patch("registry_state.KINDS", {"viewpoint"}),
+            patch("registry_state.load_cases", return_value=[current]),
+            patch("sheets_sync.SheetsClient") as factory,
+            patch("sheets_sync.validate_detail_schema"),
+            patch("sheets_sync.update_summary_list") as summary,
+            patch.dict("os.environ", {"AGRIVISION_WRITE_SHEETS": "true"}),
+        ):
+            client = factory.return_value
+            client.load_sync_snapshot.return_value = {"cases": {"VP-1": old}, "pending": [case]}
+            client.ensure_sheet.return_value = {"sheetId": 2}
+            client.values.return_value = cells
+            client.spreadsheet_locale.return_value = "vi_VN"
+            observed = []
+            client.save_sync_snapshot.side_effect = lambda _sid, value: observed.append(value)
+            def finish_summary(*_args):
+                self.assertEqual(len(observed), 1)
+                record_result(CaseResult("VP-1", "Passed", "Auto", run_id="concurrent-test"))
+
+            summary.side_effect = finish_summary
+            sync(False, True)
+            state = json.loads((Path(tmp) / "state.json").read_text())
+            self.assertEqual(state["latest_results"]["VP-1"]["run_id"], "concurrent-test")
+            self.assertEqual(observed[0]["pending"], [case, current])
+            self.assertEqual(observed[1], {"cases": {"VP-1": current}, "pending": []})
+            client.values.assert_called_once_with(config["viewpoint"]["id"], "VP", "A:Z", formulas=True)
+            client.batch_update.assert_called_once_with(config["viewpoint"]["id"], [("VP", "F3:F3", [["C"]])], raw=True)
 
     def test_sync_compares_with_last_publication_and_recovers_abandoned_destination(self):
         config = json.loads((CONFIG / "sheets.json").read_text(encoding="utf-8"))["spreadsheets"]["api"]
@@ -442,7 +486,7 @@ class SheetsSyncTests(unittest.TestCase):
             client.spreadsheet_locale.return_value = "vi_VN"
             client.sheet_metadata.return_value = [{"title": tab, "sheetId": i} for i, tab in enumerate(tabs, 1)]
             client.ensure_sheet.return_value = {"sheetId": 2, "created": False}
-            client.values.side_effect = lambda _sid, tab, _a1: tabs[tab]
+            client.values.side_effect = lambda _sid, tab, _a1, **_kwargs: tabs[tab]
             client.batch_update.side_effect = write_rows
             dashboard.side_effect = RuntimeError("interrupted after row writes")
             with patch("registry_state.load_cases", return_value=[moved]), self.assertRaisesRegex(RuntimeError, "interrupted"):
@@ -482,7 +526,11 @@ class SheetsSyncTests(unittest.TestCase):
                 index = 16 if a1.startswith("A17") else 15
                 while len(tabs[tab]) <= index:
                     tabs[tab].append([])
-                tabs[tab][index][:len(values[0])] = values[0]
+                row = tabs[tab][index]
+                row.extend([""] * (len(values[0]) - len(row)))
+                for column, value in enumerate(values[0]):
+                    if value is not None:
+                        row[column] = value
 
         with (
             tempfile.TemporaryDirectory() as tmpdir,
@@ -502,7 +550,7 @@ class SheetsSyncTests(unittest.TestCase):
             client.ensure_sheet.return_value = {"sheetId": 2, "created": False}
             client.sheet_metadata.return_value = [{"title": name, "sheetId": index} for index, name in enumerate(tabs, 1)]
             client.spreadsheet_locale.return_value = "vi_VN"
-            client.values.side_effect = lambda _sid, tab, _a1: tabs[tab]
+            client.values.side_effect = lambda _sid, tab, _a1, **_kwargs: tabs[tab]
             client.batch_update.side_effect = apply_values
             with patch("registry_state.load_cases", return_value=[moved]):
                 sync(False, True)

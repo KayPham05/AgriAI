@@ -10,6 +10,7 @@ import registry_state
 from sheets_client import SYNC_SNAPSHOT_TAB, SheetsClient
 from sheets_formulas import _resolve_formula_separator, build_detail_summary_updates
 from sheets_rows import (
+    DEPRECATED_CASE_NOTICE,
     DEPRECATED_CASE_PREFIX,
     MOVED_CASE_PREFIX,
     _matches_case_id,
@@ -66,7 +67,7 @@ def _archive_obsolete_rows(
         rows = tab_values_cache.get(key)
         if rows is None:
             validate_detail_schema(client, sid, tab, sheet["detail_mode"])
-            rows = [list(row) for row in client.values(sid, tab, "A:Z")]
+            rows = [list(row) for row in client.values(sid, tab, "A:Z", formulas=True)]
             tab_values_cache[key] = rows
         column = sheet["detail_mapping"]["id"]
         index = column_number(column) - 1
@@ -84,10 +85,15 @@ def _archive_obsolete_rows(
             if moved:
                 updates.append((tab, f"{column}{row_number}:{column}{row_number}", [[MOVED_CASE_PREFIX + value]]))
             else:
-                for field, note in (("execution", "N/A"), ("evidence", f"{DEPRECATED_CASE_PREFIX} Removed from cases.json; historical row retained.")):
-                    field_column = sheet["detail_mapping"].get(field)
-                    if field_column:
-                        updates.append((tab, f"{field_column}{row_number}:{field_column}{row_number}", [[note]]))
+                mapping = sheet["detail_mapping"]
+                if execution_column := mapping.get("execution"):
+                    updates.append((tab, f"{execution_column}{row_number}:{execution_column}{row_number}", [["N/A"]]))
+                if evidence_column := mapping.get("evidence"):
+                    evidence_index = column_number(evidence_column) - 1
+                    evidence = str(row[evidence_index]) if len(row) > evidence_index else ""
+                    if not evidence.startswith(DEPRECATED_CASE_PREFIX):
+                        archived = f"{DEPRECATED_CASE_NOTICE}\n{evidence}" if evidence else DEPRECATED_CASE_NOTICE
+                        updates.append((tab, f"{evidence_column}{row_number}:{evidence_column}{row_number}", [[archived]]))
 
     for kind, tabs in sources_by_kind.items():
         sheet = sheets[kind]
@@ -103,11 +109,19 @@ def _archive_obsolete_rows(
 
 
 def sync(dry_run: bool, write_sheets: bool) -> None:
+    if write_sheets and not dry_run:
+        with registry_state.state_lock(registry_state.STATE.with_name("sheets-sync.lock")):
+            _sync(dry_run, write_sheets)
+    else:
+        _sync(dry_run, write_sheets)
+
+
+def _sync(dry_run: bool, write_sheets: bool) -> None:
     cases = registry_state.load_cases()
     if any(case["detail_tab"] == SYNC_SNAPSHOT_TAB for case in cases):
         raise ValueError(f"Testcases cannot use the reserved snapshot tab {SYNC_SNAPSHOT_TAB!r}")
     sheets = registry_state.load_sheets()
-    state = registry_state.read_json(registry_state.STATE) if registry_state.STATE.exists() else {"schema_version": 2, "cases": {}, "runs": []}
+    state = registry_state.load_state()
     effective_latest = dict(state.get("latest_results", {}))
     client = None
     snapshot = None
@@ -126,7 +140,10 @@ def sync(dry_run: bool, write_sheets: bool) -> None:
         for case in previous_cases.values()
         if case.get("kind") in sheets and (case.get("detail_tab") or case.get("tab"))
     }
-    pending_locations = {_case_location(case): case for case in pending_cases}
+    pending_by_location: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    for pending in pending_cases:
+        pending_by_location.setdefault(_case_location(pending), []).append(pending)
+    pending_locations = {location: candidates[-1] for location, candidates in pending_by_location.items()}
     previous_locations = published_locations | pending_locations
     obsolete_cases = [case for location, case in previous_locations.items() if location not in current_locations]
     deprecated_ids = registry_state.deprecated_case_ids({**previous_cases, **{case["id"]: case for case in pending_cases}}, cases)
@@ -149,16 +166,20 @@ def sync(dry_run: bool, write_sheets: bool) -> None:
     print(json.dumps({"dry_run": dry_run, "case_count": len(cases), "deprecated_ids": deprecated_ids, "changes": changes}, ensure_ascii=False, indent=2))
     if dry_run:
         return
-    state["schema_version"] = 2
     if client is None:
-        registry_state.write_json_atomic(registry_state.STATE, state)
+        with registry_state.state_lock(wait=True):
+            state = registry_state.load_state()
+            state["schema_version"] = 2
+            registry_state.write_json_atomic(registry_state.STATE, state)
         return
     # Journal possible destination rows before any of the workbooks can change.
-    attempted = {
-        location: case for location, case in (pending_locations | current_locations).items()
-        if location not in published_locations
-    }
-    journal = {"cases": previous_cases, "pending": list(attempted.values())}
+    attempted = list(pending_cases)
+    for location, case in current_locations.items():
+        published_case = published_locations.get(location)
+        if published_case is None or (case["kind"] == "viewpoint" and case != published_case):
+            if case not in attempted:
+                attempted.append(case)
+    journal = {"cases": previous_cases, "pending": attempted}
     snapshot_sid = sheets["api"]["id"]
     if journal != snapshot:
         client.save_sync_snapshot(snapshot_sid, journal)
@@ -167,6 +188,7 @@ def sync(dry_run: bool, write_sheets: bool) -> None:
             del effective_latest[case_id]
     grouped = {kind: [case for case in cases if case["kind"] == kind] for kind in registry_state.KINDS}
     pending_updates: dict[str, list[tuple[str, str, list[list[str]]]]] = {kind: [] for kind in registry_state.KINDS}
+    viewpoint_updates: list[tuple[str, str, list[list[Any]]]] = []
     detail_style_requests: dict[str, list[dict[str, Any]]] = {kind: [] for kind in registry_state.KINDS}
     prepared_tabs: dict[tuple[str, str], int] = {}
     tab_config: dict[tuple[str, str], tuple[str, int, int]] = {}
@@ -187,7 +209,7 @@ def sync(dry_run: bool, write_sheets: bool) -> None:
                 clear_from_row=start_row,
             )
             validate_detail_schema(client, sheet["id"], case["detail_tab"], sheet.get("detail_mode", "table"))
-            tab_values_cache[tab_key] = [list(r) for r in client.values(sheet["id"], case["detail_tab"], "A:Z")]
+            tab_values_cache[tab_key] = [list(r) for r in client.values(sheet["id"], case["detail_tab"], "A:Z", formulas=True)]
             prepared_tabs[tab_key] = int(detail_meta["sheetId"])
             tab_config[tab_key] = (case["kind"], start_row, end_col_count)
             if case["kind"] not in formula_sep_by_kind:
@@ -201,6 +223,8 @@ def sync(dry_run: bool, write_sheets: bool) -> None:
                     formula_sep_by_kind[case["kind"]],
                 )
             )
+        location = _case_location(case)
+        is_viewpoint = case["kind"] == "viewpoint"
         upserted = upsert_row(
             client,
             sheet["id"],
@@ -210,9 +234,10 @@ def sync(dry_run: bool, write_sheets: bool) -> None:
             result,
             sheet.get("detail_mode", "table"),
             start_row,
-            pending_updates[case["kind"]],
+            viewpoint_updates if is_viewpoint else pending_updates[case["kind"]],
             tab_values_cache,
-            previous_case=previous_cases.get(case["id"]),
+            previous_case=published_locations.get(location) if is_viewpoint else previous_cases.get(case["id"]),
+            pending_baselines=tuple(pending_by_location.get(location, ())) if is_viewpoint else (),
         )
         if upserted.get("action") == "add":
             added_rows_by_tab.setdefault(tab_key, []).append(int(upserted.get("row", start_row)))
@@ -272,6 +297,8 @@ def sync(dry_run: bool, write_sheets: bool) -> None:
     for kind, writes in pending_updates.items():
         if writes:
             client.batch_update(sheets[kind]["id"], writes)
+    if viewpoint_updates:
+        client.batch_update(sheets["viewpoint"]["id"], viewpoint_updates, raw=True)
     archived_tabs = _archive_obsolete_rows(client, sheets, obsolete_cases, active_ids, tab_values_cache)
     for kind, kind_cases in grouped.items():
         sheet = sheets[kind]
@@ -282,11 +309,18 @@ def sync(dry_run: bool, write_sheets: bool) -> None:
     published = {"cases": active_cases, "pending": []}
     if published != journal:
         client.save_sync_snapshot(snapshot_sid, published)
-    state["cases"] = active_cases
-    for case_id in deprecated_ids:
-        effective_latest[case_id] = {
-            "id": case_id, "status": "Deprecated", "execution": "N/A",
-            "evidence": "Removed from cases.json; historical row retained.",
-        }
-    state["latest_results"] = effective_latest
-    registry_state.write_json_atomic(registry_state.STATE, state)
+    with registry_state.state_lock(wait=True):
+        # Results can arrive while the remote Sheets writes are in progress.
+        state = registry_state.load_state()
+        state["schema_version"] = 2
+        state["cases"] = active_cases
+        latest = state.setdefault("latest_results", {})
+        for case_id in active_ids:
+            if latest.get(case_id, {}).get("status") == "Deprecated":
+                del latest[case_id]
+        for case_id in deprecated_ids:
+            latest[case_id] = {
+                "id": case_id, "status": "Deprecated", "execution": "N/A",
+                "evidence": "Removed from cases.json; historical row retained.",
+            }
+        registry_state.write_json_atomic(registry_state.STATE, state)

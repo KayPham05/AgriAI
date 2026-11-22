@@ -44,9 +44,9 @@ class SheetsSummaryTests(unittest.TestCase):
                 super().__init__()
                 self.copy_calls = []
 
-            def values(self, *_args):
+            def values(self, *_args, **_kwargs):
                 return [
-                    ["", "Sheet Name", "Name", "Total Testcase", "Passed", "Failed", "Blocked", "Not run", "Auto", "Manual", "N/A"],
+                    ["", "Sheet Name", "Name", "Total Testcase", "Passed", "Failed", "Blocked", "Not run", "Auto", "Manual", "N/A", "UI", "Function", "Validate", "Status Testing", "Progress", "Remarks"],
                     [],
                     [],
                     [],
@@ -121,9 +121,9 @@ class SheetsSummaryTests(unittest.TestCase):
                 super().__init__()
                 self.copy_calls = []
 
-            def values(self, *_args):
+            def values(self, *_args, **_kwargs):
                 return [
-                    ["No.", "Sheet name", "API name", "Total Testcase", "Passed", "Failed", "Blocked", "Not run", "Automation", "Manual", "N/A"],
+                    ["No.", "Sheet name", "API name", "Total Testcase", "Passed", "Failed", "Blocked", "Not run", "Automation", "Manual", "N/A", "Status Testing", "Progress", "Remarks"],
                     [],
                     [],
                     [],
@@ -191,13 +191,100 @@ class SheetsSummaryTests(unittest.TestCase):
         # Existing row 7 must NOT have style overwritten; only newly added row 8 copies style from row 5.
         self.assertEqual(client.copy_calls, [(0, 5, 8, 8, 14, True)])
 
+    def test_dashboard_refuses_shifted_columns_before_any_mutation(self):
+        from unittest.mock import Mock
+        sheets = json.loads((CONFIG / "sheets.json").read_text())["spreadsheets"]
+        for kind in ("api", "screen"):
+            for offset in (3, 10):
+                with self.subTest(kind=kind, shifted_column=offset + 1):
+                    sheet = sheets[kind]
+                    header = ["No.", "Sheet name", "Name", "Total Testcase", "Passed", "Failed",
+                              "Blocked", "Not run", "Auto", "Manual", "N/A"]
+                    if kind == "screen":
+                        header.extend(["UI", "Function", "Validate"])
+                    header.extend(["Status Testing", "Progress", "Remarks"])
+                    header.insert(offset, "Reviewer notes")
+                    client = Mock()
+                    client.values.return_value = [header, [], [], [], ["", "", "Total"]]
+                    with self.assertRaisesRegex(RuntimeError, "header schema drift"):
+                        update_summary_dashboard(client, "sheet", sheet, [{"id": "T", "detail_tab": "Case"}], {})
+                    client.insert_row.assert_not_called()
+                    client.clear.assert_not_called()
+                    client.batch_update.assert_not_called()
+                    client.batch_requests.assert_not_called()
+
+    def test_dashboard_can_grow_past_sixty_rows_and_preserves_notes_in_unnamed_rows(self):
+        from unittest.mock import Mock
+        sheets = json.loads((CONFIG / "sheets.json").read_text())["spreadsheets"]
+        for kind, expected_range in (("api", "A:N"), ("screen", "A:Q")):
+            with self.subTest(kind=kind):
+                sheet = sheets[kind]
+                mapping = sheet["dashboard_mapping"]
+                header = ["No.", "Sheet name", "Name", "Total Testcase", "Passed", "Failed",
+                          "Blocked", "Not run", "Auto", "Manual", "N/A"]
+                if kind == "screen":
+                    header.extend(["UI", "Function", "Validate"])
+                header.extend(["Status Testing", "Progress", "Remarks"])
+                rows = [header] + [[] for _ in range(mapping["data_start_row"] - 2)]
+                rows += [[str(i), f"Legacy {i}", "Name", 1] for i in range(59 - len(rows) - 1)]
+                rows += [[""] * (len(header) - 1) + ["Manual review evidence"], ["", "", "Total"]]
+                self.assertEqual(len(rows), 60)
+                client = Mock()
+                client.values.side_effect = lambda _sid, _tab, a1: rows if a1 == expected_range else rows[:60]
+                client.insert_row.side_effect = lambda _sid, _gid, row: rows.insert(row - 1, [])
+                client.sheet_metadata.return_value = [{"title": sheet["summary_tab"], "sheetId": 1}]
+                client.copy_row_style_requests.return_value = []
+                client.spreadsheet_locale.return_value = "en_US"
+                cases = [{"id": "T", "detail_tab": "Case"}]
+                result = update_summary_dashboard(client, "sheet", sheet, cases, {})
+                self.assertEqual(result[0]["row"], 60)
+                self.assertEqual(rows[58][-1], "Manual review evidence")
+                self.assertTrue(all("59" not in a1 for _, a1, _ in client.batch_update.call_args.args[1]))
+                self.assertEqual(rows[60][2], "Total")
+                rows[59] = ["", "Case", "Name"]
+                client.insert_row.reset_mock()
+                result = update_summary_dashboard(client, "sheet", sheet, cases, {})
+                self.assertEqual(result[0]["row"], 60)
+                client.insert_row.assert_not_called()
+                self.assertEqual(client.values.call_args.args[-1], expected_range)
+
+    def test_dashboard_rerun_reuses_row_after_lost_insert_response(self):
+        from unittest.mock import Mock
+
+        sheet = json.loads((CONFIG / "sheets.json").read_text())["spreadsheets"]["api"]
+        rows = [
+            ["No.", "Sheet name", "API name", "Total Testcase", "Passed", "Failed", "Blocked",
+             "Not run", "Auto", "Manual", "N/A", "Status Testing", "Progress", "Remarks"],
+            [], [], [], ["1", "Legacy", "Old"], ["", "", "Total"],
+        ]
+        client = Mock()
+        client.values.side_effect = lambda *_args: rows
+        client.sheet_metadata.return_value = [{"title": "Report bug", "sheetId": 1}]
+        client.copy_row_style_requests.return_value = []
+        client.spreadsheet_locale.return_value = "en_US"
+
+        def insert_then_lose_response(_sheet, _gid, row):
+            rows.insert(row - 1, [])
+            raise RuntimeError("write may have applied")
+
+        client.insert_row.side_effect = insert_then_lose_response
+        cases = [{"id": "T", "detail_tab": "Case"}]
+        with self.assertRaisesRegex(RuntimeError, "write may have applied"):
+            update_summary_dashboard(client, "sheet", sheet, cases, {})
+        client.batch_update.assert_not_called()
+        result = update_summary_dashboard(client, "sheet", sheet, cases, {})
+        self.assertEqual(result[0]["row"], 6)
+        self.assertEqual(rows[6][2], "Total")
+        client.insert_row.assert_called_once_with("sheet", 1, 6)
+        client.batch_update.assert_called_once()
+
     def test_update_summary_list_populates_no_screen_and_valid_viewpoint_status(self):
         class FakeClient(SummaryClientFixture):
             def __init__(self):
                 super().__init__()
                 self.copy_calls = []
 
-            def values(self, *_args):
+            def values(self, *_args, **_kwargs):
                 return [
                     ["No.", "Sheet name", "Screen", "Status", "Remarks"],
                     ["1", "SR_001", "Màn hình cửa hàng", "Done", ""],
@@ -225,10 +312,10 @@ class SheetsSummaryTests(unittest.TestCase):
         updates = update_summary_list(client, "sheet-vp", sheet, cases, {"VP-API-01": {"status": "Passed", "evidence": "ev-a"}})
         # Blank row 3 skipped -> VP-API-01 at row 4 gets sequential No. = 2 and aggregated status "In progress"
         self.assertEqual(updates, [{"detail_tab": "VP-API-01 Prediction Upload", "row": 4, "no": 2, "status": "In progress"}])
-        self.assertEqual(client.batches[0], [("Overview", "A4:E4", [[2, "VP-API-01 Prediction Upload", "Màn hình chẩn đoán bệnh cây", "In progress", "ev-a"]])])
+        self.assertEqual(client.batches[0], [("Overview", f"{col}4:{col}4", [[v]]) for col, v in zip("ABCDE", [2, "VP-API-01 Prediction Upload", "Màn hình chẩn đoán bệnh cây", "In progress", "ev-a"])])
         self.assertEqual(client.copy_calls, [])
         self.assertTrue(any("hyperlink" in req and req["hyperlink"]["uri"] == "#gid=99" for req in client.style_reqs))
-        self.assertEqual(client.cleared, [("sheet-vp", "Overview", "F4:H4")])
+        self.assertEqual(client.cleared, [])
         self.assertEqual(map_viewpoint_overview_status("Not run"), "To do")
         self.assertEqual(map_viewpoint_overview_status("Blocked"), "Block")
         self.assertEqual(map_viewpoint_overview_status("Failed"), "In progress")
@@ -240,7 +327,7 @@ class SheetsSummaryTests(unittest.TestCase):
             def __init__(self, rows):
                 super().__init__()
                 self.rows = rows
-            def values(self, *_args):
+            def values(self, *_args, **_kwargs):
                 return self.rows
             def sheet_metadata(self, *_args):
                 return [{"title": "Report bug", "sheetId": 0}]
@@ -251,7 +338,7 @@ class SheetsSummaryTests(unittest.TestCase):
 
         sheet = json.loads((CONFIG / "sheets.json").read_text(encoding="utf-8"))["spreadsheets"]["api"]
         rows_thousands = [
-            ["No.", "Sheet name", "API name", "Total Testcase", "Passed", "Failed", "Blocked", "Not run", "Automation", "Manual", "N/A"],
+            ["No.", "Sheet name", "API name", "Total Testcase", "Passed", "Failed", "Blocked", "Not run", "Automation", "Manual", "N/A", "Status Testing", "Progress", "Remarks"],
             [], [], [],
             ["1", "LEGACY-A", "LegacyA", "1.250", "1.000", "250", "0", "0", "0", "1.250", "0"],
             ["", "", "Total", "1.250", "1.000", "250", "0", "0", "0", "1.250", "0"],
@@ -262,7 +349,7 @@ class SheetsSummaryTests(unittest.TestCase):
         self.assertEqual(total_prog, "=E6/D6")
 
         rows_decimal = [
-            ["No.", "Sheet name", "API name", "Total Testcase", "Passed", "Failed", "Blocked", "Not run", "Automation", "Manual", "N/A"],
+            ["No.", "Sheet name", "API name", "Total Testcase", "Passed", "Failed", "Blocked", "Not run", "Automation", "Manual", "N/A", "Status Testing", "Progress", "Remarks"],
             [], [], [],
             ["1", "LEGACY-DEC", "LegacyDec", "1.5", "0", "0", "0", "0", "0", "0", "0"],
             ["", "", "Total", "1.5", "0", "0", "0", "0", "0", "0", "0"],
@@ -302,17 +389,18 @@ class SheetsSummaryTests(unittest.TestCase):
         self.assertEqual(normalize_sheet_status("Pendding", "api_table"), "Blocked")
         self.assertEqual(normalize_sheet_status("Skipped", "screen_table"), "Not run")
 
-    def test_update_summary_list_uses_dynamic_mapping_bounds_and_clears_wide_stray_columns(self):
-        rows = [["No.", "Extra", "Sheet name", "Screen", "Status", "Remarks"]]
+    def test_update_summary_list_uses_dynamic_mapping_bounds_and_preserves_legacy_notes_and_unmapped_columns(self):
+        rows = [["No.", "Extra", "Sheet name", "Screen", "Status", "Remarks", "Reviewer notes"]]
         for i in range(2, 105):
             rows.append([str(i - 1), "", f"LEG-{i}", "Legacy", "Done", ""])
+        rows[1] = ["99", "", "Legacy Project", "", "", "", "Manual review evidence"]
         rows[103] = ["103", "", "VP-API-01 Prediction Upload", "", "To do", "old", "", "", "", "", "", "", "", "", "far_stray"]
 
         class FakeClient(SummaryClientFixture):
             def __init__(self):
                 super().__init__()
                 self.read_ranges = []
-            def values(self, _sid, _tab, a1):
+            def values(self, _sid, _tab, a1, **_kwargs):
                 self.read_ranges.append(a1)
                 return [list(r) for r in rows]
             def sheet_metadata(self, *_args):
@@ -338,9 +426,35 @@ class SheetsSummaryTests(unittest.TestCase):
         updates = update_summary_list(client, "sid", sheet, cases, {})
         self.assertEqual(client.read_ranges, ["A:Z"])
         self.assertEqual(updates, [{"detail_tab": "VP-API-01 Prediction Upload", "row": 104, "no": 103, "status": "Done"}])
-        self.assertEqual(client.batches[0], [("Overview", "A104:F104", [[103, "", "VP-API-01 Prediction Upload", "Chẩn đoán", "Done", "Ok"]])])
-        self.assertEqual(client.cleared, [("sid", "Overview", "G104:O104")])
-        self.assertTrue(any("repeatCell" in req and req["repeatCell"]["range"]["startColumnIndex"] == 6 and req["repeatCell"]["range"]["endColumnIndex"] == 15 for req in client.style_reqs))
+        self.assertEqual(client.batches[0], [("Overview", f"{col}104:{col}104", [[v]]) for col, v in zip("ACDEF", [103, "VP-API-01 Prediction Upload", "Chẩn đoán", "Done", "Ok"])])
+        self.assertEqual(client.cleared, [])
+        client = FakeClient()
+        update_summary_list(client, "sid", sheet, [], {})
+        self.assertEqual((client.batches, client.cleared, client.style_reqs), ([], [], []))
+
+    def test_overview_keeps_existing_screen_formula(self):
+        client = SummaryClientFixture()
+        client.values = lambda *args, **kwargs: [
+            ["No.", "Sheet name", "Screen", "Status", "Remarks"],
+            ["1", "VP", '=IF(TRUE,"","Manual")', "To do", ""],
+        ] if kwargs == {"formulas": True} else [
+            ["No.", "Sheet name", "Screen", "Status", "Remarks"],
+            ["1", "VP", "", "To do", ""],
+        ]
+        sheet = json.loads((CONFIG / "sheets.json").read_text())["spreadsheets"]["viewpoint"]
+        update_summary_list(client, "sid", sheet, [{"id": "VP", "detail_tab": "VP"}], {})
+        self.assertNotIn("C2:C2", [cell for _, cell, _ in client.batches[0]])
+
+    def test_overview_refuses_shifted_header_before_writing(self):
+        client = SummaryClientFixture()
+        client.values = lambda *args, **kwargs: [
+            ["No.", "Sheet name", "Screen", "Reviewer notes", "Status", "Remarks"],
+            ["1", "VP", "Manual screen", "Manual evidence", "Done", ""],
+        ]
+        sheet = json.loads((CONFIG / "sheets.json").read_text())["spreadsheets"]["viewpoint"]
+        with self.assertRaisesRegex(RuntimeError, "schema drift"):
+            update_summary_list(client, "sid", sheet, [{"id": "VP", "detail_tab": "VP"}], {})
+        self.assertEqual((client.batches, client.cleared), ([], []))
 
     def test_parse_dashboard_int_handles_zero_and_thousands_separators(self):
         self.assertEqual(_parse_dashboard_int(0), 0)
@@ -351,14 +465,14 @@ class SheetsSummaryTests(unittest.TestCase):
         self.assertIsNone(_parse_dashboard_int(None))
 
     def test_update_summary_list_handles_optional_no_and_screen_cols_and_wide_range(self):
-        rows = [["KeepA", "Sheet name", "KeepC", "Status", "Remarks"]]
+        rows = [["KeepA", "Sheet name", "KeepC", "Status"] + [""] * 23 + ["Remarks"]]
         rows.append(["legacyA", "VP-API-01 Prediction Upload", "legacyC", "To do", "old"])
 
         class FakeClient(SummaryClientFixture):
             def __init__(self):
                 super().__init__()
                 self.read_ranges = []
-            def values(self, _sid, _tab, a1):
+            def values(self, _sid, _tab, a1, **_kwargs):
                 self.read_ranges.append(a1)
                 return [list(r) for r in rows]
             def sheet_metadata(self, *_args):
@@ -377,12 +491,11 @@ class SheetsSummaryTests(unittest.TestCase):
         cases = [{"id": "VP-API-01", "detail_tab": "VP-API-01 Prediction Upload", "summary_name": "Screen", "status": "Done", "expected_result": "Ok"}]
         update_summary_list(client, "sid", sheet, cases, {})
         self.assertEqual(client.read_ranges, ["A:AB"])
-        tab, rng, payload = client.batches[0][0]
-        self.assertEqual((tab, rng), ("Overview", "B2:AB2"))
-        self.assertEqual(payload[0][0], "VP-API-01 Prediction Upload")
-        self.assertEqual(payload[0][1], "legacyC")
-        self.assertEqual(payload[0][2], "Done")
-        self.assertEqual(payload[0][-1], "Ok")
+        self.assertEqual(client.batches[0], [
+            ("Overview", "B2:B2", [["VP-API-01 Prediction Upload"]]),
+            ("Overview", "D2:D2", [["Done"]]),
+            ("Overview", "AB2:AB2", [["Ok"]]),
+        ])
 
     def test_formula_separator_and_detail_summary_adapt_to_locale_and_custom_layout(self):
         self.assertEqual(formula_separator_for_locale("en_US"), ",")
@@ -416,9 +529,9 @@ class SheetsSummaryTests(unittest.TestCase):
         class EnUsClient(SummaryClientFixture):
             def spreadsheet_locale(self, _sid):
                 return "en_US"
-            def values(self, *_args):
+            def values(self, *_args, **_kwargs):
                 return [
-                    ["No.", "Sheet name", "API name", "Total Testcase", "Passed", "Failed", "Blocked", "Not run", "Automation", "Manual", "N/A"],
+                    ["No.", "Sheet name", "API name", "Total Testcase", "Passed", "Failed", "Blocked", "Not run", "Automation", "Manual", "N/A", "Status Testing", "Progress", "Remarks"],
                     [], [], [],
                     ["1", "API-X-01", "GetX", "1", "1", "0", "0", "0", "1", "0", "0"],
                     ["", "", "Total", "1", "1", "0", "0", "0", "1", "0", "0"],

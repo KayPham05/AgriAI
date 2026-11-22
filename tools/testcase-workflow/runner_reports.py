@@ -72,6 +72,8 @@ def parse_playwright_group(
             "Playwright report testcase IDs do not match configuration "
             f"(missing={missing}, unexpected={unexpected}, records={len(reported_ids)})"
         )
+    live = payload.get("runner") == "live"
+    suite_name = "Live Playwright journeys" if live else "Playwright E2E UI cases"
     duration = run.duration_seconds or 0.0
     per_case_duration = round(duration / len(cases), 3)
     results = []
@@ -89,7 +91,7 @@ def parse_playwright_group(
             id=case_id,
             status=status,
             actual=actual,
-            command=f"python tests/browser/e2e/run_suite.py --case {case_id}",
+            command=run.command if live else f"python tests/browser/e2e/run_suite.py --case {case_id}",
             evidence=f"run_id={run.run_id}; selector={test_name}",
             evidence_kind="per_case",
             exit_code=0 if status == "Passed" else 1,
@@ -102,7 +104,7 @@ def parse_playwright_group(
     summary = replace(
         run,
         status=status,
-        actual=f"{passed}/{len(cases)} Playwright E2E UI cases passed in {duration:.3f}s",
+        actual=f"{passed}/{len(cases)} {suite_name} passed in {duration:.3f}s",
         evidence=(f"run_id={run.run_id}; browser={payload.get('browser', 'chromium-headless')}; "
                   f"build={payload.get('build_mode', 'next-production')}"),
         exit_code=0 if status == "Passed" else returncode or 1,

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import nullcontext
 from pathlib import Path
 
 from case_runners import (
@@ -15,6 +16,7 @@ from http_checks import check_guest_prediction, check_health
 from registry_state import (
     CONFIG,
     CaseResult,
+    artifact_execution,
     KINDS,
     ROOT,
     STATE,
@@ -130,25 +132,27 @@ def main() -> None:
     import_parser = subparsers.add_parser("import-results")
     import_parser.add_argument("root")
     args = parser.parse_args()
+    emits_results = args.command in {"run", "run-all", "run-case", "check-health", "check-guest-prediction"}
     try:
-        if args.command == "sync":
-            sync(args.dry_run, args.sheets)
-        elif args.command == "run":
-            if not run_group(args.group):
-                raise SystemExit(1)
-        elif args.command == "run-all":
-            run_all(args.sheets, args.guest_image, args.health_url, args.guest_url)
-        elif args.command == "run-case":
-            if not run_case(args.case_id, args.health_url, args.guest_url, args.guest_image):
-                raise SystemExit(1)
-        elif args.command == "check-health":
-            if not check_health(args.url):
-                raise SystemExit(1)
-        elif args.command == "import-results":
-            import_results(Path(args.root))
-        elif args.command == "check-guest-prediction":
-            if not check_guest_prediction(args.url, args.file):
-                raise SystemExit(1)
+        with artifact_execution() if emits_results else nullcontext():
+            if args.command == "sync":
+                sync(args.dry_run, args.sheets)
+            elif args.command == "run":
+                if not run_group(args.group):
+                    raise SystemExit(1)
+            elif args.command == "run-all":
+                run_all(args.sheets, args.guest_image, args.health_url, args.guest_url)
+            elif args.command == "run-case":
+                if not run_case(args.case_id, args.health_url, args.guest_url, args.guest_image):
+                    raise SystemExit(1)
+            elif args.command == "check-health":
+                if not check_health(args.url):
+                    raise SystemExit(1)
+            elif args.command == "import-results":
+                import_results(Path(args.root))
+            elif args.command == "check-guest-prediction":
+                if not check_guest_prediction(args.url, args.file):
+                    raise SystemExit(1)
     except (RuntimeError, ValueError) as error:
         parser.error(str(error))
 
