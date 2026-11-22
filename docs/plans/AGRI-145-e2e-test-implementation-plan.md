@@ -64,8 +64,8 @@ Triển khai các ca trong `docs/reports/AGRI-145/frontend_e2e_test_specificatio
   - P0 (13 ca): `E2E-AUTH-01..03`, `E2E-PROF-01`, `E2E-DIAG-01..03`, `E2E-HIST-01,02`, `E2E-PROF-AGRI-01`, `E2E-CAT-01`, `E2E-ADM-01,02`.
   - P1 & P2 (27 ca): `E2E-AUTH-04..07`, `E2E-PROF-02..04`, `E2E-DIAG-05,07`, `E2E-HIST-03,06`, `E2E-PROF-AGRI-02,03`, `E2E-CAT-02..04`, `E2E-ADM-03,04,06,07`, `E2E-SYS-01,02,04`, `E2E-HOME-01..04`.
 - Tích hợp 40 ID vào `tools/testcase-workflow/config/cases.json` và `groups.playwright.case_ids` trong `test-groups.json`, bổ sung test kiểm tra tính nhất quán trong `test_workflow.py`.
-- Xác minh chạy pass local: P0 **13/13**, Full automated browser UI **40/40**, Live System E2E **40/40**, Vitest **81 files / 575 tests**, workflow unit tests **27/27**.
+- Xác minh chạy pass local: P0 **13/13**, Full automated browser UI **40/40**, 8 script live hoàn tất theo runner cũ, Vitest **81 files / 575 tests**, workflow unit tests **27/27**.
 
 ### Phân tách Automated E2E & Manual E2E
-- **Automated System E2E (40 ca):** đặc tả riêng tại `docs/reports/AGRI-145/frontend_e2e_test_specification.md`, đồng bộ đúng 40 mã trong `frontend/tests/browser/e2e/`, `tools/testcase-workflow/config/cases.json` và `test-groups.json` (`run_live_suite.py` **40/40 Passed** trên Docker stack thật).
+- **Browser UI tự động (40 ca):** đặc tả riêng tại `docs/reports/AGRI-145/frontend_e2e_test_specification.md`, đồng bộ đúng 40 mã trong `frontend/tests/browser/e2e/`, `tools/testcase-workflow/config/cases.json` và `test-groups.json` (`run_suite.py` thực thi từng ID với ApiStub; `run_live_suite.py` báo cáo các hành trình Docker riêng).
 - **Manual E2E (10 ca):** tách riêng hoàn toàn từ tài liệu đến code tại `docs/reports/AGRI-145/manual_e2e_test_cases.md` (`E2E-DIAG-04,06,08`, `E2E-HIST-04,05`, `E2E-PROF-AGRI-04,05`, `E2E-CAT-05,06`, `E2E-ADM-05`), không đưa vào code/config automation.

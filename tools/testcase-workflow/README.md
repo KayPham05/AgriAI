@@ -27,3 +27,7 @@ GitHub Actions stores the JSON as Base64 secret `GCP_SA_KEY_BASE64`, validates t
 The CI write job requires successful test jobs and result validation. For runs on `main`, it checks that the tested commit is still the tip of `origin/main` before loading credentials. If a newer commit prevents publishing, start a new **Testcase workflow** run from `main` with `force_sheets_sync` enabled and follow the `testcase-sheets` environment approval rules. Protected manual dispatch remains available on the selected branch under those same environment rules.
 
 Run one explicit live case with `python tools/testcase-workflow/workflow.py run-case API-HEALTH-01` or `run-case API-PRED-GUEST-01`; use `run-all --guest-image <fixture> --sheets` only on a trusted environment. Group commands store `RUN-*` evidence and cannot mark an individual case Passed without a per-case adapter.
+
+When `AGRIVISION_RESULT_DIR` is set, each local CLI invocation starts a fresh `results.json`. To collect multiple invocations into one artifact, set the same `AGRIVISION_EXECUTION_ID` for each invocation. In Actions, the run ID, attempt, SHA and job identify the artifact. Repeating a testcase in that execution replaces its own entry. Use a separate directory per concurrent execution.
+
+The browser registry uses `E2E-*` IDs. The live report uses `LIVE-*` IDs and the same Playwright outcome schema. CI still imports the browser report and checks the real health and guest prediction adapters.

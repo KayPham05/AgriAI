@@ -218,7 +218,7 @@ Developer không cần quyền ghi vào Google Sheets và không cần file Serv
 - `backend-tests`: restore .NET, chạy `workflow.py run api`, upload `RUN-api`.
 - `live-contract`: khởi động PostgreSQL/AI/backend bằng Docker, chạy `API-HEALTH-01` và `API-PRED-GUEST-01`, upload result per-case.
 - `frontend-tests`: cài pnpm, chạy `workflow.py run screen`, upload `RUN-screen`.
-- `test-result-summary`: download artifact, validate đủ `RUN-api`, `RUN-screen`, `RUN-playwright`, `API-HEALTH-01`, `API-PRED-GUEST-01`; Failed/Blocked làm job fail.
+- `test-result-summary`: download artifact, validate đủ `RUN-api`, `RUN-screen`, `RUN-playwright`, `API-HEALTH-01`, `API-PRED-GUEST-01`; Failed/Blocked làm job fail. Các ID bắt buộc phải có trạng thái Passed.
 - `sheets-sync`: chỉ chạy sau summary thành công trên push `main` khi bật `AGRIVISION_WRITE_SHEETS`; có concurrency lock, import artifact hiện tại rồi mới `sync --sheets`.
 
 Mọi test job upload result với `if: ${{ always() }}`. Hợp đồng artifact là `results.json` do wrapper tạo, gồm `run_id`, job, testcase ID, status, exit code, duration và evidence. Không dùng ví dụ raw `dotnet test` hoặc raw `vitest` làm nguồn kết quả cho Sheets.
@@ -249,4 +249,12 @@ Mọi test job upload result với `if: ${{ always() }}`. Hợp đồng artifact
 ### Đợt 2026-11-17 (Ánh xạ 40 ca E2E, fix batch sync & `run_all`)
 - `tools/testcase-workflow`: **27/27** Python unit tests pass (bao gồm guard tách biệt 40 Automated E2E / 10 Manual E2E, đồng bộ priority, batch row allocation với `tab_values_cache` và `run_all()` chạy đủ `api`, `screen`, `playwright`).
 - `sync --dry-run`: **47 cases** hợp lệ (`7` hiện có + `40` `E2E-*` trong `playwright.case_ids`).
-- Playwright Browser UI (`run_suite.py`): P0 **13/13** pass, Full **40/40** pass; Live System E2E (`run_live_suite.py`): **40/40** pass trên Docker stack thật. `VP-API-01` giữ trạng thái thiết kế/evidence (`execution: "N/A"`).
+- Playwright Browser UI (`run_suite.py`): P0 **13/13** pass, Full **40/40** pass; Live System E2E (`run_live_suite.py`) xuất báo cáo riêng theo ID `LIVE-*`. `VP-API-01` giữ trạng thái thiết kế/evidence (`execution: "N/A"`).
+
+### Vận hành sau review PR #64
+
+- Overview chỉ cập nhật cột được mapping trên dòng của tab trong registry. Report, Report bug và các tab chi tiết xác thực vị trí header trước khi ghi. Dashboard tìm Total trong toàn bộ chiều cao bảng. Khi thêm testcase, dòng nháp và công thức đã có dữ liệu được giữ nguyên.
+- Khi kết nối mất sau khi gửi lệnh chèn hàng hoặc sửa cấu trúc Sheet, chạy sync lại để đọc trạng thái mới. Client chỉ tự gửi lại nếu biết yêu cầu bị từ chối do quota hoặc thao tác ghi có thể lặp an toàn.
+- Viewpoint dùng snapshot đã publish để cập nhật ô còn bằng giá trị tự sinh cũ. Nội dung detail ghi ở chế độ RAW để giữ văn bản như `001`; dữ liệu số hoặc boolean cũ chỉ khớp baseline theo biểu diễn chuẩn.
+- Mỗi lệnh local tạo execution riêng trong `AGRIVISION_RESULT_DIR`. Để cộng dồn nhiều lệnh local cùng một lượt, đặt cùng `AGRIVISION_EXECUTION_ID`. Trong Actions, run ID, attempt, job và commit xác định lượt. Khi chạy song song, dùng thư mục output riêng cho từng job. Hệ điều hành giải phóng khóa khi tiến trình kết thúc, kể cả khi bị buộc dừng.
+- Push và pull request kích hoạt workflow cho cả thay đổi chỉ có production source. Điều kiện ghi Sheets vẫn nằm ở job publish.

@@ -1,7 +1,7 @@
 # AGRI-145 — Testcase workflow
 
-- **Trạng thái (2026-11-21):** [PR #64](https://github.com/KayPham05/AgriAI/pull/64) đã nhận `f088a15`. Bản sửa Playwright sau review đang ở working tree.
-- **Nghiệm thu:** Xem [kiểm tra Playwright sau push](#kiểm-tra-playwright-sau-push). CI trên bản sửa và ghi–đọc lại Sheets sau triển khai còn chờ xác minh.
+- **Trạng thái (2026-11-22)** — Đã sửa các finding trên head `f1892da` của PR #64 trong working tree.
+- **Bằng chứng** — [Kết quả kiểm tra R1–R7](pr64_fixes.md) và [review lại các đường lỗi](pr64_fixes.md#review-lại-các-đường-lỗi-sau-vòng-sửa-tiếp-theo).
 - **Task log:** [AGRI-145-testcase-workflow.md](../../task-logs/AGRI-145/AGRI-145-testcase-workflow.md).
 
 ## Phạm vi
@@ -24,7 +24,7 @@ Workflow quản lý registry testcase cho `api`, `screen`, `viewpoint`; thực t
 - Explicit API adapters: `API-HEALTH-01` và `API-PRED-GUEST-01` pass locally và trong live-contract CI.
 - Screen group (`Vitest`): `corepack pnpm --dir frontend test` vừa chạy lại đạt **81 files / 575 passed** (`56.97s`).
 - Playwright browser UI (`run_suite.py --with-server --json-report .cache/e2e-full.json`): vừa chạy lại đạt **40/40 `E2E-*` cases pass** trong `95.212s`; khi chạy qua `workflow.py run playwright` xuất `results.json` gồm 40 kết quả từng ca + `RUN-playwright` (`41` records, `valid: true`, `failed_cases: []`).
-- Live System E2E (`run_live_suite.py` trên Docker stack thật, trước đợt chuẩn hóa Sheets): **40/40 pass** (`70.691s`); Manual E2E Chrome thật: **10/10 pass**.
+- Live System E2E (`run_live_suite.py` trên Docker stack thật, trước đợt chuẩn hóa Sheets): 8 script hoàn tất trong `70.691s`; runner cũ suy ra 40 ID từ exit code. Manual E2E Chrome thật: **10/10 pass**.
 - Sheets sync local với service account: **47/47 cases** đồng bộ live thành công lên 3 Google Sheets (`Test viewpoint`, `Testcase API`, `Testcase Screen`); kiểm chứng trực tiếp qua Google Sheets API sau lượt chạy local (`Report`: `708` total / `619` pass / `25` failed / `64` blocked / `0` not run, `87,43%`; `Report bug`: `262` total / `163` pass / `31` failed / `5` blocked / `63` not run, `62%`, `API-PRED-01` = `Test Done 100%`). Remote protected sync cũng pass ở lịch sử run `43570450037`. Lưu ý: `.cache/test-results/` chỉ được CI tạo qua `AGRIVISION_RESULT_DIR`; cục bộ hiện có `.cache/e2e-*.json` và `tools/testcase-workflow/config/state.json` (gitignored).
 - Security audit: key service account không bị Git track, path được `.gitignore` bỏ qua, không phát hiện secret pattern thật trong workflow/config.
 
@@ -58,9 +58,9 @@ Workflow quản lý registry testcase cho `api`, `screen`, `viewpoint`; thực t
 - Workflow unit tests (`python -m unittest tools.testcase-workflow.test_workflow tools.testcase-workflow.test_sheets_client -v`): **27/27 Passed** (bao gồm `test_automated_e2e_and_manual_cases_are_strictly_separated`, `test_upsert_multiple_new_cases_in_same_tab_assigns_distinct_rows`, `test_update_summary_dashboard_assigns_distinct_rows_and_sums_updated_counts`, `test_run_all_executes_api_screen_and_playwright_groups`); `workflow.py sync --dry-run`: **47 cases** hợp lệ.
 - `py_compile` và kiểm tra anti-pattern (`wait_for_timeout`/`page.pause`) trong `frontend/tests/browser/e2e/*.py`: **0 vi phạm**. `git diff --check`: **clean**.
 
-### Tách biệt đặc tả Automated System E2E (40 ca) và Manual E2E (10 ca)
+### Đặc tả browser tự động (40 ca) và Manual E2E (10 ca)
 
-- **Automated System E2E (40 ca):** đặc tả riêng tại [frontend_e2e_test_specification.md](frontend_e2e_test_specification.md), khai báo trong `tools/testcase-workflow/config/cases.json` + `test-groups.json` và thực thi qua `frontend/tests/browser/e2e/` (`run_live_suite.py`: **40/40 Passed** trong `.cache/e2e-live.json`; `run_suite.py`: **40/40**).
+- **Browser UI tự động (40 ca)** — đặc tả riêng tại [frontend_e2e_test_specification.md](frontend_e2e_test_specification.md), khai báo trong `tools/testcase-workflow/config/cases.json` + `test-groups.json` và thực thi qua `frontend/tests/browser/e2e/` (`run_suite.py`: **40/40**).
 - **Manual E2E (10 ca):** tách riêng hoàn toàn từ tài liệu đến code tại [manual_e2e_test_cases.md](manual_e2e_test_cases.md) (`E2E-DIAG-04`, `E2E-DIAG-06`, `E2E-DIAG-08`, `E2E-HIST-04`, `E2E-HIST-05`, `E2E-PROF-AGRI-04`, `E2E-PROF-AGRI-05`, `E2E-CAT-05`, `E2E-CAT-06`, `E2E-ADM-05`), không nằm trong `frontend/tests/browser/e2e/` hay `tools/testcase-workflow/config/`. Đã chạy tay tương tác trên Chrome thật (`2026-11-17` – `2026-11-18`, commit `89c40dd`): **10/10 Pass** (`0 Fail`, `0 Blocked`).
 
 ### Kết quả chạy tay Manual E2E (2026-11-17 – 2026-11-18)
@@ -101,13 +101,13 @@ Workflow quản lý registry testcase cho `api`, `screen`, `viewpoint`; thực t
 - `frontend/tests/browser/e2e/live_catalog_admin.py` đã tạo bản ghi plant qua Admin UI, reload danh sách, mở lại bản ghi từ API thật và xóa vĩnh viễn bản ghi test khỏi database (kèm dọn dẹp dự phòng trong `finally`) — exit `0`.
 - `frontend/tests/browser/e2e/live_prediction_profile.py` đã tạo profile thật, chạy diagnosis thật, chọn profile trong dialog, xác minh prediction được liên kết và dọn sạch cả prediction lẫn profile test khỏi database trong `finally` — exit `0`.
 - Chạy lại toàn bộ 8 live runner (`live_smoke`, `live_account`, `live_diagnosis`, `live_prediction_profile`, `live_agricultural_profile`, `live_admin`, `live_catalog_admin`, `live_email_auth`) trong một lượt đều exit `0`; dữ liệu synthetic được dọn sạch sau lượt chạy.
-- Consolidated live runner `python frontend/tests/browser/e2e/run_live_suite.py --json-report .cache/e2e-live.json` đã chạy liên tiếp **40/40 mapped system E2E cases passed** trong `70.691s`; report có đầy đủ metadata môi trường, testcase ID, runner và status.
+- Consolidated live runner `python frontend/tests/browser/e2e/run_live_suite.py --json-report .cache/e2e-live.json` đã gán 40 trạng thái từ 8 exit code trong `70.691s`; report có đầy đủ metadata môi trường, testcase ID, runner và status.
 - `live_smoke.py` bao phủ điều hướng danh mục công khai (danh sách + trang chi tiết `/[id]`), trang giới thiệu `/`, responsive 1280/768/375, menu mobile, reduced-motion, `/about`, 404/noindex, guest diagnosis và client file validation bằng assertion live.
 - `frontend/tests/browser/e2e/live_email_auth.py` đã chạy reset password qua UI, đọc OTP từ Mailpit, đăng nhập bằng mật khẩu mới, bật Email 2FA, đọc mã xác minh từ Mailpit và xác nhận trạng thái 2FA được giữ nguyên sau `reload` — exit `0`.
 - Cùng runner đã đổi mật khẩu tài khoản qua UI, đọc mã `PasswordChange` từ Mailpit và xác nhận phiên bị đăng xuất sau khi đổi thành công — exit `0`.
 - `live_account.py` đã upload avatar qua UI và xác nhận trạng thái lưu vào tài khoản với storage thật — exit `0`.
 - `docker-compose.e2e.yml` cung cấp Mailpit nội bộ; backend production mặc định vẫn dùng STARTTLS, chỉ E2E override dùng SMTP test không mã hóa trên network cô lập.
-- Bộ `run_suite.py` (40 ca Browser UI test dùng `ApiStub` cho CI) và bộ `run_live_suite.py` (40 ca Live System E2E trên Docker stack thật) được duy trì song song và đồng bộ 100% về danh sách 40 mã kiểm thử tự động.
+- Runner cũ gắn cùng ID cho các luồng khác hành vi. Từ bản sửa PR #64, browser và live có danh sách kết quả thực thi riêng.
 
 ### [2026-11-18 19:05 +07:00] Per-case TRX/Vitest parsing & Git-backed CI state
 

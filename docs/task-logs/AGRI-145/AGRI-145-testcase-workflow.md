@@ -2,7 +2,7 @@
 
 - **Branch:** `AGRI-145-testcase-design-demo` | **Pull request:** [#64](https://github.com/KayPham05/AgriAI/pull/64).
 - **Report:** [README.md](../../reports/AGRI-145/README.md) | **Status:** Ready for PR.
-- **Next / Blocker:** Chạy CI trên bản sửa `E2E-CAT-03` sau commit và push, rồi hoàn tất review PR.
+- **Next / Blocker:** Chạy CI trên bản sửa sau khi cập nhật PR và kiểm chứng ghi–đọc Sheets.
 
 ## Log
 
@@ -101,6 +101,30 @@
 - **Changed:** Đồng bộ bước lọc và tìm thuốc với URL, xác minh request giữ bộ lọc cây và giữ thông báo assertion trong artifact Playwright.
 - **Verified:** GitHub push `f088a15` fail ở `E2E-CAT-03`. Sau sửa, Catalog **4/4** × **3**, Playwright **40/40**, validator **41** bản ghi và Python **83/83** pass cục bộ. [Report và ảnh](../../reports/AGRI-145/README.md#kiểm-tra-playwright-sau-push)
 - **Remaining:** Chạy GitHub Actions trên bản sửa sau commit và push.
+
+### [2026-11-22 18:58 +07:00] Sửa và kiểm tra lại 7 finding PR #64
+
+- **Changed:** Giới hạn quyền ghi Sheets, merge Viewpoint theo baseline, sửa per-case live report và cleanup, mở trigger CI và xử lý rerun result.
+- **Verified:** Workflow **95/95**, browser **40/40**. Các lượt Docker và đối chiếu parser/cleanup được ghi trong [bằng chứng R1–R7](../../reports/AGRI-145/pr64_fixes.md). Số 40/40 live trong mục lịch sử là kết quả mapping từ exit code của runner cũ.
+- **Remaining:** GitHub Actions và ghi–đọc Sheets trên bản sửa.
+
+### [2026-11-22 19:15 +07:00] Sửa 5 lỗi tái hiện khi kiểm tra lại PR #64
+
+- **Changed:** Kiểm tra vị trí header dashboard, đọc qua dòng 60, bảo toàn kiểu dữ liệu Viewpoint, dọn đúng UUID khi action lỗi và chuyển sang khóa file của hệ điều hành.
+- **Verified:** Workflow **102/102**, dry-run **47 ca**, khóa Windows/Linux và probe Chromium sau POST. [Bằng chứng kiểm tra lại](../../reports/AGRI-145/pr64_fixes.md#sửa-các-lỗi-tái-hiện-trong-vòng-kiểm-tra-lại)
+- **Remaining:** GitHub Actions trên bản sửa và ghi–đọc Google Sheets thật.
+
+### [2026-11-22 19:26 +07:00] Review lại đường lỗi Sheets và artifact PR #64
+
+- **Changed:** Chặn ghi lệch cột và đè dòng nháp, bỏ phát lại thao tác cấu trúc chưa rõ kết quả, giữ kết quả đến đồng thời với sync và chặn gate khi thiếu kết quả Passed.
+- **Verified:** Workflow **109/109**, browser **40/40**, live **13/13**, schema **15 tab** Sheets bằng quyền chỉ đọc. [Bằng chứng](../../reports/AGRI-145/pr64_fixes.md#review-lại-các-đường-lỗi-sau-vòng-sửa-tiếp-theo)
+- **Remaining:** GitHub Actions và ghi–đọc Google Sheets thật trên bản sửa.
+
+### [2026-11-22 19:38 +07:00] Xác minh trước commit PR #64
+
+- **Changed:** Giữ bằng chứng khi đánh dấu Deprecated và phục hồi lại khi testcase được kích hoạt mà chưa có bằng chứng mới.
+- **Verified:** Workflow **109/109**, Vitest **25/25**, hook **9/9**, dry-run **47 ca**, actionlint và diff check. [Báo cáo](../../reports/AGRI-145/pr64_fixes.md#kiểm-tra-trước-commit-và-push)
+- **Remaining:** Xác minh CI và ghi–đọc Sheets sau khi cập nhật nhánh PR.
 
 ## Còn lại
 
