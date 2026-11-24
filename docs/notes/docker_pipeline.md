@@ -79,7 +79,7 @@ CI SMOKE: docker-compose.yml + docker-compose.ci.yml
 
 | Job | Chức năng |
 |---|---|
-| `secret-scan` | Checkout toàn bộ lịch sử và dùng Gitleaks quét Git history (`--all`), che giá trị secret trong log. |
+| `secret-scan` | Checkout toàn bộ lịch sử và dùng Gitleaks quét `HEAD` cùng mọi commit tổ tiên, gồm cả hai nhánh cha của PR merge; không quét các nhánh khác không liên quan. Giá trị secret được che trong log. |
 | `compose-smoke` | Tải và kiểm checksum model; build/chạy Compose gốc + CI; kiểm tra DB, AI health, inference thật và quyền ghi uploads; tắt AI rồi kiểm tra API/web/proxy vẫn hoạt động; lưu log và dọn stack thử nghiệm. |
 | `python-tests` | Chạy unit test Python bằng dependency CPU và kiểm tra branch coverage tối thiểu 40%. |
 | `backend-tests` | Build .NET, chạy unit/integration với PostgreSQL Testcontainers; gộp coverage và kiểm tra mức tối thiểu 50%. |
