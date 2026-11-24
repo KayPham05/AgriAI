@@ -1,6 +1,6 @@
 # AgriVision Mobile
 
-Thư mục làm việc chính: `D:\Git\HK1N4\Project1\AgriAI\reactNative`.
+Thư mục ứng dụng: `reactNative/` trong checkout hiện tại của dự án.
 
 React Native trong `reactNative/`, khởi tạo cho **AGRI-199 — Initial Mobile App** từ main tại `b3b5d312d49beb3800c803fecfaeb137f000f2d9`.
 
@@ -36,12 +36,12 @@ reactNative/
   src/features/
     onboarding/             WelcomeScreen hiện có
     auth/ account/ home/ diagnosis/ history/ profiles/ catalog/ notifications/ settings/
-  src/components/ui/        shared native UI, chưa triển khai
+  src/components/ui/        ActionButton native dùng chung
   src/lib/api/ storage/     transport/persistence, chưa triển khai
   src/config/ hooks/ types/
   src/theme/tokens.ts        semantic colors/spacing/type
   assets/                   template assets; thay trước release
-  tests/                    unit/component/integration/e2e; chưa có runner
+  tests/                    Jest Expo/component; unit/integration/e2e chuẩn bị cho task sau
   docs/                     architecture/development
   pnpm.ps1                  launcher Node/pnpm riêng cho mobile
   .tools/                   runtime local, không đưa vào Git
@@ -50,7 +50,9 @@ reactNative/
   pnpm-lock.yaml            mobile lockfile
 ```
 
-Chỉ có màn khởi động tĩnh, cuộn được với font hệ thống. Các feature khác mới có thư mục chuẩn bị, chưa login/camera/API/secure storage/model. Không có CTA chết hoặc kết quả giả.
+Màn chào S02 áp dụng phong cách Sổ tay vườn nhà từ Figma: ảnh ruộng lúa gốc, mảng xanh đậm, tiêu đề lớn và ba CTA native. Dùng font hệ thống dự phòng, safe area và nội dung cuộn được. `ActionButton` là primitive native đầu tiên. `WelcomeScreen` cung cấp boundary `onNavigate(intent)` cho phần điều hướng tương lai; khi chưa có handler, các nút bị khóa có giải thích. S03/S11/S26 và nền tảng điều hướng chưa triển khai nên chưa nghiệm thu điều hướng thực tế. Figma chưa có frame S02 riêng. Xem [bàn giao Welcome](docs/welcome-handoff.md).
+
+Jest Expo và React Native Testing Library đã được cấu hình cho test component, đặt tập trung trong `tests/`. Chạy `./pnpm.ps1 test` hoặc `./pnpm.ps1 test:coverage`. Các feature còn lại chưa có login/camera/API/secure storage/model.
 
 ## Nhánh mobile
 

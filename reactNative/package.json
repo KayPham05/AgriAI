@@ -15,9 +15,16 @@
     "react-native-screens": "~4.30.1"
   },
   "devDependencies": {
+    "@react-native/jest-preset": "0.88.1",
+    "@testing-library/react-native": "^14.1.0",
+    "@types/jest": "^30.0.0",
     "@types/react": "~19.3.0",
     "eslint": "^9.39.5",
     "eslint-config-expo": "~58.0.4",
+    "jest": "^30.5.2",
+    "jest-expo": "~58.0.15",
+    "react-server-dom-webpack": "19.3.0",
+    "test-renderer": "~1.3.1",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -28,6 +35,8 @@
     "run:ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
+    "test": "jest --ci --runInBand",
+    "test:coverage": "jest --ci --runInBand --coverage",
     "export:android": "expo export --platform android --output-dir dist/android",
     "export:ios": "expo export --platform ios --output-dir dist/ios"
   },
