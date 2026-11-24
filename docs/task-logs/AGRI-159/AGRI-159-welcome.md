@@ -1,5 +1,7 @@
 # AGRI-159 - Welcome
 
+- 2026-11-25. Prepared a separate local CI fix for PR #67. Gitleaks v8.24.2 reproduced one historical test fixture finding across 288 commits, then passed the same scan with the exact fingerprint registered. A new synthetic finding continued to fail the scan. [Evidence and scope](../../reports/AGRI-159/ci-secret-scan.md).
+
 2026-11-25 delivery check. Typecheck, lint and all eight component tests passed before delivery to the mobile integration branch. Full S02-T1/T2 acceptance remains blocked. The unused working copy of the coffee photo and unrelated web change were excluded from the commit.
 
 - Created/checked out `AGRI-159-mobile-welcome` from mobile base `f631185` before editing; preserved unrelated local work. User confirmed no F01/F02 or destination screens.

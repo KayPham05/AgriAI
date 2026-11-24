@@ -1,5 +1,7 @@
 # AGRI-159 - Native welcome screen
 
+For the separate CI repair branch and its Gitleaks reproduction, see [CI secret scan for PR #67](ci-secret-scan.md).
+
 2026-11-25 delivery check. Fresh typecheck and lint passed. The component suite passed 8/8 with 90.62% branch coverage. The Android layout evidence below is from 2026-11-24. The mobile integration PR targets `AGRI-199-initial-mobile-app`. S02-T1/T2 remain blocked on destination integration.
 
 Branch: `AGRI-159-mobile-welcome`, created from `AGRI-199-initial-mobile-app` at `f631185` before implementation. **Current status (2026-11-24): Welcome implementation and Android layout acceptance are complete; full destination integration remains blocked.** See [current acceptance evidence](welcome-acceptance.md). No Jira Done, commit or push is claimed.
