@@ -7,6 +7,7 @@ Từ `reactNative/`:
 ```powershell
 .\pnpm.ps1 test
 .\pnpm.ps1 test:coverage
+.\pnpm.ps1 test:session
 .\pnpm.ps1 typecheck
 ```
 
@@ -15,6 +16,17 @@ Từ `reactNative/`:
 Jest dùng chế độ CI, không tự cập nhật snapshot và không cho zero-test pass. TypeScript kiểm cả source và test; coverage lấy toàn bộ production `src/`, output ở ignored `dist/coverage`. Chưa thêm job CI mobile hoặc thay đổi gate của web/backend/AI.
 
 Khi thêm feature: unit cho validation/transform, component cho native interactions, integration cho API/session, e2e cho device flows; theo root TESTING.md. Không test hằng số/cấu trúc file để giả coverage. API/model/storage thật cần evidence riêng.
+
+## Session startup (AGRI-158)
+
+`test:session` chạy bộ Node 24 với storage và HTTP có kiểm soát. `StartupStatus.test.tsx` kiểm nhãn và trạng thái khóa nút thử lại khi chờ. Để kiểm tra hợp đồng với ASP.NET và PostgreSQL, dùng một backend test chuyên dụng trỏ tới DB dùng một lần:
+
+```powershell
+$env:AGRI158_QA_API_URL = 'http://127.0.0.1:5048'
+.\pnpm.ps1 test:session:integration
+```
+
+Ca integration tạo một User QA, dùng token do server cấp, thu hồi phiên qua endpoint logout rồi kiểm tra client xóa token. Dùng `e2e/startup_guest_smoke.py` với Metro cổng 8083 và emulator riêng để kiểm cold launch không có token. [Bằng chứng tích hợp AGRI-158](../../docs/reports/AGRI-158/README.md).
 
 ## Android native layout smoke
 

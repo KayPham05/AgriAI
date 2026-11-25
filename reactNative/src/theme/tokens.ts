@@ -13,9 +13,11 @@ export const theme = {
     display: { fontSize: 38, lineHeight: 43, fontWeight: '700' },
     body: { fontSize: 16, lineHeight: 25, fontWeight: '400' },
     bodyStrong: { fontSize: 16, lineHeight: 25, fontWeight: '600' },
+    subtitle: { fontSize: 18, lineHeight: 26, fontWeight: '600' },
     label: { fontSize: 14, lineHeight: 20, fontWeight: '600' },
     brand: { fontSize: 18, lineHeight: 26, fontWeight: '600' },
   },
   layout: { contentMaxWidth: 640, compactWidth: 360, touchMin: 48 },
+  startup: { cardMaxWidth: 340, iconSize: 24, bodyLineHeight: 25 },
   welcome: { photoAspectRatio: 390 / 218, photoMaxHeight: 360, markWidth: 18, markHeight: 26 },
 } as const;
