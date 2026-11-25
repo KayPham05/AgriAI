@@ -1,0 +1,2 @@
+# Historical JWT fixture for the isolated live-contract Docker Compose job (AGRI-145).
+c3a554384a91eea953164abc15ca3b52e9ea7893:.github/workflows/testcase-workflow.yml:generic-api-key:124

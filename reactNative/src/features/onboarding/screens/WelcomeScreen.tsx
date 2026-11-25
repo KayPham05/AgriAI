@@ -1,26 +1,93 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Image, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 
+import { ActionButton } from '@/components/ui/ActionButton';
 import { theme } from '@/theme/tokens';
 
-export function WelcomeScreen() {
+export type WelcomeIntent = 'guest-diagnosis' | 'login' | 'catalog';
+
+interface WelcomeScreenProps {
+  onNavigate?: (intent: WelcomeIntent) => void;
+}
+
+export function WelcomeScreen({ onNavigate }: WelcomeScreenProps = {}) {
+  const [photoFailed, setPhotoFailed] = useState(false);
+  const { width } = useWindowDimensions();
+  const unavailableHint = onNavigate ? undefined : 'Chức năng đang được chuẩn bị.';
+
   return (
-    <SafeAreaView style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.content}>
-          <Text style={styles.brand}>AgriVision</Text>
-          <Text accessibilityRole="header" style={styles.title}>
-            Quan sát chiếc lá.{"\n"}Hiểu thêm về cây.
-          </Text>
-          <Text style={styles.description}>Trợ lý chăm sóc cây trồng dành cho bạn.</Text>
-          <View style={styles.notice}>
-            <Text style={styles.noticeTitle}>Hẹn gặp bạn sớm</Text>
-            <Text style={styles.description}>
-              Ứng dụng đang được chuẩn bị. Chức năng chẩn đoán từ ảnh và tra cứu
-              sẽ có trong những phiên bản tiếp theo.
+    <SafeAreaView edges={['left', 'right']} style={styles.screen}>
+      <StatusBar style="light" />
+      <SafeAreaView edges={['top']} style={styles.brandSurface}>
+        <View style={styles.brandContent}>
+          <View style={styles.brandRow}>
+            <Image
+              source={require('../../../../assets/agrivision-leaf-mark.png')}
+              accessible={false}
+              style={styles.mark}
+              resizeMode="contain"
+            />
+            <Text style={styles.brand}>AgriVision</Text>
+          </View>
+          <Text style={styles.brandCaption}>Sổ tay vườn nhà</Text>
+        </View>
+      </SafeAreaView>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.introduction}>
+          <View style={styles.media}>
+            {photoFailed ? (
+              <Text style={styles.photoFallback}>Quan sát màu sắc và bề mặt lá.</Text>
+            ) : (
+              <Image
+                source={require('../../../../assets/welcome-rice-field.png')}
+                accessible
+                accessibilityRole="image"
+                accessibilityLabel="Bàn tay quan sát cây lúa trên cánh đồng"
+                resizeMode="cover"
+                style={styles.photo}
+                onError={() => setPhotoFailed(true)}
+              />
+            )}
+          </View>
+          <View style={styles.heroContent}>
+            <Text
+              accessibilityRole="header"
+              style={[styles.title, width < theme.layout.compactWidth && styles.compactTitle]}
+            >
+              Quan sát chiếc lá.{"\n"}Hiểu thêm về cây.
             </Text>
+            <Text style={styles.description}>
+              Chọn một ảnh lá để tham khảo tình trạng cây và tra cứu thông tin.
+            </Text>
+            <ActionButton
+              label="Chẩn đoán ngay"
+              variant="secondary"
+              onPress={onNavigate ? () => onNavigate('guest-diagnosis') : undefined}
+              accessibilityHint={unavailableHint ?? 'Mở bước chọn nguồn ảnh với tư cách khách.'}
+            />
           </View>
         </View>
+        <SafeAreaView edges={['bottom']} style={styles.actionsSurface}>
+          <View style={styles.actions}>
+            <ActionButton
+              label="Đăng nhập"
+              variant="secondary"
+              onPress={onNavigate ? () => onNavigate('login') : undefined}
+              accessibilityHint={unavailableHint ?? 'Mở màn hình đăng nhập.'}
+            />
+            <ActionButton
+              label="Tra cứu"
+              variant="secondary"
+              onPress={onNavigate ? () => onNavigate('catalog') : undefined}
+              accessibilityHint={unavailableHint ?? 'Tra cứu thông tin cây trồng mà không cần đăng nhập.'}
+            />
+          </View>
+          {!onNavigate && (
+            <Text style={styles.unavailable}>Chẩn đoán và tra cứu đang được chuẩn bị.</Text>
+          )}
+        </SafeAreaView>
       </ScrollView>
     </SafeAreaView>
   );
@@ -28,19 +95,47 @@ export function WelcomeScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.background },
-  scrollContent: {
-    flexGrow: 1, justifyContent: 'center', padding: theme.spacing.gutter,
-  },
-  content: {
+  scroll: { flex: 1 },
+  scrollContent: { flexGrow: 1 },
+  brandSurface: { backgroundColor: theme.colors.primaryPressed },
+  brandContent: {
     width: '100%', maxWidth: theme.layout.contentMaxWidth,
-    alignSelf: 'center', gap: theme.spacing.lg,
+    alignSelf: 'center', flexDirection: 'row', flexWrap: 'wrap',
+    alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.gutter, paddingVertical: theme.spacing.control,
   },
-  brand: { ...theme.typography.label, color: theme.colors.primary },
-  title: { ...theme.typography.title, color: theme.colors.text },
-  description: { ...theme.typography.body, color: theme.colors.textMuted },
-  notice: {
-    gap: theme.spacing.sm, padding: theme.spacing.lg,
-    borderRadius: theme.radius.card, backgroundColor: theme.colors.surfaceMuted,
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+  mark: {
+    width: theme.welcome.markWidth, height: theme.welcome.markHeight,
+    tintColor: theme.colors.onPrimary,
   },
-  noticeTitle: { ...theme.typography.label, color: theme.colors.text },
+  brand: { ...theme.typography.brand, color: theme.colors.onPrimary, flexShrink: 1 },
+  brandCaption: { ...theme.typography.label, color: theme.colors.secondary, flexShrink: 1 },
+  introduction: { backgroundColor: theme.colors.primaryPressed },
+  media: {
+    width: '100%', aspectRatio: theme.welcome.photoAspectRatio,
+    maxHeight: theme.welcome.photoMaxHeight,
+    maxWidth: theme.layout.contentMaxWidth, alignSelf: 'center',
+    overflow: 'hidden',
+    backgroundColor: theme.colors.surfaceMuted,
+    justifyContent: 'center',
+  },
+  photo: { width: '100%', height: '100%' },
+  photoFallback: {
+    ...theme.typography.body, color: theme.colors.textMuted,
+    textAlign: 'center', padding: theme.spacing.md,
+  },
+  heroContent: {
+    width: '100%', maxWidth: theme.layout.contentMaxWidth, alignSelf: 'center',
+    padding: theme.spacing.gutter, gap: theme.spacing.sm,
+  },
+  title: { ...theme.typography.display, color: theme.colors.onPrimary },
+  compactTitle: { ...theme.typography.title },
+  description: { ...theme.typography.body, color: theme.colors.secondary },
+  actionsSurface: {
+    flexGrow: 1, width: '100%', maxWidth: theme.layout.contentMaxWidth,
+    alignSelf: 'center', padding: theme.spacing.gutter, gap: theme.spacing.md,
+  },
+  actions: { gap: theme.spacing.control },
+  unavailable: { ...theme.typography.body, color: theme.colors.textMuted },
 });
