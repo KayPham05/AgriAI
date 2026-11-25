@@ -14,10 +14,13 @@ function SessionStack() {
       headerShown: false,
       contentStyle: { backgroundColor: theme.colors.background },
     }}>
-      <Stack.Protected guard={!signedIn}>
+      <Stack.Protected guard={!signedIn} redirectTo="/home">
         <Stack.Screen name="index" />
       </Stack.Protected>
-      <Stack.Protected guard={signedIn}>
+      <Stack.Protected guard={session.status === 'guest'} redirectTo={signedIn ? '/home' : '/'}>
+        <Stack.Screen name="login" />
+      </Stack.Protected>
+      <Stack.Protected guard={signedIn} redirectTo="/">
         <Stack.Screen name="home" />
       </Stack.Protected>
     </Stack>

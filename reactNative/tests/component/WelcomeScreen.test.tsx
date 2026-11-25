@@ -26,6 +26,15 @@ describe('S02 welcome', () => {
     expect(screen.getByText('Chẩn đoán và tra cứu đang được chuẩn bị.')).toBeVisible();
   });
 
+  it('enables only Sign In when it is the only installed destination', async () => {
+    const onNavigate = jest.fn();
+    await render(<WelcomeScreen onNavigate={onNavigate} availableIntents={['login']} />);
+    expect(screen.getByRole('button', { name: 'Chẩn đoán ngay' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Tra cứu' })).toBeDisabled();
+    await userEvent.setup().press(screen.getByRole('button', { name: 'Đăng nhập' }));
+    expect(onNavigate).toHaveBeenCalledWith('login');
+  });
+
   it('keeps the introduction and actions usable when the leaf photo fails', async () => {
     const onNavigate = jest.fn();
     await render(<WelcomeScreen onNavigate={onNavigate} />);

@@ -28,6 +28,22 @@ $env:AGRI158_QA_API_URL = 'http://127.0.0.1:5048'
 
 Ca integration tạo một User QA, dùng token do server cấp, thu hồi phiên qua endpoint logout rồi kiểm tra client xóa token. Dùng `e2e/startup_guest_smoke.py` với Metro cổng 8083 và emulator riêng để kiểm cold launch không có token. [Bằng chứng tích hợp AGRI-158](../../docs/reports/AGRI-158/README.md).
 
+## Login (AGRI-160)
+
+Chạy `./pnpm.ps1 test:login` để kiểm validation, phân loại phản hồi và lưu phiên của cả hai form. Jest chạy các test tương tác trong `component/LoginScreen.test.tsx`.
+
+Để kiểm API thật, khởi động backend và PostgreSQL QA riêng theo hướng dẫn repo, chạy migration, rồi đặt `AGRI160_QA_API_URL` tới API localhost (ví dụ `http://127.0.0.1:15060`). Chạy `./pnpm.ps1 test:login:integration`. Test chạy adapter đăng ký để tạo tài khoản tổng hợp trong database QA, kiểm đăng nhập 401 và 200, xác minh token đăng ký và đăng nhập bằng `/api/auth/me`, rồi thu hồi các phiên test. [Kết quả AGRI-161](../../docs/reports/AGRI-161/README.md).
+
+`./pnpm.ps1 test:session` kiểm khôi phục phiên và nhánh 401, timeout, lỗi mạng. Ca integration của Login còn kiểm token đã thu hồi được xóa khi app kiểm tra lại.
+
+Để kiểm Home và khôi phục phiên trên Android, dùng emulator QA sạch với Expo Go SDK58. Chạy Metro tại cổng 8085 với `EXPO_PUBLIC_API_URL=http://127.0.0.1:15060`, dùng ADB reverse cho cả 8085 và 15060, mở Expo Go và đóng màn giới thiệu. Chạy:
+
+```powershell
+python -X utf8 tests/e2e/auth_session_smoke.py --adb $adbPath --serial emulator-5586 --output dist/agri160-session-smoke
+```
+
+Script kiểm Guest mở thẳng Home, đăng nhập thật, mở lại app và chặn đường dẫn Login khi đã có phiên. Dùng tài khoản tổng hợp và database QA riêng.
+
 ## Android native layout smoke
 
 `e2e/welcome_layout_smoke.py` là kiểm tra riêng trên Android emulator với Expo Go tương thích SDK58, không nằm trong lệnh Jest hoặc CI. Dùng emulator dành riêng cho test, không có override kích thước/density trước khi chạy. Script từ chối serial điện thoại thật, dùng Python standard library và ADB đã cài; không gọi backend.
