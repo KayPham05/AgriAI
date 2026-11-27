@@ -28,6 +28,8 @@
     "route": "/api/auth/login",
     "cases": [
       "auth.login.validation",
+      "auth.login.lockout",
+      "auth.login.lockout_concurrency",
       "auth.malformed_body",
       "existing.SecurityAuthorizationTests.Login_ShouldRejectWrongPasswordAndUnknownAccount_WithSamePublicError",
       "existing.AuthImprovementTests.Scenario5_Race_PasswordChangeBeforeLogin_ShouldRejectLoginWithOldPassword",
