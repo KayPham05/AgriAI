@@ -11,7 +11,7 @@ export function UserHomeScreen({ fullName }: { fullName: string }) {
           <Text accessibilityRole="header" style={styles.title}>Trang chủ</Text>
           <View style={styles.greeting}>
             <Text style={styles.display}>Chào {fullName}</Text>
-            <Text style={styles.message}>Phiên đăng nhập của bạn đã được khôi phục.</Text>
+            <Text style={styles.message}>Bạn đã đăng nhập vào AgriAI.</Text>
           </View>
         </View>
       </ScrollView>

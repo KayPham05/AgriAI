@@ -7,16 +7,18 @@ interface ActionButtonProps {
   onPress?: () => void;
   variant?: 'primary' | 'secondary';
   accessibilityHint?: string;
+  busy?: boolean;
 }
 
 export function ActionButton({
-  label, onPress, variant = 'primary', accessibilityHint,
+  label, onPress, variant = 'primary', accessibilityHint, busy = false,
 }: ActionButtonProps) {
-  const disabled = !onPress;
+  const disabled = busy || !onPress;
+  const muted = disabled && !busy;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled }}
+      accessibilityState={{ disabled, busy }}
       accessibilityHint={accessibilityHint}
       disabled={disabled}
       onPress={onPress}
@@ -24,13 +26,13 @@ export function ActionButton({
         styles.button,
         styles[variant],
         pressed && (variant === 'primary' ? styles.primaryPressed : styles.secondaryPressed),
-        disabled && styles.disabled,
+        muted && styles.disabled,
       ]}
     >
       <Text style={[
         styles.label,
         variant === 'primary' ? styles.primaryLabel : styles.secondaryLabel,
-        disabled && styles.disabledLabel,
+        muted && styles.disabledLabel,
       ]}>
         {label}
       </Text>

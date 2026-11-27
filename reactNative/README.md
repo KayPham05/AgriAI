@@ -52,7 +52,7 @@ reactNative/
 
 Màn chào S02 áp dụng phong cách Sổ tay vườn nhà từ Figma: ảnh ruộng lúa gốc, mảng xanh đậm, tiêu đề lớn và ba CTA native. Dùng font hệ thống dự phòng, safe area và nội dung cuộn được. `ActionButton` là primitive native đầu tiên. `WelcomeScreen` cung cấp boundary `onNavigate(intent)` cho phần điều hướng tương lai; khi chưa có handler, các nút bị khóa có giải thích. S03/S11/S26 và nền tảng điều hướng chưa triển khai nên chưa nghiệm thu điều hướng thực tế. Figma chưa có frame S02 riêng. Xem [bàn giao Welcome](docs/welcome-handoff.md).
 
-AGRI-158 kiểm tra token lưu trong SecureStore khi khởi động. Guest mở Welcome, User đã xác thực mở Home, 401 xóa token và mạng lỗi cho thử lại. Login, camera và model nằm ở các task riêng. Chạy `./pnpm.ps1 test` cho component và `./pnpm.ps1 test:session` cho logic phiên. [Hướng dẫn kiểm thử](tests/README.md).
+AGRI-158 kiểm tra token lưu trong SecureStore khi khởi động. Guest mở Welcome, User đã xác thực mở Home, 401 xóa token và mạng lỗi cho thử lại. Từ Welcome, chọn **Đăng nhập** để vào form đăng nhập hoặc đăng ký. Chạy `./pnpm.ps1 test` cho component, `./pnpm.ps1 test:session` cho logic phiên và `./pnpm.ps1 test:login` cho hai form. [Hướng dẫn kiểm thử](tests/README.md).
 
 ## Nhánh mobile
 

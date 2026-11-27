@@ -8,9 +8,9 @@ Windows dùng `..\pnpm.ps1` từ docs hoặc `reactNative/pnpm.ps1` từ project
 
 Kiểm tối thiểu: typecheck/lint/test/expo install --check/expo-doctor/export Android+iOS. Bundle pass không thay device test; native smoke cần emulator/device/toolchain. Jest Expo/RNTL đã có từ AGRI-159; viết behavior tests theo TESTING.md, đặt tập trung trong tests. Dùng `./pnpm.ps1 test:coverage` khi cần số liệu; không đổi số liệu renderer thành nghiệm thu native layout.
 
-Muốn chạy khôi phục phiên với backend local, đặt `EXPO_PUBLIC_API_URL` trong `.env.local` theo `.env.example`. Ví dụ `http://10.0.2.2:5034` cho Android emulator truy cập máy host. Release yêu cầu HTTPS. Chỉ ghi vào `sessionTokenKey` sau khi login hoặc OTP được backend xác nhận và đã kiểm vai trò. Guest không cần API URL.
-
 Chưa cấu hình CI mobile, EAS, signing, camera hoặc query client. Template icon chưa phải brand asset release.
+
+Để thử đăng nhập, đăng ký hoặc khôi phục phiên với backend, đặt `EXPO_PUBLIC_API_URL` trong `.env.local` theo `.env.example` rồi khởi động lại Metro. Dùng địa chỉ LAN của máy chạy backend cho điện thoại thật hoặc `adb reverse` với Android. Emulator Android có thể truy cập máy host qua `10.0.2.2`. Bản phát hành yêu cầu HTTPS. Mở **Đăng nhập** từ Welcome rồi chọn tab tương ứng. Guest mở Welcome mà không cần URL API; đăng nhập và đăng ký chỉ ghi `sessionTokenKey` sau khi xác nhận phản hồi User.
 
 Launcher cho tiến trình con thấy cả Node24 và npm đi kèm Node portable, nên chạy `./pnpm.ps1 dlx expo-doctor` từ reactNative, không cần npm11 tạm bổ sung. Các lệnh typecheck/lint/install/start/export cũng đi qua launcher. Ngoài launcher, terminal tiếp tục dùng Node/npm cũ.
 

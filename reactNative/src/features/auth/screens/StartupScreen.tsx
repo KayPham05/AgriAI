@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,8 +9,11 @@ import { theme } from '@/theme/tokens';
 
 export function StartupScreen() {
   const { session, canRetry, retry } = useStartupSession();
+  const router = useRouter();
 
-  if (session.status === 'guest') return <WelcomeScreen />;
+  if (session.status === 'guest') {
+    return <WelcomeScreen availableIntents={['login']} onNavigate={() => router.push('/login')} />;
+  }
   if (session.status === 'user') return null;
   const kind = session.status === 'retry' ? session.reason : session.status;
 

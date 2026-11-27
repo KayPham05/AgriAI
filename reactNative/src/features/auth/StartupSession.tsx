@@ -8,6 +8,7 @@ type StartupSession = {
   session: RestoredSession | { status: 'loading' };
   canRetry: boolean;
   retry: () => void;
+  startAuthenticatedSession: (user: { userId: string; fullName: string }) => void;
 };
 
 const StartupSessionContext = createContext<StartupSession | null>(null);
@@ -35,9 +36,13 @@ export function StartupSessionProvider({ children }: { children: ReactNode }) {
     setAttempt((previous) => previous + 1);
   }
 
+  function startAuthenticatedSession({ userId, fullName }: { userId: string; fullName: string }) {
+    setSession({ status: 'user', userId, fullName });
+  }
+
   const canRetry = session.status === 'retry' || (session.status === 'loading' && attempt > 0);
   return (
-    <StartupSessionContext.Provider value={{ session, canRetry, retry }}>
+    <StartupSessionContext.Provider value={{ session, canRetry, retry, startAuthenticatedSession }}>
       {children}
     </StartupSessionContext.Provider>
   );

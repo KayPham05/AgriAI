@@ -18,6 +18,15 @@ export const theme = {
     brand: { fontSize: 18, lineHeight: 26, fontWeight: '600' },
   },
   layout: { contentMaxWidth: 640, compactWidth: 360, touchMin: 48 },
-  startup: { cardMaxWidth: 340, iconSize: 24, bodyLineHeight: 25 },
   welcome: { photoAspectRatio: 390 / 218, photoMaxHeight: 360, markWidth: 18, markHeight: 26 },
+  startup: { cardMaxWidth: 340, iconSize: 24, bodyLineHeight: 25 },
+  login: {
+    formMaxWidth: 420, fieldMinHeight: 52, iconSize: 24,
+    header: { fontSize: 28, lineHeight: 36, fontWeight: '700' },
+    caption: { fontSize: 13, lineHeight: 19, fontWeight: '400' },
+    motion: {
+      panelDuration: 320, panelDistance: 12, panelOpacity: 0.82,
+      fieldDuration: 380, fieldDistance: 16, fieldOpacity: 0.65,
+    },
+  },
 } as const;
