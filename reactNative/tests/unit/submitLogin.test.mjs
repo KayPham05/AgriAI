@@ -159,3 +159,17 @@ for (const apiOrigin of ['not a URL', 'https://api.example.test/api', 'https://u
     assert.equal(deps.calls.length, 0);
   });
 }
+
+
+test('preserves server account lock duration without creating a session', async () => {
+  const deps = fixture(() => Response.json({ code: 'LOGIN_LOCKED', retryAfterSeconds: 600 }, { status: 429 }));
+  assert.deepEqual(await submitLogin(credentials, deps), { kind: 'error', error: 'login-locked', retryAfterSeconds: 600 });
+  assert.deepEqual(deps.saved, []);
+});
+
+test('keeps generic throttling for invalid or missing account lock duration', async () => {
+  for (const retryAfterSeconds of [undefined, -5, 0, '300', null, 1.5]) {
+    const deps = fixture(() => Response.json({ code: 'LOGIN_LOCKED', retryAfterSeconds }, { status: 429 }));
+    assert.deepEqual(await submitLogin(credentials, deps), { kind: 'error', error: 'rate-limited' });
+  }
+});

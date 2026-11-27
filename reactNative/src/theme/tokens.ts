@@ -21,6 +21,7 @@ export const theme = {
   welcome: { photoAspectRatio: 390 / 218, photoMaxHeight: 360, markWidth: 18, markHeight: 26 },
   startup: { cardMaxWidth: 340, iconSize: 24, bodyLineHeight: 25 },
   login: {
+    captchaLetterSpacing: 3, captchaInputMinWidth: 96,
     formMaxWidth: 420, fieldMinHeight: 52, iconSize: 24,
     header: { fontSize: 28, lineHeight: 36, fontWeight: '700' },
     caption: { fontSize: 13, lineHeight: 19, fontWeight: '400' },
