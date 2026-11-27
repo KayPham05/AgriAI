@@ -7,6 +7,7 @@
     "expo-constants": "~58.0.16",
     "expo-linking": "~58.0.17",
     "expo-router": "~58.0.32",
+    "expo-secure-store": "~58.0.3",
     "expo-status-bar": "~58.0.5",
     "react": "19.3.0",
     "react-dom": "19.3.0",
@@ -37,6 +38,8 @@
     "lint": "eslint . --max-warnings=0",
     "test": "jest --ci --runInBand",
     "test:coverage": "jest --ci --runInBand --coverage",
+    "test:session": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --experimental-test-coverage tests/unit/restoreSession.test.mjs",
+    "test:session:integration": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/integration/startupApi.test.mjs",
     "export:android": "expo export --platform android --output-dir dist/android",
     "export:ios": "expo export --platform ios --output-dir dist/ios"
   },

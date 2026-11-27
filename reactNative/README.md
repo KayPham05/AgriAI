@@ -32,12 +32,12 @@ Export chỉ bundle JS, không tạo APK/IPA hoặc chứng minh native chạy �
 
 ```text
 reactNative/
-  src/app/                  Expo Router: _layout.tsx, index.tsx
+  src/app/                  Expo Router: startup và Home có bảo vệ
   src/features/
     onboarding/             WelcomeScreen hiện có
     auth/ account/ home/ diagnosis/ history/ profiles/ catalog/ notifications/ settings/
   src/components/ui/        ActionButton native dùng chung
-  src/lib/api/ storage/     transport/persistence, chưa triển khai
+  src/lib/storage/          SecureStore cho token phiên
   src/config/ hooks/ types/
   src/theme/tokens.ts        semantic colors/spacing/type
   assets/                   template assets; thay trước release
@@ -52,7 +52,7 @@ reactNative/
 
 Màn chào S02 áp dụng phong cách Sổ tay vườn nhà từ Figma: ảnh ruộng lúa gốc, mảng xanh đậm, tiêu đề lớn và ba CTA native. Dùng font hệ thống dự phòng, safe area và nội dung cuộn được. `ActionButton` là primitive native đầu tiên. `WelcomeScreen` cung cấp boundary `onNavigate(intent)` cho phần điều hướng tương lai; khi chưa có handler, các nút bị khóa có giải thích. S03/S11/S26 và nền tảng điều hướng chưa triển khai nên chưa nghiệm thu điều hướng thực tế. Figma chưa có frame S02 riêng. Xem [bàn giao Welcome](docs/welcome-handoff.md).
 
-Jest Expo và React Native Testing Library đã được cấu hình cho test component, đặt tập trung trong `tests/`. Chạy `./pnpm.ps1 test` hoặc `./pnpm.ps1 test:coverage`. Các feature còn lại chưa có login/camera/API/secure storage/model.
+AGRI-158 kiểm tra token lưu trong SecureStore khi khởi động. Guest mở Welcome, User đã xác thực mở Home, 401 xóa token và mạng lỗi cho thử lại. Login, camera và model nằm ở các task riêng. Chạy `./pnpm.ps1 test` cho component và `./pnpm.ps1 test:session` cho logic phiên. [Hướng dẫn kiểm thử](tests/README.md).
 
 ## Nhánh mobile
 
@@ -66,7 +66,7 @@ Dùng nhánh này làm gốc/target tích hợp mobile, hạn chế tiếp xúc 
 
 ## API và dữ liệu
 
-Chỉ gọi ASP.NET API, không DB/storage/FastAPI trực tiếp. `.env.example` chỉ chuẩn bị biến public, chưa có API code. Dùng host reachable và HTTPS cho release; không secrets trong EXPO_PUBLIC_*.
+Khi có token, app gọi `GET /api/auth/me` của ASP.NET. Đặt origin thiết bị truy cập được qua `EXPO_PUBLIC_API_URL` theo `.env.example`. Release yêu cầu HTTPS. Chỉ đặt cấu hình công khai trong `EXPO_PUBLIC_*`.
 
 Guest/User, một ảnh/lượt, không admin. Xác minh email đăng ký/self-delete phụ thuộc contract/backend, không làm giả trong scaffold. Xem [architecture](docs/architecture.md), [development](docs/development.md).
 
