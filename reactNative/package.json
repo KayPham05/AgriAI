@@ -42,9 +42,12 @@
     "test:session": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --experimental-test-coverage tests/unit/restoreSession.test.mjs",
     "test:session:integration": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/integration/startupApi.test.mjs",
     "test:login:integration": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/integration/loginApi.test.mjs",
+    "test:password-reset:integration": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/integration/passwordResetRequestApi.test.mjs",
+    "test:password-reset": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --experimental-test-coverage tests/unit/passwordResetRequest.test.mjs tests/unit/passwordRecovery.test.mjs",
     "test:otp:integration": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/integration/loginOtpApi.test.mjs",
     "export:android": "expo export --platform android --output-dir dist/android",
-    "export:ios": "expo export --platform ios --output-dir dist/ios"
+    "export:ios": "expo export --platform ios --output-dir dist/ios",
+    "test:password-recovery:integration": "python tests/integration/run_password_recovery.py"
   },
   "private": true,
   "packageManager": "pnpm@10.34.5",

@@ -27,8 +27,16 @@ type LoginDependencies = {
 type Authenticated = Extract<LoginResult, { kind: 'authenticated' }>;
 type AuthFailure = Extract<LoginResult, { kind: 'error' | 'cancelled' }>;
 type AuthRequestDependencies = Omit<LoginDependencies, 'saveToken'>;
-type AuthAction = 'login' | 'register' | 'two-factor/login' | 'two-factor/login/resend';
+type AuthAction = 'reset-password' | 'reset-password/verify' | 'forgot-password' | 'login' | 'register' | 'two-factor/login' | 'two-factor/login/resend';
 type AuthResponse = { kind: 'response'; status: number; body?: unknown } | AuthFailure;
+export type PasswordResetRequestResult = { kind: 'accepted'; email: string }
+  | { kind: 'invalid'; fields: Pick<LoginFieldErrors, 'email'> } | AuthFailure;
+export type RecoveryError = LoginError | 'invalid-code';
+export type RecoveryFailure = { kind: 'error'; error: RecoveryError } | { kind: 'cancelled' };
+export type VerifyPasswordResetResult = { kind: 'verified' } | RecoveryFailure;
+export type NewPasswordValues = { code: string; password: string; confirmPassword: string };
+export type ResetPasswordResult = { kind: 'reset' } | RecoveryFailure
+  | { kind: 'invalid'; fields: { code?: 'format'; password?: LoginFieldErrors['password']; confirmPassword?: 'required' | 'mismatch' } };
 export type OtpError = LoginError | 'invalid-code' | 'resend-rejected';
 type OtpFailure = { kind: 'error'; error: OtpError } | { kind: 'cancelled' };
 export type VerifyLoginOtpResult = Authenticated | OtpFailure;
@@ -72,6 +80,44 @@ function isNonEmpty(value: unknown): value is string {
 
 export function submitLogin(credentials: LoginCredentials, deps: LoginDependencies): Promise<LoginResult> {
   return submitCredentials('login', credentials, deps);
+}
+
+export async function requestPasswordReset(
+  rawEmail: string, deps: AuthRequestDependencies,
+): Promise<PasswordResetRequestResult> {
+  const email = rawEmail.trim().toLowerCase();
+  if (!email) return { kind: 'invalid', fields: { email: 'required' } };
+  if (email.length > MAX_EMAIL_LENGTH || !emailPattern.test(email)) {
+    return { kind: 'invalid', fields: { email: 'format' } };
+  }
+  const response = await postAuth('forgot-password', { email }, deps);
+  if (response.kind !== 'response') return response;
+  if (response.status === 400) return { kind: 'invalid', fields: { email: 'format' } };
+  return response.status === 202 ? { kind: 'accepted', email } : serviceError;
+}
+
+export async function verifyPasswordResetCode(code: string, deps: AuthRequestDependencies): Promise<VerifyPasswordResetResult> {
+  if (!loginOtpPattern.test(code)) return { kind: 'error', error: 'invalid-code' };
+  const result = await postAuth('reset-password/verify', { code }, deps);
+  if (result.kind !== 'response') return result;
+  if (result.status === 400) return { kind: 'error', error: 'invalid-code' };
+  return result.status === 204 ? { kind: 'verified' } : serviceError;
+}
+
+export async function resetPassword(values: NewPasswordValues, deps: AuthRequestDependencies): Promise<ResetPasswordResult> {
+  const { code, password, confirmPassword } = values;
+  const fields: Extract<ResetPasswordResult, { kind: 'invalid' }>['fields'] = {};
+  if (!loginOtpPattern.test(code)) fields.code = 'format';
+  if (!password.trim()) fields.password = 'required';
+  else if (password.length < 6) fields.password = 'too-short';
+  else if (passwordBytes(password) > MAX_PASSWORD_BYTES) fields.password = 'too-long';
+  if (!confirmPassword) fields.confirmPassword = 'required';
+  else if (password !== confirmPassword) fields.confirmPassword = 'mismatch';
+  if (fields.code || fields.password || fields.confirmPassword) return { kind: 'invalid', fields };
+  const result = await postAuth('reset-password', { code, password }, deps);
+  if (result.kind !== 'response') return result;
+  if (result.status === 400) return { kind: 'error', error: 'invalid-code' };
+  return result.status === 204 ? { kind: 'reset' } : serviceError;
 }
 
 export function submitRegistration(credentials: RegistrationCredentials, deps: LoginDependencies): Promise<LoginResult> {
