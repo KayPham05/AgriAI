@@ -44,9 +44,7 @@ function ProfilesListBody({ userId }: { userId: string }) {
         setReloadTick((prev) => prev + 1);
       }}
       onCreate={() => router.push('/profiles/editor')}
-      onSelectProfile={() => {
-        // Wired to S19 (AGRI-176).
-      }}
+      onSelectProfile={(id) => router.push({ pathname: '/profiles/[id]', params: { id } })}
       onBack={() => router.back()}
     />
   );
