@@ -4,6 +4,7 @@ export const ALLOWED_RETURN_TARGETS = [
   '/(tabs)/diagnosis',
   '/(tabs)/history',
   '/(tabs)/account',
+  '/diagnosis/result',
   '/home',
 ] as const;
 
