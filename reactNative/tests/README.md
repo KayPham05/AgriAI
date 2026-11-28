@@ -44,6 +44,20 @@ python -X utf8 tests/e2e/auth_session_smoke.py --adb $adbPath --serial emulator-
 
 Script kiểm Guest mở thẳng Home, đăng nhập thật, mở lại app và chặn đường dẫn Login khi đã có phiên. Dùng tài khoản tổng hợp và database QA riêng.
 
+## Login OTP (AGRI-163)
+
+`./pnpm.ps1 test:login` chạy unit cho xác minh và gửi lại OTP. Jest kiểm form nhập mã, thay challenge và hủy xác minh khi quay lại.
+
+Test tích hợp dùng backend và PostgreSQL QA riêng, có SMTP STARTTLS nhận email thử. Fixture [login_otp_smtp.py](integration/fixtures/login_otp_smtp.py) chạy trong container Python cùng mạng với backend. Mount thư mục QA vào `/qa` với `cert.pem`, `key.pem` và thư mục `inbox` có quyền ghi. Dùng chứng chỉ trùng DNS container SMTP, đặt `Smtp__Host`, `Smtp__Port=2525`, `Smtp__Sender`, `Smtp__Password` và cho backend tin chứng chỉ QA. Chỉ publish API trên loopback. Không đưa chứng chỉ, khóa và inbox vào Git.
+
+```powershell
+$env:AGRI163_QA_API_URL = 'http://127.0.0.1:15063'
+$env:AGRI163_QA_INBOX = (Resolve-Path dist/agri163-mail/inbox).Path
+.\pnpm.ps1 test:otp:integration
+```
+
+Test tạo tài khoản tổng hợp, bật 2FA, đọc mã email từ hộp thư QA, kiểm mã cũ sau resend, xác minh mã mới, rồi thu hồi phiên. [Báo cáo AGRI-163](../../docs/reports/AGRI-163/README.md).
+
 ## Android native layout smoke
 
 `e2e/welcome_layout_smoke.py` là kiểm tra riêng trên Android emulator với Expo Go tương thích SDK58, không nằm trong lệnh Jest hoặc CI. Dùng emulator dành riêng cho test, không có override kích thước/density trước khi chạy. Script từ chối serial điện thoại thật, dùng Python standard library và ADB đã cài; không gọi backend.
@@ -66,3 +80,5 @@ Thay serial bằng emulator riêng thực tế. Sáu scenario dùng chiều rộ
 
 
 Tooling Windows: chạy `./tooling/LocalRuntime.Tests.ps1` từ thư mục tests (hoặc `./tests/tooling/LocalRuntime.Tests.ps1` từ reactNative). Script kiểm runtime thật và cách ly môi trường, không cần Pester/JS runner. Chưa có coverage nghiệp vụ.
+
+Login lockout regression: adapter tests preserve the server-provided wait duration and retain generic throttling for malformed lock responses; component tests verify the minute message and editing another account. Backend persistent escalation, concurrency, migration and live-local evidence are recorded in [AGRI-163 lockout report](../../docs/reports/AGRI-163/login_lockout.md).

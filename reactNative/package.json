@@ -38,10 +38,11 @@
     "lint": "eslint . --max-warnings=0",
     "test": "jest --ci --runInBand",
     "test:coverage": "jest --ci --runInBand --coverage",
-    "test:login": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --experimental-test-coverage tests/unit/submitLogin.test.mjs",
+    "test:login": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --experimental-test-coverage tests/unit/submitLogin.test.mjs tests/unit/loginOtp.test.mjs",
     "test:session": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --experimental-test-coverage tests/unit/restoreSession.test.mjs",
     "test:session:integration": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/integration/startupApi.test.mjs",
     "test:login:integration": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/integration/loginApi.test.mjs",
+    "test:otp:integration": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/integration/loginOtpApi.test.mjs",
     "export:android": "expo export --platform android --output-dir dist/android",
     "export:ios": "expo export --platform ios --output-dir dist/ios"
   },

@@ -1,12 +1,14 @@
-import { useEffect, useRef, useState, type ComponentRef } from 'react';
+import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'react';
 import {
-  Animated, Image, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView,
+  Animated, BackHandler, Image, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView,
   StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
 import { ActionButton } from '@/components/ui/ActionButton';
+import { RegistrationConsent } from '@/features/auth/screens/RegistrationConsent';
+import { LoginOtpForm, type LoginOtpActions } from '@/features/auth/screens/LoginOtpForm';
 import { useAuthMotion } from '@/features/auth/screens/useAuthMotion';
 import type {
   LoginCredentials, LoginError, LoginFieldErrors, LoginResult, RegistrationCredentials,
@@ -15,6 +17,7 @@ import { theme } from '@/theme/tokens';
 
 const errorText: Record<LoginError, string> = {
   credentials: 'Email hoặc mật khẩu không đúng, hoặc tài khoản không còn hoạt động.',
+  'login-locked': 'Tài khoản tạm khóa do nhập sai mật khẩu nhiều lần.',
   'rate-limited': 'Bạn đã thử quá nhiều lần. Vui lòng thử lại sau.',
   service: 'Chưa thể đăng nhập. Vui lòng thử lại sau.',
   'unsupported-account': 'Tài khoản này không hỗ trợ đăng nhập trên ứng dụng.',
@@ -35,35 +38,95 @@ type AuthMode = (typeof modes)[number]['id'];
 
 type Completion = Extract<LoginResult, { kind: 'authenticated' | 'otp-required' }>;
 
+const captchaCharacters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+function createCaptchaCode() {
+  return Array.from({ length: 5 }, () => captchaCharacters[Math.floor(Math.random() * captchaCharacters.length)]).join('');
+}
+
 type Props = {
   onBack: () => void;
   onSubmit: (credentials: LoginCredentials, signal: AbortSignal) => Promise<LoginResult>;
   onRegister?: (credentials: RegistrationCredentials, signal: AbortSignal) => Promise<LoginResult>;
   onAuthenticated?: (session: Extract<LoginResult, { kind: 'authenticated' }>) => void;
   onOtpRequired?: (challengeId: string) => void;
+  otp?: LoginOtpActions;
 };
 
-export function LoginScreen({ onBack, onSubmit, onRegister, onAuthenticated, onOtpRequired }: Props) {
+export function LoginScreen({ onBack, onSubmit, onRegister, onAuthenticated, onOtpRequired, otp }: Props) {
   const [mode, setMode] = useState<AuthMode>('login');
   const { panelStyle, fieldsStyle } = useAuthMotion(mode);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsRead, setTermsRead] = useState(false);
+  const [registrationErrors, setRegistrationErrors] = useState<{ confirmPassword?: string; terms?: string }>({});
+  const [captchaCode, setCaptchaCode] = useState(createCaptchaCode);
+  const [captchaAnswer, setCaptchaAnswer] = useState('');
+  const [captchaError, setCaptchaError] = useState(false);
   const [visible, setVisible] = useState(false);
-  const [focus, setFocus] = useState<keyof LoginFieldErrors | null>(null);
+  const [focus, setFocus] = useState<keyof LoginFieldErrors | 'captcha' | 'confirmPassword' | null>(null);
   const [pending, setPending] = useState(false);
   const [fields, setFields] = useState<LoginFieldErrors>({});
   const [error, setError] = useState<LoginError>();
+  const [retryAfterSeconds, setRetryAfterSeconds] = useState<number>();
   const [completion, setCompletion] = useState<Completion>();
   const request = useRef<AbortController | null>(null);
   const emailInput = useRef<ComponentRef<typeof TextInput>>(null);
   const passwordInput = useRef<ComponentRef<typeof TextInput>>(null);
+  const confirmPasswordInput = useRef<ComponentRef<typeof TextInput>>(null);
+  const captchaInput = useRef<ComponentRef<typeof TextInput>>(null);
   const registering = mode === 'register';
+  const showingOtp = completion?.kind === 'otp-required' && Boolean(otp);
 
   useEffect(() => () => request.current?.abort(), []);
 
+  const cancelOtp = useCallback(() => {
+    request.current?.abort();
+    request.current = null;
+    Keyboard.dismiss();
+    setCompletion(undefined);
+    setCaptchaCode(createCaptchaCode());
+    setCaptchaAnswer('');
+    setCaptchaError(false);
+  }, []);
+
+  useEffect(() => {
+    if (!showingOtp) return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      cancelOtp();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [cancelOtp, showingOtp]);
+
+  function finishAuthentication(result: Extract<LoginResult, { kind: 'authenticated' }>) {
+    if (onAuthenticated) onAuthenticated(result);
+    else setCompletion(result);
+  }
+
   async function submit() {
     if (request.current) return;
+    if (registering) {
+      const nextErrors = {
+        confirmPassword: !confirmPassword ? 'Vui lòng nhập lại mật khẩu.'
+          : confirmPassword !== password ? 'Mật khẩu nhập lại không khớp.' : undefined,
+        terms: !termsRead || !acceptedTerms ? 'Bạn cần đồng ý với điều khoản để tạo tài khoản.' : undefined,
+      };
+      setRegistrationErrors(nextErrors);
+      if (nextErrors.confirmPassword || nextErrors.terms) {
+        if (nextErrors.confirmPassword) confirmPasswordInput.current?.focus();
+        return;
+      }
+    }
+    if (!registering && captchaAnswer.trim().toUpperCase() !== captchaCode) {
+      setCaptchaError(true);
+      captchaInput.current?.focus();
+      return;
+    }
     const controller = new AbortController();
     request.current = controller;
     Keyboard.dismiss();
@@ -77,15 +140,22 @@ export function LoginScreen({ onBack, onSubmit, onRegister, onAuthenticated, onO
       if (controller.signal.aborted) return;
       switch (result.kind) {
         case 'invalid': setFields(result.fields); break;
-        case 'error': setError(result.error); break;
+        case 'error':
+          setError(result.error);
+          setRetryAfterSeconds(result.retryAfterSeconds);
+          if (!registering) refreshCaptcha();
+          break;
         case 'authenticated':
           setPassword('');
+          setConfirmPassword('');
+          setConfirmVisible(false);
           setVisible(false);
-          if (onAuthenticated) onAuthenticated(result);
-          else setCompletion(result);
+          finishAuthentication(result);
           break;
         case 'otp-required':
           setPassword('');
+          setConfirmPassword('');
+          setConfirmVisible(false);
           setVisible(false);
           if (onOtpRequired) onOtpRequired(result.challengeId);
           else setCompletion(result);
@@ -93,7 +163,10 @@ export function LoginScreen({ onBack, onSubmit, onRegister, onAuthenticated, onO
         case 'cancelled': break;
       }
     } catch {
-      if (!controller.signal.aborted) setError('service');
+      if (!controller.signal.aborted) {
+        setError('service');
+        if (!registering) refreshCaptcha();
+      }
     } finally {
       if (request.current === controller) request.current = null;
       if (!controller.signal.aborted) setPending(false);
@@ -101,6 +174,10 @@ export function LoginScreen({ onBack, onSubmit, onRegister, onAuthenticated, onO
   }
 
   function back() {
+    if (showingOtp) {
+      cancelOtp();
+      return;
+    }
     request.current?.abort();
     onBack();
   }
@@ -109,11 +186,23 @@ export function LoginScreen({ onBack, onSubmit, onRegister, onAuthenticated, onO
     if (next === mode || request.current) return;
     Keyboard.dismiss();
     setMode(next);
+    setConfirmPassword('');
+    setConfirmVisible(false);
+    setAcceptedTerms(false);
+    setTermsRead(false);
+    setRegistrationErrors({});
     setPassword('');
     setVisible(false);
     setFields({});
     setFocus(null);
     setError(undefined);
+    refreshCaptcha();
+  }
+
+  function refreshCaptcha() {
+    setCaptchaCode(createCaptchaCode());
+    setCaptchaAnswer('');
+    setCaptchaError(false);
   }
 
   const formTitle = registering ? 'Tạo tài khoản AgriAI' : 'Chào mừng bạn trở lại';
@@ -140,7 +229,14 @@ export function LoginScreen({ onBack, onSubmit, onRegister, onAuthenticated, onO
                   </Text>
                 )}
               </View>
-              {completion ? (
+              {completion?.kind === 'otp-required' && otp ? (
+                <LoginOtpForm
+                  initialChallengeId={completion.challengeId}
+                  actions={otp}
+                  requestRef={request}
+                  onVerified={finishAuthentication}
+                />
+              ) : completion ? (
                 <Text accessibilityLiveRegion="polite" style={styles.message}>
                   {completion.kind === 'otp-required'
                     ? 'Tài khoản cần mã xác minh. Bước nhập mã chưa khả dụng trên bản này.'
@@ -229,12 +325,13 @@ export function LoginScreen({ onBack, onSubmit, onRegister, onAuthenticated, onO
                           placeholder={registering ? 'Tối thiểu 6 ký tự' : undefined}
                           placeholderTextColor={theme.colors.textMuted}
                           secureTextEntry={!visible}
-                          returnKeyType="go"
+                          returnKeyType="next"
+                          submitBehavior="submit"
                           value={password}
-                          onChangeText={(value) => { setPassword(value); setFields((current) => ({ ...current, password: undefined })); setError(undefined); }}
+                          onChangeText={(value) => { setPassword(value); setRegistrationErrors((current) => ({ ...current, confirmPassword: undefined })); setFields((current) => ({ ...current, password: undefined })); setError(undefined); }}
                           onFocus={() => setFocus('password')}
                           onBlur={() => setFocus(null)}
-                          onSubmitEditing={() => void submit()}
+                          onSubmitEditing={() => registering ? confirmPasswordInput.current?.focus() : captchaInput.current?.focus()}
                           style={styles.input}
                         />
                         <Pressable
@@ -250,12 +347,108 @@ export function LoginScreen({ onBack, onSubmit, onRegister, onAuthenticated, onO
                       </View>
                       {fields.password && <Text accessibilityLiveRegion="polite" style={styles.fieldError}>{passwordMessages[fields.password]}</Text>}
                     </View>
+                    {registering && (
+                      <>
+                        <View style={styles.field}>
+                          <Text style={styles.label}>{'Nhập lại mật khẩu'}</Text>
+                          <View style={[styles.outline, focus === 'confirmPassword' && styles.focused, Boolean(registrationErrors.confirmPassword) && styles.invalid]}>
+                            <TextInput
+                              ref={confirmPasswordInput}
+                              accessibilityLabel="Nhập lại mật khẩu"
+                              accessibilityHint={registrationErrors.confirmPassword}
+                              autoCapitalize="none"
+                              autoComplete="new-password"
+                              autoCorrect={false}
+                              editable={!pending}
+                              secureTextEntry={!confirmVisible}
+                              returnKeyType="go"
+                              value={confirmPassword}
+                              onChangeText={(value) => {
+                                setConfirmPassword(value);
+                                setRegistrationErrors((current) => ({ ...current, confirmPassword: undefined }));
+                              }}
+                              onFocus={() => setFocus('confirmPassword')}
+                              onBlur={() => setFocus(null)}
+                              onSubmitEditing={() => void submit()}
+                              style={styles.input}
+                            />
+                            <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel={confirmVisible ? 'Ẩn mật khẩu nhập lại' : 'Hiện mật khẩu nhập lại'}
+                              accessibilityState={{ disabled: pending }}
+                              disabled={pending}
+                              onPress={() => setConfirmVisible(!confirmVisible)}
+                              style={styles.iconButton}
+                            >
+                              <Image source={require('../../../../assets/login/eye.png')} accessible={false} style={styles.icon} />
+                            </Pressable>
+                          </View>
+                          {registrationErrors.confirmPassword && <Text accessibilityLiveRegion="polite" style={styles.fieldError}>{registrationErrors.confirmPassword}</Text>}
+                        </View>
+                        <RegistrationConsent
+                          checked={acceptedTerms}
+                          onReadComplete={() => { setTermsRead(true); setAcceptedTerms(false); }}
+                          disabled={pending}
+                          error={registrationErrors.terms}
+                          onChange={(checked) => {
+                            setAcceptedTerms(checked);
+                            setRegistrationErrors((current) => ({ ...current, terms: undefined }));
+                          }}
+                        />
+                      </>
+                    )}
+                    {!registering && (
+                      <View style={styles.field}>
+                        <Text style={styles.label}>Mã xác nhận</Text>
+                        <View style={styles.captchaRow}>
+                          <View style={styles.captchaChallenge}>
+                            <Text accessibilityLabel={`Mã CAPTCHA: ${captchaCode}`} style={styles.captchaCode}>
+                              {captchaCode}
+                            </Text>
+                            <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel="Tạo mã CAPTCHA mới"
+                              accessibilityState={{ disabled: pending }}
+                              disabled={pending}
+                              onPress={refreshCaptcha}
+                              style={({ pressed }) => [styles.captchaRefresh, pressed && styles.captchaPressed]}
+                            >
+                              <Text accessible={false} style={styles.captchaRefreshIcon}>{'↻'}</Text>
+                            </Pressable>
+                          </View>
+                          <TextInput
+                            ref={captchaInput}
+                            accessibilityLabel="Mã xác nhận"
+                            accessibilityHint={captchaError ? 'Mã CAPTCHA chưa chính xác.' : 'Nhập mã 5 ký tự đang hiển thị.'}
+                            autoCapitalize="characters"
+                            autoComplete="off"
+                            autoCorrect={false}
+                            spellCheck={false}
+                            maxLength={5}
+                            returnKeyType="go"
+                            value={captchaAnswer}
+                            editable={!pending}
+                            placeholder="Nhập mã"
+                            onFocus={() => setFocus('captcha')}
+                            onBlur={() => setFocus(null)}
+                            placeholderTextColor={theme.colors.textMuted}
+                            onChangeText={(value) => { setCaptchaAnswer(value.toUpperCase()); setCaptchaError(false); }}
+                            onSubmitEditing={() => void submit()}
+                            style={[styles.captchaInput, focus === 'captcha' && styles.focused, captchaError && styles.invalid]}
+                          />
+                        </View>
+                        {captchaError && (
+                          <Text accessibilityLiveRegion="polite" style={styles.fieldError}>Mã CAPTCHA chưa chính xác.</Text>
+                        )}
+                      </View>
+                    )}
                     {error && (
                       <View accessibilityLiveRegion="polite" style={styles.notice}>
                         <Image source={require('../../../../assets/login/error.png')} accessible={false} style={styles.icon} />
                         <Text style={styles.noticeText}>{registering && error === 'service'
                           ? 'Chưa thể tạo tài khoản. Vui lòng thử lại sau.'
-                          : errorText[error]}</Text>
+                          : errorText[error]}{error === 'login-locked' && retryAfterSeconds
+                            ? ` Thử lại sau ${Math.ceil(retryAfterSeconds / 60)} phút.` : ''}</Text>
                       </View>
                     )}
                     <ActionButton label={registering ? 'Tạo tài khoản' : 'Đăng nhập'} onPress={() => void submit()} busy={pending} />
@@ -323,4 +516,20 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surfaceMuted,
   },
   noticeText: { ...theme.typography.body, flex: 1, color: theme.colors.text },
+  captchaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.control },
+  captchaChallenge: {
+    flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm,
+    borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.input,
+    paddingStart: theme.spacing.control, backgroundColor: theme.colors.secondary,
+  },
+  captchaCode: { ...theme.typography.subtitle, letterSpacing: theme.login.captchaLetterSpacing, color: theme.colors.primary },
+  captchaRefresh: { minWidth: theme.layout.touchMin, minHeight: theme.layout.touchMin, alignItems: 'center', justifyContent: 'center', padding: theme.spacing.control },
+  captchaRefreshIcon: { fontSize: theme.login.iconSize, color: theme.colors.primary },
+  captchaPressed: { backgroundColor: theme.colors.surfaceMuted, borderRadius: theme.radius.input },
+  captchaInput: {
+    ...theme.typography.body, color: theme.colors.text, flexGrow: 1,
+    minWidth: theme.login.captchaInputMinWidth, minHeight: theme.login.fieldMinHeight,
+    borderWidth: 1, borderColor: theme.colors.textMuted, borderRadius: theme.radius.input,
+    backgroundColor: theme.colors.surface, padding: theme.spacing.control,
+  },
 });

@@ -6,6 +6,7 @@ import HomeRoute from '@/app/home';
 import LoginRoute from '@/app/login';
 import { StartupSessionProvider, useStartupSession } from '@/features/auth/StartupSession';
 import { sessionTokenKey } from '@/lib/storage/sessionToken';
+import { fillCaptcha } from './captchaInput';
 
 jest.mock('expo/fetch', () => ({ fetch: jest.fn() }));
 jest.mock('expo-router', () => ({ useRouter: () => ({ canGoBack: () => false, replace: jest.fn() }) }));
@@ -39,6 +40,7 @@ it('enters Home after persisting login and restores the same profile on a fresh 
     const first = await render(<StartupSessionProvider><AuthFlow /></StartupSessionProvider>);
     await fireEvent.changeText(await screen.findByLabelText('Email'), 'mai@example.test');
     await fireEvent.changeText(screen.getByLabelText('Mật khẩu'), 'fixture-password');
+    await fillCaptcha();
     await user.press(screen.getByRole('button', { name: 'Đăng nhập' }));
     expect(await screen.findByRole('header', { name: 'Trang chủ' })).toBeVisible();
     expect(screen.getByText('Chào Mai Anh')).toBeVisible();

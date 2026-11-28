@@ -1,4 +1,6 @@
 using System.Net;
+using System.Globalization;
+using AgriVision.Application.Common.Interfaces.Authentication;
 using System.Text.Json;
 using AgriVision.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
@@ -40,6 +42,7 @@ public class GlobalExceptionMiddleware
             AiServiceException aiServiceException => aiServiceException.StatusCode,
             ImageStorageException => HttpStatusCode.ServiceUnavailable,
             KeyNotFoundException => HttpStatusCode.NotFound,
+            LoginLockedException => HttpStatusCode.TooManyRequests,
             UnauthorizedAccessException => HttpStatusCode.Unauthorized,
             ArgumentException or InvalidOperationException => HttpStatusCode.BadRequest,
             FluentValidation.ValidationException => HttpStatusCode.BadRequest,
@@ -49,7 +52,13 @@ public class GlobalExceptionMiddleware
         context.Response.StatusCode = (int)statusCode;
 
         object response;
-        if (exception is FluentValidation.ValidationException valEx)
+        if (exception is LoginLockedException locked)
+        {
+            context.Response.Headers.RetryAfter = locked.RetryAfterSeconds.ToString(CultureInfo.InvariantCulture);
+            response = new { StatusCode = (int)statusCode, Message = locked.Message,
+                Code = "LOGIN_LOCKED", RetryAfterSeconds = locked.RetryAfterSeconds };
+        }
+        else if (exception is FluentValidation.ValidationException valEx)
         {
             var errors = valEx.Errors.Select(e => new { Field = e.PropertyName, Error = e.ErrorMessage });
             response = new { StatusCode = (int)statusCode, Message = "Validation failed", Errors = errors };
