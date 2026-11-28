@@ -43,6 +43,7 @@ export default function HomeTabRoute() {
       onDiagnose={() => router.push('/(tabs)/diagnosis')}
       onCatalog={() => router.push('/(tabs)/catalog')}
       onHistory={() => router.push('/(tabs)/history')}
+      onSelectPrediction={(id) => router.push({ pathname: '/prediction/[id]', params: { id } })}
       onLogin={() => router.push({ pathname: '/login', params: { returnTo: '/(tabs)/home' } })}
       onRetryHistory={handleRetry}
     />

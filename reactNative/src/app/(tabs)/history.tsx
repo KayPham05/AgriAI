@@ -92,6 +92,7 @@ export default function HistoryRoute() {
         setReloadTick((prev) => prev + 1);
       }}
       onDiagnose={() => router.push('/(tabs)/diagnosis')}
+      onSelectPrediction={(id) => router.push({ pathname: '/prediction/[id]', params: { id } })}
       onLogin={() => router.push({ pathname: '/login', params: { returnTo: '/(tabs)/history' } })}
     />
   );
