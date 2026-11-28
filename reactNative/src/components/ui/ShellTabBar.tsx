@@ -22,7 +22,7 @@ const tabIcons: Record<string, ImageSourcePropType> = {
 
 export function ShellTabBar({ state, descriptors, navigation }: ShellTabBarProps) {
   const insets = useSafeAreaInsets();
-  const paddingBottom = Math.max(insets.bottom, theme.spacing.md);
+  const paddingBottom = Math.max(insets.bottom, theme.spacing.lg);
 
   return (
     <View style={[styles.container, { paddingBottom }]}>
