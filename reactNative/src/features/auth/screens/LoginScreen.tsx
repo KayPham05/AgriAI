@@ -7,11 +7,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
 import { ActionButton } from '@/components/ui/ActionButton';
+import type { PasswordRecoveryActions } from '@/features/auth/screens/PasswordRecoverySteps';
+import { ForgotPasswordScreen } from '@/features/auth/screens/ForgotPasswordScreen';
 import { RegistrationConsent } from '@/features/auth/screens/RegistrationConsent';
 import { LoginOtpForm, type LoginOtpActions } from '@/features/auth/screens/LoginOtpForm';
 import { useAuthMotion } from '@/features/auth/screens/useAuthMotion';
 import type {
-  LoginCredentials, LoginError, LoginFieldErrors, LoginResult, RegistrationCredentials,
+  LoginCredentials, LoginError, LoginFieldErrors, LoginResult, PasswordResetRequestResult, RegistrationCredentials,
 } from '@/features/auth/submitLogin';
 import { theme } from '@/theme/tokens';
 
@@ -46,6 +48,8 @@ function createCaptchaCode() {
 
 type Props = {
   onBack: () => void;
+  recoveryActions?: PasswordRecoveryActions;
+  onRequestPasswordReset?: (email: string, signal: AbortSignal) => Promise<PasswordResetRequestResult>;
   onSubmit: (credentials: LoginCredentials, signal: AbortSignal) => Promise<LoginResult>;
   onRegister?: (credentials: RegistrationCredentials, signal: AbortSignal) => Promise<LoginResult>;
   onAuthenticated?: (session: Extract<LoginResult, { kind: 'authenticated' }>) => void;
@@ -53,8 +57,10 @@ type Props = {
   otp?: LoginOtpActions;
 };
 
-export function LoginScreen({ onBack, onSubmit, onRegister, onAuthenticated, onOtpRequired, otp }: Props) {
+export function LoginScreen({ onBack, onSubmit, onRegister, onAuthenticated, onOtpRequired, onRequestPasswordReset, recoveryActions, otp }: Props) {
   const [mode, setMode] = useState<AuthMode>('login');
+  const [recovering, setRecovering] = useState(false);
+  const closeRecovery = useCallback(() => setRecovering(false), []);
   const { panelStyle, fieldsStyle } = useAuthMotion(mode);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -203,6 +209,10 @@ export function LoginScreen({ onBack, onSubmit, onRegister, onAuthenticated, onO
     setCaptchaCode(createCaptchaCode());
     setCaptchaAnswer('');
     setCaptchaError(false);
+  }
+
+  if (recovering && onRequestPasswordReset) {
+    return <ForgotPasswordScreen initialEmail={email} onBack={closeRecovery} onRequestReset={onRequestPasswordReset} recoveryActions={recoveryActions} />;
   }
 
   const formTitle = registering ? 'Tạo tài khoản AgriAI' : 'Chào mừng bạn trở lại';
@@ -397,6 +407,18 @@ export function LoginScreen({ onBack, onSubmit, onRegister, onAuthenticated, onO
                         />
                       </>
                     )}
+                    {!registering && onRequestPasswordReset && (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Quên mật khẩu"
+                        disabled={pending}
+                        accessibilityState={{ disabled: pending }}
+                        onPress={() => { setPassword(''); setVisible(false); setRecovering(true); }}
+                        style={styles.recoveryButton}
+                      >
+                        <Text style={styles.recoveryLabel}>{'Quên mật khẩu?'}</Text>
+                      </Pressable>
+                    )}
                     {!registering && (
                       <View style={styles.field}>
                         <Text style={styles.label}>Mã xác nhận</Text>
@@ -516,6 +538,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surfaceMuted,
   },
   noticeText: { ...theme.typography.body, flex: 1, color: theme.colors.text },
+  recoveryButton: { minHeight: theme.layout.touchMin, justifyContent: 'center', alignSelf: 'flex-end' },
+  recoveryLabel: { ...theme.typography.label, color: theme.colors.primary, textDecorationLine: 'underline' },
   captchaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.control },
   captchaChallenge: {
     flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm,

@@ -82,3 +82,12 @@ Thay serial bằng emulator riêng thực tế. Sáu scenario dùng chiều rộ
 Tooling Windows: chạy `./tooling/LocalRuntime.Tests.ps1` từ thư mục tests (hoặc `./tests/tooling/LocalRuntime.Tests.ps1` từ reactNative). Script kiểm runtime thật và cách ly môi trường, không cần Pester/JS runner. Chưa có coverage nghiệp vụ.
 
 Login lockout regression: adapter tests preserve the server-provided wait duration and retain generic throttling for malformed lock responses; component tests verify the minute message and editing another account. Backend persistent escalation, concurrency, migration and live-local evidence are recorded in [AGRI-163 lockout report](../../docs/reports/AGRI-163/login_lockout.md).
+
+## AGRI-164 recovery request
+
+`pnpm.ps1 test:password-reset` runs the email-only request contract, neutral 202, validation, throttling, origin restrictions and cancellation regressions. Component tests cover retry, duplicate-submit locking, Back and actual Guest route wiring without session creation. `pnpm.ps1 test:password-reset:integration` explicitly targets the loopback project API with a random unknown address; it verifies HTTP/database availability, not real email delivery. See the [AGRI-164 report](../../docs/reports/AGRI-164/README.md).
+# Password recovery continuation (AGRI-165/166)
+
+`pnpm.ps1 test:password-reset` covers request/verify/reset contracts, exact payloads, local validation, cancellation and errors. `pnpm.ps1 test:coverage` covers code entry, resend, pending controls, expiry during password entry, confirmation and the complete route wiring without session creation.
+
+`pnpm.ps1 test:password-recovery:integration` runs the source-matching real API image with disposable PostgreSQL and a captured STARTTLS inbox. It checks password replacement, single-use code consumption, old-session revocation and explicit login with the new password. See [setup and isolation limits](../docs/agri164-forgot-password.md). Generated credentials, certificates, inbox and reports remain ignored.

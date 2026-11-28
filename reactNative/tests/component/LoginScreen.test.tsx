@@ -316,3 +316,19 @@ it('shows field validation from the adapter and clears only the edited field err
   expect(screen.queryByText('Vui l\u00f2ng nh\u1eadp m\u1eadt kh\u1ea9u.')).toBeNull();
   expect(onSubmit).toHaveBeenCalledTimes(1);
 });
+
+
+it('opens password recovery with the typed email and returns with the password cleared', async () => {
+  const onRequestPasswordReset = jest.fn().mockResolvedValue({kind:'accepted',email:'user@example.test'});
+  await render(<LoginScreen onBack={jest.fn()} onSubmit={jest.fn()} onRequestPasswordReset={onRequestPasswordReset} />);
+  const user = userEvent.setup();
+  await fireEvent.changeText(screen.getByLabelText('Email'),'User@Example.test');
+  await fireEvent.changeText(screen.getByLabelText('M\u1eadt kh\u1ea9u'),'sensitive');
+  await user.press(screen.getByRole('button',{name:'Qu\u00ean m\u1eadt kh\u1ea9u'}));
+  expect(screen.getByRole('header',{name:'Qu\u00ean m\u1eadt kh\u1ea9u'})).toBeVisible();
+  expect(screen.getByLabelText('Email')).toHaveProp('value','User@Example.test');
+  await user.press(screen.getByRole('button',{name:'G\u1eedi m\u00e3'}));
+  expect(onRequestPasswordReset).toHaveBeenCalledWith('User@Example.test',expect.anything());
+  await user.press(screen.getByRole('button',{name:'Quay l\u1ea1i \u0111\u0103ng nh\u1eadp'}));
+  expect(screen.getByLabelText('M\u1eadt kh\u1ea9u')).toHaveProp('value','');
+});
