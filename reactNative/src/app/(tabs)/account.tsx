@@ -1,2 +1,11 @@
-import { PlaceholderScreen } from '@/features/shared/screens/PlaceholderScreen';
-export default function AccountRoute() { return <PlaceholderScreen title="Tài khoản" message="Đăng nhập để quản lý thông tin của bạn." />; }
+import { router } from 'expo-router';
+
+import { AccountScreen } from '@/features/account/screens/AccountScreen';
+
+export default function AccountRoute() {
+  return (
+    <AccountScreen
+      onLogin={() => router.push({ pathname: '/login', params: { returnTo: '/(tabs)/account' } })}
+    />
+  );
+}

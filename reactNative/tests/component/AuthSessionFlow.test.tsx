@@ -9,7 +9,10 @@ import { sessionTokenKey } from '@/lib/storage/sessionToken';
 import { fillCaptcha } from './captchaInput';
 
 jest.mock('expo/fetch', () => ({ fetch: jest.fn() }));
-jest.mock('expo-router', () => ({ useRouter: () => ({ canGoBack: () => false, replace: jest.fn() }) }));
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ canGoBack: () => false, replace: jest.fn() }),
+  useLocalSearchParams: () => ({}),
+}));
 jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn(), setItemAsync: jest.fn(), deleteItemAsync: jest.fn(),
 }));
