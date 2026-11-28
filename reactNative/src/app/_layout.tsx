@@ -31,6 +31,7 @@ function SessionStack() {
       <Stack.Screen name="prediction/[id]" />
       <Stack.Screen name="profiles/index" />
       <Stack.Screen name="profiles/editor" />
+      <Stack.Screen name="profiles/[id]" />
       <Stack.Screen name="gallery" />
     </Stack>
   );
