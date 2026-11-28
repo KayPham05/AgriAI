@@ -18,6 +18,7 @@ public class AuthService : IAuthService
     private readonly IAccountEmailSender? _emailSender;
     private readonly ILogger<AuthService>? _logger;
     private readonly IEmailTwoFactor? _twoFactor;
+    private readonly TimeProvider _clock;
 
     public AuthService(
         IUserRepository userRepository,
@@ -26,7 +27,8 @@ public class AuthService : IAuthService
         IUnitOfWork unitOfWork,
         IAccountEmailSender? emailSender = null,
         ILogger<AuthService>? logger = null,
-        IEmailTwoFactor? twoFactor = null)
+        IEmailTwoFactor? twoFactor = null,
+        TimeProvider? timeProvider = null)
     {
         _userRepository = userRepository;
         _jwtTokenGenerator = jwtTokenGenerator;
@@ -35,6 +37,7 @@ public class AuthService : IAuthService
         _emailSender = emailSender;
         _logger = logger;
         _twoFactor = twoFactor;
+        _clock = timeProvider ?? TimeProvider.System;
     }
 
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
@@ -79,16 +82,47 @@ public class AuthService : IAuthService
     public async Task<AuthResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
         User? authenticatedUser = null;
+        Exception? failure = null;
         var response = await _unitOfWork.ExecuteInTransactionAsync<AuthResponse?>(async () =>
         {
             var user = await _userRepository.GetByEmailForUpdateAsync(request.Email, cancellationToken);
-            if (user == null || user.PasswordHash == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-                throw new UnauthorizedAccessException("Invalid email or password.");
+            if (user == null || user.PasswordHash == null)
+            {
+                failure = new UnauthorizedAccessException("Invalid email or password.");
+                return null;
+            }
             if (!user.IsActive)
-                throw new UnauthorizedAccessException("Tài khoản đã bị vô hiệu hóa.");
+                throw new UnauthorizedAccessException(BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash)
+                    ? "T\u00e0i kho\u1ea3n \u0111\u00e3 b\u1ecb v\u00f4 hi\u1ec7u h\u00f3a." : "Invalid email or password.");
+            var now = _clock.GetUtcNow().UtcDateTime;
+            if (user.LoginLockedUntil is { } until && until > now)
+            {
+                failure = new LoginLockedException((long)Math.Ceiling((until - now).TotalSeconds));
+                return null;
+            }
+            if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            {
+                user.FailedLoginAttempts++;
+                if (user.FailedLoginAttempts >= 5)
+                {
+                    user.FailedLoginAttempts = 0;
+                    if (user.LoginLockoutLevel < int.MaxValue) user.LoginLockoutLevel++;
+                    // DateTime's representable range is the only limit on exponential growth.
+                    var remainingSeconds = (DateTime.MaxValue.Ticks - now.Ticks) / TimeSpan.TicksPerSecond;
+                    var seconds = Math.Min(300L << Math.Min(user.LoginLockoutLevel - 1, 31), remainingSeconds);
+                    user.LoginLockedUntil = now.AddTicks(seconds * TimeSpan.TicksPerSecond);
+                    failure = new LoginLockedException(seconds);
+                }
+                else failure = new UnauthorizedAccessException("Invalid email or password.");
+                await _userRepository.UpdateAsync(user, cancellationToken);
+                return null;
+            }
             authenticatedUser = user;
             return user.EmailTwoFactorEnabled ? null : await CreateSessionAsync(user, cancellationToken);
         }, cancellationToken);
+
+        // Failed-attempt updates must commit before signaling an HTTP error.
+        if (failure is not null) throw failure;
 
         // Persist the challenge after the credential transaction commits; the 202 signal throws.
         if (response is null)
@@ -119,6 +153,9 @@ public class AuthService : IAuthService
             var account = await _userRepository.GetByEmailForUpdateAsync(user.Email, cancellationToken);
             if (account is not { IsActive: true })
                 throw new UnauthorizedAccessException("Invalid email or password.");
+            var now = _clock.GetUtcNow().UtcDateTime;
+            if (account.LoginLockedUntil is { } until && until > now)
+                throw new LoginLockedException((long)Math.Ceiling((until - now).TotalSeconds));
             return await CreateSessionAsync(account, cancellationToken);
         }, cancellationToken);
         await SendLoginNoticeAsync(user, cancellationToken);
@@ -127,6 +164,13 @@ public class AuthService : IAuthService
 
     private async Task<AuthResponse> CreateSessionAsync(User user, CancellationToken cancellationToken)
     {
+        if (user.FailedLoginAttempts != 0 || user.LoginLockoutLevel != 0 || user.LoginLockedUntil is not null)
+        {
+            user.FailedLoginAttempts = 0;
+            user.LoginLockoutLevel = 0;
+            user.LoginLockedUntil = null;
+            await _userRepository.UpdateAsync(user, cancellationToken);
+        }
         var session = new UserSession
         {
             Id = Guid.NewGuid(), UserId = user.Id,

@@ -10,12 +10,20 @@ export type WelcomeIntent = 'guest-diagnosis' | 'login' | 'catalog';
 
 interface WelcomeScreenProps {
   onNavigate?: (intent: WelcomeIntent) => void;
+  availableIntents?: readonly WelcomeIntent[];
 }
 
-export function WelcomeScreen({ onNavigate }: WelcomeScreenProps = {}) {
+export function WelcomeScreen({ onNavigate, availableIntents }: WelcomeScreenProps = {}) {
   const [photoFailed, setPhotoFailed] = useState(false);
   const { width } = useWindowDimensions();
-  const unavailableHint = onNavigate ? undefined : 'Chức năng đang được chuẩn bị.';
+  function action(intent: WelcomeIntent) {
+    if (!onNavigate || (availableIntents && !availableIntents.includes(intent))) return undefined;
+    return () => onNavigate(intent);
+  }
+  const diagnosis = action('guest-diagnosis');
+  const login = action('login');
+  const catalog = action('catalog');
+  const unavailableHint = 'Chức năng đang được chuẩn bị.';
 
   return (
     <SafeAreaView edges={['left', 'right']} style={styles.screen}>
@@ -64,8 +72,8 @@ export function WelcomeScreen({ onNavigate }: WelcomeScreenProps = {}) {
             <ActionButton
               label="Chẩn đoán ngay"
               variant="secondary"
-              onPress={onNavigate ? () => onNavigate('guest-diagnosis') : undefined}
-              accessibilityHint={unavailableHint ?? 'Mở bước chọn nguồn ảnh với tư cách khách.'}
+              onPress={diagnosis}
+              accessibilityHint={diagnosis ? 'Mở bước chọn nguồn ảnh với tư cách khách.' : unavailableHint}
             />
           </View>
         </View>
@@ -74,17 +82,17 @@ export function WelcomeScreen({ onNavigate }: WelcomeScreenProps = {}) {
             <ActionButton
               label="Đăng nhập"
               variant="secondary"
-              onPress={onNavigate ? () => onNavigate('login') : undefined}
-              accessibilityHint={unavailableHint ?? 'Mở màn hình đăng nhập.'}
+              onPress={login}
+              accessibilityHint={login ? 'Mở màn hình đăng nhập.' : unavailableHint}
             />
             <ActionButton
               label="Tra cứu"
               variant="secondary"
-              onPress={onNavigate ? () => onNavigate('catalog') : undefined}
-              accessibilityHint={unavailableHint ?? 'Tra cứu thông tin cây trồng mà không cần đăng nhập.'}
+              onPress={catalog}
+              accessibilityHint={catalog ? 'Tra cứu thông tin cây trồng mà không cần đăng nhập.' : unavailableHint}
             />
           </View>
-          {!onNavigate && (
+          {!diagnosis && !catalog && (
             <Text style={styles.unavailable}>Chẩn đoán và tra cứu đang được chuẩn bị.</Text>
           )}
         </SafeAreaView>

@@ -1,0 +1,17 @@
+# AGRI-164 recovery request handoff
+
+Open the Guest Login screen and tap Forgot Password. The request screen keeps email in component memory, posts only `{email}` through `requestPasswordReset`, and acknowledges only HTTP 202 with neutral copy. It never stores a session or claims email delivery. Back cancels in-flight work and returns to Login.
+
+The user subsequently authorized AGRI-165/166 on this same AGRI-164 branch. After HTTP 202, enter the eight-digit email code, verify it, then enter and confirm a new password. Verification posts only `{code}` to `/api/auth/reset-password/verify`; resetting posts only `{code,password}` to `/api/auth/reset-password`. Only HTTP 204 advances those steps. Code/passwords stay in memory and clear on exit or completion. Success returns to Login without creating a session. Do not use login OTP endpoints/purpose for password recovery.
+
+Tests: `pnpm.ps1 test:password-reset`, `pnpm.ps1 test:coverage`; explicit local real API smoke: `pnpm.ps1 test:password-reset:integration` (defaults to loopback 5080, override with `AGRI164_API_URL`). The live smoke uses a random unknown address and does not establish real mailbox delivery. [Technical evidence](../../docs/reports/AGRI-164/README.md).
+
+This worktree inherits unmerged AGRI-163 dependency commits; target the mobile integration branch and account for that dependency during review. Dependencies/tools are reused through ignored junctions, not tracked copies.
+
+Run `pnpm.ps1 test:password-recovery:integration` for the complete isolated HTTP/DB/SMTP regression. It requires Docker, Python, OpenSSL (override its executable with `AGRI_OPENSSL`) and the source-matching backend image (`AGRI_RECOVERY_IMAGE`, defaults to the existing local `agriai-backend:agri163-lockout`). Port 15066 must be free. The fixture creates its own PostgreSQL tmpfs database, STARTTLS inbox and API, runs migrations separately, then removes its containers/network and generated certificate/key. It never uses the project database or Gmail credentials. Output/inbox remain ignored in `dist/recovery-qa`; failures are not mailbox acceptance evidence.
+
+Each integration run now owns a unique subdirectory below `dist/recovery-qa`. SMTP capture copies to staging and atomically publishes each complete JSON message once, avoiding Windows reader/overwrite races. Capture errors fail the run. Keep integration/coverage/export checks sequential on constrained local machines; a concurrent cold export/coverage run timed out in an interaction test, while the subsequent serial suite passed without increasing test timeouts.
+
+Compatibility follow-up: Expo 58.1.0, Expo Router 58.0.33 and Jest Expo 58.0.16 are aligned, with `pnpm-lock.yaml` updated. No SDK major or React Native version change. This worktree now has its own ignored `node_modules`; older worktrees retain their previous dependencies. Recovery validation/service errors expose the native `alert` accessibility role in addition to live-region text. Full spoken TalkBack/VoiceOver behavior still needs manual acceptance.
+
+USB preview: start Expo Go at port 8091 with the project API origin `http://127.0.0.1:5080`; forward both ports with ADB. In the app select Login -> Forgot Password -> Send code -> enter the eight-digit code -> Verify -> new password and confirmation -> Change password -> Back to Login. Real Gmail delivery and the entire physical-device reset flow still require a user acceptance run.

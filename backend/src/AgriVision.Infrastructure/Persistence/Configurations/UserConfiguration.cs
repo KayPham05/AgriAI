@@ -35,6 +35,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.IsActive).HasColumnName("is_active").HasDefaultValue(true);
         builder.Property(u => u.LockReason).HasColumnName("lock_reason").HasMaxLength(500);
         builder.Property(u => u.LockedAt).HasColumnName("locked_at");
+        builder.Property(u => u.FailedLoginAttempts).HasColumnName("failed_login_attempts").HasDefaultValue(0);
+        builder.Property(u => u.LoginLockoutLevel).HasColumnName("login_lockout_level").HasDefaultValue(0);
+        builder.Property(u => u.LoginLockedUntil).HasColumnName("login_locked_until");
         builder.Property(u => u.EmailTwoFactorEnabled).HasColumnName("email_two_factor_enabled");
 
         builder.Property(u => u.Role)

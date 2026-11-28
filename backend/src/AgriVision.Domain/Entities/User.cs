@@ -15,6 +15,9 @@ public class User
     public string? LockReason { get; set; }
     public DateTime? LockedAt { get; set; }
     public bool EmailTwoFactorEnabled { get; set; }
+    public int FailedLoginAttempts { get; set; }
+    public int LoginLockoutLevel { get; set; }
+    public DateTime? LoginLockedUntil { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
