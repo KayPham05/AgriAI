@@ -27,6 +27,7 @@ function SessionStack() {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="diagnosis/preview" />
       <Stack.Screen name="diagnosis/analyzing" />
+      <Stack.Screen name="diagnosis/result" />
       <Stack.Screen name="gallery" />
     </Stack>
   );

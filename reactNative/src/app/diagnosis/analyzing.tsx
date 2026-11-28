@@ -39,7 +39,7 @@ export default function AnalyzingRoute() {
       onSubmit={handleSubmit}
       onCompleted={(result) => {
         setLastResult(result);
-        router.replace('/(tabs)/history');
+        router.replace('/diagnosis/result');
       }}
       onCancel={() => router.back()}
       onOpenHistory={() => router.replace('/(tabs)/history')}
