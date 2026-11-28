@@ -23,6 +23,8 @@ function SessionStack() {
       <Stack.Protected guard={signedIn} redirectTo="/">
         <Stack.Screen name="home" />
       </Stack.Protected>
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="gallery" />
     </Stack>
   );
 }
