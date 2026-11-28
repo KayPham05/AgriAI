@@ -43,7 +43,7 @@ export default function ImagePreviewRoute() {
       onReplaceImage={() => router.back()}
       onBack={() => router.back()}
       onAnalyze={() => {
-        // Hand off to S13 (AGRI-170) once implemented.
+        router.push('/diagnosis/analyzing');
       }}
     />
   );
