@@ -25,6 +25,7 @@ function SessionStack() {
         <Stack.Screen name="home" />
       </Stack.Protected>
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="diagnosis/preview" />
       <Stack.Screen name="gallery" />
     </Stack>
   );

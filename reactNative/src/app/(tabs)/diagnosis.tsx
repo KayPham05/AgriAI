@@ -1,3 +1,5 @@
+import { router } from 'expo-router';
+
 import { useDiagnosisDraft } from '@/features/diagnosis/diagnosisDraft';
 import { defaultImageSourceAdapter } from '@/features/diagnosis/imageSource';
 import { DiagnosisScreen } from '@/features/diagnosis/screens/DiagnosisScreen';
@@ -9,6 +11,7 @@ export default function DiagnosisRoute() {
       adapter={defaultImageSourceAdapter}
       onImageSelected={(image) => {
         setDraft(image);
+        router.push('/diagnosis/preview');
       }}
     />
   );
