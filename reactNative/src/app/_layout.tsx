@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { StartupSessionProvider, useStartupSession } from '@/features/auth/StartupSession';
+import { DiagnosisDraftProvider } from '@/features/diagnosis/diagnosisDraft';
 import { theme } from '@/theme/tokens';
 
 function SessionStack() {
@@ -34,7 +35,9 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <StatusBar style="dark" />
       <StartupSessionProvider>
-        <SessionStack />
+        <DiagnosisDraftProvider>
+          <SessionStack />
+        </DiagnosisDraftProvider>
       </StartupSessionProvider>
     </SafeAreaProvider>
   );
